@@ -1,0 +1,420 @@
+<!-- /index.html -->
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Калькулятор зарплаты</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      html,
+      body {
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      }
+
+      :root {
+        --glow: rgba(99, 102, 241, 0.35);
+        --glow2: rgba(56, 189, 248, 0.25);
+      }
+
+      /* Animated background: moving orbs + subtle grid + noise */
+      body {
+        position: relative;
+        overflow-x: hidden;
+        background:
+          radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.12), transparent 60%),
+          radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.10), transparent 60%),
+          radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.08), transparent 60%),
+          #020617;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: -25%;
+        pointer-events: none;
+        z-index: 0;
+        background:
+          radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.28), transparent 45%),
+          radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.22), transparent 45%),
+          radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.14), transparent 45%);
+        filter: blur(60px);
+        opacity: 0.7;
+        transform: translate3d(0, 0, 0);
+        animation: bgFloat 12s ease-in-out infinite alternate;
+      }
+
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background-image:
+          radial-gradient(rgba(148, 163, 184, 0.11) 1px, transparent 1px);
+        background-size: 24px 24px;
+        opacity: 0.25;
+        mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 72%);
+      }
+
+      @keyframes bgFloat {
+        0% { transform: translate3d(-2%, -2%, 0) scale(1); }
+        100% { transform: translate3d(2%, 2%, 0) scale(1.05); }
+      }
+
+      /* Reveal on load */
+      .reveal {
+        opacity: 0;
+        transform: translateY(18px);
+        filter: blur(6px);
+        transition:
+          opacity 700ms cubic-bezier(.2,.8,.2,1),
+          transform 700ms cubic-bezier(.2,.8,.2,1),
+          filter 700ms cubic-bezier(.2,.8,.2,1);
+        will-change: opacity, transform, filter;
+      }
+      body.is-loaded .reveal {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+      }
+
+      /* Glass cards + glow border */
+      .glass-card {
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+      }
+      .glass-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        background:
+          radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.35), transparent 60%),
+          radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
+        transition: opacity 350ms ease;
+      }
+      .glass-card:hover::before {
+        opacity: 1;
+      }
+
+      .hover-lift {
+        transition:
+          transform 250ms cubic-bezier(.2,.8,.2,1),
+          box-shadow 250ms cubic-bezier(.2,.8,.2,1),
+          border-color 250ms ease;
+      }
+      .hover-lift:hover {
+        transform: translateY(-4px);
+        box-shadow:
+          0 20px 60px -40px var(--glow),
+          0 14px 40px -28px rgba(0, 0, 0, 0.7);
+      }
+
+      /* Inputs micro-interactions */
+      .input-glass {
+        transition:
+          transform 180ms cubic-bezier(.2,.8,.2,1),
+          box-shadow 180ms cubic-bezier(.2,.8,.2,1),
+          border-color 180ms ease,
+          background-color 180ms ease;
+      }
+      .input-glass:focus {
+        transform: translateY(-1px);
+        box-shadow:
+          0 0 0 1px rgba(99, 102, 241, 0.35),
+          0 10px 40px -30px rgba(99, 102, 241, 0.55);
+      }
+
+      /* Easter egg overlay */
+    #easterEgg {
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    }
+
+    .egg-pulse {
+    animation: eggPulse 1.05s cubic-bezier(.2,.8,.2,1) infinite;
+    will-change: transform, filter;
+    }
+
+    @keyframes eggPulse {
+    0%   { transform: translateY(0) scale(1); filter: drop-shadow(0 10px 35px rgba(99,102,241,.35)); }
+    50%  { transform: translateY(-6px) scale(1.03); filter: drop-shadow(0 18px 55px rgba(56,189,248,.45)); }
+    100% { transform: translateY(0) scale(1); filter: drop-shadow(0 10px 35px rgba(168,85,247,.35)); }
+    }
+
+    .egg-glow {
+    text-shadow:
+        0 0 18px rgba(99,102,241,.25),
+        0 0 38px rgba(56,189,248,.18),
+        0 0 70px rgba(168,85,247,.12);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+    .egg-pulse { animation: none; }
+    }
+
+      /* Big number pop */
+      .pop {
+        animation: pop 260ms cubic-bezier(.2,.8,.2,1);
+      }
+      @keyframes pop {
+        0% { transform: translateY(0) scale(1); }
+        45% { transform: translateY(-2px) scale(1.03); }
+        100% { transform: translateY(0) scale(1); }
+      }
+
+      /* Error shake */
+      .shake {
+        animation: shake 320ms ease-in-out;
+      }
+      @keyframes shake {
+        0% { transform: translateX(0); }
+        25% { transform: translateX(-6px); }
+        50% { transform: translateX(6px); }
+        75% { transform: translateX(-4px); }
+        100% { transform: translateX(0); }
+      }
+
+      /* Respect reduced motion */
+      @media (prefers-reduced-motion: reduce) {
+        body::before { animation: none; }
+        .reveal { transition: none; opacity: 1; transform: none; filter: none; }
+        .hover-lift { transition: none; }
+        .input-glass { transition: none; }
+        .pop, .shake { animation: none; }
+      }
+
+    </style>
+  </head>
+
+  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-white">
+    <div class="relative z-10 mx-auto max-w-5xl px-4 py-10">
+      <header class="mb-8 reveal">
+        <div class="inline-flex items-center gap-3">
+          <span
+            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/30 to-sky-400/10 ring-1 ring-white/10 shadow-[0_20px_60px_-40px_rgba(99,102,241,0.6)]"
+            aria-hidden="true"
+          >
+            <svg viewBox="0 0 24 24" class="h-5 w-5 text-slate-100/90" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v20M2 12h20" opacity=".25"></path>
+              <path d="M7 14c1.5 1.5 3.5 2.5 5 2.5S15.5 15.5 17 14" opacity=".9"></path>
+            </svg>
+          </span>
+
+          <div>
+            <h1 class="text-3xl font-semibold tracking-tight">
+              <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
+                Калькулятор зарплаты
+              </span>
+            </h1>
+            <p class="mt-1 text-sm text-slate-300/90">
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <main class="grid gap-7 lg:grid-cols-2">
+        <!-- Form -->
+        <section
+          class="reveal glass-card hover-lift rounded-3xl bg-slate-900/35 p-6 shadow-[0_20px_80px_-50px_rgba(99,102,241,0.45)] ring-1 ring-white/10"
+        >
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-semibold tracking-tight">Данные</h2>
+          </div>
+
+          <form id="salaryForm" class="mt-5 space-y-4" novalidate>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-200" for="oklad">
+                Оклад (за норму часов)
+              </label>
+              <input
+                id="oklad"
+                name="oklad"
+                inputmode="decimal"
+                placeholder="Напр. 50 000"
+                class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+              />
+              <p class="mt-1 text-xs text-slate-400/90">₽, можно с пробелами и запятыми.</p>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-200" for="normHours">
+                  Норма часов (в месяце)
+                </label>
+                <input
+                  id="normHours"
+                  name="normHours"
+                  inputmode="decimal"
+                  placeholder="Напр. 160"
+                  class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                />
+              </div>
+
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-200" for="workedHours">
+                  Отработано часов
+                </label>
+                <input
+                  id="workedHours"
+                  name="workedHours"
+                  inputmode="decimal"
+                  placeholder="Напр. 160"
+                  class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-200" for="nightHours">
+                  Ночных часов
+                </label>
+                <input
+                  id="nightHours"
+                  name="nightHours"
+                  inputmode="decimal"
+                  placeholder="Напр. 70"
+                  class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                />
+                <p class="mt-1 text-xs text-slate-400/90">Ночные: надбавка +40% к ставке.</p>
+              </div>
+
+              <div class="flex items-end gap-3">
+                <button
+                  type="button"
+                  id="resetBtn"
+                  class="w-full rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-4 py-3 font-medium text-slate-100 ring-1 ring-white/10 shadow-[0_18px_60px_-45px_rgba(99,102,241,0.6)] transition-transform duration-150 hover:shadow-[0_22px_70px_-45px_rgba(56,189,248,0.55)] hover:ring-indigo-400/30 active:scale-[0.985] focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                >
+                  Сбросить
+                </button>
+              </div>
+            </div>
+
+            <div
+              id="errorBox"
+              class="hidden rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-200 ring-1 ring-rose-500/20 shadow-[0_14px_50px_-40px_rgba(244,63,94,0.55)]"
+            ></div>
+          </form>
+        </section>
+
+        <!-- Result -->
+        <aside
+          class="reveal glass-card hover-lift rounded-3xl bg-slate-900/25 p-6 shadow-[0_20px_80px_-50px_rgba(56,189,248,0.35)] ring-1 ring-white/10"
+        >
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-semibold tracking-tight">Результат</h2>
+          </div>
+
+          <div class="mt-5 grid gap-4">
+            <div
+              class="glass-card rounded-3xl bg-gradient-to-b from-indigo-500/15 via-slate-950/35 to-slate-950/20 p-5 ring-1 ring-white/10 shadow-[0_30px_90px_-65px_rgba(99,102,241,0.8)]"
+            >
+              <div class="flex items-center justify-between">
+                <p class="text-sm text-slate-200/90">К выплате</p>
+                <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1 text-[11px] text-slate-300 ring-1 ring-white/10">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-400/80"></span>
+                  нетто
+                </span>
+              </div>
+
+              <p
+                id="net"
+                class="mt-2 text-4xl font-semibold tracking-tight text-slate-50 drop-shadow-[0_10px_35px_rgba(99,102,241,0.35)]"
+              >
+                —
+              </p>
+
+              <p id="summary" class="mt-2 text-sm text-slate-300/80"></p>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div
+                class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
+              >
+                <p class="text-xs text-slate-400">Часовая ставка</p>
+                <p id="hourRate" class="mt-1 text-lg font-semibold tracking-tight">—</p>
+              </div>
+              <div
+                class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
+              >
+                <p class="text-xs text-slate-400">Оклад за факт</p>
+                <p id="baseFact" class="mt-1 text-lg font-semibold tracking-tight">—</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div
+                class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
+              >
+                <p class="text-xs text-slate-400">Премия 35%</p>
+                <p id="bonus" class="mt-1 text-lg font-semibold tracking-tight">—</p>
+              </div>
+              <div
+                class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
+              >
+                <p class="text-xs text-slate-400">Ночные</p>
+                <p id="nightExtra" class="mt-1 text-lg font-semibold tracking-tight">—</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div
+                class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
+              >
+                <p class="text-xs text-slate-400">Итого</p>
+                <p id="gross" class="mt-1 text-lg font-semibold tracking-tight">—</p>
+              </div>
+              <div
+                class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
+              >
+                <p class="text-xs text-slate-400">Налог 13%</p>
+                <p id="tax" class="mt-1 text-lg font-semibold tracking-tight">—</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+    <!-- Easter egg overlay -->
+<div
+  id="easterEgg"
+  class="hidden fixed inset-0 z-[999] items-center justify-center bg-slate-950/80"
+  aria-hidden="true"
+>
+  <div class="relative mx-auto max-w-5xl px-6 text-center">
+    <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-200 ring-1 ring-white/10">
+      <span class="h-1.5 w-1.5 rounded-full bg-fuchsia-400/80"></span>
+      Нажми <span class="font-semibold">ESC</span>, чтобы закрыть
+    </div>
+
+    <div
+      id="easterText"
+      class="egg-pulse egg-glow select-none text-5xl font-extrabold tracking-tight sm:text-7xl lg:text-8xl"
+    >
+      <span class="bg-gradient-to-r from-fuchsia-200 via-sky-200 to-indigo-200 bg-clip-text text-transparent">
+        ПИРБАЛА КРИНЖ
+      </span>
+    </div>
+
+    <div class="mt-6 text-sm text-slate-300/80">
+      
+    </div>
+  </div>
+</div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
