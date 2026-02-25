@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Калькулятор зарплаты</title>
 
-    <!-- PWA: подключение манифеста -->
+    <!-- PWA: подключение манифеста (если есть) -->
     <link rel="manifest" href="/manifest.json" />
-    <!-- Для iOS добавление иконки на главный экран (опционально) -->
     <link rel="apple-touch-icon" href="/icon-192.png" />
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,7 +19,7 @@
     />
 
     <style>
-      /* все ваши стили без изменений */
+      /* Все стили без изменений (как в предыдущей версии) */
       html,
       body {
         font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -225,8 +224,7 @@
                 Калькулятор зарплаты
               </span>
             </h1>
-            <p class="mt-1 text-sm text-slate-300/90">
-            </p>
+            <p class="mt-1 text-sm text-slate-300/90"></p>
           </div>
         </div>
       </header>
@@ -376,7 +374,7 @@
               </div>
             </div>
 
-            <!-- Исправленные карточки: Аванс и Остаток -->
+            <!-- Аванс и Остаток -->
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div
                 class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
@@ -391,13 +389,31 @@
                 <p id="remaining" class="mt-1 text-lg font-semibold tracking-tight">—</p>
               </div>
             </div>
-            <!-- Карточки gross и tax удалены, они больше не нужны -->
+
+            <!-- ===== НОВЫЙ БЛОК ИСТОРИИ ===== -->
+            <div class="mt-4 p-4 rounded-2xl bg-slate-800/50 ring-1 ring-white/10">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-medium text-slate-300">История расчётов</h3>
+                <button
+                  id="clearHistoryBtn"
+                  class="text-xs px-2 py-1 rounded bg-rose-500/20 text-rose-200 hover:bg-rose-500/30 ring-1 ring-rose-500/30"
+                >
+                  Очистить
+                </button>
+              </div>
+              <select
+                id="historySelect"
+                class="w-full rounded-xl bg-slate-950/60 px-3 py-2 text-sm text-slate-200 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+              >
+                <option value="">-- Выберите расчёт --</option>
+              </select>
+            </div>
           </div>
         </aside>
       </main>
     </div>
 
-    <!-- Easter egg overlay -->
+    <!-- Easter egg overlay (без изменений) -->
     <div
       id="easterEgg"
       class="hidden fixed inset-0 z-[999] items-center justify-center bg-slate-950/80"

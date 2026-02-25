@@ -1,18 +1,7 @@
 // /app.js
 
 import { computeSalary, parseNumber, TAX_RATE } from "./calc.js";
-import { clearState, loadState, saveState } from "./storage.js";
-
-// PWA: регистрация service worker
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(registration => {
-      console.log('ServiceWorker registered: ', registration);
-    }).catch(error => {
-      console.log('ServiceWorker registration failed: ', error);
-    });
-  });
-}
+import { clearState, loadState, saveState, addToHistory, loadHistory, clearHistory } from "./storage.js";
 
 document.body.classList.add("is-loaded");
 
@@ -23,7 +12,10 @@ const resetBtn = document.getElementById("resetBtn");
 const eggOverlay = document.getElementById("easterEgg");
 const eggText = document.getElementById("easterText");
 
-// Элементы формы и результатов
+// НОВОЕ: элементы для истории
+const historySelect = document.getElementById("historySelect");
+const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+
 const els = {
   oklad: document.getElementById("oklad"),
   normHours: document.getElementById("normHours"),
@@ -38,7 +30,6 @@ const els = {
   bonus: document.getElementById("bonus"),
   nightExtra: document.getElementById("nightExtra"),
 
-  // Новые элементы для аванса и остатка
   advance: document.getElementById("advance"),
   remaining: document.getElementById("remaining"),
 };
@@ -66,7 +57,7 @@ function easeOutCubic(t) {
 function bump(el) {
   if (prefersReducedMotion) return;
   el.classList.remove("pop");
-  el.offsetWidth; // форсируем reflow
+  el.offsetWidth;
   el.classList.add("pop");
 }
 
@@ -202,6 +193,35 @@ function handleEasterEgg(input) {
   wasAll69 = true;
 }
 
+// НОВОЕ: обновление выпадающего списка истории
+function updateHistoryDropdown() {
+  if (!historySelect) return;
+  const history = loadHistory();
+  historySelect.innerHTML = '<option value="">-- Выберите расчёт --</option>';
+  history.forEach((entry, index) => {
+    const date = new Date(entry.timestamp).toLocaleString('ru-RU', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    const option = document.createElement('option');
+    option.value = index; // используем индекс как значение
+    option.textContent = `${date} – Оклад: ${entry.input.oklad}₽, Отработано: ${entry.input.workedHours}ч, К выплате: ${formatRub(entry.result.net, 0)}`;
+    historySelect.appendChild(option);
+  });
+}
+
+// НОВОЕ: загрузка выбранного расчёта из истории
+function loadFromHistory(index) {
+  const history = loadHistory();
+  const entry = history[index];
+  if (!entry) return;
+  els.oklad.value = entry.input.oklad;
+  els.normHours.value = entry.input.normHours;
+  els.workedHours.value = entry.input.workedHours;
+  els.nightHours.value = entry.input.nightHours;
+  render(); // пересчитать и отобразить
+}
+
 function render() {
   const parsed = readInput();
   if (!parsed.ok) {
@@ -223,12 +243,14 @@ function render() {
 
   const r = calc.result;
 
-  // Расчёт аванса: (оклад - 13%) * 40%
+  // НОВОЕ: добавить текущий расчёт в историю
+  addToHistory(parsed.input, r);
+  updateHistoryDropdown(); // обновить список
+
+  // Расчёт аванса и остатка
   const advance = parsed.input.oklad * (1 - TAX_RATE) * 0.4;
-  // Остаток = сумма к выплате минус аванс
   const remaining = r.net - advance;
 
-  // Анимация основных полей
   animateNumber(els.net, r.net, (v) => formatRub(v, 0), 560);
   bump(els.net);
 
@@ -236,12 +258,9 @@ function render() {
   animateNumber(els.baseFact, r.baseFact, (v) => formatRub(v, 0), 520);
   animateNumber(els.bonus, r.bonus, (v) => formatRub(v, 0), 520);
   animateNumber(els.nightExtra, r.nightExtra, (v) => formatRub(v, 0), 520);
-
-  // Анимация новых полей
   animateNumber(els.advance, advance, (v) => formatRub(v, 0), 520);
   animateNumber(els.remaining, remaining, (v) => formatRub(v, 0), 520);
 
-  // Краткая сводка (gross и tax всё ещё нужны для отображения)
   els.summary.textContent = `Брутто: ${formatRub(r.gross, 0)} • Налог: ${formatRub(r.tax, 0)}`;
 
   saveState({ ...parsed.input, _ts: Date.now() });
@@ -271,5 +290,22 @@ function initFromStorage() {
 form.addEventListener("input", render);
 resetBtn.addEventListener("click", reset);
 
+// НОВОЕ: слушатели для истории
+if (historySelect) {
+  historySelect.addEventListener("change", (e) => {
+    const index = e.target.value;
+    if (index !== '') {
+      loadFromHistory(parseInt(index, 10));
+    }
+  });
+}
+if (clearHistoryBtn) {
+  clearHistoryBtn.addEventListener("click", () => {
+    clearHistory();
+    updateHistoryDropdown();
+  });
+}
+
 initFromStorage();
 render();
+updateHistoryDropdown(); // загрузить историю при старте
