@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Калькулятор зарплаты</title>
+    <title>Калькулятор зарплаты Alvisa</title>
 
     <!-- PWA: подключение манифеста (если есть) -->
     <link rel="manifest" href="/manifest.json" />
@@ -209,30 +209,29 @@
       <header class="mb-8 reveal">
         <div class="inline-flex items-center gap-3">
           <span
-            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/30 to-sky-400/10 ring-1 ring-white/10 shadow-[0_20px_60px_-40px_rgba(99,102,241,0.6)]"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/30 to-sky-400/10 ring-1 ring-white/10 shadow-[0_20px_60px_-40px_rgba(99,102,241,0.6)] text-lg font-semibold text-slate-100/90"
             aria-hidden="true"
           >
-            <svg viewBox="0 0 24 24" class="h-5 w-5 text-slate-100/90" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2v20M2 12h20" opacity=".25"></path>
-              <path d="M7 14c1.5 1.5 3.5 2.5 5 2.5S15.5 15.5 17 14" opacity=".9"></path>
-            </svg>
+            А
           </span>
 
           <div>
             <h1 class="text-3xl font-semibold tracking-tight">
               <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
-                Калькулятор зарплаты
+                Калькулятор зарплаты Alvisa
               </span>
             </h1>
             <p class="mt-1 text-sm text-slate-300/90"></p>
           </div>
         </div>
       </header>
-       <!-- ===== ВСТАВЬТЕ ЭТОТ БЛОК ===== -->
+
+      <!-- Навигация между страницами -->
       <div class="mb-6 flex gap-4 border-b border-white/10 pb-4">
         <a href="index.html" class="text-indigo-300 hover:text-indigo-200 font-medium">Калькулятор зарплаты</a>
         <a href="table.html" class="text-slate-300 hover:text-indigo-200">Табель учёта</a>
       </div>
+
       <main class="grid gap-7 lg:grid-cols-2">
         <!-- Form -->
         <section
@@ -300,7 +299,7 @@
                 <p class="mt-1 text-xs text-slate-400/90">Ночные: надбавка +40% к ставке.</p>
               </div>
 
-              <div class="flex items-end gap-3">
+              <div class="flex items-center gap-3">
                 <button
                   type="button"
                   id="resetBtn"
@@ -378,43 +377,41 @@
               </div>
             </div>
 
-            <!-- Аванс и Остаток -->
+            <!-- ===== ИЗМЕНЕНО: Аванс и Остаток с метками "бета" и жёлтым кружком ===== -->
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div
-                class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
-              >
-                <p class="text-xs text-slate-400">Аванс</p>
+              <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+                <div class="flex items-center justify-between">
+                  <p class="text-xs text-slate-400">Аванс</p>
+                  <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1 text-[11px] text-slate-300 ring-1 ring-white/10">
+                    <span class="h-1.5 w-1.5 rounded-full bg-yellow-400/80"></span>
+                    бета
+                  </span>
+                </div>
                 <p id="advance" class="mt-1 text-lg font-semibold tracking-tight">—</p>
               </div>
-              <div
-                class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
-              >
-                <p class="text-xs text-slate-400">Остаток</p>
+              <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+                <div class="flex items-center justify-between">
+                  <p class="text-xs text-slate-400">Остаток</p>
+                  <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1 text-[11px] text-slate-300 ring-1 ring-white/10">
+                    <span class="h-1.5 w-1.5 rounded-full bg-yellow-400/80"></span>
+                    бета
+                  </span>
+                </div>
                 <p id="remaining" class="mt-1 text-lg font-semibold tracking-tight">—</p>
               </div>
             </div>
+            <!-- ===== КОНЕЦ ИЗМЕНЕНИЙ ===== -->
 
-            <!-- ===== НОВЫЙ БЛОК ИСТОРИИ ===== -->
-            <!-- <div class="mt-4 p-4 rounded-2xl bg-slate-800/50 ring-1 ring-white/10">
-              <div class="flex items-center justify-between mb-2">
-                <h3 class="text-sm font-medium text-slate-300">История расчётов</h3>
-                <button
-                  id="clearHistoryBtn"
-                  class="text-xs px-2 py-1 rounded bg-rose-500/20 text-rose-200 hover:bg-rose-500/30 ring-1 ring-rose-500/30"
-                >
-                  Очистить
-                </button>
-              </div>
-              <select
-                id="historySelect"
-                class="w-full rounded-xl bg-slate-950/60 px-3 py-2 text-sm text-slate-200 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
-              >
-                <option value="">-- Выберите расчёт --</option>
-              </select>
-            </div> -->
+            <!-- Блок истории (закомментирован) -->
+            <!-- <div class="mt-4 p-4 rounded-2xl bg-slate-800/50 ring-1 ring-white/10"> ... </div> -->
           </div>
         </aside>
       </main>
+
+      <!-- ===== ДОБАВЛЕН ФУТЕР С УВЕДОМЛЕНИЕМ ===== -->
+      <footer class="mt-8 text-center text-xs text-slate-400/70 border-t border-white/10 pt-4">
+        Алгоритм расчета аванса и зарплаты уточняется, проект находится в работе, уточняйте информацию.
+      </footer>
     </div>
 
     <!-- Easter egg overlay (без изменений) -->
