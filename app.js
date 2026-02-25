@@ -1,7 +1,18 @@
 // /app.js
 
-import { computeSalary, parseNumber } from "./calc.js";
+import { computeSalary, parseNumber, TAX_RATE } from "./calc.js";
 import { clearState, loadState, saveState } from "./storage.js";
+
+// PWA: регистрация service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(registration => {
+      console.log('ServiceWorker registered: ', registration);
+    }).catch(error => {
+      console.log('ServiceWorker registration failed: ', error);
+    });
+  });
+}
 
 document.body.classList.add("is-loaded");
 
@@ -12,6 +23,7 @@ const resetBtn = document.getElementById("resetBtn");
 const eggOverlay = document.getElementById("easterEgg");
 const eggText = document.getElementById("easterText");
 
+// Элементы формы и результатов
 const els = {
   oklad: document.getElementById("oklad"),
   normHours: document.getElementById("normHours"),
@@ -25,8 +37,10 @@ const els = {
   baseFact: document.getElementById("baseFact"),
   bonus: document.getElementById("bonus"),
   nightExtra: document.getElementById("nightExtra"),
-  gross: document.getElementById("gross"),
-  tax: document.getElementById("tax"),
+
+  // Новые элементы для аванса и остатка
+  advance: document.getElementById("advance"),
+  remaining: document.getElementById("remaining"),
 };
 
 const prefersReducedMotion =
@@ -52,8 +66,7 @@ function easeOutCubic(t) {
 function bump(el) {
   if (prefersReducedMotion) return;
   el.classList.remove("pop");
-  // eslint-disable-next-line no-unused-expressions
-  el.offsetWidth;
+  el.offsetWidth; // форсируем reflow
   el.classList.add("pop");
 }
 
@@ -99,7 +112,6 @@ function setError(msg) {
   errorBox.classList.remove("hidden");
   errorBox.textContent = msg;
   errorBox.classList.remove("shake");
-  // eslint-disable-next-line no-unused-expressions
   errorBox.offsetWidth;
   errorBox.classList.add("shake");
 }
@@ -133,12 +145,14 @@ function renderEmpty() {
     els.baseFact,
     els.bonus,
     els.nightExtra,
-    els.gross,
-    els.tax,
+    els.advance,
+    els.remaining,
   ];
   for (const el of targets) {
-    el.textContent = "—";
-    delete el.dataset.value;
+    if (el) {
+      el.textContent = "—";
+      delete el.dataset.value;
+    }
   }
   els.summary.textContent = "";
 }
@@ -209,6 +223,12 @@ function render() {
 
   const r = calc.result;
 
+  // Расчёт аванса: (оклад - 13%) * 40%
+  const advance = parsed.input.oklad * (1 - TAX_RATE) * 0.4;
+  // Остаток = сумма к выплате минус аванс
+  const remaining = r.net - advance;
+
+  // Анимация основных полей
   animateNumber(els.net, r.net, (v) => formatRub(v, 0), 560);
   bump(els.net);
 
@@ -216,9 +236,12 @@ function render() {
   animateNumber(els.baseFact, r.baseFact, (v) => formatRub(v, 0), 520);
   animateNumber(els.bonus, r.bonus, (v) => formatRub(v, 0), 520);
   animateNumber(els.nightExtra, r.nightExtra, (v) => formatRub(v, 0), 520);
-  animateNumber(els.gross, r.gross, (v) => formatRub(v, 0), 520);
-  animateNumber(els.tax, r.tax, (v) => formatRub(v, 0), 520);
 
+  // Анимация новых полей
+  animateNumber(els.advance, advance, (v) => formatRub(v, 0), 520);
+  animateNumber(els.remaining, remaining, (v) => formatRub(v, 0), 520);
+
+  // Краткая сводка (gross и tax всё ещё нужны для отображения)
   els.summary.textContent = `Брутто: ${formatRub(r.gross, 0)} • Налог: ${formatRub(r.tax, 0)}`;
 
   saveState({ ...parsed.input, _ts: Date.now() });

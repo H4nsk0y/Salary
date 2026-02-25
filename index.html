@@ -1,10 +1,14 @@
-<!-- /index.html -->
 <!doctype html>
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Калькулятор зарплаты</title>
+
+    <!-- PWA: подключение манифеста -->
+    <link rel="manifest" href="/manifest.json" />
+    <!-- Для iOS добавление иконки на главный экран (опционально) -->
+    <link rel="apple-touch-icon" href="/icon-192.png" />
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -16,6 +20,7 @@
     />
 
     <style>
+      /* все ваши стили без изменений */
       html,
       body {
         font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -371,50 +376,52 @@
               </div>
             </div>
 
+            <!-- Исправленные карточки: Аванс и Остаток -->
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div
                 class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
               >
-                <p class="text-xs text-slate-400">Итого</p>
-                <p id="gross" class="mt-1 text-lg font-semibold tracking-tight">—</p>
+                <p class="text-xs text-slate-400">Аванс</p>
+                <p id="advance" class="mt-1 text-lg font-semibold tracking-tight">—</p>
               </div>
               <div
                 class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
               >
-                <p class="text-xs text-slate-400">Налог 13%</p>
-                <p id="tax" class="mt-1 text-lg font-semibold tracking-tight">—</p>
+                <p class="text-xs text-slate-400">Остаток</p>
+                <p id="remaining" class="mt-1 text-lg font-semibold tracking-tight">—</p>
               </div>
             </div>
+            <!-- Карточки gross и tax удалены, они больше не нужны -->
           </div>
         </aside>
       </main>
     </div>
+
     <!-- Easter egg overlay -->
-<div
-  id="easterEgg"
-  class="hidden fixed inset-0 z-[999] items-center justify-center bg-slate-950/80"
-  aria-hidden="true"
->
-  <div class="relative mx-auto max-w-5xl px-6 text-center">
-    <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-200 ring-1 ring-white/10">
-      <span class="h-1.5 w-1.5 rounded-full bg-fuchsia-400/80"></span>
-      Нажми <span class="font-semibold">ESC</span>, чтобы закрыть
-    </div>
-
     <div
-      id="easterText"
-      class="egg-pulse egg-glow select-none text-5xl font-extrabold tracking-tight sm:text-7xl lg:text-8xl"
+      id="easterEgg"
+      class="hidden fixed inset-0 z-[999] items-center justify-center bg-slate-950/80"
+      aria-hidden="true"
     >
-      <span class="bg-gradient-to-r from-fuchsia-200 via-sky-200 to-indigo-200 bg-clip-text text-transparent">
-        ПИРБАЛА КРИНЖ
-      </span>
+      <div class="relative mx-auto max-w-5xl px-6 text-center">
+        <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-200 ring-1 ring-white/10">
+          <span class="h-1.5 w-1.5 rounded-full bg-fuchsia-400/80"></span>
+          Нажми <span class="font-semibold">ESC</span>, чтобы закрыть
+        </div>
+
+        <div
+          id="easterText"
+          class="egg-pulse egg-glow select-none text-5xl font-extrabold tracking-tight sm:text-7xl lg:text-8xl"
+        >
+          <span class="bg-gradient-to-r from-fuchsia-200 via-sky-200 to-indigo-200 bg-clip-text text-transparent">
+            ПИРБАЛА КРИНЖ
+          </span>
+        </div>
+
+        <div class="mt-6 text-sm text-slate-300/80"></div>
+      </div>
     </div>
 
-    <div class="mt-6 text-sm text-slate-300/80">
-      
-    </div>
-  </div>
-</div>
     <script type="module" src="./app.js"></script>
   </body>
 </html>
