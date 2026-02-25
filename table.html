@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Табель учёта рабочего времени</title>
+
+  <!-- PWA: подключение манифеста (если есть) -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    html,
+    body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    :root {
+      --glow: rgba(99, 102, 241, 0.35);
+      --glow2: rgba(56, 189, 248, 0.25);
+    }
+
+    /* Animated background: moving orbs + subtle grid + noise */
+    body {
+      position: relative;
+      overflow-x: hidden;
+      background:
+        radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.12), transparent 60%),
+        radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.10), transparent 60%),
+        radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.08), transparent 60%),
+        #020617;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -25%;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.28), transparent 45%),
+        radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.22), transparent 45%),
+        radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.14), transparent 45%);
+      filter: blur(60px);
+      opacity: 0.7;
+      transform: translate3d(0, 0, 0);
+      animation: bgFloat 12s ease-in-out infinite alternate;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        radial-gradient(rgba(148, 163, 184, 0.11) 1px, transparent 1px);
+      background-size: 24px 24px;
+      opacity: 0.25;
+      mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 72%);
+    }
+
+    @keyframes bgFloat {
+      0% { transform: translate3d(-2%, -2%, 0) scale(1); }
+      100% { transform: translate3d(2%, 2%, 0) scale(1.05); }
+    }
+
+    /* Reveal on load */
+    .reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      filter: blur(6px);
+      transition:
+        opacity 700ms cubic-bezier(.2,.8,.2,1),
+        transform 700ms cubic-bezier(.2,.8,.2,1),
+        filter 700ms cubic-bezier(.2,.8,.2,1);
+      will-change: opacity, transform, filter;
+    }
+    body.is-loaded .reveal {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+
+    /* Glass cards + glow border (для итоговой карточки) */
+    .glass-card {
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .glass-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      background:
+        radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.35), transparent 60%),
+        radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
+      transition: opacity 350ms ease;
+    }
+    .glass-card:hover::before {
+      opacity: 1;
+    }
+
+    .hover-lift {
+      transition:
+        transform 250ms cubic-bezier(.2,.8,.2,1),
+        box-shadow 250ms cubic-bezier(.2,.8,.2,1),
+        border-color 250ms ease;
+    }
+    .hover-lift:hover {
+      transform: translateY(-4px);
+      box-shadow:
+        0 20px 60px -40px var(--glow),
+        0 14px 40px -28px rgba(0, 0, 0, 0.7);
+    }
+
+    /* Inputs micro-interactions */
+    .input-glass {
+      transition:
+        transform 180ms cubic-bezier(.2,.8,.2,1),
+        box-shadow 180ms cubic-bezier(.2,.8,.2,1),
+        border-color 180ms ease,
+        background-color 180ms ease;
+    }
+    .input-glass:focus {
+      transform: translateY(-1px);
+      box-shadow:
+        0 0 0 1px rgba(99, 102, 241, 0.35),
+        0 10px 40px -30px rgba(99, 102, 241, 0.55);
+    }
+
+    /* Big number pop */
+    .pop {
+      animation: pop 260ms cubic-bezier(.2,.8,.2,1);
+    }
+    @keyframes pop {
+      0% { transform: translateY(0) scale(1); }
+      45% { transform: translateY(-2px) scale(1.03); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    /* Кастомный скролл */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.5);
+      border-radius: 8px;
+      border: 2px solid rgba(30, 41, 59, 0.5);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(99, 102, 241, 0.8);
+    }
+    /* Для Firefox */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(99, 102, 241, 0.5) rgba(30, 41, 59, 0.5);
+    }
+
+    /* Стили для таблицы (адаптированные под общий стиль) */
+    .timesheet-table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 800px;
+      background: rgba(30, 41, 59, 0.5);
+      backdrop-filter: blur(8px);
+      border-radius: 1rem;
+      overflow: hidden;
+      box-shadow: 0 20px 60px -40px rgba(99,102,241,0.6);
+    }
+    .timesheet-table th {
+      background: rgba(15, 23, 42, 0.8);
+      padding: 12px 4px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .timesheet-table td {
+      padding: 8px 2px;
+      text-align: center;
+      border-right: 1px solid rgba(255,255,255,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .timesheet-table td:last-child {
+      border-right: none;
+    }
+    .day-cell {
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    /* Фон для выходных и праздников – применяется ко всей колонке */
+    .weekend-col {
+      background-color: rgba(239, 68, 68, 0.15) !important;
+    }
+    .holiday-col {
+      background-color: rgba(245, 158, 11, 0.2) !important;
+    }
+    /* Специально для заголовков, чтобы фон тоже применялся */
+    .timesheet-table th.weekend-col {
+      background-color: rgba(239, 68, 68, 0.2) !important;
+    }
+    .timesheet-table th.holiday-col {
+      background-color: rgba(245, 158, 11, 0.25) !important;
+    }
+
+    .input-hour {
+      width: 60px;
+      padding: 6px 8px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: white;
+      text-align: center;
+      font-size: 0.9rem;
+      -moz-appearance: textfield;
+    }
+    .input-hour::-webkit-outer-spin-button,
+    .input-hour::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .input-hour:focus {
+      outline: none;
+      border-color: #818cf8;
+      ring: 2px solid #818cf8;
+    }
+    .scrollable {
+      overflow-x: auto;
+      border-radius: 1rem;
+      margin-bottom: 1.5rem;
+      /* Стили скролла уже заданы глобально */
+    }
+    .summary-card {
+      background: rgba(30, 41, 59, 0.6);
+      backdrop-filter: blur(8px);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    /* Уважение к reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      body::before { animation: none; }
+      .reveal { transition: none; opacity: 1; transform: none; filter: none; }
+      .hover-lift { transition: none; }
+      .input-glass { transition: none; }
+      .pop { animation: none; }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-white">
+  <div class="relative z-10 mx-auto max-w-7xl px-4 py-10">
+    <!-- Навигация -->
+    <div class="mb-6 flex gap-4 border-b border-white/10 pb-4">
+      <a href="index.html" class="text-indigo-300 hover:text-indigo-200 font-medium">Калькулятор зарплаты</a>
+      <a href="table.html" class="text-slate-300 hover:text-indigo-200">Табель учёта</a>
+    </div>
+
+    <header class="mb-8 reveal">
+      <h1 class="text-3xl font-semibold tracking-tight">
+        <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
+          Табель рабочего времени
+        </span>
+      </h1>
+      <p class="mt-1 text-sm text-slate-300/90" id="monthYearDisplay"></p>
+    </header>
+
+    <!-- Таблица -->
+    <div class="scrollable reveal">
+      <table class="timesheet-table" id="timesheet">
+        <thead>
+          <tr id="headerRow"></tr>
+        </thead>
+        <tbody>
+          <tr id="dayRow"></tr>
+          <tr id="nightRow"></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Итоги -->
+    <div class="summary-card glass-card hover-lift reveal grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div>
+        <div class="text-sm text-slate-400">Отработано всего</div>
+        <div class="text-2xl font-semibold" id="totalHours">0</div>
+      </div>
+      <div>
+        <div class="text-sm text-slate-400">Дневные / Ночные</div>
+        <div class="text-2xl font-semibold" id="dayNightHours">0 / 0</div>
+      </div>
+      <div>
+        <div class="text-sm text-slate-400">Норма часов (кликните по дате, чтобы отметить ее праздничным днем) </div>
+        <div class="text-2xl font-semibold" id="normHours">0</div>
+      </div>
+      <div>
+        <div class="text-sm text-slate-400">Переработка / недоработка</div>
+        <div class="text-2xl font-semibold" id="overtime">0</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="table.js"></script>
+</body>
+</html>
