@@ -1,3 +1,4 @@
+<!-- /index.html -->
 <!doctype html>
 <html lang="ru">
   <head>
@@ -5,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Калькулятор зарплаты Alvisa</title>
 
-    <!-- PWA: подключение манифеста (если есть) -->
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- PWA (важно: относительные пути для GitHub Pages) -->
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="apple-touch-icon" href="./icon-192.png" />
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -19,7 +20,6 @@
     />
 
     <style>
-      /* Все стили без изменений (как в предыдущей версии) */
       html,
       body {
         font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -30,7 +30,6 @@
         --glow2: rgba(56, 189, 248, 0.25);
       }
 
-      /* Animated background: moving orbs + subtle grid + noise */
       body {
         position: relative;
         overflow-x: hidden;
@@ -63,8 +62,7 @@
         inset: 0;
         pointer-events: none;
         z-index: 0;
-        background-image:
-          radial-gradient(rgba(148, 163, 184, 0.11) 1px, transparent 1px);
+        background-image: radial-gradient(rgba(148, 163, 184, 0.11) 1px, transparent 1px);
         background-size: 24px 24px;
         opacity: 0.25;
         mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 72%);
@@ -75,7 +73,6 @@
         100% { transform: translate3d(2%, 2%, 0) scale(1.05); }
       }
 
-      /* Reveal on load */
       .reveal {
         opacity: 0;
         transform: translateY(18px);
@@ -92,7 +89,6 @@
         filter: blur(0);
       }
 
-      /* Glass cards + glow border */
       .glass-card {
         position: relative;
         overflow: hidden;
@@ -127,7 +123,6 @@
           0 14px 40px -28px rgba(0, 0, 0, 0.7);
       }
 
-      /* Inputs micro-interactions */
       .input-glass {
         transition:
           transform 180ms cubic-bezier(.2,.8,.2,1),
@@ -142,48 +137,55 @@
           0 10px 40px -30px rgba(99, 102, 241, 0.55);
       }
 
-      /* Easter egg overlay */
-    #easterEgg {
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    }
-
-    .egg-pulse {
-    animation: eggPulse 1.05s cubic-bezier(.2,.8,.2,1) infinite;
-    will-change: transform, filter;
-    }
-
-    @keyframes eggPulse {
-    0%   { transform: translateY(0) scale(1); filter: drop-shadow(0 10px 35px rgba(99,102,241,.35)); }
-    50%  { transform: translateY(-6px) scale(1.03); filter: drop-shadow(0 18px 55px rgba(56,189,248,.45)); }
-    100% { transform: translateY(0) scale(1); filter: drop-shadow(0 10px 35px rgba(168,85,247,.35)); }
-    }
-
-    .egg-glow {
-    text-shadow:
-        0 0 18px rgba(99,102,241,.25),
-        0 0 38px rgba(56,189,248,.18),
-        0 0 70px rgba(168,85,247,.12);
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-    .egg-pulse { animation: none; }
-    }
-
-      /* Big number pop */
-      .pop {
-        animation: pop 260ms cubic-bezier(.2,.8,.2,1);
+      /* Holiday fields collapse */
+      .holiday-fields {
+        overflow: hidden;
+        max-height: 0;
+        opacity: 0;
+        transform: translateY(-6px);
+        transition:
+          max-height 280ms cubic-bezier(.2,.8,.2,1),
+          opacity 200ms ease,
+          transform 280ms cubic-bezier(.2,.8,.2,1);
       }
+      .holiday-fields.is-open {
+        max-height: 220px;
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Easter egg overlay */
+      #easterEgg {
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+
+      .egg-pulse {
+        animation: eggPulse 1.05s cubic-bezier(.2,.8,.2,1) infinite;
+        will-change: transform, filter;
+      }
+
+      @keyframes eggPulse {
+        0%   { transform: translateY(0) scale(1); filter: drop-shadow(0 10px 35px rgba(99,102,241,.35)); }
+        50%  { transform: translateY(-6px) scale(1.03); filter: drop-shadow(0 18px 55px rgba(56,189,248,.45)); }
+        100% { transform: translateY(0) scale(1); filter: drop-shadow(0 10px 35px rgba(168,85,247,.35)); }
+      }
+
+      .egg-glow {
+        text-shadow:
+          0 0 18px rgba(99,102,241,.25),
+          0 0 38px rgba(56,189,248,.18),
+          0 0 70px rgba(168,85,247,.12);
+      }
+
+      .pop { animation: pop 260ms cubic-bezier(.2,.8,.2,1); }
       @keyframes pop {
         0% { transform: translateY(0) scale(1); }
         45% { transform: translateY(-2px) scale(1.03); }
         100% { transform: translateY(0) scale(1); }
       }
 
-      /* Error shake */
-      .shake {
-        animation: shake 320ms ease-in-out;
-      }
+      .shake { animation: shake 320ms ease-in-out; }
       @keyframes shake {
         0% { transform: translateX(0); }
         25% { transform: translateX(-6px); }
@@ -192,15 +194,15 @@
         100% { transform: translateX(0); }
       }
 
-      /* Respect reduced motion */
       @media (prefers-reduced-motion: reduce) {
         body::before { animation: none; }
         .reveal { transition: none; opacity: 1; transform: none; filter: none; }
         .hover-lift { transition: none; }
         .input-glass { transition: none; }
         .pop, .shake { animation: none; }
+        .holiday-fields { transition: none; max-height: none; opacity: 1; transform: none; }
+        .egg-pulse { animation: none; }
       }
-
     </style>
   </head>
 
@@ -221,19 +223,16 @@
                 Калькулятор зарплаты Alvisa
               </span>
             </h1>
-            <p class="mt-1 text-sm text-slate-300/90"></p>
           </div>
         </div>
       </header>
 
-      <!-- Навигация между страницами -->
       <div class="mb-6 flex gap-4 border-b border-white/10 pb-4">
         <a href="index.html" class="text-indigo-300 hover:text-indigo-200 font-medium">Калькулятор зарплаты</a>
         <a href="table.html" class="text-slate-300 hover:text-indigo-200">Табель учёта</a>
       </div>
 
       <main class="grid gap-7 lg:grid-cols-2">
-        <!-- Form -->
         <section
           class="reveal glass-card hover-lift rounded-3xl bg-slate-900/35 p-6 shadow-[0_20px_80px_-50px_rgba(99,102,241,0.45)] ring-1 ring-white/10"
         >
@@ -310,6 +309,69 @@
               </div>
             </div>
 
+            <!-- Holiday toggle -->
+            <div class="pt-3 border-t border-white/10">
+              <label class="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  id="holidayToggle"
+                  type="checkbox"
+                  class="h-5 w-5 rounded border-white/10 bg-slate-950/45 text-indigo-400 focus:ring-indigo-400/80"
+                  aria-controls="holidayFields"
+                  aria-expanded="false"
+                />
+                <span class="text-sm font-medium text-slate-200">Работали в праздничные дни?</span>
+              </label>
+
+              <div
+                id="holidayFields"
+                class="holiday-fields mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start"
+              >
+                <div class="min-w-0 flex flex-col gap-1">
+                  <label
+                    for="holidayShifts"
+                    class="block text-sm font-medium text-slate-200 h-10 leading-5 flex items-end"
+                  >
+                    Количество смен в праздники
+                  </label>
+
+                  <input
+                    id="holidayShifts"
+                    name="holidayShifts"
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    step="1"
+                    placeholder="Напр. 2"
+                    class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                  />
+
+                  <p class="text-xs text-slate-400/90 min-h-[16px]"></p>
+                </div>
+
+                <div class="min-w-0 flex flex-col gap-1">
+                  <label
+                    for="holidayNightShifts"
+                    class="block text-sm font-medium text-slate-200 h-10 leading-5 flex items-end"
+                  >
+                    Сколько из них ночных
+                  </label>
+
+                  <input
+                    id="holidayNightShifts"
+                    name="holidayNightShifts"
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    step="1"
+                    placeholder="Напр. 1"
+                    class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                  />
+
+                  <p class="text-xs text-slate-400/90 min-h-[16px]"></p>
+                </div>
+              </div>
+            </div>
+
             <div
               id="errorBox"
               class="hidden rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-200 ring-1 ring-rose-500/20 shadow-[0_14px_50px_-40px_rgba(244,63,94,0.55)]"
@@ -317,7 +379,6 @@
           </form>
         </section>
 
-        <!-- Result -->
         <aside
           class="reveal glass-card hover-lift rounded-3xl bg-slate-900/25 p-6 shadow-[0_20px_80px_-50px_rgba(56,189,248,0.35)] ring-1 ring-white/10"
         >
@@ -348,36 +409,27 @@
             </div>
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div
-                class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
-              >
+              <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
                 <p class="text-xs text-slate-400">Часовая ставка</p>
                 <p id="hourRate" class="mt-1 text-lg font-semibold tracking-tight">—</p>
               </div>
-              <div
-                class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
-              >
+              <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
                 <p class="text-xs text-slate-400">Оклад за факт</p>
                 <p id="baseFact" class="mt-1 text-lg font-semibold tracking-tight">—</p>
               </div>
             </div>
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div
-                class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
-              >
+              <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
                 <p class="text-xs text-slate-400">Премия 35%</p>
                 <p id="bonus" class="mt-1 text-lg font-semibold tracking-tight">—</p>
               </div>
-              <div
-                class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10"
-              >
+              <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
                 <p class="text-xs text-slate-400">Ночные</p>
                 <p id="nightExtra" class="mt-1 text-lg font-semibold tracking-tight">—</p>
               </div>
             </div>
 
-            <!-- ===== ИЗМЕНЕНО: Аванс и Остаток с метками "бета" и жёлтым кружком ===== -->
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
                 <div class="flex items-center justify-between">
@@ -389,6 +441,7 @@
                 </div>
                 <p id="advance" class="mt-1 text-lg font-semibold tracking-tight">—</p>
               </div>
+
               <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
                 <div class="flex items-center justify-between">
                   <p class="text-xs text-slate-400">Остаток</p>
@@ -400,21 +453,16 @@
                 <p id="remaining" class="mt-1 text-lg font-semibold tracking-tight">—</p>
               </div>
             </div>
-            <!-- ===== КОНЕЦ ИЗМЕНЕНИЙ ===== -->
-
-            <!-- Блок истории (закомментирован) -->
-            <!-- <div class="mt-4 p-4 rounded-2xl bg-slate-800/50 ring-1 ring-white/10"> ... </div> -->
           </div>
         </aside>
       </main>
 
-      <!-- ===== ДОБАВЛЕН ФУТЕР С УВЕДОМЛЕНИЕМ ===== -->
       <footer class="mt-8 text-center text-xs text-slate-400/70 border-t border-white/10 pt-4">
         Алгоритм расчета аванса и зарплаты уточняется, проект находится в работе, уточняйте информацию.
       </footer>
     </div>
 
-    <!-- Easter egg overlay (без изменений) -->
+    <!-- Easter egg -->
     <div
       id="easterEgg"
       class="hidden fixed inset-0 z-[999] items-center justify-center bg-slate-950/80"
@@ -434,11 +482,10 @@
             ПИРБАЛА КРИНЖ
           </span>
         </div>
-
-        <div class="mt-6 text-sm text-slate-300/80"></div>
       </div>
     </div>
 
+    <!-- ВАЖНО: app.js отдельным файлом -->
     <script type="module" src="./app.js"></script>
   </body>
 </html>
