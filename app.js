@@ -1,5 +1,7 @@
-// /app.js
-import { computeSalary, parseNumber, TAX_RATE, NIGHT_EXTRA_RATE } from "./calc.js";
+// ==========================
+// FILE: /app.js
+// ==========================
+import { computeSalary, parseNumber, TAX_RATE, NIGHT_EXTRA_RATE, BONUS_RATE } from "./calc.js";
 import { clearState, loadState, saveState, addToHistory, loadHistory, clearHistory } from "./storage.js";
 
 document.body.classList.add("is-loaded");
@@ -19,6 +21,9 @@ const els = {
   normHours: document.getElementById("normHours"),
   workedHours: document.getElementById("workedHours"),
   nightHours: document.getElementById("nightHours"),
+
+  firstHalfHours: document.getElementById("firstHalfHours"),
+  firstHalfNightHours: document.getElementById("firstHalfNightHours"),
 
   holidayToggle: document.getElementById("holidayToggle"),
   holidayFields: document.getElementById("holidayFields"),
@@ -55,6 +60,12 @@ function formatRub(value, digits) {
     currency: "RUB",
     maximumFractionDigits: digits,
   }).format(n);
+}
+
+function formatApproxRub(value, digits) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return `~ ${formatRub(n, digits)}`;
 }
 
 function easeOutCubic(t) {
@@ -124,11 +135,22 @@ function setHolidayUI(open) {
   els.holidayToggle.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
+function isIntegerLike(n) {
+  return Number.isFinite(n) && Math.floor(n) === n;
+}
+
 function readInput() {
   const oklad = parseNumber(els.oklad.value);
   const normHours = parseNumber(els.normHours.value);
   const workedHours = parseNumber(els.workedHours.value);
   const nightHours = parseNumber(els.nightHours.value);
+
+  const firstHalfHoursRaw = els.firstHalfHours ? parseNumber(els.firstHalfHours.value) : 0;
+  const firstHalfNightHoursRaw = els.firstHalfNightHours ? parseNumber(els.firstHalfNightHours.value) : 0;
+
+  const firstHalfTouched =
+    (els.firstHalfHours?.value?.trim?.() ?? "") !== "" ||
+    (els.firstHalfNightHours?.value?.trim?.() ?? "") !== "";
 
   const holidayEnabled = Boolean(els.holidayToggle?.checked);
   const holidayShiftsRaw = els.holidayShifts ? parseNumber(els.holidayShifts.value) : 0;
@@ -142,6 +164,8 @@ function readInput() {
   if (Number.isNaN(normHours)) bad.push("Норма часов");
   if (Number.isNaN(workedHours)) bad.push("Отработано часов");
   if (Number.isNaN(nightHours)) bad.push("Ночных часов");
+  if (els.firstHalfHours && Number.isNaN(firstHalfHoursRaw)) bad.push("Часы за первую половину");
+  if (els.firstHalfNightHours && Number.isNaN(firstHalfNightHoursRaw)) bad.push("Ночные часы за первую половину");
   if (holidayEnabled && Number.isNaN(holidayShiftsRaw)) bad.push("Смен в праздники");
   if (holidayEnabled && Number.isNaN(holidayNightShiftsRaw)) bad.push("Ночных смен в праздники");
 
@@ -149,9 +173,16 @@ function readInput() {
     return { ok: false, error: `Проверьте поля: ${bad.join(", ")}. Используйте только числа.` };
   }
 
+  if (firstHalfNightHoursRaw > firstHalfHoursRaw) {
+    return { ok: false, error: "Ночные часы за первую половину не могут быть больше часов за первую половину." };
+  }
+
   if (holidayEnabled) {
     if (!(holidayShifts >= 0)) return { ok: false, error: "Количество праздничных смен должно быть числом ≥ 0." };
     if (!(holidayNightShifts >= 0)) return { ok: false, error: "Количество ночных праздничных смен должно быть числом ≥ 0." };
+    if (!isIntegerLike(holidayShifts) || !isIntegerLike(holidayNightShifts)) {
+      return { ok: false, error: "Праздничные смены должны быть целым числом (0, 1, 2...)."};
+    }
     if (holidayNightShifts > holidayShifts) {
       return { ok: false, error: "Ночных праздничных смен не может быть больше общего количества праздничных смен." };
     }
@@ -164,6 +195,9 @@ function readInput() {
       normHours,
       workedHours,
       nightHours,
+      firstHalfHours: firstHalfHoursRaw,
+      firstHalfNightHours: firstHalfNightHoursRaw,
+      firstHalfTouched,
       holidayEnabled,
       holidayShifts,
       holidayNightShifts,
@@ -243,39 +277,31 @@ function updateHistoryDropdown() {
   });
 }
 
-function loadFromHistory(index) {
-  const history = loadHistory();
-  const entry = history[index];
-  if (!entry) return;
-
-  els.oklad.value = entry.input.oklad ?? "";
-  els.normHours.value = entry.input.normHours ?? "";
-  els.workedHours.value = entry.input.workedHours ?? "";
-  els.nightHours.value = entry.input.nightHours ?? "";
-
-  const holidayEnabled = Boolean(entry.input.holidayEnabled);
-  if (els.holidayToggle) els.holidayToggle.checked = holidayEnabled;
-  setHolidayUI(holidayEnabled);
-
-  if (els.holidayShifts) els.holidayShifts.value = entry.input.holidayShifts ?? "";
-  if (els.holidayNightShifts) els.holidayNightShifts.value = entry.input.holidayNightShifts ?? "";
-
-  render();
-}
-
-function computeHolidayExtraGross(hourRate, holidayShifts, holidayNightShifts) {
+function computeHolidayExtraGross(oklad, normHours, holidayShifts, holidayNightShifts) {
   const dayShifts = Math.max(0, holidayShifts - holidayNightShifts);
   const nightShifts = Math.max(0, holidayNightShifts);
 
-  const dayShiftGross = hourRate * HOLIDAY_SHIFT_HOURS;
+  const baseHourRateGross = oklad / normHours;
+  const hourlyWithBonusGross = (oklad * (1 + BONUS_RATE)) / normHours;
+
+  const dayShiftGross = hourlyWithBonusGross * HOLIDAY_SHIFT_HOURS;
   const nightShiftGross =
-    hourRate * HOLIDAY_SHIFT_HOURS +
-    hourRate * HOLIDAY_NIGHT_HOURS_PER_SHIFT * NIGHT_EXTRA_RATE;
+    hourlyWithBonusGross * HOLIDAY_SHIFT_HOURS +
+    baseHourRateGross * NIGHT_EXTRA_RATE * HOLIDAY_NIGHT_HOURS_PER_SHIFT;
 
   const baseGross = dayShiftGross * dayShifts + nightShiftGross * nightShifts;
-
-  // x2 pay => add only extra part
   return baseGross * (HOLIDAY_MULTIPLIER - 1);
+}
+
+/**
+ * ✅ ФАКТО-ПОДОБНЫЙ АВАНС:
+ * - базовая ставка НЕТТО БЕЗ премии: (oklad*0.87)/norm
+ * - ночная надбавка НЕТТО: (oklad/norm)*0.4*0.87
+ */
+function computeAdvanceApproxNet(oklad, normHours, firstHalfHours, firstHalfNightHours) {
+  const baseNetHourly = (oklad * (1 - TAX_RATE)) / normHours;
+  const nightExtraNetHourly = (oklad / normHours) * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
+  return baseNetHourly * firstHalfHours + nightExtraNetHourly * firstHalfNightHours;
 }
 
 function render() {
@@ -308,7 +334,12 @@ function render() {
 
   const holidayExtraGross =
     parsed.input.holidayEnabled && parsed.input.holidayShifts > 0
-      ? computeHolidayExtraGross(r.hourRate, parsed.input.holidayShifts, parsed.input.holidayNightShifts)
+      ? computeHolidayExtraGross(
+          parsed.input.oklad,
+          parsed.input.normHours,
+          parsed.input.holidayShifts,
+          parsed.input.holidayNightShifts
+        )
       : 0;
 
   const holidayTax = holidayExtraGross * TAX_RATE;
@@ -321,19 +352,28 @@ function render() {
   addToHistory(parsed.input, { ...r, net: netTotal, gross: grossTotal, tax: taxTotal });
   updateHistoryDropdown();
 
-  const advance = parsed.input.oklad * (1 - TAX_RATE) * 0.54;
-  const remaining = netTotal - advance;
+  const advanceApprox = parsed.input.firstHalfTouched
+    ? computeAdvanceApproxNet(
+        parsed.input.oklad,
+        parsed.input.normHours,
+        parsed.input.firstHalfHours,
+        parsed.input.firstHalfNightHours
+      )
+    : Number.NaN;
+
+  const remainingApprox = Number.isFinite(advanceApprox) ? netTotal - advanceApprox : Number.NaN;
 
   animateNumber(els.net, netTotal, (v) => formatRub(v, 0), 560);
   bump(els.net);
 
-  animateNumber(els.hourRate, r.hourRate, (v) => formatRub(v, 2), 520);
+  animateNumber(els.hourRate, r.hourRate, (v) => formatRub(v, 0), 520);
+
   animateNumber(els.baseFact, r.baseFact, (v) => formatRub(v, 0), 520);
   animateNumber(els.bonus, r.bonus, (v) => formatRub(v, 0), 520);
   animateNumber(els.nightExtra, r.nightExtra, (v) => formatRub(v, 0), 520);
 
-  animateNumber(els.advance, advance, (v) => formatRub(v, 0), 520);
-  animateNumber(els.remaining, remaining, (v) => formatRub(v, 0), 520);
+  animateNumber(els.advance, advanceApprox, (v) => formatApproxRub(v, 0), 520);
+  animateNumber(els.remaining, remainingApprox, (v) => formatApproxRub(v, 0), 520);
 
   const holidayPart = holidayExtraGross > 0 ? ` • Праздничные: +${formatRub(holidayNet, 0)}` : "";
   els.summary.textContent = `Брутто: ${formatRub(grossTotal, 0)} • Налог: ${formatRub(taxTotal, 0)}${holidayPart}`;
@@ -346,6 +386,9 @@ function reset() {
   els.normHours.value = "";
   els.workedHours.value = "";
   els.nightHours.value = "";
+
+  if (els.firstHalfHours) els.firstHalfHours.value = "";
+  if (els.firstHalfNightHours) els.firstHalfNightHours.value = "";
 
   if (els.holidayToggle) els.holidayToggle.checked = false;
   if (els.holidayShifts) els.holidayShifts.value = "";
@@ -367,6 +410,9 @@ function initFromStorage() {
   if (typeof saved.workedHours === "number") els.workedHours.value = String(saved.workedHours);
   if (typeof saved.nightHours === "number") els.nightHours.value = String(saved.nightHours);
 
+  if (typeof saved.firstHalfHours === "number" && els.firstHalfHours) els.firstHalfHours.value = String(saved.firstHalfHours);
+  if (typeof saved.firstHalfNightHours === "number" && els.firstHalfNightHours) els.firstHalfNightHours.value = String(saved.firstHalfNightHours);
+
   const holidayEnabled = Boolean(saved.holidayEnabled);
   if (els.holidayToggle) els.holidayToggle.checked = holidayEnabled;
   setHolidayUI(holidayEnabled);
@@ -386,9 +432,8 @@ if (els.holidayToggle) {
 }
 
 if (historySelect) {
-  historySelect.addEventListener("change", (e) => {
-    const index = e.target.value;
-    if (index !== "") loadFromHistory(parseInt(index, 10));
+  historySelect.addEventListener("change", () => {
+    updateHistoryDropdown();
   });
 }
 

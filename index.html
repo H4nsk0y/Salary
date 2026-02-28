@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Калькулятор зарплаты Alvisa</title>
 
-    <!-- PWA (важно: относительные пути для GitHub Pages) -->
     <link rel="manifest" href="./manifest.json" />
     <link rel="apple-touch-icon" href="./icon-192.png" />
 
@@ -137,7 +136,6 @@
           0 10px 40px -30px rgba(99, 102, 241, 0.55);
       }
 
-      /* Holiday fields collapse */
       .holiday-fields {
         overflow: hidden;
         max-height: 0;
@@ -154,7 +152,6 @@
         transform: translateY(0);
       }
 
-      /* Easter egg overlay */
       #easterEgg {
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
@@ -283,31 +280,73 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label class="mb-1 block text-sm font-medium text-slate-200" for="nightHours">
-                  Ночных часов
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-200" for="nightHours">
+                Ночных часов
+              </label>
+              <input
+                id="nightHours"
+                name="nightHours"
+                inputmode="decimal"
+                placeholder="Напр. 70"
+                class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+              />
+              <p class="mt-1 text-xs text-slate-400/90">Ночные: надбавка +40% к базовой ставке.</p>
+            </div>
+
+            <!-- АВАНС -->
+            <div class="space-y-4">
+              <div class="min-w-0">
+                <label class="mb-1 block text-sm font-medium text-slate-200" for="firstHalfHours">
+                  Часы за первую половину месяца
                 </label>
                 <input
-                  id="nightHours"
-                  name="nightHours"
+                  id="firstHalfHours"
+                  name="firstHalfHours"
                   inputmode="decimal"
-                  placeholder="Напр. 70"
+                  placeholder="Напр. 80"
                   class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
                 />
-                <p class="mt-1 text-xs text-slate-400/90">Ночные: надбавка +40% к ставке.</p>
+                <p class="mt-1 text-xs text-slate-400/90 min-h-[16px]">До 15 числа</p>
               </div>
 
-              <div class="flex items-center gap-3">
-                <button
-                  type="button"
-                  id="resetBtn"
-                  class="w-full rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-4 py-3 font-medium text-slate-100 ring-1 ring-white/10 shadow-[0_18px_60px_-45px_rgba(99,102,241,0.6)] transition-transform duration-150 hover:shadow-[0_22px_70px_-45px_rgba(56,189,248,0.55)] hover:ring-indigo-400/30 active:scale-[0.985] focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
-                >
-                  Сбросить
-                </button>
+              <!-- Поле + кнопка на одном уровне -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="min-w-0 grid gap-1">
+                  <label
+                    class="block text-sm font-medium text-slate-200 h-10 leading-5 flex items-end"
+                    for="firstHalfNightHours"
+                  >
+                    Ночные часы за первую половину
+                  </label>
+
+                  <input
+                    id="firstHalfNightHours"
+                    name="firstHalfNightHours"
+                    inputmode="decimal"
+                    placeholder="Напр. 35"
+                    class="input-glass w-full h-[52px] rounded-2xl bg-slate-950/45 px-4 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                  />
+
+                  <p class="text-xs text-slate-400/90 min-h-[16px]"></p>
+                </div>
+
+                <div class="min-w-0 grid gap-1">
+                  <div class="h-10" aria-hidden="true"></div>
+
+                  <button
+                    type="button"
+                    id="resetBtn"
+                    class="w-full h-[52px] rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-4 font-medium text-slate-100 ring-1 ring-white/10 shadow-[0_18px_60px_-45px_rgba(99,102,241,0.6)] transition-transform duration-150 hover:shadow-[0_22px_70px_-45px_rgba(56,189,248,0.55)] hover:ring-indigo-400/30 active:scale-[0.985] focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                  >
+                    Сбросить
+                  </button>
+
+                  <p class="min-h-[16px] opacity-0 select-none" aria-hidden="true">x</p>
+                </div>
               </div>
             </div>
+            <!-- /АВАНС -->
 
             <!-- Holiday toggle -->
             <div class="pt-3 border-t border-white/10">
@@ -322,18 +361,11 @@
                 <span class="text-sm font-medium text-slate-200">Работали в праздничные дни?</span>
               </label>
 
-              <div
-                id="holidayFields"
-                class="holiday-fields mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start"
-              >
+              <div id="holidayFields" class="holiday-fields mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                 <div class="min-w-0 flex flex-col gap-1">
-                  <label
-                    for="holidayShifts"
-                    class="block text-sm font-medium text-slate-200 h-10 leading-5 flex items-end"
-                  >
+                  <label for="holidayShifts" class="block text-sm font-medium text-slate-200 h-10 leading-5 flex items-end">
                     Количество смен в праздники
                   </label>
-
                   <input
                     id="holidayShifts"
                     name="holidayShifts"
@@ -344,18 +376,13 @@
                     placeholder="Напр. 2"
                     class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
                   />
-
                   <p class="text-xs text-slate-400/90 min-h-[16px]"></p>
                 </div>
 
                 <div class="min-w-0 flex flex-col gap-1">
-                  <label
-                    for="holidayNightShifts"
-                    class="block text-sm font-medium text-slate-200 h-10 leading-5 flex items-end"
-                  >
+                  <label for="holidayNightShifts" class="block text-sm font-medium text-slate-200 h-10 leading-5 flex items-end">
                     Сколько из них ночных
                   </label>
-
                   <input
                     id="holidayNightShifts"
                     name="holidayNightShifts"
@@ -366,7 +393,6 @@
                     placeholder="Напр. 1"
                     class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
                   />
-
                   <p class="text-xs text-slate-400/90 min-h-[16px]"></p>
                 </div>
               </div>
@@ -379,6 +405,7 @@
           </form>
         </section>
 
+        <!-- Result -->
         <aside
           class="reveal glass-card hover-lift rounded-3xl bg-slate-900/25 p-6 shadow-[0_20px_80px_-50px_rgba(56,189,248,0.35)] ring-1 ring-white/10"
         >
@@ -462,7 +489,6 @@
       </footer>
     </div>
 
-    <!-- Easter egg -->
     <div
       id="easterEgg"
       class="hidden fixed inset-0 z-[999] items-center justify-center bg-slate-950/80"
@@ -485,7 +511,6 @@
       </div>
     </div>
 
-    <!-- ВАЖНО: app.js отдельным файлом -->
     <script type="module" src="./app.js"></script>
   </body>
 </html>
