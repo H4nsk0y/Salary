@@ -2,19 +2,12 @@
 // FILE: /app.js
 // ==========================
 import { computeSalary, parseNumber, TAX_RATE, NIGHT_EXTRA_RATE, BONUS_RATE } from "./calc.js";
-import { clearState, loadState, saveState, addToHistory, loadHistory, clearHistory } from "./storage.js";
 
 document.body.classList.add("is-loaded");
 
 const form = document.getElementById("salaryForm");
 const errorBox = document.getElementById("errorBox");
 const resetBtn = document.getElementById("resetBtn");
-
-const eggOverlay = document.getElementById("easterEgg");
-const eggText = document.getElementById("easterText");
-
-const historySelect = document.getElementById("historySelect");
-const clearHistoryBtn = document.getElementById("clearHistoryBtn");
 
 const els = {
   oklad: document.getElementById("oklad"),
@@ -44,9 +37,6 @@ const els = {
 
 const prefersReducedMotion =
   window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
-
-let eggActive = false;
-let wasAll69 = false;
 
 const HOLIDAY_SHIFT_HOURS = 11;
 const HOLIDAY_NIGHT_HOURS_PER_SHIFT = 7;
@@ -224,59 +214,6 @@ function renderEmpty() {
   if (els.summary) els.summary.textContent = "";
 }
 
-function isAll69(input) {
-  return input.oklad === 69 && input.normHours === 69 && input.workedHours === 69 && input.nightHours === 69;
-}
-
-function showEgg() {
-  eggActive = true;
-  eggOverlay.classList.remove("hidden");
-  eggOverlay.classList.add("flex");
-  eggOverlay.setAttribute("aria-hidden", "false");
-  bump(eggText);
-}
-
-function hideEgg() {
-  eggActive = false;
-  eggOverlay.classList.add("hidden");
-  eggOverlay.classList.remove("flex");
-  eggOverlay.setAttribute("aria-hidden", "true");
-}
-
-window.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && eggActive) hideEgg();
-});
-
-function handleEasterEgg(input) {
-  const all69 = isAll69(input);
-  if (!all69) {
-    wasAll69 = false;
-    return;
-  }
-  if (!eggActive && !wasAll69) showEgg();
-  wasAll69 = true;
-}
-
-function updateHistoryDropdown() {
-  if (!historySelect) return;
-  const history = loadHistory();
-  historySelect.innerHTML = '<option value="">-- Выберите расчёт --</option>';
-  history.forEach((entry, index) => {
-    const date = new Date(entry.timestamp).toLocaleString("ru-RU", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    const option = document.createElement("option");
-    option.value = index;
-    option.textContent = `${date} – Оклад: ${entry.input.oklad}₽, Отработано: ${entry.input.workedHours}ч, К выплате: ${formatRub(entry.result.net, 0)}`;
-    historySelect.appendChild(option);
-  });
-}
-
 function computeHolidayExtraGross(oklad, normHours, holidayShifts, holidayNightShifts) {
   const dayShifts = Math.max(0, holidayShifts - holidayNightShifts);
   const nightShifts = Math.max(0, holidayNightShifts);
@@ -294,9 +231,9 @@ function computeHolidayExtraGross(oklad, normHours, holidayShifts, holidayNightS
 }
 
 /**
- * ✅ ФАКТО-ПОДОБНЫЙ АВАНС:
- * - базовая ставка НЕТТО БЕЗ премии: (oklad*0.87)/norm
- * - ночная надбавка НЕТТО: (oklad/norm)*0.4*0.87
+ * Аванс ближе к "факту":
+ * - базовая ставка НЕТТО БЕЗ премии: (oklad * 0.87) / norm
+ * - ночная надбавка НЕТТО: (oklad/norm) * 0.4 * 0.87
  */
 function computeAdvanceApproxNet(oklad, normHours, firstHalfHours, firstHalfNightHours) {
   const baseNetHourly = (oklad * (1 - TAX_RATE)) / normHours;
@@ -313,7 +250,6 @@ function render() {
   }
 
   setHolidayUI(Boolean(parsed.input.holidayEnabled));
-  handleEasterEgg(parsed.input);
 
   const calc = computeSalary({
     oklad: parsed.input.oklad,
@@ -349,9 +285,6 @@ function render() {
   const grossTotal = r.gross + holidayExtraGross;
   const taxTotal = r.tax + holidayTax;
 
-  addToHistory(parsed.input, { ...r, net: netTotal, gross: grossTotal, tax: taxTotal });
-  updateHistoryDropdown();
-
   const advanceApprox = parsed.input.firstHalfTouched
     ? computeAdvanceApproxNet(
         parsed.input.oklad,
@@ -366,8 +299,10 @@ function render() {
   animateNumber(els.net, netTotal, (v) => formatRub(v, 0), 560);
   bump(els.net);
 
+  // Часовая ставка: нетто с премией и вычетом (из calc.js)
   animateNumber(els.hourRate, r.hourRate, (v) => formatRub(v, 0), 520);
 
+  // Эти поля показываем как "разбивку" (gross-части), как и раньше
   animateNumber(els.baseFact, r.baseFact, (v) => formatRub(v, 0), 520);
   animateNumber(els.bonus, r.bonus, (v) => formatRub(v, 0), 520);
   animateNumber(els.nightExtra, r.nightExtra, (v) => formatRub(v, 0), 520);
@@ -377,8 +312,6 @@ function render() {
 
   const holidayPart = holidayExtraGross > 0 ? ` • Праздничные: +${formatRub(holidayNet, 0)}` : "";
   els.summary.textContent = `Брутто: ${formatRub(grossTotal, 0)} • Налог: ${formatRub(taxTotal, 0)}${holidayPart}`;
-
-  saveState({ ...parsed.input, _ts: Date.now() });
 }
 
 function reset() {
@@ -395,30 +328,7 @@ function reset() {
   if (els.holidayNightShifts) els.holidayNightShifts.value = "";
   setHolidayUI(false);
 
-  clearState();
-  hideEgg();
-  wasAll69 = false;
   render();
-}
-
-function initFromStorage() {
-  const saved = loadState();
-  if (!saved) return;
-
-  if (typeof saved.oklad === "number") els.oklad.value = String(saved.oklad);
-  if (typeof saved.normHours === "number") els.normHours.value = String(saved.normHours);
-  if (typeof saved.workedHours === "number") els.workedHours.value = String(saved.workedHours);
-  if (typeof saved.nightHours === "number") els.nightHours.value = String(saved.nightHours);
-
-  if (typeof saved.firstHalfHours === "number" && els.firstHalfHours) els.firstHalfHours.value = String(saved.firstHalfHours);
-  if (typeof saved.firstHalfNightHours === "number" && els.firstHalfNightHours) els.firstHalfNightHours.value = String(saved.firstHalfNightHours);
-
-  const holidayEnabled = Boolean(saved.holidayEnabled);
-  if (els.holidayToggle) els.holidayToggle.checked = holidayEnabled;
-  setHolidayUI(holidayEnabled);
-
-  if (typeof saved.holidayShifts === "number" && els.holidayShifts) els.holidayShifts.value = String(saved.holidayShifts);
-  if (typeof saved.holidayNightShifts === "number" && els.holidayNightShifts) els.holidayNightShifts.value = String(saved.holidayNightShifts);
 }
 
 form.addEventListener("input", render);
@@ -431,19 +341,4 @@ if (els.holidayToggle) {
   });
 }
 
-if (historySelect) {
-  historySelect.addEventListener("change", () => {
-    updateHistoryDropdown();
-  });
-}
-
-if (clearHistoryBtn) {
-  clearHistoryBtn.addEventListener("click", () => {
-    clearHistory();
-    updateHistoryDropdown();
-  });
-}
-
-initFromStorage();
 render();
-updateHistoryDropdown();
