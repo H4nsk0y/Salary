@@ -65,7 +65,6 @@ function easeOutCubic(t) {
 function bump(el) {
   if (prefersReducedMotion || !el) return;
   el.classList.remove("pop");
-  // eslint-disable-next-line no-unused-expressions
   el.offsetWidth;
   el.classList.add("pop");
 }
@@ -114,7 +113,6 @@ function setError(msg) {
   errorBox.classList.remove("hidden");
   errorBox.textContent = msg;
   errorBox.classList.remove("shake");
-  // eslint-disable-next-line no-unused-expressions
   errorBox.offsetWidth;
   errorBox.classList.add("shake");
 }
@@ -230,11 +228,6 @@ function computeHolidayExtraGross(oklad, normHours, holidayShifts, holidayNightS
   return baseGross * (HOLIDAY_MULTIPLIER - 1);
 }
 
-/**
- * Аванс ближе к "факту":
- * - базовая ставка НЕТТО БЕЗ премии: (oklad * 0.87) / norm
- * - ночная надбавка НЕТТО: (oklad/norm) * 0.4 * 0.87
- */
 function computeAdvanceApproxNet(oklad, normHours, firstHalfHours, firstHalfNightHours) {
   const baseNetHourly = (oklad * (1 - TAX_RATE)) / normHours;
   const nightExtraNetHourly = (oklad / normHours) * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
@@ -302,7 +295,7 @@ function render() {
   // Часовая ставка: нетто с премией и вычетом (из calc.js)
   animateNumber(els.hourRate, r.hourRate, (v) => formatRub(v, 0), 520);
 
-  // Эти поля показываем как "разбивку" (gross-части), как и раньше
+
   animateNumber(els.baseFact, r.baseFact, (v) => formatRub(v, 0), 520);
   animateNumber(els.bonus, r.bonus, (v) => formatRub(v, 0), 520);
   animateNumber(els.nightExtra, r.nightExtra, (v) => formatRub(v, 0), 520);

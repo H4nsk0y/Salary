@@ -1,14 +1,9 @@
-<!-- /table.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Табель учёта рабочего времени</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="./manifest.json" />
-  <link rel="apple-touch-icon" href="./icon-192.png" />
 
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -20,9 +15,7 @@
   />
 
   <style>
-    html,
-    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-
+    html, body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
     :root { --glow: rgba(99, 102, 241, 0.35); }
 
     body {
@@ -34,7 +27,6 @@
         radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.08), transparent 60%),
         #020617;
     }
-
     body::before {
       content: "";
       position: fixed;
@@ -49,11 +41,7 @@
       opacity: 0.7;
       animation: bgFloat 12s ease-in-out infinite alternate;
     }
-
-    @keyframes bgFloat {
-      0% { transform: translate3d(-2%, -2%, 0) scale(1); }
-      100% { transform: translate3d(2%, 2%, 0) scale(1.05); }
-    }
+    @keyframes bgFloat { 0% { transform: translate3d(-2%, -2%, 0) scale(1); } 100% { transform: translate3d(2%, 2%, 0) scale(1.05); } }
 
     .reveal {
       opacity: 0;
@@ -67,14 +55,10 @@
     body.is-loaded .reveal { opacity: 1; transform: translateY(0); filter: blur(0); }
 
     .glass-card { backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-    .hover-lift {
-      transition: transform 250ms cubic-bezier(.2,.8,.2,1), box-shadow 250ms cubic-bezier(.2,.8,.2,1);
-    }
+    .hover-lift { transition: transform 250ms cubic-bezier(.2,.8,.2,1), box-shadow 250ms cubic-bezier(.2,.8,.2,1); }
     .hover-lift:hover { transform: translateY(-4px); box-shadow: 0 20px 60px -40px var(--glow); }
 
-    .input-glass {
-      transition: transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms cubic-bezier(.2,.8,.2,1);
-    }
+    .input-glass { transition: transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms cubic-bezier(.2,.8,.2,1); }
     .input-glass:focus {
       transform: translateY(-1px);
       box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.35), 0 10px 40px -30px rgba(99, 102, 241, 0.55);
@@ -82,26 +66,21 @@
     }
 
     .pop { animation: pop 260ms cubic-bezier(.2,.8,.2,1); }
-    @keyframes pop {
-      0% { transform: translateY(0) scale(1); }
-      45% { transform: translateY(-2px) scale(1.03); }
-      100% { transform: translateY(0) scale(1); }
-    }
+    @keyframes pop { 0% { transform: translateY(0) scale(1); } 45% { transform: translateY(-2px) scale(1.03); } 100% { transform: translateY(0) scale(1); } }
+
+    .shake { animation: shake 320ms ease-in-out; }
+    @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-4px); } 100% { transform: translateX(0); } }
 
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.5); border-radius: 8px; }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(99, 102, 241, 0.5);
-      border-radius: 8px;
-      border: 2px solid rgba(30, 41, 59, 0.5);
-    }
+    ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 8px; border: 2px solid rgba(30, 41, 59, 0.5); }
     ::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.8); }
     * { scrollbar-width: thin; scrollbar-color: rgba(99, 102, 241, 0.5) rgba(30, 41, 59, 0.5); }
 
     .timesheet-table {
       border-collapse: collapse;
       width: 100%;
-      min-width: 800px;
+      min-width: 860px;
       background: rgba(30, 41, 59, 0.5);
       backdrop-filter: blur(8px);
       border-radius: 1rem;
@@ -131,25 +110,25 @@
     .timesheet-table th.holiday-col { background-color: rgba(245, 158, 11, 0.25) !important; }
 
     .input-hour {
-      width: 60px;
+      width: 62px;
       padding: 6px 8px;
       background: rgba(0,0,0,0.3);
       border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px;
+      border-radius: 10px;
       color: white;
       text-align: center;
       font-size: 0.9rem;
       -moz-appearance: textfield;
+      text-transform: uppercase;
     }
-    .input-hour::-webkit-outer-spin-button,
-    .input-hour::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
     .scrollable { overflow-x: auto; border-radius: 1rem; margin-bottom: 1.5rem; }
+
     .summary-card {
       background: rgba(30, 41, 59, 0.6);
       backdrop-filter: blur(8px);
       border-radius: 1rem;
-      padding: 1.5rem;
+      padding: 1.25rem;
       border: 1px solid rgba(255,255,255,0.05);
     }
   </style>
@@ -158,11 +137,11 @@
 <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-white">
   <div class="relative z-10 mx-auto max-w-7xl px-4 py-10">
     <div class="mb-6 flex gap-4 border-b border-white/10 pb-4">
-      <a href="index.html" class="text-indigo-300 hover:text-indigo-200 font-medium">Калькулятор зарплаты</a>
-      <a href="table.html" class="text-slate-300 hover:text-indigo-200">Табель учёта</a>
+      <a href="index.html" class="text-slate-300 hover:text-indigo-200">Калькулятор зарплаты</a>
+      <a href="table.html" class="text-indigo-300 hover:text-indigo-200 font-medium">Табель учёта</a>
     </div>
 
-    <header class="mb-8 reveal">
+    <header class="mb-6 reveal">
       <h1 class="text-3xl font-semibold tracking-tight">
         <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
           Табель рабочего времени
@@ -170,6 +149,46 @@
       </h1>
       <p class="mt-1 text-sm text-slate-300/90" id="monthYearDisplay"></p>
     </header>
+
+    <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-200 ring-1 ring-rose-500/20"></div>
+
+    <div class="grid gap-6 lg:grid-cols-3 reveal mb-6">
+      <section class="summary-card glass-card hover-lift">
+        <h2 class="text-lg font-semibold">Настройки</h2>
+
+        <div class="mt-4 space-y-4">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-200" for="okladInput">Оклад (₽)</label>
+            <input
+              id="okladInput"
+              class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+              inputmode="decimal"
+              placeholder="Напр. 50000"
+            />
+            <p class="mt-1 text-xs text-slate-400/90">Норма считается автоматически.</p>
+          </div>
+
+          <div class="text-xs text-slate-400/90 leading-5">
+            <div>Коды в ячейках <span class="font-semibold">ДЕНЬ</span>:</div>
+            <div><span class="font-semibold text-slate-200">ОТ</span> — отпуск (только в будни, −8ч от нормы)</div>
+            <div><span class="font-semibold text-slate-200">Б</span> — больничный (только в будни, −8ч от нормы)</div>
+          </div>
+
+          <div class="text-xs text-slate-400/90" id="normHint"></div>
+        </div>
+      </section>
+
+      <section class="summary-card glass-card hover-lift lg:col-span-2">
+        <h2 class="text-lg font-semibold">Как ставить смены</h2>
+        <div class="mt-3 grid gap-2 text-sm text-slate-300/90 leading-6">
+          <div>• В <b>День</b> и <b>Ночь</b> ставь часы по факту табеля.</div>
+          <div>• Смены: дневная — <b>11 (или 8)</b> в «День», ночная — <b>4</b> в «День» и <b>7</b> в «Ночь» (У женщин норма отличается).</div>
+          <div>• Ночные идут блоками: <b>2/2</b> и <b>2/5</b> (Например, если выйти 1-ого числа в ночь, то 1 числа в табель - 2 в день, 2 в ночь. 2-ого числа в день 2, в ночь 5.</div>
+          <div>• Праздничный день: кликните по нужному числу, чтобы отметить его праздничным.</div>
+          <div>• Выходные дни отмечены красным.</div>
+        </div>
+      </section>
+    </div>
 
     <div class="scrollable reveal">
       <table class="timesheet-table" id="timesheet">
@@ -181,7 +200,7 @@
       </table>
     </div>
 
-    <div class="summary-card glass-card hover-lift reveal grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="summary-card glass-card hover-lift reveal grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
       <div>
         <div class="text-sm text-slate-400">Отработано всего</div>
         <div class="text-2xl font-semibold" id="totalHours">0</div>
@@ -191,12 +210,79 @@
         <div class="text-2xl font-semibold" id="dayNightHours">0 / 0</div>
       </div>
       <div>
-        <div class="text-sm text-slate-400">Норма часов (тапните/кликните по дате сверху, чтобы отметить её праздничной)</div>
-        <div class="text-2xl font-semibold" id="normHours">0</div>
+        <div class="text-sm text-slate-400">Норма (с учётом ОТ/Б)</div>
+        <div class="text-2xl font-semibold" id="normEffective">0</div>
       </div>
       <div>
         <div class="text-sm text-slate-400">Переработка / недоработка</div>
         <div class="text-2xl font-semibold" id="overtime">0</div>
+      </div>
+    </div>
+
+    <div class="summary-card glass-card hover-lift reveal">
+      <div class="flex items-center justify-between">
+        <div class="text-sm text-slate-300/90">К выплате (нетто)</div>
+        <div class="text-xs text-slate-400">премия 35% • налог 13%</div>
+      </div>
+
+      <div class="mt-2 text-4xl font-semibold tracking-tight" id="netPay">—</div>
+      <div class="mt-2 text-sm text-slate-300/80" id="moneySummary"></div>
+
+      <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+          <div class="text-xs text-slate-400">Часовая (нетто с премией)</div>
+          <div class="mt-1 text-lg font-semibold" id="hourRateNet">—</div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+          <div class="text-xs text-slate-400">Ночной час (нетто)</div>
+          <div class="mt-1 text-lg font-semibold" id="nightHourNet">—</div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+          <div class="text-xs text-slate-400">Праздничные x2 (брутто, доплата)</div>
+          <div class="mt-1 text-lg font-semibold" id="holidayExtraGross">—</div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+          <div class="text-xs text-slate-400">Оклад за факт (брутто)</div>
+          <div class="mt-1 text-lg font-semibold" id="baseFactGross">—</div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+          <div class="text-xs text-slate-400">Премия 35% (брутто)</div>
+          <div class="mt-1 text-lg font-semibold" id="bonusGross">—</div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+          <div class="text-xs text-slate-400">Ночные (брутто)</div>
+          <div class="mt-1 text-lg font-semibold" id="nightExtraGross">—</div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+          <div class="text-xs text-slate-400">Брутто</div>
+          <div class="mt-1 text-lg font-semibold" id="grossPay">—</div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+          <div class="text-xs text-slate-400">Налог 13%</div>
+          <div class="mt-1 text-lg font-semibold" id="taxPay">—</div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+          <div class="text-xs text-slate-400">Аванс (~, нетто)</div>
+          <div class="mt-1 text-lg font-semibold" id="advancePay">—</div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+          <div class="text-xs text-slate-400">Остаток (~, нетто)</div>
+          <div class="mt-1 text-lg font-semibold" id="remainingPay">—</div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
+          <div class="text-xs text-slate-400">ОТ / Б (дней)</div>
+          <div class="mt-1 text-lg font-semibold" id="leaveDays">0 / 0</div>
+        </div>
       </div>
     </div>
   </div>
