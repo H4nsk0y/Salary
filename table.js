@@ -115,6 +115,7 @@ document.getElementById("monthYearDisplay").textContent = `${monthNames[month]} 
 
 const daysInMonth = new Date(year, month + 1, 0).getDate();
 
+// DOM
 const okladInput = document.getElementById("okladInput");
 const normHint = document.getElementById("normHint");
 
@@ -141,6 +142,7 @@ const dayNightHoursEl = document.getElementById("dayNightHours");
 const normEffectiveEl = document.getElementById("normEffective");
 const overtimeEl = document.getElementById("overtime");
 
+// Table
 const headerRow = document.getElementById("headerRow");
 const dayRow = document.getElementById("dayRow");
 const nightRow = document.getElementById("nightRow");
@@ -168,6 +170,12 @@ function updateHolidayColumnClasses(index) {
 }
 
 function toggleHoliday(index) {
+  // если стоит ОТ/Б — сначала очистить (иначе будет нелогично)
+  if (leaveType[index]) {
+    setError("Уберите ОТ/Б в этом дне, затем отмечайте праздник.");
+    return;
+  }
+
   isHoliday[index] = !isHoliday[index];
   updateHolidayColumnClasses(index);
   recalcAll();
@@ -186,7 +194,7 @@ for (let i = 1; i <= daysInMonth; i++) {
   if (weekend) th.classList.add("weekend-col");
 
   th.style.cursor = "pointer";
-  th.title = "Тап/клик — праздничный день (x2)";
+  th.title = "Тап/клик — праздничный день (x2 и -8ч нормы)";
 
   th.addEventListener("click", (e) => {
     const idx = Number(e.currentTarget.dataset.dayIndex);
@@ -233,9 +241,10 @@ for (let i = 0; i < daysInMonth; i++) {
   const weekend = isWeekendByIndex(year, month, i);
   if (weekend) dayTd.classList.add("weekend-col");
 
+  // ДЕНЬ: текстовый ввод (часы или ОТ/Б) — важно для iPhone
   const dayInput = document.createElement("input");
   dayInput.type = "text";
-  dayInput.inputMode = "decimal";
+  dayInput.inputMode = "text"; // ✅ иначе на iOS часто только цифры
   dayInput.placeholder = "0";
   dayInput.classList.add("input-hour", "input-glass");
   dayInput.autocapitalize = "characters";
@@ -252,7 +261,7 @@ for (let i = 0; i < daysInMonth; i++) {
         return;
       }
       if (isHoliday[i]) {
-        setError("ОТ/Б нельзя ставить на праздничный день (сначала уберите праздник).");
+        setError("ОТ/Б нельзя ставить на праздник. Сначала уберите отметку праздника.");
         dayInput.value = "";
         return;
       }
@@ -331,27 +340,32 @@ function sum(arr) {
 
 function sumRange(arr, startIdx, endIdxInclusive) {
   let s = 0;
-  for (let i = startIdx; i <= endIdxInclusive; i++) {
-    s += Number.isFinite(arr[i]) ? arr[i] : 0;
-  }
+  for (let i = startIdx; i <= endIdxInclusive; i++) s += Number.isFinite(arr[i]) ? arr[i] : 0;
   return s;
 }
 
-function baseNormHoursFromCalendar() {
-  let workdays = 0;
+// Норма месяца (для ставок/денег): будни*8 - праздничные_будни*8
+function calendarNormHours() {
+  let weekdays = 0;
+  let holidayWeekdays = 0;
+
   for (let i = 0; i < daysInMonth; i++) {
-    if (!isWeekendByIndex(year, month, i)) workdays++;
+    if (isWeekendByIndex(year, month, i)) continue;
+    weekdays++;
+    if (isHoliday[i]) holidayWeekdays++;
   }
-  return workdays * 8;
+
+  return (weekdays - holidayWeekdays) * 8;
 }
 
-function effectiveNormHours(baseNorm) {
+// Личная норма (для переработки): calendarNorm - (ОТ+Б)*8
+function personalNormHours(calNorm) {
   const vacDays = leaveType.filter((t) => t === "vacation").length;
   const sickDays = leaveType.filter((t) => t === "sick").length;
   return {
     vacDays,
     sickDays,
-    norm: baseNorm - (vacDays + sickDays) * LEAVE_HOURS_PER_DAY,
+    norm: calNorm - (vacDays + sickDays) * LEAVE_HOURS_PER_DAY,
   };
 }
 
@@ -362,7 +376,6 @@ function holidayWorkedTotals() {
   for (let i = 0; i < daysInMonth; i++) {
     if (!isHoliday[i]) continue;
     if (leaveType[i]) continue;
-
     hDay += dayHours[i] || 0;
     hNight += nightHours[i] || 0;
   }
@@ -378,7 +391,6 @@ function holidayWorkedTotalsFirstHalf() {
   for (let i = 0; i <= end; i++) {
     if (!isHoliday[i]) continue;
     if (leaveType[i]) continue;
-
     hDay += dayHours[i] || 0;
     hNight += nightHours[i] || 0;
   }
@@ -402,10 +414,10 @@ function clearMoneyUI() {
 }
 
 function recalcAll() {
-  const baseNorm = baseNormHoursFromCalendar();
-  const { vacDays, sickDays, norm } = effectiveNormHours(baseNorm);
+  const calNorm = calendarNormHours();
+  const { vacDays, sickDays, norm: personalNorm } = personalNormHours(calNorm);
 
-  normHint.textContent = `Норма месяца: ${baseNorm} ч. С учётом ОТ/Б: ${norm} ч.`;
+  normHint.textContent = `Норма месяца (с учётом праздников): ${calNorm} ч. Личная норма (с ОТ/Б): ${personalNorm} ч.`;
 
   const totalDay = sum(dayHours);
   const totalNight = sum(nightHours);
@@ -415,8 +427,8 @@ function recalcAll() {
   dayNightHoursEl.textContent = `${totalDay.toFixed(1)} / ${totalNight.toFixed(1)}`;
   bump(dayNightHoursEl);
 
-  animateNumber(normEffectiveEl, norm, (v) => v.toFixed(1), 360);
-  animateNumber(overtimeEl, total - norm, (v) => (v >= 0 ? "+" : "") + v.toFixed(1), 360);
+  animateNumber(normEffectiveEl, personalNorm, (v) => v.toFixed(1), 360);
+  animateNumber(overtimeEl, total - personalNorm, (v) => (v >= 0 ? "+" : "") + v.toFixed(1), 360);
   leaveDaysEl.textContent = `${vacDays} / ${sickDays}`;
 
   const oklad = parseNumber(okladInput.value);
@@ -425,24 +437,26 @@ function recalcAll() {
     return;
   }
 
-  if (!(norm > 0)) {
-    setError("Норма стала ≤ 0 (слишком много ОТ/Б).");
+  if (!(calNorm > 0)) {
+    setError("Норма месяца стала ≤ 0. Проверьте праздники.");
     clearMoneyUI();
     return;
   }
 
   setError(null);
 
-  const baseHourRateGross = oklad / norm;
-  const bonusPerHourGross = (oklad * BONUS_RATE) / norm;
+  // ✅ Ставки/деньги считаем ТОЛЬКО от нормы месяца (calNorm), НЕ от ОТ/Б
+  const baseHourRateGross = oklad / calNorm;
+  const bonusPerHourGross = (oklad * BONUS_RATE) / calNorm;
 
   const baseFactGross = baseHourRateGross * total;
   const bonusGross = bonusPerHourGross * total;
   const nightExtraGross = baseHourRateGross * NIGHT_EXTRA_RATE * totalNight;
 
-  // ✅ Праздник x2 = добавить ещё 1× стоимости этих часов (не меняя норму)
+  // ✅ Праздник x2 = добавить ещё 1× стоимости часов этого дня
   const { hDay, hNight } = holidayWorkedTotals();
   const holidayTotal = hDay + hNight;
+
   const holidayExtraGross =
     (baseHourRateGross + bonusPerHourGross) * holidayTotal +
     baseHourRateGross * NIGHT_EXTRA_RATE * hNight;
@@ -451,11 +465,10 @@ function recalcAll() {
   const tax = gross * TAX_RATE;
   const net = gross - tax;
 
-  // Ставки (нетто)
   const hourRateNet = (baseHourRateGross + bonusPerHourGross) * (1 - TAX_RATE);
   const nightHourNet = hourRateNet + baseHourRateGross * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
 
-  // Аванс (~): 1–15, без премии, но с ночными и праздничными
+  // Аванс (~): 1–15, без премии, с ночными, + праздничные x2
   const endFH = Math.min(14, daysInMonth - 1);
   const fhDay = sumRange(dayHours, 0, endFH);
   const fhNight = sumRange(nightHours, 0, endFH);
@@ -468,8 +481,6 @@ function recalcAll() {
 
   const fhHoliday = holidayWorkedTotalsFirstHalf();
   const fhHolidayTotal = fhHoliday.hDay + fhHoliday.hNight;
-
-  // extra 1x for holiday hours in first half (no bonus)
   advanceNet += baseNetHourlyNoBonus * fhHolidayTotal + nightExtraNetHourly * fhHoliday.hNight;
 
   const remainingNet = net - advanceNet;

@@ -47,10 +47,7 @@
       opacity: 0;
       transform: translateY(18px);
       filter: blur(6px);
-      transition:
-        opacity 700ms cubic-bezier(.2,.8,.2,1),
-        transform 700ms cubic-bezier(.2,.8,.2,1),
-        filter 700ms cubic-bezier(.2,.8,.2,1);
+      transition: opacity 700ms cubic-bezier(.2,.8,.2,1), transform 700ms cubic-bezier(.2,.8,.2,1), filter 700ms cubic-bezier(.2,.8,.2,1);
     }
     body.is-loaded .reveal { opacity: 1; transform: translateY(0); filter: blur(0); }
 
@@ -165,13 +162,15 @@
               inputmode="decimal"
               placeholder="Напр. 50000"
             />
-            <p class="mt-1 text-xs text-slate-400/90">Норма считается автоматически.</p>
+            <p class="mt-1 text-xs text-slate-400/90">
+              Норма месяца: будни×8 − отмеченные праздники×8. ОТ/Б уменьшают норму только для переработки.
+            </p>
           </div>
 
           <div class="text-xs text-slate-400/90 leading-5">
             <div>Коды в ячейках <span class="font-semibold">ДЕНЬ</span>:</div>
-            <div><span class="font-semibold text-slate-200">ОТ</span> — отпуск (только в будни, −8ч от нормы)</div>
-            <div><span class="font-semibold text-slate-200">Б</span> — больничный (только в будни, −8ч от нормы)</div>
+            <div><span class="font-semibold text-slate-200">ОТ</span> — отпуск (только пн–пт, −8ч от личной нормы)</div>
+            <div><span class="font-semibold text-slate-200">Б</span> — больничный (только пн–пт, −8ч от личной нормы)</div>
           </div>
 
           <div class="text-xs text-slate-400/90" id="normHint"></div>
@@ -182,10 +181,9 @@
         <h2 class="text-lg font-semibold">Как ставить смены</h2>
         <div class="mt-3 grid gap-2 text-sm text-slate-300/90 leading-6">
           <div>• В <b>День</b> и <b>Ночь</b> ставь часы по факту табеля.</div>
-          <div>• Смены: дневная — <b>11 (или 8)</b> в «День», ночная — <b>4</b> в «День» и <b>7</b> в «Ночь» (У женщин норма отличается).</div>
-          <div>• Ночные идут блоками: <b>2/2</b> и <b>2/5</b> (Например, если выйти 1-ого числа в ночь, то 1 числа в табель - 2 в день, 2 в ночь. 2-ого числа в день 2, в ночь 5.</div>
-          <div>• Праздничный день: кликните по нужному числу, чтобы отметить его праздничным.</div>
-          <div>• Выходные дни отмечены красным.</div>
+          <div>• Смена 11ч: дневная — <b>11</b> в «День», ночная — <b>4</b> в «День» и <b>7</b> в «Ночь».</div>
+          <div>• Ночные обычно идут блоками: <b>2/2</b> или <b>2/5</b> (2–5 ночных подряд, затем выходные).</div>
+          <div>• Праздничный день: тап по числу сверху ⇒ <b>норма уменьшается</b> и <b>оплата за часы дня ×2</b>.</div>
         </div>
       </section>
     </div>
@@ -222,6 +220,7 @@
     <div class="summary-card glass-card hover-lift reveal">
       <div class="flex items-center justify-between">
         <div class="text-sm text-slate-300/90">К выплате (нетто)</div>
+        <div class="text-xs text-slate-400">премия 35% • налог 13%</div>
       </div>
 
       <div class="mt-2 text-4xl font-semibold tracking-tight" id="netPay">—</div>
