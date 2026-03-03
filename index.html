@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="ru">
   <head>
@@ -177,9 +176,13 @@
   </head>
 
   <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-white">
+    <script>  
+    document.body.classList.add("is-loaded");
+    </script>
+    
     <div class="relative z-10 mx-auto max-w-5xl px-4 py-10">
-      <header class="mb-8 reveal">
-        <div class="inline-flex items-center gap-3">
+      <header class="mb-6 reveal">
+        <div class="flex items-center gap-3">
           <span
             class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/30 to-sky-400/10 ring-1 ring-white/10 shadow-[0_20px_60px_-40px_rgba(99,102,241,0.6)] text-lg font-semibold text-slate-100/90"
             aria-hidden="true"
@@ -187,19 +190,47 @@
             А
           </span>
 
-          <div>
+          <div class="flex-1">
             <h1 class="text-3xl font-semibold tracking-tight">
               <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
                 Калькулятор зарплаты Alvisa
               </span>
             </h1>
+            <p class="mt-1 text-sm text-slate-300/90">Сохраняй табель и оклад в аккаунте.</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <a
+              id="loginLink"
+              href="login.html?next=index.html"
+              class="hidden rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
+            >
+              Войти
+            </a>
+
+            <a
+              id="adminLink"
+              href="admin.html"
+              class="hidden rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
+            >
+              Админка
+            </a>
+
+            <button
+              id="logoutBtn"
+              type="button"
+              class="hidden rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
+            >
+              Выйти
+            </button>
           </div>
         </div>
       </header>
 
-      <div class="mb-6 flex gap-4 border-b border-white/10 pb-4">
+      <div class="mb-6 flex gap-4 border-b border-white/10 pb-4 reveal">
         <a href="index.html" class="text-indigo-300 hover:text-indigo-200 font-medium">Калькулятор зарплаты</a>
         <a href="table.html" class="text-slate-300 hover:text-indigo-200">Табель учёта</a>
+        <a href="profile.html" class="text-slate-300 hover:text-indigo-200">Профиль</a>
       </div>
 
       <main class="grid gap-7 lg:grid-cols-2">
@@ -294,7 +325,7 @@
                     name="firstHalfNightHours"
                     inputmode="decimal"
                     placeholder="Напр. 35"
-                    class="input-glass w-full h-[52px] rounded-2xl bg-slate-950/45 px-4 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                    class="input-glass w-full h-[52px] rounded-2xl bg-slate-950/45 px-4 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
                   />
                   <p class="text-xs text-slate-400/90 min-h-[16px]"></p>
                 </div>
@@ -339,7 +370,7 @@
                     min="0"
                     step="1"
                     placeholder="Напр. 2"
-                    class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                    class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
                   />
                   <p class="text-xs text-slate-400/90 min-h-[16px]"></p>
                 </div>
@@ -356,7 +387,7 @@
                     min="0"
                     step="1"
                     placeholder="Напр. 1"
-                    class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                    class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
                   />
                   <p class="text-xs text-slate-400/90 min-h-[16px]"></p>
                 </div>

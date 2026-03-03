@@ -1,13 +1,16 @@
-// ==========================
-// FILE: /app.js
-// ==========================
 import { computeSalary, parseNumber, TAX_RATE, NIGHT_EXTRA_RATE, BONUS_RATE } from "./calc.js";
+import { getSession, signOut } from "./auth.js";
+import { getMyProfile, updateMyOklad } from "./db.js";
 
 document.body.classList.add("is-loaded");
 
 const form = document.getElementById("salaryForm");
 const errorBox = document.getElementById("errorBox");
 const resetBtn = document.getElementById("resetBtn");
+
+const loginLink = document.getElementById("loginLink");
+const logoutBtn = document.getElementById("logoutBtn");
+const adminLink = document.getElementById("adminLink");
 
 const els = {
   oklad: document.getElementById("oklad"),
@@ -41,6 +44,11 @@ const prefersReducedMotion =
 const HOLIDAY_SHIFT_HOURS = 11;
 const HOLIDAY_NIGHT_HOURS_PER_SHIFT = 7;
 const HOLIDAY_MULTIPLIER = 2;
+
+let profileRole = "user";
+let profileOklad = null;
+
+let saveOkladTimer = null;
 
 function formatRub(value, digits) {
   const n = Number(value);
@@ -86,12 +94,10 @@ function animateNumber(el, to, formatter, durationMs = 520) {
   }
 
   const start = performance.now();
-
   function tick(now) {
     const t = Math.min(1, (now - start) / durationMs);
     const k = easeOutCubic(t);
     const v = from + (to - from) * k;
-
     el.textContent = formatter(v);
     if (t < 1) requestAnimationFrame(tick);
     else {
@@ -99,7 +105,6 @@ function animateNumber(el, to, formatter, durationMs = 520) {
       el.dataset.value = String(to);
     }
   }
-
   requestAnimationFrame(tick);
 }
 
@@ -234,6 +239,23 @@ function computeAdvanceApproxNet(oklad, normHours, firstHalfHours, firstHalfNigh
   return baseNetHourly * firstHalfHours + nightExtraNetHourly * firstHalfNightHours;
 }
 
+function maybeSaveProfileOklad(okladNumber) {
+  if (!Number.isFinite(okladNumber) || okladNumber <= 0) return;
+  if (profileOklad != null && Math.abs(Number(profileOklad) - okladNumber) < 0.0001) return;
+
+  if (saveOkladTimer) clearTimeout(saveOkladTimer);
+  saveOkladTimer = setTimeout(async () => {
+    try {
+      const session = await getSession();
+      if (!session) return;
+      await updateMyOklad(okladNumber);
+      profileOklad = okladNumber;
+    } catch {
+      // ignore
+    }
+  }, 800);
+}
+
 function render() {
   const parsed = readInput();
   if (!parsed.ok) {
@@ -292,9 +314,7 @@ function render() {
   animateNumber(els.net, netTotal, (v) => formatRub(v, 0), 560);
   bump(els.net);
 
-  // Часовая ставка: нетто с премией и вычетом (из calc.js)
   animateNumber(els.hourRate, r.hourRate, (v) => formatRub(v, 0), 520);
-
 
   animateNumber(els.baseFact, r.baseFact, (v) => formatRub(v, 0), 520);
   animateNumber(els.bonus, r.bonus, (v) => formatRub(v, 0), 520);
@@ -305,6 +325,9 @@ function render() {
 
   const holidayPart = holidayExtraGross > 0 ? ` • Праздничные: +${formatRub(holidayNet, 0)}` : "";
   els.summary.textContent = `Брутто: ${formatRub(grossTotal, 0)} • Налог: ${formatRub(taxTotal, 0)}${holidayPart}`;
+
+  // проф. оклад
+  maybeSaveProfileOklad(parsed.input.oklad);
 }
 
 function reset() {
@@ -324,6 +347,43 @@ function reset() {
   render();
 }
 
+async function initAuthUI() {
+  const session = await getSession();
+  if (!session) {
+    loginLink?.classList.remove("hidden");
+    logoutBtn?.classList.add("hidden");
+    adminLink?.classList.add("hidden");
+    return;
+  }
+
+  loginLink?.classList.add("hidden");
+  logoutBtn?.classList.remove("hidden");
+
+  try {
+    const profile = await getMyProfile();
+    profileRole = profile?.role ?? "user";
+    profileOklad = profile?.oklad ?? null;
+
+    if (profileRole === "admin") adminLink?.classList.remove("hidden");
+    else adminLink?.classList.add("hidden");
+
+    // подставляем оклад по умолчанию, если поле пустое
+    if (profileOklad != null && String(els.oklad.value ?? "").trim() === "") {
+      els.oklad.value = String(profileOklad);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+logoutBtn?.addEventListener("click", async () => {
+  try {
+    await signOut();
+  } finally {
+    location.href = "login.html?next=index.html";
+  }
+});
+
 form.addEventListener("input", render);
 resetBtn.addEventListener("click", reset);
 
@@ -334,4 +394,4 @@ if (els.holidayToggle) {
   });
 }
 
-render();
+initAuthUI().finally(() => render());

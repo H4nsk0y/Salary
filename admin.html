@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Админка — Alvisa</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <style>
+      html, body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+      :root { --glow: rgba(99, 102, 241, 0.35); --glow2: rgba(56, 189, 248, 0.25); }
+
+      body {
+        position: relative;
+        overflow-x: hidden;
+        background:
+          radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.12), transparent 60%),
+          radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.10), transparent 60%),
+          radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.08), transparent 60%),
+          #020617;
+      }
+
+      body::before{
+        content:"";
+        position:fixed;
+        inset:-25%;
+        pointer-events:none;
+        z-index:0;
+        background:
+          radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.28), transparent 45%),
+          radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.22), transparent 45%),
+          radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.14), transparent 45%);
+        filter: blur(60px);
+        opacity: 0.7;
+        transform: translate3d(0,0,0);
+        animation: bgFloat 12s ease-in-out infinite alternate;
+      }
+
+      @keyframes bgFloat {
+        0% { transform: translate3d(-2%, -2%, 0) scale(1); }
+        100% { transform: translate3d(2%, 2%, 0) scale(1.05); }
+      }
+
+      .reveal{
+        opacity:0;
+        transform: translateY(18px);
+        filter: blur(6px);
+        transition: opacity 700ms cubic-bezier(.2,.8,.2,1), transform 700ms cubic-bezier(.2,.8,.2,1), filter 700ms cubic-bezier(.2,.8,.2,1);
+      }
+      body.is-loaded .reveal{ opacity:1; transform:translateY(0); filter:blur(0); }
+
+      .glass-card{
+        position:relative;
+        overflow:hidden;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+      }
+
+      .glass-card::before{
+        content:"";
+        position:absolute;
+        inset:0;
+        pointer-events:none;
+        opacity:0;
+        background:
+          radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.35), transparent 60%),
+          radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
+        transition: opacity 350ms ease;
+      }
+      .glass-card:hover::before{ opacity:1; }
+
+      .hover-lift{
+        transition: transform 250ms cubic-bezier(.2,.8,.2,1), box-shadow 250ms cubic-bezier(.2,.8,.2,1);
+      }
+      .hover-lift:hover{
+        transform: translateY(-4px);
+        box-shadow: 0 20px 60px -40px var(--glow);
+      }
+
+      .shake { animation: shake 320ms ease-in-out; }
+      @keyframes shake {
+        0% { transform: translateX(0); }
+        25% { transform: translateX(-6px); }
+        50% { transform: translateX(6px); }
+        75% { transform: translateX(-4px); }
+        100% { transform: translateX(0); }
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-white">
+    <script>  
+    document.body.classList.add("is-loaded");
+    </script>
+    <div class="relative z-10 mx-auto max-w-6xl px-4 py-10">
+      <header class="mb-8 reveal">
+        <div class="flex items-center gap-3">
+          <span
+            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/30 to-sky-400/10 ring-1 ring-white/10 shadow-[0_20px_60px_-40px_rgba(99,102,241,0.6)] text-lg font-semibold text-slate-100/90"
+            aria-hidden="true"
+          >A</span>
+
+          <div class="flex-1">
+            <h1 class="text-3xl font-semibold tracking-tight">
+              <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
+                Админка
+              </span>
+            </h1>
+            <p class="mt-1 text-sm text-slate-300/90">Пользователи и табели (только для admin).</p>
+          </div>
+
+          <button
+            id="logoutBtn"
+            class="rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
+          >Выйти</button>
+        </div>
+      </header>
+
+      <div class="mb-6 flex gap-4 border-b border-white/10 pb-4 reveal">
+        <a href="index.html" class="text-slate-300 hover:text-indigo-200">Калькулятор</a>
+        <a href="table.html" class="text-slate-300 hover:text-indigo-200">Табель</a>
+        <span class="ml-auto text-indigo-300 font-medium">Admin</span>
+      </div>
+
+      <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-200 ring-1 ring-rose-500/20"></div>
+
+      <main class="grid gap-6 lg:grid-cols-2 reveal">
+        <section class="glass-card hover-lift rounded-3xl bg-slate-900/35 p-6 ring-1 ring-white/10 shadow-[0_20px_80px_-50px_rgba(99,102,241,0.45)]">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Пользователи</h2>
+            <button id="reloadProfiles" class="rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-200 ring-1 ring-white/10 hover:bg-white/10">
+              Обновить
+            </button>
+          </div>
+          <div class="mt-4 overflow-x-auto rounded-2xl ring-1 ring-white/10">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-white/5 text-slate-300">
+                <tr>
+                  <th class="px-4 py-3">user_id</th>
+                  <th class="px-4 py-3">role</th>
+                  <th class="px-4 py-3">oklad</th>
+                </tr>
+              </thead>
+              <tbody id="profilesTbody" class="divide-y divide-white/10"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="glass-card hover-lift rounded-3xl bg-slate-900/35 p-6 ring-1 ring-white/10 shadow-[0_20px_80px_-50px_rgba(56,189,248,0.35)]">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Табели</h2>
+            <button id="reloadTimesheets" class="rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-200 ring-1 ring-white/10 hover:bg-white/10">
+              Обновить
+            </button>
+          </div>
+          <div class="mt-4 overflow-x-auto rounded-2xl ring-1 ring-white/10">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-white/5 text-slate-300">
+                <tr>
+                  <th class="px-4 py-3">user_id</th>
+                  <th class="px-4 py-3">год</th>
+                  <th class="px-4 py-3">мес</th>
+                  <th class="px-4 py-3">обновлён</th>
+                </tr>
+              </thead>
+              <tbody id="timesheetsTbody" class="divide-y divide-white/10"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./admin.js"></script>
+  </body>
+</html>
