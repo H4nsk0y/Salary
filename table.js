@@ -1,14 +1,7 @@
 // /table.js
-import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE } from "./calc.js";
+import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
-import {
-  getMyProfile,
-  updateMyOklad,
-  loadTimesheet,
-  saveTimesheet,
-  listMyTimesheetsByYear,
-  deleteMyTimesheet,
-} from "./db.js";
+import { getMyProfile, updateMyOklad, loadTimesheet, saveTimesheet } from "./db.js";
 
 document.body.classList.add("is-loaded");
 
@@ -16,21 +9,16 @@ const prefersReducedMotion =
   window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
 
 const LEAVE_HOURS_PER_DAY = 8;
-const OVERTIME_LIMIT_YEAR = 120;
 
 // header controls
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
 const saveBtn = document.getElementById("saveBtn");
 const exportBtn = document.getElementById("exportBtn");
-const deleteBtn = document.getElementById("deleteBtn");
 const saveStatus = document.getElementById("saveStatus");
 
 const monthSelect = document.getElementById("monthSelect");
 const yearSelect = document.getElementById("yearSelect");
-
-const overtimeYearEl = document.getElementById("overtimeYear");
-const overtimeRemainingEl = document.getElementById("overtimeRemaining");
 
 function setSaveStatus(text, tone = "neutral") {
   if (!saveStatus) return;
@@ -59,23 +47,28 @@ function bump(el) {
 
 function animateNumber(el, to, formatter, durationMs = 520) {
   if (!el) return;
+
   if (prefersReducedMotion || !Number.isFinite(to)) {
     el.textContent = formatter(to);
     el.dataset.value = String(to);
     return;
   }
+
   const from = Number.isFinite(Number(el.dataset.value)) ? Number(el.dataset.value) : 0;
   if (Math.abs(to - from) < 0.01) {
     el.textContent = formatter(to);
     el.dataset.value = String(to);
     return;
   }
+
   const start = performance.now();
   function tick(now) {
     const t = Math.min(1, (now - start) / durationMs);
     const k = easeOutCubic(t);
     const v = from + (to - from) * k;
+
     el.textContent = formatter(v);
+
     if (t < 1) requestAnimationFrame(tick);
     else {
       el.textContent = formatter(to);
@@ -91,19 +84,21 @@ function formatRub(value, digits = 0) {
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",
     currency: "RUB",
-    maximumFractionDigits: digits
+    maximumFractionDigits: digits,
   }).format(n);
 }
 
 function setError(msg) {
   const box = document.getElementById("errorBox");
   if (!box) return;
+
   if (!msg) {
     box.classList.add("hidden");
     box.textContent = "";
     box.classList.remove("shake");
     return;
   }
+
   box.classList.remove("hidden");
   box.textContent = msg;
   box.classList.remove("shake");
@@ -198,12 +193,21 @@ function markDirty() {
   setSaveStatus("Есть несохранённые изменения", "neutral");
 }
 
+function sum(arr) {
+  return arr.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+}
+
+function sumRange(arr, startIdx, endIdxInclusive) {
+  let s = 0;
+  for (let i = startIdx; i <= endIdxInclusive; i++) {
+    s += Number.isFinite(arr[i]) ? arr[i] : 0;
+  }
+  return s;
+}
+
 /**
- * ✅ Правило:
- * - Норма месяца уменьшается ТОЛЬКО от официальных праздников.
- * - ОТ/Б уменьшают личную норму, но ставка считается по норме месяца.
- *
- * hourlyNorm = (будни - праздничные_будни) * 8
+ * ✅ Норма месяца (для СТАВКИ) — как в вашем правиле:
+ * уменьшается ТОЛЬКО от официальных праздников (будние дни, отмеченные holiday).
  */
 function calendarNormHours() {
   let weekdays = 0;
@@ -218,47 +222,31 @@ function calendarNormHours() {
   return (weekdays - holidayWeekdays) * 8;
 }
 
-function personalNormHours(hourlyNorm) {
+/**
+ * ✅ Личная норма (для переработки) — уменьшает ОТ/Б, но НЕ влияет на ставку.
+ */
+function personalNormHours(monthNorm) {
   const vacDays = leaveType.filter((t) => t === "vacation").length;
   const sickDays = leaveType.filter((t) => t === "sick").length;
-  const personalNorm = hourlyNorm - (vacDays + sickDays) * LEAVE_HOURS_PER_DAY;
+  const personalNorm = monthNorm - (vacDays + sickDays) * LEAVE_HOURS_PER_DAY;
   return { vacDays, sickDays, personalNorm };
 }
 
-function sum(arr) { return arr.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0); }
-function sumRange(arr, startIdx, endIdxInclusive) {
-  let s = 0;
-  for (let i = startIdx; i <= endIdxInclusive; i++) s += Number.isFinite(arr[i]) ? arr[i] : 0;
-  return s;
-}
-
+/**
+ * ✅ Праздничные часы (фактически отработанные) — для доплаты x2 (только за часы).
+ */
 function holidayWorkedTotals() {
   let hDay = 0;
   let hNight = 0;
+
   for (let i = 0; i < daysInMonth; i++) {
     if (!isHoliday[i]) continue;
     if (leaveType[i]) continue;
     hDay += dayHours[i] || 0;
     hNight += nightHours[i] || 0;
   }
-  return { hDay, hNight };
-}
 
-function holidayWorkedTotalsFirstHalf() {
-  const end = Math.min(14, daysInMonth - 1);
-  let hDay = 0;
-  let hNight = 0;
-  for (let i = 0; i <= end; i++) {
-    if (!isHoliday[i]) continue;
-    if (leaveType[i]) continue;
-    hDay += dayHours[i] || 0;
-    hNight += nightHours[i] || 0;
-  }
   return { hDay, hNight };
-}
-
-function currentPayload() {
-  return { v: 1, year, month, isHoliday, dayHours, nightHours, leaveType };
 }
 
 function updateHolidayColumnClasses(index) {
@@ -283,7 +271,10 @@ function toggleHoliday(index) {
   updateHolidayColumnClasses(index);
   recalcAll();
   scheduleSave();
-  void recalcYearOvertime(); // обновить годовые лимиты
+}
+
+function currentPayload() {
+  return { v: 1, year, month, isHoliday, dayHours, nightHours, leaveType };
 }
 
 async function doSaveTimesheet() {
@@ -307,6 +298,7 @@ async function doSaveTimesheet() {
 function scheduleSave() {
   markDirty();
   if (timesheetSaveTimer) clearTimeout(timesheetSaveTimer);
+
   timesheetSaveTimer = setTimeout(async () => {
     const json = JSON.stringify(currentPayload());
     if (json === lastSavedJSON) {
@@ -339,9 +331,11 @@ function clearMoneyUI() {
   hourRateNetEl.textContent = "—";
   nightHourNetEl.textContent = "—";
   holidayExtraGrossEl.textContent = "—";
+
   baseFactGrossEl.textContent = "—";
   bonusGrossEl.textContent = "—";
   nightExtraGrossEl.textContent = "—";
+
   grossPayEl.textContent = "—";
   taxPayEl.textContent = "—";
   advancePayEl.textContent = "—";
@@ -351,21 +345,24 @@ function clearMoneyUI() {
 function recalcAll() {
   monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
 
-  const hourlyNorm = calendarNormHours();                // ✅ ставка от нормы месяца
-  const { vacDays, sickDays, personalNorm } = personalNormHours(hourlyNorm); // ✅ переработка от личной нормы
+  // ✅ monthNorm влияет на ставку (как калькулятор: normHours)
+  const monthNorm = calendarNormHours();
 
-  normHint.textContent = `Норма месяца (с праздниками): ${hourlyNorm} ч. Личная (с ОТ/Б): ${personalNorm} ч.`;
+  // ✅ personalNorm только для переработки/инфо
+  const { vacDays, sickDays, personalNorm } = personalNormHours(monthNorm);
 
+  // totals from cells
   const totalDay = sum(dayHours);
   const totalNight = sum(nightHours);
-  const total = totalDay + totalNight;
+  const workedHours = totalDay + totalNight;
 
-  animateNumber(totalHoursEl, total, (v) => v.toFixed(1), 360);
+  // UI blocks
+  animateNumber(totalHoursEl, workedHours, (v) => v.toFixed(1), 360);
   dayNightHoursEl.textContent = `${totalDay.toFixed(1)} / ${totalNight.toFixed(1)}`;
   bump(dayNightHoursEl);
 
   animateNumber(normEffectiveEl, personalNorm, (v) => v.toFixed(1), 360);
-  animateNumber(overtimeEl, total - personalNorm, (v) => (v >= 0 ? "+" : "") + v.toFixed(1), 360);
+  animateNumber(overtimeEl, workedHours - personalNorm, (v) => (v >= 0 ? "+" : "") + v.toFixed(1), 360);
   leaveDaysEl.textContent = `${vacDays} / ${sickDays}`;
 
   const oklad = parseNumber(okladInput.value);
@@ -374,7 +371,7 @@ function recalcAll() {
     return;
   }
 
-  if (!(hourlyNorm > 0)) {
+  if (!(monthNorm > 0)) {
     setError("Норма месяца стала ≤ 0. Проверьте праздники.");
     clearMoneyUI();
     return;
@@ -382,15 +379,36 @@ function recalcAll() {
 
   setError(null);
 
-  // ✅ ставка всегда от нормы месяца (hourlyNorm), НЕ от личной нормы
-  const baseHourRateGross = oklad / hourlyNorm;
-  const bonusPerHourGross = (oklad * BONUS_RATE) / hourlyNorm;
+  /**
+   * ✅ САМОЕ ВАЖНОЕ:
+   * Денежный расчёт табеля делаем через тот же computeSalary(),
+   * что и калькулятор — это гарантирует 1-в-1 совпадение.
+   */
+  const calc = computeSalary({
+    oklad,
+    normHours: monthNorm,
+    workedHours,
+    nightHours: totalNight,
+  });
 
-  const baseFactGross = baseHourRateGross * total;
-  const bonusGross = bonusPerHourGross * total;
-  const nightExtraGross = baseHourRateGross * NIGHT_EXTRA_RATE * totalNight;
+  if (!calc.ok) {
+    setError(calc.error);
+    clearMoneyUI();
+    return;
+  }
 
-  // ✅ x2 только за фактические праздничные часы => доплата 1x
+  const r = calc.result;
+
+  /**
+   * ✅ Праздничные x2:
+   * computeSalary уже оплатил эти часы как обычные (1x).
+   * Чтобы стало 2x, добавляем “доплату” = ещё 1x:
+   * - за праздничные часы: (base + bonus) * holidayTotal
+   * - за праздничные ночные дополнительно: base * 0.4 * holidayNight
+   */
+  const baseHourRateGross = oklad / monthNorm;
+  const bonusPerHourGross = (oklad * BONUS_RATE) / monthNorm;
+
   const { hDay, hNight } = holidayWorkedTotals();
   const holidayTotal = hDay + hNight;
 
@@ -398,49 +416,55 @@ function recalcAll() {
     (baseHourRateGross + bonusPerHourGross) * holidayTotal +
     baseHourRateGross * NIGHT_EXTRA_RATE * hNight;
 
-  const gross = baseFactGross + bonusGross + nightExtraGross + holidayExtraGross;
-  const tax = gross * TAX_RATE;
-  const net = gross - tax;
+  const holidayTax = holidayExtraGross * TAX_RATE;
+  const holidayNet = holidayExtraGross - holidayTax;
 
-  const hourRateNet = (baseHourRateGross + bonusPerHourGross) * (1 - TAX_RATE);
-  const nightHourNet = hourRateNet + baseHourRateGross * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
+  const grossTotal = r.gross + holidayExtraGross;
+  const taxTotal = r.tax + holidayTax;
+  const netTotal = r.net + holidayNet;
 
-  // аванс 1–15: без премии, + ночные, + праздничные (только если реально есть часы)
+  // ✅ hourRateNet — как в калькуляторе (r.hourRate), округление как у тебя
+  animateNumber(hourRateNetEl, r.hourRate, (v) => formatRub(v, 0), 360);
+
+  // ✅ nightHourNet = hourRateNet + (baseGross*0.4)*(1-0.13)
+  const nightHourNet = r.hourRate + baseHourRateGross * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
+  animateNumber(nightHourNetEl, nightHourNet, (v) => formatRub(v, 0), 360);
+
+  // breakdown (как в калькуляторе)
+  animateNumber(baseFactGrossEl, r.baseFact, (v) => formatRub(v, 0), 360);
+  animateNumber(bonusGrossEl, r.bonus, (v) => formatRub(v, 0), 360);
+  animateNumber(nightExtraGrossEl, r.nightExtra, (v) => formatRub(v, 0), 360);
+
+  animateNumber(holidayExtraGrossEl, holidayExtraGross, (v) => formatRub(v, 0), 360);
+
+  animateNumber(grossPayEl, grossTotal, (v) => formatRub(v, 0), 360);
+  animateNumber(taxPayEl, taxTotal, (v) => formatRub(v, 0), 360);
+
+  animateNumber(netPayEl, netTotal, (v) => formatRub(v, 0), 520);
+  bump(netPayEl);
+
+  moneySummaryEl.textContent =
+    `Брутто: ${formatRub(grossTotal, 0)} • Налог: ${formatRub(taxTotal, 0)} • Праздничные x2 (доплата): ${formatRub(holidayExtraGross, 0)}`;
+
+  /**
+   * ✅ Аванс/остаток — табель должен повторять калькулятор:
+   * калькулятор считает аванс от оклада (без премии) по часам 1–15 и ночным 1–15.
+   */
   const endFH = Math.min(14, daysInMonth - 1);
   const fhDay = sumRange(dayHours, 0, endFH);
   const fhNight = sumRange(nightHours, 0, endFH);
   const fhTotal = fhDay + fhNight;
 
-  const baseNetHourlyNoBonus = baseHourRateGross * (1 - TAX_RATE);
-  const nightExtraNetHourly = baseHourRateGross * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
+  const baseNetHourlyNoBonus = (oklad * (1 - TAX_RATE)) / monthNorm;
+  const nightExtraNetHourly = (oklad / monthNorm) * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
 
-  let advanceNet = baseNetHourlyNoBonus * fhTotal + nightExtraNetHourly * fhNight;
+  const advanceApprox = baseNetHourlyNoBonus * fhTotal + nightExtraNetHourly * fhNight;
+  const remainingApprox = netTotal - advanceApprox;
 
-  const fhHoliday = holidayWorkedTotalsFirstHalf();
-  const fhHolidayTotal = fhHoliday.hDay + fhHoliday.hNight;
-  advanceNet += baseNetHourlyNoBonus * fhHolidayTotal + nightExtraNetHourly * fhHoliday.hNight;
+  advancePayEl.textContent = `~ ${formatRub(advanceApprox, 0)}`;
+  remainingPayEl.textContent = `~ ${formatRub(remainingApprox, 0)}`;
 
-  const remainingNet = net - advanceNet;
-
-  animateNumber(netPayEl, net, (v) => formatRub(v, 0), 520);
-  bump(netPayEl);
-
-  moneySummaryEl.textContent =
-    `Брутто: ${formatRub(gross, 0)} • Налог: ${formatRub(tax, 0)} • Праздничные x2 (доплата): ${formatRub(holidayExtraGross, 0)}`;
-
-  animateNumber(hourRateNetEl, hourRateNet, (v) => formatRub(v, 0), 360);
-  animateNumber(nightHourNetEl, nightHourNet, (v) => formatRub(v, 0), 360);
-
-  animateNumber(holidayExtraGrossEl, holidayExtraGross, (v) => formatRub(v, 0), 360);
-  animateNumber(baseFactGrossEl, baseFactGross, (v) => formatRub(v, 0), 360);
-  animateNumber(bonusGrossEl, bonusGross, (v) => formatRub(v, 0), 360);
-  animateNumber(nightExtraGrossEl, nightExtraGross, (v) => formatRub(v, 0), 360);
-  animateNumber(grossPayEl, gross, (v) => formatRub(v, 0), 360);
-  animateNumber(taxPayEl, tax, (v) => formatRub(v, 0), 360);
-
-  advancePayEl.textContent = `~ ${formatRub(advanceNet, 0)}`;
-  remainingPayEl.textContent = `~ ${formatRub(remainingNet, 0)}`;
-
+  // проф. оклад
   maybeSaveProfileOklad(oklad);
 }
 
@@ -456,7 +480,8 @@ function resetTableDom() {
 function makeLabelCell(text) {
   const td = document.createElement("td");
   td.textContent = text;
-  td.className = "row-label";
+  td.style.fontWeight = "600";
+  td.style.color = "#cbd5e1";
   return td;
 }
 
@@ -472,7 +497,6 @@ function buildTableForMonth() {
 
   const emptyTh = document.createElement("th");
   emptyTh.textContent = "";
-  emptyTh.classList.add("sticky-col");
   headerRow.appendChild(emptyTh);
 
   for (let i = 1; i <= daysInMonth; i++) {
@@ -484,7 +508,7 @@ function buildTableForMonth() {
     if (weekend) th.classList.add("weekend-col");
 
     th.style.cursor = "pointer";
-    th.title = "Тап/клик — праздник (норма месяца -8ч, x2 только за часы этого дня)";
+    th.title = "Тап/клик — праздник (норма месяца -8ч)";
     th.addEventListener("click", (e) => toggleHoliday(Number(e.currentTarget.dataset.dayIndex)));
 
     headerRow.appendChild(th);
@@ -498,14 +522,13 @@ function buildTableForMonth() {
     const weekend = isWeekendByIndex(year, month, i);
 
     const dayTd = document.createElement("td");
-    dayTd.classList.add("day-cell");
     if (weekend) dayTd.classList.add("weekend-col");
 
     const dayInput = document.createElement("input");
     dayInput.type = "text";
     dayInput.inputMode = "text";
     dayInput.placeholder = "0";
-    dayInput.classList.add("input-hour", "input-glass", "day-input");
+    dayInput.classList.add("input-hour", "input-glass");
     dayInput.autocapitalize = "characters";
     dayInput.spellcheck = false;
 
@@ -538,7 +561,6 @@ function buildTableForMonth() {
 
         recalcAll();
         scheduleSave();
-        void recalcYearOvertime();
         return;
       }
 
@@ -556,7 +578,6 @@ function buildTableForMonth() {
         dayHours[i] = Math.max(0, parsed.hours);
         recalcAll();
         scheduleSave();
-        void recalcYearOvertime();
         return;
       }
 
@@ -572,7 +593,6 @@ function buildTableForMonth() {
         dayHours[i] = 0;
         recalcAll();
         scheduleSave();
-        void recalcYearOvertime();
         return;
       }
 
@@ -591,7 +611,7 @@ function buildTableForMonth() {
     nightInput.type = "text";
     nightInput.inputMode = "decimal";
     nightInput.placeholder = "0";
-    nightInput.classList.add("input-hour", "input-glass", "night-input");
+    nightInput.classList.add("input-hour", "input-glass");
     nightInput.spellcheck = false;
 
     nightInput.addEventListener("input", () => {
@@ -603,7 +623,6 @@ function buildTableForMonth() {
         nightHours[i] = 0;
         recalcAll();
         scheduleSave();
-        void recalcYearOvertime();
         return;
       }
 
@@ -617,7 +636,6 @@ function buildTableForMonth() {
       nightHours[i] = Math.max(0, n);
       recalcAll();
       scheduleSave();
-      void recalcYearOvertime();
     });
 
     nightTd.appendChild(nightInput);
@@ -707,59 +725,6 @@ async function loadCurrentMonthFromDb() {
   }
 }
 
-/** ✅ Переработка за год: суммируем max(0, hours - personalNorm) по всем месяцам года */
-function computeMonthOvertimeHours(payload) {
-  if (!payload) return 0;
-
-  const y = payload.year;
-  const m = payload.month;
-
-  const days = new Date(y, m + 1, 0).getDate();
-  const isH = Array.isArray(payload.isHoliday) ? payload.isHoliday : new Array(days).fill(false);
-  const dH = Array.isArray(payload.dayHours) ? payload.dayHours : new Array(days).fill(0);
-  const nH = Array.isArray(payload.nightHours) ? payload.nightHours : new Array(days).fill(0);
-  const lT = Array.isArray(payload.leaveType) ? payload.leaveType : new Array(days).fill(null);
-
-  let weekdays = 0;
-  let holidayWeekdays = 0;
-  for (let i = 0; i < days; i++) {
-    if (isWeekendByIndex(y, m, i)) continue;
-    weekdays++;
-    if (isH[i]) holidayWeekdays++;
-  }
-  const hourlyNorm = (weekdays - holidayWeekdays) * 8;
-
-  const vacDays = lT.filter((t) => t === "vacation").length;
-  const sickDays = lT.filter((t) => t === "sick").length;
-  const personalNorm = hourlyNorm - (vacDays + sickDays) * LEAVE_HOURS_PER_DAY;
-
-  const total = sum(dH) + sum(nH);
-  const overtime = total - personalNorm;
-
-  return overtime > 0 ? overtime : 0;
-}
-
-async function recalcYearOvertime() {
-  if (!overtimeYearEl || !overtimeRemainingEl) return;
-
-  try {
-    const rows = await listMyTimesheetsByYear(year);
-
-    let used = 0;
-    for (const r of rows) {
-      if (r?.payload) used += computeMonthOvertimeHours(r.payload);
-    }
-
-    const remaining = Math.max(0, OVERTIME_LIMIT_YEAR - used);
-
-    overtimeYearEl.textContent = `${used.toFixed(1)} ч`;
-    overtimeRemainingEl.textContent = `${remaining.toFixed(1)} ч`;
-  } catch {
-    overtimeYearEl.textContent = "—";
-    overtimeRemainingEl.textContent = "—";
-  }
-}
-
 function exportToXlsx() {
   const XLSX = window.XLSX;
   if (!XLSX) {
@@ -771,6 +736,7 @@ function exportToXlsx() {
 
   const dayRowVals = ["День"];
   const nightRowVals = ["Ночь"];
+
   for (let i = 0; i < daysInMonth; i++) {
     const dt = leaveType[i];
     if (dt === "vacation") dayRowVals.push("ОТ");
@@ -784,7 +750,7 @@ function exportToXlsx() {
     ["Год", year],
     ["Месяц", monthNames[month]],
     ["Оклад", String(okladInput.value || "")],
-    ["Примечание", "Праздник: норма месяца -8ч (будний), x2 только за фактические часы этого дня."],
+    ["Примечание", "Праздник отмечается кликом по числу. x2 только за фактические часы этого дня."],
     [],
   ];
 
@@ -811,26 +777,6 @@ saveBtn?.addEventListener("click", async () => {
 
 exportBtn?.addEventListener("click", () => exportToXlsx());
 
-deleteBtn?.addEventListener("click", async () => {
-  const ok = confirm(`Удалить табель за ${monthNames[month]} ${year}? Это действие нельзя отменить.`);
-  if (!ok) return;
-
-  setSaveStatus("Удаляю…", "busy");
-  try {
-    await deleteMyTimesheet(year, month);
-    buildTableForMonth();
-    lastSavedJSON = JSON.stringify(currentPayload());
-    dirty = false;
-    setSaveStatus("Удалено", "ok");
-    setError(null);
-    recalcAll();
-    await recalcYearOvertime();
-  } catch (e) {
-    setSaveStatus("Ошибка удаления", "err");
-    setError(e?.message || "Не удалось удалить табель.");
-  }
-});
-
 okladInput.addEventListener("input", () => {
   recalcAll();
   scheduleSave();
@@ -842,7 +788,6 @@ monthSelect.addEventListener("change", async () => {
   buildTableForMonth();
   await loadCurrentMonthFromDb();
   recalcAll();
-  await recalcYearOvertime();
 });
 
 yearSelect.addEventListener("change", async () => {
@@ -851,7 +796,6 @@ yearSelect.addEventListener("change", async () => {
   buildTableForMonth();
   await loadCurrentMonthFromDb();
   recalcAll();
-  await recalcYearOvertime();
 });
 
 // boot
@@ -885,5 +829,4 @@ yearSelect.addEventListener("change", async () => {
 
   await loadCurrentMonthFromDb();
   recalcAll();
-  await recalcYearOvertime();
 })();
