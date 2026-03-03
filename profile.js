@@ -1,288 +1,388 @@
 // /profile.js
-import { supabase } from "./supabaseClient.js";
 import { requireSession, signOut } from "./auth.js";
-import { getMyProfile, updateMyProfile, listMyTimesheets } from "./db.js";
+import {
+  getMyProfile,
+  updateMyProfile,
+  listMyTimesheetsByYear,
+  deleteMyTimesheet,
+} from "./db.js";
 import { parseNumber } from "./calc.js";
 
+document.body.classList.add("is-loaded");
+
+const OVERTIME_LIMIT_YEAR = 120;
+const LEAVE_HOURS_PER_DAY = 8;
+
 const logoutBtn = document.getElementById("logoutBtn");
+const adminLink = document.getElementById("adminLink");
+
+const statusPill = document.getElementById("statusPill");
 const errorBox = document.getElementById("errorBox");
-const infoBox = document.getElementById("infoBox");
 
 const avatarImg = document.getElementById("avatarImg");
 const avatarFallback = document.getElementById("avatarFallback");
-const avatarFile = document.getElementById("avatarFile");
-const uploadBtn = document.getElementById("uploadBtn");
-const removeBtn = document.getElementById("removeBtn");
-
-const roleBadge = document.getElementById("roleBadge");
-
-const form = document.getElementById("profileForm");
-const saveBtn = document.getElementById("saveBtn");
-const statusLine = document.getElementById("statusLine");
-
 const displayNameEl = document.getElementById("displayName");
-const okladEl = document.getElementById("oklad");
-const emailEl = document.getElementById("email");
+const emailHint = document.getElementById("emailHint");
 
-// NEW: history
-const historyBox = document.getElementById("timesheetHistory");
+const displayNameInput = document.getElementById("displayNameInput");
+const okladInput = document.getElementById("okladInput");
+const saveProfileBtn = document.getElementById("saveProfileBtn");
+const refreshBtn = document.getElementById("refreshBtn");
 
-let userId = null;
-let currentAvatarUrl = null;
-let currentAvatarPath = null;
+const yearSelect = document.getElementById("yearSelect");
+const overtimeYearEl = document.getElementById("overtimeYear");
+const overtimeRemainingEl = document.getElementById("overtimeRemaining");
+const monthsCountEl = document.getElementById("monthsCount");
+const timesheetsList = document.getElementById("timesheetsList");
 
-const monthNames = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+// ✅ progress bar
+const overtimeBarFill = document.getElementById("overtimeBarFill");
+const overtimeBarText = document.getElementById("overtimeBarText");
+
+const monthNames = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
+
+function setStatus(text, tone = "neutral") {
+  if (!statusPill) return;
+  statusPill.textContent = text;
+
+  statusPill.classList.remove(
+    "text-slate-300", "bg-white/5",
+    "text-emerald-200", "bg-emerald-500/10",
+    "text-rose-200", "bg-rose-500/10",
+    "text-sky-200", "bg-sky-500/10"
+  );
+
+  if (tone === "ok") statusPill.classList.add("text-emerald-200", "bg-emerald-500/10");
+  else if (tone === "err") statusPill.classList.add("text-rose-200", "bg-rose-500/10");
+  else if (tone === "busy") statusPill.classList.add("text-sky-200", "bg-sky-500/10");
+  else statusPill.classList.add("text-slate-300", "bg-white/5");
+}
 
 function setError(msg) {
-  if (!msg) { errorBox.classList.add("hidden"); errorBox.textContent = ""; return; }
-  errorBox.classList.remove("hidden"); errorBox.textContent = msg;
-}
-function setInfo(msg) {
-  if (!msg) { infoBox.classList.add("hidden"); infoBox.textContent = ""; return; }
-  infoBox.classList.remove("hidden"); infoBox.textContent = msg;
-}
-function setStatus(msg) { statusLine.textContent = msg || "—"; }
-
-function showAvatar(url) {
-  currentAvatarUrl = url || null;
-  if (url) {
-    avatarImg.src = url;
-    avatarImg.classList.remove("hidden");
-    avatarFallback.classList.add("hidden");
-  } else {
-    avatarImg.classList.add("hidden");
-    avatarFallback.classList.remove("hidden");
-  }
-}
-
-function getInitials(name, email) {
-  const base = (name || "").trim();
-  if (base) return base.slice(0, 1).toUpperCase();
-  const e = (email || "").trim();
-  return e ? e.slice(0, 1).toUpperCase() : "A";
-}
-function setFallbackLetter(letter) { avatarFallback.textContent = letter || "A"; }
-
-function guessExt(file) {
-  const type = (file.type || "").toLowerCase();
-  if (type.includes("png")) return "png";
-  if (type.includes("webp")) return "webp";
-  if (type.includes("jpeg") || type.includes("jpg")) return "jpg";
-  return "png";
-}
-
-async function getSessionUser() {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  return data.user;
-}
-
-async function uploadAvatar(file) {
-  if (!userId) throw new Error("NO_USER");
-  const ext = guessExt(file);
-  const path = `${userId}/${Date.now()}.${ext}`;
-
-  const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, {
-    cacheControl: "3600",
-    upsert: true,
-    contentType: file.type || undefined,
-  });
-  if (upErr) throw upErr;
-
-  const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-  const publicUrl = data?.publicUrl;
-  if (!publicUrl) throw new Error("NO_PUBLIC_URL");
-
-  currentAvatarPath = path;
-  return publicUrl;
-}
-
-async function removeAvatar() {
-  const tryPaths = [];
-  if (currentAvatarPath) tryPaths.push(currentAvatarPath);
-
-  if (currentAvatarUrl) {
-    const m = currentAvatarUrl.match(/avatars\/([^?]+)/i);
-    if (m?.[1]) tryPaths.push(m[1]);
-  }
-
-  const uniq = Array.from(new Set(tryPaths)).filter(Boolean);
-  if (uniq.length) await supabase.storage.from("avatars").remove(uniq);
-
-  await updateMyProfile({ avatarUrl: null });
-  currentAvatarUrl = null;
-  currentAvatarPath = null;
-  showAvatar(null);
-}
-
-function renderHistory(items) {
-  if (!historyBox) return;
-
-  if (!items.length) {
-    historyBox.innerHTML = `<div class="text-sm text-slate-300/80">Пока нет сохранённых табелей.</div>`;
+  if (!errorBox) return;
+  if (!msg) {
+    errorBox.classList.add("hidden");
+    errorBox.textContent = "";
+    errorBox.classList.remove("shake");
     return;
   }
-
-  historyBox.innerHTML = `
-    <div class="overflow-x-auto rounded-2xl ring-1 ring-white/10">
-      <table class="w-full text-left text-sm">
-        <thead class="bg-white/5 text-slate-300">
-          <tr>
-            <th class="px-4 py-3">Период</th>
-            <th class="px-4 py-3">Обновлён</th>
-            <th class="px-4 py-3 text-right">Действия</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-white/10" id="historyTbody"></tbody>
-      </table>
-    </div>
-  `;
-
-  const tbody = document.getElementById("historyTbody");
-  for (const row of items) {
-    const tr = document.createElement("tr");
-    const period = `${monthNames[row.month]} ${row.year}`;
-    const updated = row.updated_at ? new Date(row.updated_at).toLocaleString("ru-RU") : "—";
-
-    tr.innerHTML = `
-      <td class="px-4 py-3 text-slate-100">${period}</td>
-      <td class="px-4 py-3 text-slate-300">${updated}</td>
-      <td class="px-4 py-3 text-right">
-        <a class="rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
-           href="table.html?year=${row.year}&month=${row.month}">
-          Открыть
-        </a>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  }
+  errorBox.classList.remove("hidden");
+  errorBox.textContent = msg;
+  errorBox.classList.remove("shake");
+  errorBox.offsetWidth;
+  errorBox.classList.add("shake");
 }
 
-async function loadProfile() {
+function isWeekendByIndex(y, m, dayIndex0) {
+  const d = new Date(y, m, dayIndex0 + 1).getDay();
+  return d === 0 || d === 6;
+}
+
+function safeNum(x) {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function sum(arr) {
+  if (!Array.isArray(arr)) return 0;
+  return arr.reduce((a, b) => a + (Number.isFinite(Number(b)) ? Number(b) : 0), 0);
+}
+
+/**
+ * ✅ Переработка за месяц:
+ * - Норма месяца уменьшается только за праздники (будни, отмеченные holiday)
+ * - Личная норма = норма месяца - (ОТ+Б)*8
+ * - Переработка = max(0, отработано - личная норма)
+ */
+function computeMonthOvertime(payload) {
+  if (!payload || typeof payload !== "object") return 0;
+
+  const y = safeNum(payload.year);
+  const m = safeNum(payload.month);
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+  const isHoliday = Array.isArray(payload.isHoliday) ? payload.isHoliday : new Array(daysInMonth).fill(false);
+  const dayHours = Array.isArray(payload.dayHours) ? payload.dayHours : new Array(daysInMonth).fill(0);
+  const nightHours = Array.isArray(payload.nightHours) ? payload.nightHours : new Array(daysInMonth).fill(0);
+  const leaveType = Array.isArray(payload.leaveType) ? payload.leaveType : new Array(daysInMonth).fill(null);
+
+  let weekdays = 0;
+  let holidayWeekdays = 0;
+  for (let i = 0; i < daysInMonth; i++) {
+    if (isWeekendByIndex(y, m, i)) continue;
+    weekdays++;
+    if (isHoliday[i]) holidayWeekdays++;
+  }
+
+  const normMonth = (weekdays - holidayWeekdays) * 8;
+
+  const vacDays = leaveType.filter((t) => t === "vacation").length;
+  const sickDays = leaveType.filter((t) => t === "sick").length;
+  const personalNorm = normMonth - (vacDays + sickDays) * LEAVE_HOURS_PER_DAY;
+
+  const workedTotal = sum(dayHours) + sum(nightHours);
+  const overtime = workedTotal - personalNorm;
+
+  return overtime > 0 ? overtime : 0;
+}
+
+function formatHours(h) {
+  const n = Number(h);
+  if (!Number.isFinite(n)) return "—";
+  return `${n.toFixed(1)} ч`;
+}
+
+function fillYearOptions(currentYear) {
+  const nowY = new Date().getFullYear();
+  const years = [];
+  for (let y = nowY - 2; y <= nowY + 1; y++) years.push(y);
+
+  yearSelect.innerHTML = "";
+  for (const y of years) {
+    const opt = document.createElement("option");
+    opt.value = String(y);
+    opt.textContent = String(y);
+    yearSelect.appendChild(opt);
+  }
+  yearSelect.value = String(currentYear);
+}
+
+function applyOvertimeProgress(usedHours) {
+  if (!overtimeBarFill || !overtimeBarText) return;
+
+  const used = Math.max(0, Number(usedHours) || 0);
+  const pct = Math.min(100, (used / OVERTIME_LIMIT_YEAR) * 100);
+
+  overtimeBarText.textContent = `${used.toFixed(1)} / ${OVERTIME_LIMIT_YEAR} ч`;
+
+  overtimeBarFill.style.width = `${pct}%`;
+
+  overtimeBarFill.classList.remove(
+    "bg-emerald-400/80",
+    "bg-sky-400/80",
+    "bg-amber-400/85",
+    "bg-rose-400/85"
+  );
+
+  // <= 60% — ок, 60-85% — внимание, 85-100% — почти лимит, >100 (внутри 100%) — красный
+  if (pct < 60) overtimeBarFill.classList.add("bg-emerald-400/80");
+  else if (pct < 85) overtimeBarFill.classList.add("bg-sky-400/80");
+  else if (pct < 100) overtimeBarFill.classList.add("bg-amber-400/85");
+  else overtimeBarFill.classList.add("bg-rose-400/85");
+}
+
+function createTimesheetCard(row) {
+  const y = row.year;
+  const m = row.month;
+  const updatedAt = row.updated_at ? new Date(row.updated_at) : null;
+
+  const overtime = row.payload ? computeMonthOvertime(row.payload) : 0;
+
+  const card = document.createElement("div");
+  card.className = "glass-card hover-lift rounded-3xl bg-slate-950/25 p-4 ring-1 ring-white/10";
+
+  const top = document.createElement("div");
+  top.className = "flex items-start justify-between gap-3";
+
+  const left = document.createElement("div");
+  left.className = "min-w-0";
+
+  const title = document.createElement("div");
+  title.className = "text-base font-semibold text-slate-100 truncate";
+  title.textContent = `${monthNames[m]} ${y}`;
+
+  const meta = document.createElement("div");
+  meta.className = "mt-1 text-xs text-slate-400/90";
+  meta.textContent = updatedAt
+    ? `Обновлён: ${updatedAt.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`
+    : "Обновлён: —";
+
+  const ov = document.createElement("div");
+  ov.className = "mt-2 inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs ring-1 ring-white/10";
+  ov.innerHTML = `<span class="h-1.5 w-1.5 rounded-full ${overtime > 0 ? "bg-amber-400/80" : "bg-emerald-400/80"}"></span>
+                  <span class="text-slate-200">Переработка:</span>
+                  <span class="font-semibold text-slate-100">${formatHours(overtime)}</span>`;
+
+  left.appendChild(title);
+  left.appendChild(meta);
+  left.appendChild(ov);
+
+  const right = document.createElement("div");
+  right.className = "flex flex-col gap-2";
+
+  const openBtn = document.createElement("a");
+  openBtn.href = `table.html?year=${y}&month=${m}`;
+  openBtn.className =
+    "rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 text-center";
+  openBtn.textContent = "Открыть";
+
+  const delBtn = document.createElement("button");
+  delBtn.type = "button";
+  delBtn.className =
+    "rounded-2xl bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-500/20 hover:bg-rose-500/15 active:scale-[0.985]";
+  delBtn.textContent = "Удалить";
+
+  delBtn.addEventListener("click", async () => {
+    const ok = confirm(`Удалить табель за ${monthNames[m]} ${y}? Это действие нельзя отменить.`);
+    if (!ok) return;
+
+    setStatus("Удаляю…", "busy");
+    setError(null);
+
+    try {
+      await deleteMyTimesheet(y, m);
+      setStatus("Удалено", "ok");
+      await refreshTimesheets();
+    } catch (e) {
+      setStatus("Ошибка удаления", "err");
+      setError(e?.message || "Не удалось удалить табель.");
+    }
+  });
+
+  right.appendChild(openBtn);
+  right.appendChild(delBtn);
+
+  top.appendChild(left);
+  top.appendChild(right);
+
+  card.appendChild(top);
+  return card;
+}
+
+async function refreshProfile() {
+  setStatus("Загружаю профиль…", "busy");
   setError(null);
-  setInfo(null);
-  setStatus("Загружаю профиль…");
-
-  const user = await getSessionUser();
-  userId = user.id;
-
-  emailEl.value = user.email || "";
 
   const profile = await getMyProfile();
 
-  const role = profile?.role || "user";
-  roleBadge.classList.remove("hidden");
-  roleBadge.textContent = role === "admin" ? "admin" : "user";
+  const name = profile?.display_name || "Пользователь";
+  const oklad = profile?.oklad;
 
-  displayNameEl.value = profile?.display_name || "";
-  if (typeof profile?.oklad === "number") okladEl.value = String(profile.oklad);
-  else okladEl.value = "";
+  displayNameEl.textContent = name;
+  displayNameInput.value = profile?.display_name ?? "";
+  okladInput.value = oklad != null ? String(oklad) : "";
 
-  setFallbackLetter(getInitials(displayNameEl.value, user.email));
-
-  if (profile?.avatar_url) showAvatar(profile.avatar_url);
-  else showAvatar(null);
-
-  // history
-  try {
-    const items = await listMyTimesheets(24);
-    renderHistory(items);
-  } catch {
-    renderHistory([]);
+  if (profile?.avatar_url) {
+    avatarImg.src = profile.avatar_url;
+    avatarImg.classList.remove("hidden");
+    avatarFallback.classList.add("hidden");
+  } else {
+    avatarImg.removeAttribute("src");
+    avatarFallback.classList.remove("hidden");
+    avatarImg.classList.add("hidden");
+    avatarFallback.textContent = (name?.trim?.()[0] || "A").toUpperCase();
   }
 
-  setStatus("Готово.");
+  if (profile?.role === "admin") adminLink?.classList.remove("hidden");
+  else adminLink?.classList.add("hidden");
+
+  setStatus("Профиль загружен", "ok");
 }
 
-async function saveProfile() {
+async function refreshTimesheets() {
+  const y = Number(yearSelect.value);
+  setStatus("Загружаю табели…", "busy");
   setError(null);
-  setInfo(null);
 
-  const displayName = String(displayNameEl.value || "").trim();
-  const okladRaw = parseNumber(okladEl.value);
+  const rows = await listMyTimesheetsByYear(y, { withPayload: true });
 
-  if (String(okladEl.value || "").trim() && !Number.isFinite(okladRaw)) {
-    setError("Оклад должен быть числом.");
+  timesheetsList.innerHTML = "";
+  monthsCountEl.textContent = String(rows.length);
+
+  let overtimeYear = 0;
+  for (const r of rows) {
+    overtimeYear += r?.payload ? computeMonthOvertime(r.payload) : 0;
+  }
+
+  const remaining = Math.max(0, OVERTIME_LIMIT_YEAR - overtimeYear);
+
+  overtimeYearEl.textContent = formatHours(overtimeYear);
+  overtimeRemainingEl.textContent = formatHours(remaining);
+
+  applyOvertimeProgress(overtimeYear);
+
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "rounded-3xl bg-slate-950/25 p-4 ring-1 ring-white/10 text-sm text-slate-300/90";
+    empty.textContent = "Пока нет сохранённых табелей за этот год.";
+    timesheetsList.appendChild(empty);
+    setStatus("Нечего показывать", "neutral");
     return;
   }
 
-  saveBtn.disabled = true;
-  saveBtn.classList.add("opacity-70", "cursor-not-allowed");
-  setStatus("Сохраняю…");
+  rows.sort((a, b) => (a.month ?? 0) - (b.month ?? 0));
+  for (const row of rows) {
+    timesheetsList.appendChild(createTimesheetCard(row));
+  }
+
+  setStatus("Готово", "ok");
+}
+
+async function saveProfile() {
+  const displayName = displayNameInput.value.trim();
+  const oklad = parseNumber(okladInput.value);
+
+  if (displayName && displayName.length < 2) {
+    setError("Имя слишком короткое (минимум 2 символа).");
+    return;
+  }
+  if (okladInput.value.trim() && (!Number.isFinite(oklad) || oklad < 0)) {
+    setError("Оклад должен быть числом ≥ 0.");
+    return;
+  }
+
+  setStatus("Сохраняю…", "busy");
+  setError(null);
 
   try {
     await updateMyProfile({
       displayName: displayName || null,
-      oklad: Number.isFinite(okladRaw) ? okladRaw : null,
-      avatarUrl: currentAvatarUrl ?? null,
+      oklad: okladInput.value.trim() ? oklad : null,
     });
-
-    setInfo("Сохранено ✅");
-    setStatus(`Сохранено: ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`);
-    setFallbackLetter(getInitials(displayName, emailEl.value));
+    await refreshProfile();
+    setStatus("Сохранено", "ok");
   } catch (e) {
+    setStatus("Ошибка сохранения", "err");
     setError(e?.message || "Не удалось сохранить профиль.");
-    setStatus("Ошибка сохранения.");
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.classList.remove("opacity-70", "cursor-not-allowed");
   }
 }
 
-uploadBtn.addEventListener("click", () => avatarFile.click());
-
-avatarFile.addEventListener("change", async () => {
-  const file = avatarFile.files?.[0];
-  if (!file) return;
-
-  setError(null);
-  setInfo(null);
-  setStatus("Загружаю фото…");
-
-  try {
-    const maxMb = 5;
-    if (file.size > maxMb * 1024 * 1024) throw new Error(`Файл слишком большой. Максимум ${maxMb} МБ.`);
-
-    const url = await uploadAvatar(file);
-    showAvatar(url);
-
-    await updateMyProfile({ avatarUrl: url });
-    setInfo("Фото обновлено ✅");
-    setStatus("Фото сохранено.");
-  } catch (e) {
-    setError(e?.message || "Не удалось загрузить фото.");
-    setStatus("Ошибка загрузки фото.");
-  } finally {
-    avatarFile.value = "";
-  }
-});
-
-removeBtn.addEventListener("click", async () => {
-  setError(null);
-  setInfo(null);
-  setStatus("Удаляю фото…");
-  try {
-    await removeAvatar();
-    setInfo("Фото удалено ✅");
-    setStatus("Готово.");
-  } catch (e) {
-    setError(e?.message || "Не удалось удалить фото.");
-    setStatus("Ошибка удаления.");
-  }
-});
-
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  await saveProfile();
-});
-
-logoutBtn.addEventListener("click", async () => {
+// events
+logoutBtn?.addEventListener("click", async () => {
   try { await signOut(); }
   finally { location.href = "login.html?next=profile.html"; }
 });
 
+saveProfileBtn?.addEventListener("click", () => void saveProfile());
+refreshBtn?.addEventListener("click", async () => {
+  try {
+    await refreshProfile();
+    await refreshTimesheets();
+  } catch (e) {
+    setStatus("Ошибка", "err");
+    setError(e?.message || "Не удалось обновить данные.");
+  }
+});
+
+yearSelect?.addEventListener("change", () => void refreshTimesheets());
+
+// boot
 (async () => {
-  try { await requireSession(); }
-  catch { location.href = "login.html?next=profile.html"; return; }
-  await loadProfile();
+  try {
+    await requireSession();
+  } catch {
+    location.href = "login.html?next=profile.html";
+    return;
+  }
+
+  const currentYear = new Date().getFullYear();
+  fillYearOptions(currentYear);
+
+  try {
+    await refreshProfile();
+    await refreshTimesheets();
+  } catch (e) {
+    setStatus("Ошибка загрузки", "err");
+    setError(e?.message || "Не удалось загрузить данные кабинета.");
+  }
 })();

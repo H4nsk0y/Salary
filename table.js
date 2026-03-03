@@ -1,7 +1,14 @@
 // /table.js
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
-import { getMyProfile, updateMyOklad, loadTimesheet, saveTimesheet } from "./db.js";
+import {
+  getMyProfile,
+  updateMyOklad,
+  loadTimesheet,
+  saveTimesheet,
+  listMyTimesheetsByYear,
+  deleteMyTimesheet,
+} from "./db.js";
 
 document.body.classList.add("is-loaded");
 
@@ -9,30 +16,31 @@ const prefersReducedMotion =
   window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
 
 const LEAVE_HOURS_PER_DAY = 8;
+const OVERTIME_LIMIT_YEAR = 120;
 
 // header controls
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
 const saveBtn = document.getElementById("saveBtn");
 const exportBtn = document.getElementById("exportBtn");
+const deleteBtn = document.getElementById("deleteBtn");
 const saveStatus = document.getElementById("saveStatus");
 
 const monthSelect = document.getElementById("monthSelect");
 const yearSelect = document.getElementById("yearSelect");
+
+const overtimeYearEl = document.getElementById("overtimeYear");
+const overtimeRemainingEl = document.getElementById("overtimeRemaining");
 
 function setSaveStatus(text, tone = "neutral") {
   if (!saveStatus) return;
   saveStatus.textContent = text;
 
   saveStatus.classList.remove(
-    "text-slate-300",
-    "bg-white/5",
-    "text-emerald-200",
-    "bg-emerald-500/10",
-    "text-rose-200",
-    "bg-rose-500/10",
-    "text-sky-200",
-    "bg-sky-500/10",
+    "text-slate-300", "bg-white/5",
+    "text-emerald-200", "bg-emerald-500/10",
+    "text-rose-200", "bg-rose-500/10",
+    "text-sky-200", "bg-sky-500/10"
   );
 
   if (tone === "ok") saveStatus.classList.add("text-emerald-200", "bg-emerald-500/10");
@@ -41,9 +49,7 @@ function setSaveStatus(text, tone = "neutral") {
   else saveStatus.classList.add("text-slate-300", "bg-white/5");
 }
 
-function easeOutCubic(t) {
-  return 1 - Math.pow(1 - t, 3);
-}
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 function bump(el) {
   if (prefersReducedMotion || !el) return;
   el.classList.remove("pop");
@@ -85,7 +91,7 @@ function formatRub(value, digits = 0) {
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",
     currency: "RUB",
-    maximumFractionDigits: digits,
+    maximumFractionDigits: digits
   }).format(n);
 }
 
@@ -113,11 +119,7 @@ function isWeekendByIndex(y, m, dayIndex0) {
 function normalizeLeaveToken(raw) {
   const s = String(raw ?? "").trim().toUpperCase();
   if (!s) return null;
-  const mapped = s
-    .replaceAll("O", "О")
-    .replaceAll("T", "Т")
-    .replaceAll("B", "Б")
-    .replaceAll("L", "Л");
+  const mapped = s.replaceAll("O", "О").replaceAll("T", "Т").replaceAll("B", "Б").replaceAll("L", "Л");
   if (mapped === "ОТ") return "vacation";
   if (mapped === "Б" || mapped === "БЛ") return "sick";
   return null;
@@ -131,20 +133,7 @@ function parseHoursOrLeave(raw) {
   return { kind: "hours", hours: n };
 }
 
-const monthNames = [
-  "Январь",
-  "Февраль",
-  "Март",
-  "Апрель",
-  "Май",
-  "Июнь",
-  "Июль",
-  "Август",
-  "Сентябрь",
-  "Октябрь",
-  "Ноябрь",
-  "Декабрь",
-];
+const monthNames = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const monthYearDisplay = document.getElementById("monthYearDisplay");
 
 // DOM (money)
@@ -180,7 +169,7 @@ const headerRow = document.getElementById("headerRow");
 const dayRow = document.getElementById("dayRow");
 const nightRow = document.getElementById("nightRow");
 
-// State (dynamic per month)
+// State per month
 let year = new Date().getFullYear();
 let month = new Date().getMonth();
 let daysInMonth = 30;
@@ -194,7 +183,7 @@ let headerCells = [];
 let dayInputs = [];
 let nightInputs = [];
 
-// auth/profile cache
+// profile cache
 let profileRole = "user";
 let profileOklad = null;
 
@@ -210,31 +199,33 @@ function markDirty() {
 }
 
 /**
- * ✅ FIX:
- * Норма месяца НЕ уменьшается от того, что ты отметил день праздничным.
- * Праздник влияет только на оплату (если в этот день есть часы).
+ * ✅ Правило:
+ * - Норма месяца уменьшается ТОЛЬКО от официальных праздников.
+ * - ОТ/Б уменьшают личную норму, но ставка считается по норме месяца.
  *
- * Поэтому:
- * calendarNormHours = обычные будни * 8
+ * hourlyNorm = (будни - праздничные_будни) * 8
  */
 function calendarNormHours() {
   let weekdays = 0;
+  let holidayWeekdays = 0;
+
   for (let i = 0; i < daysInMonth; i++) {
     if (isWeekendByIndex(year, month, i)) continue;
     weekdays++;
+    if (isHoliday[i]) holidayWeekdays++;
   }
-  return weekdays * 8;
+
+  return (weekdays - holidayWeekdays) * 8;
 }
 
-function personalNormHours(calNorm) {
+function personalNormHours(hourlyNorm) {
   const vacDays = leaveType.filter((t) => t === "vacation").length;
   const sickDays = leaveType.filter((t) => t === "sick").length;
-  return { vacDays, sickDays, norm: calNorm - (vacDays + sickDays) * LEAVE_HOURS_PER_DAY };
+  const personalNorm = hourlyNorm - (vacDays + sickDays) * LEAVE_HOURS_PER_DAY;
+  return { vacDays, sickDays, personalNorm };
 }
 
-function sum(arr) {
-  return arr.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-}
+function sum(arr) { return arr.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0); }
 function sumRange(arr, startIdx, endIdxInclusive) {
   let s = 0;
   for (let i = startIdx; i <= endIdxInclusive; i++) s += Number.isFinite(arr[i]) ? arr[i] : 0;
@@ -271,7 +262,12 @@ function currentPayload() {
 }
 
 function updateHolidayColumnClasses(index) {
-  const col = [headerCells[index], dayInputs[index]?.closest("td"), nightInputs[index]?.closest("td")].filter(Boolean);
+  const col = [
+    headerCells[index],
+    dayInputs[index]?.closest("td"),
+    nightInputs[index]?.closest("td"),
+  ].filter(Boolean);
+
   for (const el of col) {
     if (isHoliday[index]) el.classList.add("holiday-col");
     else el.classList.remove("holiday-col");
@@ -287,6 +283,7 @@ function toggleHoliday(index) {
   updateHolidayColumnClasses(index);
   recalcAll();
   scheduleSave();
+  void recalcYearOvertime(); // обновить годовые лимиты
 }
 
 async function doSaveTimesheet() {
@@ -299,7 +296,7 @@ async function doSaveTimesheet() {
     dirty = false;
     setSaveStatus(
       `Сохранено: ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`,
-      "ok",
+      "ok"
     );
   } catch (e) {
     setSaveStatus("Ошибка сохранения", "err");
@@ -353,10 +350,11 @@ function clearMoneyUI() {
 
 function recalcAll() {
   monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
-  const calNorm = calendarNormHours();
-  const { vacDays, sickDays, norm: personalNorm } = personalNormHours(calNorm);
 
-  normHint.textContent = `Норма месяца: ${calNorm} ч. Личная (с ОТ/Б): ${personalNorm} ч.`;
+  const hourlyNorm = calendarNormHours();                // ✅ ставка от нормы месяца
+  const { vacDays, sickDays, personalNorm } = personalNormHours(hourlyNorm); // ✅ переработка от личной нормы
+
+  normHint.textContent = `Норма месяца (с праздниками): ${hourlyNorm} ч. Личная (с ОТ/Б): ${personalNorm} ч.`;
 
   const totalDay = sum(dayHours);
   const totalNight = sum(nightHours);
@@ -376,27 +374,29 @@ function recalcAll() {
     return;
   }
 
-  if (!(calNorm > 0)) {
-    setError("Норма месяца стала ≤ 0. Проверьте календарь.");
+  if (!(hourlyNorm > 0)) {
+    setError("Норма месяца стала ≤ 0. Проверьте праздники.");
     clearMoneyUI();
     return;
   }
 
   setError(null);
 
-  const baseHourRateGross = oklad / calNorm;
-  const bonusPerHourGross = (oklad * BONUS_RATE) / calNorm;
+  // ✅ ставка всегда от нормы месяца (hourlyNorm), НЕ от личной нормы
+  const baseHourRateGross = oklad / hourlyNorm;
+  const bonusPerHourGross = (oklad * BONUS_RATE) / hourlyNorm;
 
   const baseFactGross = baseHourRateGross * total;
   const bonusGross = bonusPerHourGross * total;
   const nightExtraGross = baseHourRateGross * NIGHT_EXTRA_RATE * totalNight;
 
+  // ✅ x2 только за фактические праздничные часы => доплата 1x
   const { hDay, hNight } = holidayWorkedTotals();
   const holidayTotal = hDay + hNight;
 
-  // ✅ доплата 1x только за фактически отработанные праздничные часы
   const holidayExtraGross =
-    (baseHourRateGross + bonusPerHourGross) * holidayTotal + baseHourRateGross * NIGHT_EXTRA_RATE * hNight;
+    (baseHourRateGross + bonusPerHourGross) * holidayTotal +
+    baseHourRateGross * NIGHT_EXTRA_RATE * hNight;
 
   const gross = baseFactGross + bonusGross + nightExtraGross + holidayExtraGross;
   const tax = gross * TAX_RATE;
@@ -405,7 +405,7 @@ function recalcAll() {
   const hourRateNet = (baseHourRateGross + bonusPerHourGross) * (1 - TAX_RATE);
   const nightHourNet = hourRateNet + baseHourRateGross * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
 
-  // аванс 1–15: без премии, + ночные, + праздничные (если реально были часы)
+  // аванс 1–15: без премии, + ночные, + праздничные (только если реально есть часы)
   const endFH = Math.min(14, daysInMonth - 1);
   const fhDay = sumRange(dayHours, 0, endFH);
   const fhNight = sumRange(nightHours, 0, endFH);
@@ -425,7 +425,8 @@ function recalcAll() {
   animateNumber(netPayEl, net, (v) => formatRub(v, 0), 520);
   bump(netPayEl);
 
-  moneySummaryEl.textContent = `Брутто: ${formatRub(gross, 0)} • Налог: ${formatRub(tax, 0)} • Праздничные x2 (доплата): ${formatRub(holidayExtraGross, 0)}`;
+  moneySummaryEl.textContent =
+    `Брутто: ${formatRub(gross, 0)} • Налог: ${formatRub(tax, 0)} • Праздничные x2 (доплата): ${formatRub(holidayExtraGross, 0)}`;
 
   animateNumber(hourRateNetEl, hourRateNet, (v) => formatRub(v, 0), 360);
   animateNumber(nightHourNetEl, nightHourNet, (v) => formatRub(v, 0), 360);
@@ -483,7 +484,7 @@ function buildTableForMonth() {
     if (weekend) th.classList.add("weekend-col");
 
     th.style.cursor = "pointer";
-    th.title = "Тап/клик — праздник (x2 к оплате часов в этот день)";
+    th.title = "Тап/клик — праздник (норма месяца -8ч, x2 только за часы этого дня)";
     th.addEventListener("click", (e) => toggleHoliday(Number(e.currentTarget.dataset.dayIndex)));
 
     headerRow.appendChild(th);
@@ -496,7 +497,6 @@ function buildTableForMonth() {
   for (let i = 0; i < daysInMonth; i++) {
     const weekend = isWeekendByIndex(year, month, i);
 
-    // Day cell
     const dayTd = document.createElement("td");
     dayTd.classList.add("day-cell");
     if (weekend) dayTd.classList.add("weekend-col");
@@ -538,11 +538,13 @@ function buildTableForMonth() {
 
         recalcAll();
         scheduleSave();
+        void recalcYearOvertime();
         return;
       }
 
       if (parsed.kind === "hours") {
         setError(null);
+
         if (leaveType[i]) {
           leaveType[i] = null;
           if (nightInputs[i]) {
@@ -550,9 +552,11 @@ function buildTableForMonth() {
             nightInputs[i].classList.remove("opacity-50", "cursor-not-allowed");
           }
         }
+
         dayHours[i] = Math.max(0, parsed.hours);
         recalcAll();
         scheduleSave();
+        void recalcYearOvertime();
         return;
       }
 
@@ -568,6 +572,7 @@ function buildTableForMonth() {
         dayHours[i] = 0;
         recalcAll();
         scheduleSave();
+        void recalcYearOvertime();
         return;
       }
 
@@ -578,7 +583,6 @@ function buildTableForMonth() {
     dayRow.appendChild(dayTd);
     dayInputs.push(dayInput);
 
-    // Night cell
     const nightTd = document.createElement("td");
     nightTd.classList.add("night-cell");
     if (weekend) nightTd.classList.add("weekend-col");
@@ -599,6 +603,7 @@ function buildTableForMonth() {
         nightHours[i] = 0;
         recalcAll();
         scheduleSave();
+        void recalcYearOvertime();
         return;
       }
 
@@ -612,6 +617,7 @@ function buildTableForMonth() {
       nightHours[i] = Math.max(0, n);
       recalcAll();
       scheduleSave();
+      void recalcYearOvertime();
     });
 
     nightTd.appendChild(nightInput);
@@ -693,11 +699,64 @@ async function loadCurrentMonthFromDb() {
     } else {
       lastSavedJSON = JSON.stringify(currentPayload());
       dirty = false;
-      setSaveStatus("Новый табель (нет сохранения)", "neutral");
+      setSaveStatus("Новый табель", "neutral");
     }
   } catch (e) {
     setSaveStatus("Ошибка загрузки", "err");
     setError(e?.message || "Не удалось загрузить табель.");
+  }
+}
+
+/** ✅ Переработка за год: суммируем max(0, hours - personalNorm) по всем месяцам года */
+function computeMonthOvertimeHours(payload) {
+  if (!payload) return 0;
+
+  const y = payload.year;
+  const m = payload.month;
+
+  const days = new Date(y, m + 1, 0).getDate();
+  const isH = Array.isArray(payload.isHoliday) ? payload.isHoliday : new Array(days).fill(false);
+  const dH = Array.isArray(payload.dayHours) ? payload.dayHours : new Array(days).fill(0);
+  const nH = Array.isArray(payload.nightHours) ? payload.nightHours : new Array(days).fill(0);
+  const lT = Array.isArray(payload.leaveType) ? payload.leaveType : new Array(days).fill(null);
+
+  let weekdays = 0;
+  let holidayWeekdays = 0;
+  for (let i = 0; i < days; i++) {
+    if (isWeekendByIndex(y, m, i)) continue;
+    weekdays++;
+    if (isH[i]) holidayWeekdays++;
+  }
+  const hourlyNorm = (weekdays - holidayWeekdays) * 8;
+
+  const vacDays = lT.filter((t) => t === "vacation").length;
+  const sickDays = lT.filter((t) => t === "sick").length;
+  const personalNorm = hourlyNorm - (vacDays + sickDays) * LEAVE_HOURS_PER_DAY;
+
+  const total = sum(dH) + sum(nH);
+  const overtime = total - personalNorm;
+
+  return overtime > 0 ? overtime : 0;
+}
+
+async function recalcYearOvertime() {
+  if (!overtimeYearEl || !overtimeRemainingEl) return;
+
+  try {
+    const rows = await listMyTimesheetsByYear(year);
+
+    let used = 0;
+    for (const r of rows) {
+      if (r?.payload) used += computeMonthOvertimeHours(r.payload);
+    }
+
+    const remaining = Math.max(0, OVERTIME_LIMIT_YEAR - used);
+
+    overtimeYearEl.textContent = `${used.toFixed(1)} ч`;
+    overtimeRemainingEl.textContent = `${remaining.toFixed(1)} ч`;
+  } catch {
+    overtimeYearEl.textContent = "—";
+    overtimeRemainingEl.textContent = "—";
   }
 }
 
@@ -718,14 +777,14 @@ function exportToXlsx() {
     else if (dt === "sick") dayRowVals.push("Б");
     else dayRowVals.push(dayHours[i] ?? 0);
 
-    nightRowVals.push(dt ? "" : nightHours[i] ?? 0);
+    nightRowVals.push(dt ? "" : (nightHours[i] ?? 0));
   }
 
   const meta = [
     ["Год", year],
     ["Месяц", monthNames[month]],
     ["Оклад", String(okladInput.value || "")],
-    ["Примечание", "Праздник: x2 к оплате часов только если в этот день есть смена."],
+    ["Примечание", "Праздник: норма месяца -8ч (будний), x2 только за фактические часы этого дня."],
     [],
   ];
 
@@ -743,11 +802,7 @@ function exportToXlsx() {
 
 // events
 logoutBtn?.addEventListener("click", async () => {
-  try {
-    await signOut();
-  } finally {
-    location.href = "login.html?next=table.html";
-  }
+  try { await signOut(); } finally { location.href = "login.html?next=table.html"; }
 });
 
 saveBtn?.addEventListener("click", async () => {
@@ -755,6 +810,26 @@ saveBtn?.addEventListener("click", async () => {
 });
 
 exportBtn?.addEventListener("click", () => exportToXlsx());
+
+deleteBtn?.addEventListener("click", async () => {
+  const ok = confirm(`Удалить табель за ${monthNames[month]} ${year}? Это действие нельзя отменить.`);
+  if (!ok) return;
+
+  setSaveStatus("Удаляю…", "busy");
+  try {
+    await deleteMyTimesheet(year, month);
+    buildTableForMonth();
+    lastSavedJSON = JSON.stringify(currentPayload());
+    dirty = false;
+    setSaveStatus("Удалено", "ok");
+    setError(null);
+    recalcAll();
+    await recalcYearOvertime();
+  } catch (e) {
+    setSaveStatus("Ошибка удаления", "err");
+    setError(e?.message || "Не удалось удалить табель.");
+  }
+});
 
 okladInput.addEventListener("input", () => {
   recalcAll();
@@ -767,6 +842,7 @@ monthSelect.addEventListener("change", async () => {
   buildTableForMonth();
   await loadCurrentMonthFromDb();
   recalcAll();
+  await recalcYearOvertime();
 });
 
 yearSelect.addEventListener("change", async () => {
@@ -775,6 +851,7 @@ yearSelect.addEventListener("change", async () => {
   buildTableForMonth();
   await loadCurrentMonthFromDb();
   recalcAll();
+  await recalcYearOvertime();
 });
 
 // boot
@@ -808,4 +885,5 @@ yearSelect.addEventListener("change", async () => {
 
   await loadCurrentMonthFromDb();
   recalcAll();
+  await recalcYearOvertime();
 })();

@@ -4,7 +4,9 @@ import { supabase } from "./supabaseClient.js";
 function isNotFoundError(error) {
   return (
     error &&
-    (error.code === "PGRST116" || error.status === 406 || /0 rows/i.test(error.message ?? ""))
+    (error.code === "PGRST116" ||
+      error.status === 406 ||
+      /0 rows/i.test(error.message ?? ""))
   );
 }
 
@@ -15,6 +17,10 @@ async function requireUserId() {
   if (!uid) throw new Error("NO_SESSION");
   return uid;
 }
+
+/** =========================
+ *  PROFILE (me)
+ *  ========================= */
 
 export async function getMyProfile() {
   const uid = await requireUserId();
@@ -33,7 +39,11 @@ export async function getMyProfile() {
 
 export async function updateMyOklad(oklad) {
   const uid = await requireUserId();
-  const { error } = await supabase.from("profiles").update({ oklad }).eq("user_id", uid);
+  const { error } = await supabase
+    .from("profiles")
+    .update({ oklad })
+    .eq("user_id", uid);
+
   if (error) throw error;
 }
 
@@ -45,9 +55,24 @@ export async function updateMyProfile({ displayName, oklad, avatarUrl }) {
   if (oklad !== undefined) patch.oklad = oklad;
   if (avatarUrl !== undefined) patch.avatar_url = avatarUrl;
 
-  const { error } = await supabase.from("profiles").update(patch).eq("user_id", uid);
+  const { error } = await supabase
+    .from("profiles")
+    .update(patch)
+    .eq("user_id", uid);
+
   if (error) throw error;
 }
+
+/** Удобный алиас (если где-то в коде хочется просто "fields") */
+export async function updateMyProfileFields(fields) {
+  const uid = await requireUserId();
+  const { error } = await supabase.from("profiles").update(fields).eq("user_id", uid);
+  if (error) throw error;
+}
+
+/** =========================
+ *  TIMESHEETS (me)
+ *  ========================= */
 
 export async function loadTimesheet(year, month) {
   const uid = await requireUserId();
@@ -73,11 +98,18 @@ export async function saveTimesheet(year, month, payload) {
 
   const { error } = await supabase
     .from("timesheets")
-    .upsert({ user_id: uid, year, month, payload }, { onConflict: "user_id,year,month" });
+    .upsert(
+      { user_id: uid, year, month, payload },
+      { onConflict: "user_id,year,month" }
+    );
 
   if (error) throw error;
 }
 
+/**
+ * Список табелей пользователя (метаданные)
+ * — полезно для ЛК "последние месяцы"
+ */
 export async function listMyTimesheets(limit = 24) {
   const uid = await requireUserId();
 
@@ -92,6 +124,70 @@ export async function listMyTimesheets(limit = 24) {
   if (error) throw error;
   return data ?? [];
 }
+
+/**
+ * ✅ Для подсчёта переработки за год / истории:
+ * Можно вернуть только мету или сразу payload.
+ *
+ * @param {number} year
+ * @param {{withPayload?: boolean}} options
+ */
+export async function listMyTimesheetsByYear(year, options = {}) {
+  const uid = await requireUserId();
+  const withPayload = Boolean(options.withPayload);
+
+  const select = withPayload
+    ? "year, month, payload, updated_at"
+    : "year, month, updated_at";
+
+  const { data, error } = await supabase
+    .from("timesheets")
+    .select(select)
+    .eq("user_id", uid)
+    .eq("year", year)
+    .order("month", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** ✅ Удалить табель за конкретный месяц */
+export async function deleteMyTimesheet(year, month) {
+  const uid = await requireUserId();
+
+  const { error } = await supabase
+    .from("timesheets")
+    .delete()
+    .eq("user_id", uid)
+    .eq("year", year)
+    .eq("month", month);
+
+  if (error) throw error;
+}
+
+/** (опционально) проверить, есть ли табель без payload */
+export async function getTimesheetMeta(year, month) {
+  const uid = await requireUserId();
+
+  const { data, error } = await supabase
+    .from("timesheets")
+    .select("year, month, updated_at")
+    .eq("user_id", uid)
+    .eq("year", year)
+    .eq("month", month)
+    .maybeSingle();
+
+  if (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
+
+  return data ?? null;
+}
+
+/** =========================
+ *  ADMIN (requires RLS policies)
+ *  ========================= */
 
 export async function adminListProfiles(limit = 100) {
   const { data, error } = await supabase
