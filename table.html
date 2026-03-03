@@ -1,3 +1,4 @@
+<!-- /table.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -59,28 +60,104 @@
     .shake { animation: shake 320ms ease-in-out; }
     @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-4px); } 100% { transform: translateX(0); } }
 
-    .timesheet-table { border-collapse: collapse; width: 100%; min-width: 860px; background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(8px); border-radius: 1rem; overflow: hidden; box-shadow: 0 20px 60px -40px rgba(99,102,241,0.6); }
-    .timesheet-table th { background: rgba(15, 23, 42, 0.8); padding: 12px 4px; font-weight: 600; font-size: 0.9rem; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1); user-select: none; }
-    .timesheet-table td { padding: 8px 2px; text-align: center; border-right: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); }
+    /* Table */
+    .scrollable { overflow-x: auto; border-radius: 1rem; margin-bottom: 1.25rem; -webkit-overflow-scrolling: touch; }
+
+    .timesheet-table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 820px;
+      background: rgba(30, 41, 59, 0.5);
+      backdrop-filter: blur(8px);
+      border-radius: 1rem;
+      overflow: hidden;
+      box-shadow: 0 20px 60px -40px rgba(99,102,241,0.6);
+    }
+
+    .timesheet-table th {
+      background: rgba(15, 23, 42, 0.82);
+      padding: 10px 4px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      user-select: none;
+    }
+
+    .timesheet-table td {
+      padding: 8px 4px;
+      text-align: center;
+      border-right: 1px solid rgba(255,255,255,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
     .timesheet-table td:last-child { border-right: none; }
 
-    .weekend-col { background-color: rgba(239, 68, 68, 0.15) !important; }
-    .holiday-col { background-color: rgba(245, 158, 11, 0.2) !important; }
-    .timesheet-table th.weekend-col { background-color: rgba(239, 68, 68, 0.2) !important; }
-    .timesheet-table th.holiday-col { background-color: rgba(245, 158, 11, 0.25) !important; }
+    /* Sticky first column */
+    .sticky-col, .row-label {
+      position: sticky;
+      left: 0;
+      z-index: 5;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(10px);
+    }
+    .row-label {
+      z-index: 6;
+      font-weight: 700;
+      color: #e2e8f0;
+      padding: 10px 10px !important;
+      text-align: left;
+      min-width: 88px;
+    }
 
-    .input-hour { width: 62px; padding: 6px 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; text-align: center; font-size: 0.9rem; text-transform: uppercase; }
-    .scrollable { overflow-x: auto; border-radius: 1rem; margin-bottom: 1.5rem; }
+    /* Weekend / Holiday */
+    .weekend-col { background-color: rgba(239, 68, 68, 0.12) !important; }
+    .holiday-col { background-color: rgba(245, 158, 11, 0.18) !important; }
+    .timesheet-table th.weekend-col { background-color: rgba(239, 68, 68, 0.18) !important; }
+    .timesheet-table th.holiday-col { background-color: rgba(245, 158, 11, 0.22) !important; }
 
-    .summary-card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(8px); border-radius: 1rem; padding: 1.25rem; border: 1px solid rgba(255,255,255,0.05); }
+    /* Inputs */
+    .input-hour {
+      width: 64px;
+      padding: 8px 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      text-align: center;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      background: rgba(2,6,23,0.35);
+      color: rgba(241,245,249,0.95);
+    }
+
+    /* Day vs Night visuals */
+    td.day-cell .input-hour { background: rgba(2,6,23,0.28); }
+    /* Night: только цвет текста, без красного фона (чтобы не конфликтовало с weekend-col) */
+    td.night-cell .input-hour {
+      background: rgba(2,6,23,0.28);      /* как у day */
+      color: rgba(254,202,202,0.95);      /* красный текст */
+      border-color: rgba(255,255,255,0.1);
+    }
+    td.night-cell .input-hour:focus {
+      /* оставляем “красный” фокус как подсветку, без фона */
+      box-shadow:
+        0 0 0 1px rgba(248,113,113,0.35),
+        0 10px 40px -30px rgba(248,113,113,0.4);
+    }
+    /* Mobile tweaks */
+    @media (max-width: 640px) {
+      .timesheet-table { min-width: 760px; }
+      .row-label { min-width: 78px; padding: 10px 8px !important; }
+      .input-hour { width: 60px; padding: 10px 8px; font-size: 1rem; }
+    }
+
+    .summary-card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(8px); border-radius: 1rem; padding: 1.1rem; border: 1px solid rgba(255,255,255,0.05); }
   </style>
 </head>
 
 <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-white">
   <script>document.body.classList.add("is-loaded");</script>
 
-  <div class="relative z-10 mx-auto max-w-7xl px-4 py-10">
-    <header class="mb-6 reveal">
+  <div class="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:py-10">
+    <header class="mb-5 reveal">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-3">
         <div class="flex items-center gap-3 flex-1">
           <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/30 to-sky-400/10 ring-1 ring-white/10 shadow-[0_20px_60px_-40px_rgba(99,102,241,0.6)] text-lg font-semibold text-slate-100/90" aria-hidden="true">A</span>
@@ -124,20 +201,21 @@
 
       <div class="mt-3 flex items-center gap-2 text-xs">
         <span id="saveStatus" class="inline-flex items-center rounded-full bg-white/5 px-3 py-1 ring-1 ring-white/10 text-slate-300">—</span>
+        <span class="text-slate-400/80">Ночь выделена красным</span>
       </div>
     </header>
 
-    <div class="mb-6 flex gap-4 border-b border-white/10 pb-4 reveal">
+    <div class="mb-5 flex gap-4 border-b border-white/10 pb-4 reveal">
       <a href="index.html" class="text-slate-300 hover:text-indigo-200">Калькулятор</a>
       <a href="table.html" class="text-indigo-300 hover:text-indigo-200 font-medium">Табель</a>
     </div>
 
-    <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-200 ring-1 ring-rose-500/20"></div>
+    <div id="errorBox" class="hidden mb-5 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-200 ring-1 ring-rose-500/20"></div>
 
-    <div class="grid gap-6 lg:grid-cols-3 reveal mb-6">
+    <div class="grid gap-4 lg:grid-cols-3 reveal mb-5">
       <section class="summary-card glass-card hover-lift">
         <h2 class="text-lg font-semibold">Оклад</h2>
-        <div class="mt-4">
+        <div class="mt-3">
           <label class="mb-1 block text-sm font-medium text-slate-200" for="okladInput">Оклад (₽)</label>
           <input id="okladInput" class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:outline-none focus:ring-2 focus:ring-indigo-400/80" inputmode="decimal" placeholder="Напр. 50000" />
           <p class="mt-1 text-xs text-slate-400/90" id="normHint"></p>
@@ -154,7 +232,7 @@
         <div class="mt-3 grid gap-2 text-sm text-slate-300/90 leading-6">
           <div>• Смена 11ч: дневная — <b>11</b> в «День», ночная — <b>4</b> в «День» и <b>7</b> в «Ночь».</div>
           <div>• Ночные обычно: <b>2/2</b> или <b>2/5</b>.</div>
-          <div>• Праздник: тап по числу ⇒ <b>−8ч от нормы месяца</b> и <b>x2 оплата часов</b>.</div>
+          <div>• Праздник: тап по числу ⇒ <b>x2 оплата часов</b> (только если в этот день есть смена).</div>
         </div>
       </section>
     </div>
@@ -169,7 +247,7 @@
       </table>
     </div>
 
-    <div class="summary-card glass-card hover-lift reveal grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="summary-card glass-card hover-lift reveal grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
       <div><div class="text-sm text-slate-400">Отработано всего</div><div class="text-2xl font-semibold" id="totalHours">0</div></div>
       <div><div class="text-sm text-slate-400">Дневные / Ночные</div><div class="text-2xl font-semibold" id="dayNightHours">0 / 0</div></div>
       <div><div class="text-sm text-slate-400">Норма (личная)</div><div class="text-2xl font-semibold" id="normEffective">0</div></div>
@@ -187,12 +265,12 @@
 
       <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10"><div class="text-xs text-slate-400">Часовая (нетто с премией)</div><div class="mt-1 text-lg font-semibold" id="hourRateNet">—</div></div>
-        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10"><div class="text-xs text-slate-400">Ночной час (нетто)</div><div class="mt-1 text-lg font-semibold" id="nightHourNet">—</div></div>
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10"><div class="text-xs text-slate-400">Ночной час (нетто)</div><div class="mt-1 text-lg font-semibold text-rose-200" id="nightHourNet">—</div></div>
         <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10"><div class="text-xs text-slate-400">Праздничные x2 (брутто, доплата)</div><div class="mt-1 text-lg font-semibold" id="holidayExtraGross">—</div></div>
 
         <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10"><div class="text-xs text-slate-400">Оклад за факт (брутто)</div><div class="mt-1 text-lg font-semibold" id="baseFactGross">—</div></div>
         <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10"><div class="text-xs text-slate-400">Премия 35% (брутто)</div><div class="mt-1 text-lg font-semibold" id="bonusGross">—</div></div>
-        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10"><div class="text-xs text-slate-400">Ночные (брутто)</div><div class="mt-1 text-lg font-semibold" id="nightExtraGross">—</div></div>
+        <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10"><div class="text-xs text-slate-400">Ночные (брутто)</div><div class="mt-1 text-lg font-semibold text-rose-200" id="nightExtraGross">—</div></div>
 
         <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10"><div class="text-xs text-slate-400">Брутто</div><div class="mt-1 text-lg font-semibold" id="grossPay">—</div></div>
         <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10"><div class="text-xs text-slate-400">Налог 13%</div><div class="mt-1 text-lg font-semibold" id="taxPay">—</div></div>
