@@ -89,12 +89,15 @@ function sum(arr) {
 }
 
 /**
- * ✅ Переработка за месяц:
+ * ✅ Изменение #1:
+ * Теперь считаем "баланс" месяца со знаком:
+ * overtimeSigned = workedTotal - personalNorm
+ *
  * - Норма месяца уменьшается только за праздники (будни, отмеченные holiday)
  * - Личная норма = норма месяца - (ОТ+Б)*8
- * - Переработка = max(0, отработано - личная норма)
+ * - Возвращаем signed (может быть + или -)
  */
-function computeMonthOvertime(payload) {
+function computeMonthOvertimeSigned(payload) {
   if (!payload || typeof payload !== "object") return 0;
 
   const y = safeNum(payload.year);
@@ -121,12 +124,19 @@ function computeMonthOvertime(payload) {
   const personalNorm = normMonth - (vacDays + sickDays) * LEAVE_HOURS_PER_DAY;
 
   const workedTotal = sum(dayHours) + sum(nightHours);
-  const overtime = workedTotal - personalNorm;
-
-  return overtime > 0 ? overtime : 0;
+  return workedTotal - personalNorm; // signed
 }
 
-function formatHours(h) {
+function formatHoursSigned(h) {
+  const n = Number(h);
+  if (!Number.isFinite(n)) return "—";
+  const abs = Math.abs(n).toFixed(1);
+  if (n > 0.0001) return `+${abs} ч`;
+  if (n < -0.0001) return `−${abs} ч`;
+  return `0.0 ч`;
+}
+
+function formatHoursPlain(h) {
   const n = Number(h);
   if (!Number.isFinite(n)) return "—";
   return `${n.toFixed(1)} ч`;
@@ -147,10 +157,14 @@ function fillYearOptions(currentYear) {
   yearSelect.value = String(currentYear);
 }
 
-function applyOvertimeProgress(usedHours) {
+/**
+ * ✅ Изменение #2:
+ * Прогресс лимита считаем только по "использованным" часам, т.е. по положительной части баланса.
+ */
+function applyOvertimeProgress(usedHoursForLimit) {
   if (!overtimeBarFill || !overtimeBarText) return;
 
-  const used = Math.max(0, Number(usedHours) || 0);
+  const used = Math.max(0, Number(usedHoursForLimit) || 0);
   const pct = Math.min(100, (used / OVERTIME_LIMIT_YEAR) * 100);
 
   overtimeBarText.textContent = `${used.toFixed(1)} / ${OVERTIME_LIMIT_YEAR} ч`;
@@ -164,7 +178,6 @@ function applyOvertimeProgress(usedHours) {
     "bg-rose-400/85"
   );
 
-  // <= 60% — ок, 60-85% — внимание, 85-100% — почти лимит, >100 (внутри 100%) — красный
   if (pct < 60) overtimeBarFill.classList.add("bg-emerald-400/80");
   else if (pct < 85) overtimeBarFill.classList.add("bg-sky-400/80");
   else if (pct < 100) overtimeBarFill.classList.add("bg-amber-400/85");
@@ -176,7 +189,10 @@ function createTimesheetCard(row) {
   const m = row.month;
   const updatedAt = row.updated_at ? new Date(row.updated_at) : null;
 
-  const overtime = row.payload ? computeMonthOvertime(row.payload) : 0;
+  const overtimeSigned = row.payload ? computeMonthOvertimeSigned(row.payload) : 0;
+
+  const isOver = overtimeSigned > 0.0001;
+  const isUnder = overtimeSigned < -0.0001;
 
   const card = document.createElement("div");
   card.className = "glass-card hover-lift rounded-3xl bg-slate-950/25 p-4 ring-1 ring-white/10";
@@ -197,11 +213,16 @@ function createTimesheetCard(row) {
     ? `Обновлён: ${updatedAt.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`
     : "Обновлён: —";
 
+  const dotClass = isOver ? "bg-amber-400/80" : isUnder ? "bg-rose-400/80" : "bg-emerald-400/80";
+  const labelText = isOver ? "Переработка:" : isUnder ? "Недоработка:" : "По норме:";
+  const valueClass = isUnder ? "text-rose-200" : "text-slate-100";
+  const valueText = isOver ? formatHoursSigned(overtimeSigned) : isUnder ? formatHoursSigned(overtimeSigned) : "0.0 ч";
+
   const ov = document.createElement("div");
   ov.className = "mt-2 inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs ring-1 ring-white/10";
-  ov.innerHTML = `<span class="h-1.5 w-1.5 rounded-full ${overtime > 0 ? "bg-amber-400/80" : "bg-emerald-400/80"}"></span>
-                  <span class="text-slate-200">Переработка:</span>
-                  <span class="font-semibold text-slate-100">${formatHours(overtime)}</span>`;
+  ov.innerHTML = `<span class="h-1.5 w-1.5 rounded-full ${dotClass}"></span>
+                  <span class="text-slate-200">${labelText}</span>
+                  <span class="font-semibold ${valueClass}">${valueText}</span>`;
 
   left.appendChild(title);
   left.appendChild(meta);
@@ -289,17 +310,20 @@ async function refreshTimesheets() {
   timesheetsList.innerHTML = "";
   monthsCountEl.textContent = String(rows.length);
 
-  let overtimeYear = 0;
+  // ✅ годовой баланс со знаком
+  let yearBalanceSigned = 0;
   for (const r of rows) {
-    overtimeYear += r?.payload ? computeMonthOvertime(r.payload) : 0;
+    yearBalanceSigned += r?.payload ? computeMonthOvertimeSigned(r.payload) : 0;
   }
 
-  const remaining = Math.max(0, OVERTIME_LIMIT_YEAR - overtimeYear);
+  // ✅ лимит и прогресс считаем только по положительной части баланса
+  const usedForLimit = Math.max(0, yearBalanceSigned);
+  const remaining = Math.max(0, OVERTIME_LIMIT_YEAR - usedForLimit);
 
-  overtimeYearEl.textContent = formatHours(overtimeYear);
-  overtimeRemainingEl.textContent = formatHours(remaining);
+  overtimeYearEl.textContent = formatHoursSigned(yearBalanceSigned);
+  overtimeRemainingEl.textContent = formatHoursPlain(remaining);
 
-  applyOvertimeProgress(overtimeYear);
+  applyOvertimeProgress(usedForLimit);
 
   if (!rows.length) {
     const empty = document.createElement("div");

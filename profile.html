@@ -129,6 +129,44 @@
         75% { transform: translateX(-4px); }
         100% { transform: translateX(0); }
       }
+
+      /* ✅ Dark scrollbar (чтобы не был белым) */
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
+      ::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.55); border-radius: 999px; }
+      ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.55); border-radius: 999px; border: 2px solid rgba(30,41,59,0.55); }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.8); }
+      * { scrollbar-width: thin; scrollbar-color: rgba(99,102,241,0.55) rgba(30,41,59,0.55); }
+
+      /* ✅ Dark select (чтобы выпадашка не была белой) */
+      select.ui-select {
+        appearance: none;
+        -webkit-appearance: none;
+        background-color: rgba(2, 6, 23, 0.35);
+        border: 1px solid rgba(255,255,255,0.10);
+        color: rgba(226,232,240,0.95);
+        border-radius: 1rem;
+        padding: 6px 34px 6px 12px;
+        line-height: 1.2;
+        outline: none;
+      }
+      select.ui-select:focus {
+        box-shadow: 0 0 0 2px rgba(99,102,241,0.45);
+        border-color: rgba(99,102,241,0.45);
+      }
+      select.ui-select option {
+        background-color: #0b1220;
+        color: rgba(226,232,240,0.95);
+      }
+      .select-wrap { position: relative; display: inline-flex; align-items: center; }
+      .select-wrap::after {
+        content: "▾";
+        position: absolute;
+        right: 12px;
+        color: rgba(148,163,184,0.9);
+        pointer-events: none;
+        font-size: 12px;
+        transform: translateY(1px);
+      }
     </style>
   </head>
 
@@ -245,7 +283,9 @@
 
             <div class="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
               <label class="text-xs text-slate-300" for="yearSelect">Год</label>
-              <select id="yearSelect" class="bg-transparent text-sm text-slate-100 outline-none"></select>
+              <span class="select-wrap">
+                <select id="yearSelect" class="ui-select text-sm"></select>
+              </span>
             </div>
           </div>
 
@@ -265,13 +305,13 @@
             </div>
 
             <div class="mt-2 text-xs text-slate-400/80">
-              Рекомендуется держать запас, чтобы не упереться в лимит.
+              Недоработка уменьшает ваш годовой баланс переработок.
             </div>
           </div>
 
           <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Переработано за год</div>
+              <div class="text-xs text-slate-400">Баланс за год (±)</div>
               <div id="overtimeYear" class="mt-1 text-2xl font-semibold tracking-tight">—</div>
             </div>
 
@@ -295,7 +335,7 @@
             <div id="timesheetsList" class="mt-3 grid gap-3 sm:grid-cols-2"></div>
 
             <p class="mt-3 text-xs text-slate-400/80 leading-5">
-              Переработка считается как <b>max(0, отработано − личная норма)</b>.
+              Переработка/недоработка считается как <b>(отработано − личная норма)</b>.
               Личная норма уменьшается от <b>ОТ/Б</b>. Норма месяца уменьшается только от <b>праздников</b>.
               Двойная оплата начисляется только за <b>фактические часы</b> в праздничный день.
             </p>
