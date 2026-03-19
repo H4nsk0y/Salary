@@ -23,6 +23,43 @@ const saveStatus = document.getElementById("saveStatus");
 const monthSelect = document.getElementById("monthSelect");
 const yearSelect = document.getElementById("yearSelect");
 
+const monthNames = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+const monthYearDisplay = document.getElementById("monthYearDisplay");
+
+// DOM (money)
+const okladInput = document.getElementById("okladInput");
+const normHint = document.getElementById("normHint");
+
+const netPayEl = document.getElementById("netPay");
+const moneySummaryEl = document.getElementById("moneySummary");
+
+const hourRateNetEl = document.getElementById("hourRateNet");
+const nightHourNetEl = document.getElementById("nightHourNet");
+const holidayExtraGrossEl = document.getElementById("holidayExtraGross");
+
+const baseFactGrossEl = document.getElementById("baseFactGross");
+const bonusGrossEl = document.getElementById("bonusGross");
+const nightExtraGrossEl = document.getElementById("nightExtraGross");
+
+const grossPayEl = document.getElementById("grossPay");
+const taxPayEl = document.getElementById("taxPay");
+
+const advancePayEl = document.getElementById("advancePay");
+const remainingPayEl = document.getElementById("remainingPay");
+const leaveDaysEl = document.getElementById("leaveDays");
+
+// DOM (summary)
+const totalHoursEl = document.getElementById("totalHours");
+const dayNightHoursEl = document.getElementById("dayNightHours");
+const normMonthEl = document.getElementById("normMonth");        // ✅ NEW
+const normEffectiveEl = document.getElementById("normEffective"); // personal
+const overtimeEl = document.getElementById("overtime");
+
+// Table DOM
+const headerRow = document.getElementById("headerRow");
+const dayRow = document.getElementById("dayRow");
+const nightRow = document.getElementById("nightRow");
+
 function ensureShortDayStyles() {
   if (document.getElementById("shortDayStyles")) return;
   const st = document.createElement("style");
@@ -126,12 +163,67 @@ function isWeekendByIndex(y, m, dayIndex0) {
   return d === 0 || d === 6;
 }
 
+function sanitizeDayCellValue(raw) {
+  let s = String(raw ?? "").toUpperCase();
+  s = s.replaceAll("O", "О").replaceAll("T", "Т").replaceAll("B", "Б");
+  s = s.replace(/\s+/g, "");
+
+  // если есть буквы — оставляем только О/Т/Б
+  const lettersOnly = s.replace(/[^ОТБ]/g, "");
+  if (lettersOnly) {
+  if (lettersOnly.includes("Б")) return "Б";
+  if (lettersOnly.includes("О")) return lettersOnly.includes("Т") ? "ОТ" : "О"; 
+  return "";
+  }
+
+  // иначе число: только цифры и .,
+  let num = s.replace(/[^0-9.,]/g, "");
+  if (!num) return "";
+
+  // если и . и , — заменяем все , на .
+  if (num.includes(".") && num.includes(",")) num = num.replace(/,/g, ".");
+
+  // допускаем только один разделитель
+  const sepIdx = num.search(/[.,]/);
+  if (sepIdx !== -1) {
+    const before = num.slice(0, sepIdx);
+    const sep = num[sepIdx];
+    const after = num.slice(sepIdx + 1).replace(/[.,]/g, "");
+    num = before + sep + after;
+  }
+
+  return num;
+}
+
+function sanitizeNumericValue(raw) {
+  let s = String(raw ?? "").trim();
+  if (!s) return "";
+  s = s.replace(/\s+/g, "");
+  s = s.replace(/[^0-9.,]/g, "");
+  if (!s) return "";
+  if (s.includes(".") && s.includes(",")) s = s.replace(/,/g, ".");
+  const sepIdx = s.search(/[.,]/);
+  if (sepIdx !== -1) {
+    const before = s.slice(0, sepIdx);
+    const sep = s[sepIdx];
+    const after = s.slice(sepIdx + 1).replace(/[.,]/g, "");
+    s = before + sep + after;
+  }
+  return s;
+}
+
 function normalizeLeaveToken(raw) {
-  const s = String(raw ?? "").trim().toUpperCase();
-  if (!s) return null;
-  const mapped = s.replaceAll("O", "О").replaceAll("T", "Т").replaceAll("B", "Б").replaceAll("L", "Л");
-  if (mapped === "ОТ") return "vacation";
-  if (mapped === "Б" || mapped === "БЛ") return "sick";
+  const s0 = String(raw ?? "").trim().toUpperCase();
+  if (!s0) return null;
+
+  const s = s0
+    .replaceAll("O", "О")
+    .replaceAll("T", "Т")
+    .replaceAll("B", "Б")
+    .replaceAll("L", "Л");
+
+  if (s === "О" || s === "ОТ") return "vacation";
+  if (s === "Б" || s === "БЛ") return "sick";
   return null;
 }
 
@@ -159,37 +251,35 @@ function clampDayTotalOrRevert({ index, nextDay, nextNight, onRevert }) {
   const n = sanitizeHourNumber(nextNight);
 
   if (d > MAX_HOURS_PER_DAY || n > MAX_HOURS_PER_DAY || d + n > MAX_HOURS_PER_DAY) {
-    const maxAllowedForThis = Math.max(0, MAX_HOURS_PER_DAY - (Number.isFinite(nextDay) ? sanitizeHourNumber(nextNight) : 0));
     setError(`В сутки нельзя больше ${MAX_HOURS_PER_DAY} ч. Проверьте день ${index + 1}.`);
     onRevert?.();
     return false;
   }
-
   return true;
 }
+
+// Excel-like navigation
+let daysInMonth = 30;
+let dayInputs = [];
+let nightInputs = [];
 
 function isFocusableInput(el) {
   return Boolean(el) && !el.disabled;
 }
-
 function focusAndSelect(el) {
   if (!el) return;
   el.focus();
-  // select() удобен как в Excel: сразу заменяешь значение
   if (typeof el.select === "function") el.select();
 }
-
 function getGridInput(rowType, idx) {
   return rowType === "day" ? dayInputs[idx] : nightInputs[idx];
 }
-
 function focusCell(rowType, idx) {
   const primary = getGridInput(rowType, idx);
   if (isFocusableInput(primary)) {
     focusAndSelect(primary);
     return true;
   }
-  // fallback: если ночь недоступна (ОТ/Б), попробуем день
   const fallback = getGridInput("day", idx);
   if (isFocusableInput(fallback)) {
     focusAndSelect(fallback);
@@ -197,7 +287,6 @@ function focusCell(rowType, idx) {
   }
   return false;
 }
-
 function focusHorizontal(rowType, startIdx, step) {
   let i = startIdx;
   while (i >= 0 && i < daysInMonth) {
@@ -205,7 +294,6 @@ function focusHorizontal(rowType, startIdx, step) {
     i += step;
   }
 }
-
 function attachArrowNavigation(inputEl, rowType, index) {
   inputEl.dataset.row = rowType;
   inputEl.dataset.idx = String(index);
@@ -216,8 +304,6 @@ function attachArrowNavigation(inputEl, rowType, index) {
     const k = e.key;
     if (k !== "ArrowLeft" && k !== "ArrowRight" && k !== "ArrowUp" && k !== "ArrowDown") return;
 
-    // Для ←/→ не ломаем перемещение курсора внутри числа,
-    // если курсор НЕ на границе текста.
     if ((k === "ArrowLeft" || k === "ArrowRight") && typeof inputEl.selectionStart === "number") {
       const start = inputEl.selectionStart ?? 0;
       const end = inputEl.selectionEnd ?? 0;
@@ -237,53 +323,16 @@ function attachArrowNavigation(inputEl, rowType, index) {
 
     if (k === "ArrowLeft") focusHorizontal(row, idx - 1, -1);
     else if (k === "ArrowRight") focusHorizontal(row, idx + 1, +1);
-    else if (k === "ArrowUp" || k === "ArrowDown") {
+    else {
       const targetRow = row === "day" ? "night" : "day";
       focusCell(targetRow, idx);
     }
   });
 }
 
-const monthNames = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
-const monthYearDisplay = document.getElementById("monthYearDisplay");
-
-// DOM (money)
-const okladInput = document.getElementById("okladInput");
-const normHint = document.getElementById("normHint");
-
-const netPayEl = document.getElementById("netPay");
-const moneySummaryEl = document.getElementById("moneySummary");
-
-const hourRateNetEl = document.getElementById("hourRateNet");
-const nightHourNetEl = document.getElementById("nightHourNet");
-const holidayExtraGrossEl = document.getElementById("holidayExtraGross");
-
-const baseFactGrossEl = document.getElementById("baseFactGross");
-const bonusGrossEl = document.getElementById("bonusGross");
-const nightExtraGrossEl = document.getElementById("nightExtraGross");
-
-const grossPayEl = document.getElementById("grossPay");
-const taxPayEl = document.getElementById("taxPay");
-
-const advancePayEl = document.getElementById("advancePay");
-const remainingPayEl = document.getElementById("remainingPay");
-const leaveDaysEl = document.getElementById("leaveDays");
-
-// DOM (summary)
-const totalHoursEl = document.getElementById("totalHours");
-const dayNightHoursEl = document.getElementById("dayNightHours");
-const normEffectiveEl = document.getElementById("normEffective");
-const overtimeEl = document.getElementById("overtime");
-
-// Table DOM
-const headerRow = document.getElementById("headerRow");
-const dayRow = document.getElementById("dayRow");
-const nightRow = document.getElementById("nightRow");
-
-// State per month
+// State
 let year = new Date().getFullYear();
 let month = new Date().getMonth();
-let daysInMonth = 30;
 
 let isHoliday = [];
 let isShortDay = [];
@@ -292,8 +341,6 @@ let nightHours = [];
 let leaveType = [];
 
 let headerCells = [];
-let dayInputs = [];
-let nightInputs = [];
 
 // profile cache
 let profileRole = "user";
@@ -312,7 +359,6 @@ function markDirty() {
 function sum(arr) {
   return arr.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
 }
-
 function sumRange(arr, startIdx, endIdxInclusive) {
   let s = 0;
   for (let i = startIdx; i <= endIdxInclusive; i++) {
@@ -322,7 +368,7 @@ function sumRange(arr, startIdx, endIdxInclusive) {
 }
 
 /**
- * ✅ Норма месяца (для СТАВКИ):
+ * ✅ Норма месяца (для ставки):
  * - будни * 8
  * - минус 8 за праздничные будни
  * - минус 1 за сокращённые будни
@@ -342,18 +388,31 @@ function calendarNormHours() {
   return weekdays * 8 - holidayWeekdays * 8 - shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
 }
 
-/**
- * ✅ Личная норма (для переработки) — уменьшает ОТ/Б, но НЕ влияет на ставку.
- */
+
 function personalNormHours(monthNorm) {
-  const vacDays = leaveType.filter((t) => t === "vacation").length;
-  const sickDays = leaveType.filter((t) => t === "sick").length;
-  const personalNorm = monthNorm - (vacDays + sickDays) * LEAVE_HOURS_PER_DAY;
-  return { vacDays, sickDays, personalNorm };
+  let vacTotal = 0;
+  let sickTotal = 0;
+
+  let vacEffective = 0;
+  let sickEffective = 0;
+
+  for (let i = 0; i < daysInMonth; i++) {
+    const lt = leaveType[i];
+    if (lt === "vacation") {
+      vacTotal++;
+      if (!isHoliday[i]) vacEffective++;
+    } else if (lt === "sick") {
+      sickTotal++;
+      if (!isHoliday[i]) sickEffective++;
+    }
+  }
+
+  const personalNorm = monthNorm - (vacEffective + sickEffective) * LEAVE_HOURS_PER_DAY;
+  return { vacTotal, sickTotal, personalNorm };
 }
 
 /**
- * ✅ Праздничные часы (фактически отработанные) — для доплаты x2 (только за часы).
+ * ✅ Праздничные часы фактически отработанные (для x2 доплаты)
  */
 function holidayWorkedTotals() {
   let hDay = 0;
@@ -383,11 +442,10 @@ function updateDayMarkClasses(index) {
   }
 }
 
+/**
+ * ✅ Теперь разрешаем ставить праздник/сокращённый даже при ОТ/Б
+ */
 function toggleHoliday(index) {
-  if (leaveType[index]) {
-    setError("Уберите ОТ/Б в этом дне, затем отмечайте праздник.");
-    return;
-  }
   isShortDay[index] = false;
   isHoliday[index] = !isHoliday[index];
   updateDayMarkClasses(index);
@@ -396,10 +454,6 @@ function toggleHoliday(index) {
 }
 
 function toggleShort(index) {
-  if (leaveType[index]) {
-    setError("Уберите ОТ/Б в этом дне, затем отмечайте сокращённый день.");
-    return;
-  }
   if (isHoliday[index]) isHoliday[index] = false;
   isShortDay[index] = !isShortDay[index];
   updateDayMarkClasses(index);
@@ -408,7 +462,7 @@ function toggleShort(index) {
 }
 
 function currentPayload() {
-  return { v: 2, year, month, isHoliday, isShortDay, dayHours, nightHours, leaveType };
+  return { v: 3, year, month, isHoliday, isShortDay, dayHours, nightHours, leaveType };
 }
 
 async function doSaveTimesheet() {
@@ -462,10 +516,10 @@ function clearMoneyUI() {
 }
 
 function recalcAll() {
-  monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
+  if (monthYearDisplay) monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
 
   const monthNorm = calendarNormHours();
-  const { vacDays, sickDays, personalNorm } = personalNormHours(monthNorm);
+  const { vacTotal, sickTotal, personalNorm } = personalNormHours(monthNorm);
 
   const totalDay = sum(dayHours);
   const totalNight = sum(nightHours);
@@ -475,13 +529,17 @@ function recalcAll() {
   dayNightHoursEl.textContent = `${totalDay.toFixed(1)} / ${totalNight.toFixed(1)}`;
   bump(dayNightHoursEl);
 
+  // ✅ NEW UI
+  animateNumber(normMonthEl, monthNorm, (v) => v.toFixed(1), 360);
   animateNumber(normEffectiveEl, personalNorm, (v) => v.toFixed(1), 360);
+
   animateNumber(overtimeEl, workedHours - personalNorm, (v) => (v >= 0 ? "+" : "") + v.toFixed(1), 360);
-  leaveDaysEl.textContent = `${vacDays} / ${sickDays}`;
+  leaveDaysEl.textContent = `${vacTotal} / ${sickTotal}`;
 
   const oklad = parseNumber(okladInput.value);
   if (!Number.isFinite(oklad) || oklad <= 0) {
     clearMoneyUI();
+    if (normHint) normHint.textContent = monthNorm > 0 ? `Норма месяца: ${monthNorm.toFixed(0)} ч` : "";
     return;
   }
 
@@ -560,7 +618,7 @@ function recalcAll() {
   remainingPayEl.textContent = `~ ${formatRub(remainingApprox, 0)}`;
 
   if (normHint) {
-    normHint.textContent = `Норма месяца (для ставки): ${monthNorm.toFixed(0)} ч`;
+    normHint.textContent = `Норма месяца: ${monthNorm.toFixed(0)} ч • Личная: ${personalNorm.toFixed(0)} ч`;
   }
 }
 
@@ -586,9 +644,23 @@ function attachPrevValueTracking(inputEl) {
     inputEl.dataset.prev = inputEl.value ?? "";
   });
 }
-
 function revertToPrev(inputEl) {
   inputEl.value = inputEl.dataset.prev ?? "";
+}
+
+function lockNightCell(i) {
+  const el = nightInputs?.[i];
+  if (!el) return;
+  el.value = "";
+  el.disabled = true;
+  el.classList.add("opacity-50", "cursor-not-allowed");
+}
+
+function unlockNightCell(i) {
+  const el = nightInputs?.[i];
+  if (!el) return;
+  el.disabled = false;
+  el.classList.remove("opacity-50", "cursor-not-allowed");
 }
 
 function buildTableForMonth() {
@@ -668,10 +740,33 @@ function buildTableForMonth() {
         scheduleSave();
         recalcAll();
       }
+      const v = String(dayInput.value ?? "").trim().toUpperCase();
+      if (v === "О") {
+        dayInput.value = "ОТ";
+        dayInput.dataset.prev = "ОТ";
+      }
     });
 
     dayInput.addEventListener("input", () => {
+      const sanitized = sanitizeDayCellValue(dayInput.value);
+      if (sanitized !== dayInput.value) dayInput.value = sanitized;
+
       const raw = dayInput.value;
+
+      // пусто
+      if (!raw.trim()) {
+        setError(null);
+        if (leaveType[i]) {
+          leaveType[i] = null;
+          unlockNightCell(i);
+        }
+        dayHours[i] = 0;
+        dayInput.dataset.prev = "";
+        recalcAll();
+        scheduleSave();
+        return;
+      }
+
       const parsed = parseHoursOrLeave(raw);
 
       if (parsed.kind === "leave") {
@@ -680,22 +775,16 @@ function buildTableForMonth() {
           revertToPrev(dayInput);
           return;
         }
-        if (isHoliday[i] || isShortDay[i]) {
-          setError("ОТ/Б нельзя ставить на праздник/сокращённый день. Сначала уберите отметку.");
-          revertToPrev(dayInput);
-          return;
-        }
 
         setError(null);
         leaveType[i] = parsed.leave;
+
+        dayInput.value = parsed.leave === "vacation" ? (raw === "О" ? "О" : "ОТ") : "Б";
+
         dayHours[i] = 0;
         nightHours[i] = 0;
 
-        if (nightInputs[i]) {
-          nightInputs[i].value = "";
-          nightInputs[i].disabled = true;
-          nightInputs[i].classList.add("opacity-50", "cursor-not-allowed");
-        }
+        lockNightCell(i);
 
         dayInput.dataset.prev = dayInput.value;
         recalcAll();
@@ -706,12 +795,9 @@ function buildTableForMonth() {
       if (parsed.kind === "hours") {
         setError(null);
 
-        if (leaveType[i]) {
+       if (leaveType[i]) {
           leaveType[i] = null;
-          if (nightInputs[i]) {
-            nightInputs[i].disabled = false;
-            nightInputs[i].classList.remove("opacity-50", "cursor-not-allowed");
-          }
+          unlockNightCell(i);
         }
 
         const nextDay = sanitizeHourNumber(parsed.hours);
@@ -733,23 +819,7 @@ function buildTableForMonth() {
         return;
       }
 
-      if (!raw.trim()) {
-        setError(null);
-        if (leaveType[i]) {
-          leaveType[i] = null;
-          if (nightInputs[i]) {
-            nightInputs[i].disabled = false;
-            nightInputs[i].classList.remove("opacity-50", "cursor-not-allowed");
-          }
-        }
-        dayHours[i] = 0;
-        dayInput.dataset.prev = "";
-        recalcAll();
-        scheduleSave();
-        return;
-      }
-
-      setError("Некорректное значение. Введите часы (например 11) или ОТ/Б.");
+      setError("Некорректное значение. Допустимы только числа или ОТ/Б.");
     });
 
     dayTd.appendChild(dayInput);
@@ -783,6 +853,9 @@ function buildTableForMonth() {
     nightInput.addEventListener("input", () => {
       if (leaveType[i]) return;
 
+      const sanitized = sanitizeNumericValue(nightInput.value);
+      if (sanitized !== nightInput.value) nightInput.value = sanitized;
+
       const raw = nightInput.value;
       if (!raw.trim()) {
         setError(null);
@@ -795,7 +868,7 @@ function buildTableForMonth() {
 
       const n = parseNumber(raw);
       if (!Number.isFinite(n)) {
-        setError("Ночные: введите число (например 7) или оставьте пусто.");
+        setError("Ночные: введите число или оставьте пусто.");
         return;
       }
 
@@ -813,6 +886,7 @@ function buildTableForMonth() {
       setError(null);
       nightHours[i] = nextNight;
       nightInput.dataset.prev = nightInput.value;
+
       recalcAll();
       scheduleSave();
     });
@@ -846,12 +920,9 @@ function applyPayload(payload) {
     }
 
     if (leaveType[i]) {
-      nightInputs[i].value = "";
-      nightInputs[i].disabled = true;
-      nightInputs[i].classList.add("opacity-50", "cursor-not-allowed");
+      lockNightCell(i);
     } else {
-      nightInputs[i].disabled = false;
-      nightInputs[i].classList.remove("opacity-50", "cursor-not-allowed");
+      unlockNightCell(i);
       nightInputs[i].value = formatHourForInput(nightHours[i]);
     }
 
@@ -922,7 +993,7 @@ saveBtn?.addEventListener("click", async () => {
   await doSaveTimesheet();
 });
 
-okladInput.addEventListener("input", () => {
+okladInput?.addEventListener("input", () => {
   recalcAll();
 });
 
@@ -964,7 +1035,7 @@ yearSelect.addEventListener("change", async () => {
 
     if (profileRole === "admin") adminLink?.classList.remove("hidden");
 
-    if (profileOklad != null && String(okladInput.value ?? "").trim() === "") {
+    if (profileOklad != null && String(okladInput?.value ?? "").trim() === "") {
       okladInput.value = String(profileOklad);
     }
   } catch {
