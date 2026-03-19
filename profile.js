@@ -26,6 +26,7 @@ const emailHint = document.getElementById("emailHint");
 
 const displayNameInput = document.getElementById("displayNameInput");
 const okladInput = document.getElementById("okladInput");
+const genderSelect = document.getElementById("genderSelect");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 
@@ -40,6 +41,13 @@ const overtimeBarFill = document.getElementById("overtimeBarFill");
 const overtimeBarText = document.getElementById("overtimeBarText");
 
 const monthNames = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
+
+function requireDom(el, name) {
+  if (el) return true;
+  setError(`Ошибка верстки профиля: не найден элемент "${name}". Проверь id в profile.html`);
+  setStatus("Ошибка верстки", "err");
+  return false;
+}
 
 function setStatus(text, tone = "neutral") {
   if (!statusPill) return;
@@ -143,6 +151,7 @@ function formatHoursPlain(h) {
 }
 
 function fillYearOptions(currentYear) {
+  if (!requireDom(yearSelect, "yearSelect")) return;
   const nowY = new Date().getFullYear();
   const years = [];
   for (let y = nowY - 2; y <= nowY + 1; y++) years.push(y);
@@ -279,9 +288,14 @@ async function refreshProfile() {
   const name = profile?.display_name || "Пользователь";
   const oklad = profile?.oklad;
 
-  displayNameEl.textContent = name;
-  displayNameInput.value = profile?.display_name ?? "";
-  okladInput.value = oklad != null ? String(oklad) : "";
+if (!requireDom(displayNameEl, "displayName")) return;
+if (!requireDom(displayNameInput, "displayNameInput")) return;
+if (!requireDom(okladInput, "okladInput")) return;
+
+    displayNameEl.textContent = name;
+    displayNameInput.value = profile?.display_name ?? "";
+    okladInput.value = oklad != null ? String(oklad) : "";
+    if (genderSelect) genderSelect.value = profile?.gender ?? "";
 
   if (profile?.avatar_url) {
     avatarImg.src = profile.avatar_url;
@@ -301,6 +315,11 @@ async function refreshProfile() {
 }
 
 async function refreshTimesheets() {
+  if (!requireDom(yearSelect, "yearSelect")) return;
+  if (!requireDom(timesheetsList, "timesheetsList")) return;
+  if (!requireDom(monthsCountEl, "monthsCount")) return;
+  if (!requireDom(overtimeYearEl, "overtimeYear")) return;
+  if (!requireDom(overtimeRemainingEl, "overtimeRemaining")) return;
   const y = Number(yearSelect.value);
   setStatus("Загружаю табели…", "busy");
   setError(null);
@@ -343,8 +362,11 @@ async function refreshTimesheets() {
 }
 
 async function saveProfile() {
+  if (!requireDom(displayNameInput, "displayNameInput")) return;
+  if (!requireDom(okladInput, "okladInput")) return;
   const displayName = displayNameInput.value.trim();
   const oklad = parseNumber(okladInput.value);
+  const gender = genderSelect ? String(genderSelect.value || "") : "";
 
   if (displayName && displayName.length < 2) {
     setError("Имя слишком короткое (минимум 2 символа).");
@@ -355,6 +377,11 @@ async function saveProfile() {
     return;
   }
 
+  if (gender && gender !== "male" && gender !== "female") {
+  setError("Пол должен быть: мужской или женский.");
+  return;
+}
+
   setStatus("Сохраняю…", "busy");
   setError(null);
 
@@ -362,6 +389,7 @@ async function saveProfile() {
     await updateMyProfile({
       displayName: displayName || null,
       oklad: okladInput.value.trim() ? oklad : null,
+      gender: gender ? gender : null,
     });
     await refreshProfile();
     setStatus("Сохранено", "ok");

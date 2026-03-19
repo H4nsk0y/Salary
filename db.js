@@ -26,7 +26,7 @@ export async function getMyProfile() {
   const uid = await requireUserId();
   const { data, error } = await supabase
     .from("profiles")
-    .select("role, oklad, display_name, avatar_url")
+    .select("role, oklad, gender, display_name, avatar_url")
     .eq("user_id", uid)
     .maybeSingle();
 
@@ -47,12 +47,13 @@ export async function updateMyOklad(oklad) {
   if (error) throw error;
 }
 
-export async function updateMyProfile({ displayName, oklad, avatarUrl }) {
+export async function updateMyProfile({ displayName, oklad, gender, avatarUrl }) {
   const uid = await requireUserId();
 
-  const patch = {};
+   const patch = {};
   if (displayName !== undefined) patch.display_name = displayName;
   if (oklad !== undefined) patch.oklad = oklad;
+  if (gender !== undefined) patch.gender = gender;
   if (avatarUrl !== undefined) patch.avatar_url = avatarUrl;
 
   const { error } = await supabase
