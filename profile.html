@@ -1,358 +1,499 @@
 <!doctype html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Профиль — Alvisa</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+  <title>Профиль — Alvisa</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-    <style>
-      html,
-      body {
-        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      }
+  <style>
+    html, body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      scroll-behavior: smooth;
+    }
 
-      :root {
-        --glow: rgba(99, 102, 241, 0.35);
-        --glow2: rgba(56, 189, 248, 0.25);
-      }
+    :root {
+      --glow-primary: rgba(99, 102, 241, 0.5);
+      --glow-secondary: rgba(56, 189, 248, 0.4);
+      --glow-accent: rgba(168, 85, 247, 0.3);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-bg: rgba(15, 23, 42, 0.6);
+      --card-shadow: 0 25px 50px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      --card-shadow-hover: 0 35px 70px -30px var(--glow-primary), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
 
-      body {
-        position: relative;
-        overflow-x: hidden;
-        background:
-          radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.12), transparent 60%),
-          radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.10), transparent 60%),
-          radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.08), transparent 60%),
-          #020617;
-      }
+    body {
+      position: relative;
+      overflow-x: hidden;
+      background: #020617;
+      background-image: 
+        radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.18), transparent 60%),
+        radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.15), transparent 60%),
+        radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.12), transparent 60%);
+    }
 
-      body::before {
-        content: "";
-        position: fixed;
-        inset: -25%;
-        pointer-events: none;
-        z-index: 0;
-        background:
-          radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.28), transparent 45%),
-          radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.22), transparent 45%),
-          radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.14), transparent 45%);
-        filter: blur(60px);
-        opacity: 0.7;
-        transform: translate3d(0, 0, 0);
-        animation: bgFloat 12s ease-in-out infinite alternate;
-      }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -25%;
+      pointer-events: none;
+      z-index: 0;
+      background: 
+        radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.4), transparent 45%),
+        radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.3), transparent 45%),
+        radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.2), transparent 45%);
+      filter: blur(70px);
+      opacity: 0.6;
+      animation: bgFloat 18s ease-in-out infinite alternate;
+    }
 
-      body::after {
-        content: "";
-        position: fixed;
-        inset: 0;
-        pointer-events: none;
-        z-index: 0;
-        background-image: radial-gradient(rgba(148, 163, 184, 0.11) 1px, transparent 1px);
-        background-size: 24px 24px;
-        opacity: 0.25;
-        mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 72%);
-      }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image: radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.2;
+      mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 80%);
+    }
 
-      @keyframes bgFloat {
-        0% { transform: translate3d(-2%, -2%, 0) scale(1); }
-        100% { transform: translate3d(2%, 2%, 0) scale(1.05); }
-      }
+    @keyframes bgFloat {
+      0% { transform: translate3d(-2%, -2%, 0) scale(1); }
+      100% { transform: translate3d(3%, 3%, 0) scale(1.08); }
+    }
 
-      .reveal {
-        opacity: 0;
-        transform: translateY(18px);
-        filter: blur(6px);
-        transition:
-          opacity 700ms cubic-bezier(.2,.8,.2,1),
-          transform 700ms cubic-bezier(.2,.8,.2,1),
-          filter 700ms cubic-bezier(.2,.8,.2,1);
-        will-change: opacity, transform, filter;
-      }
-      body.is-loaded .reveal {
-        opacity: 1;
-        transform: translateY(0);
-        filter: blur(0);
-      }
+    /* Анимация появления */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      filter: blur(8px);
+      transition: opacity 800ms cubic-bezier(0.2, 0.9, 0.3, 1),
+                  transform 800ms cubic-bezier(0.2, 0.9, 0.3, 1),
+                  filter 800ms cubic-bezier(0.2, 0.9, 0.3, 1);
+      will-change: opacity, transform, filter;
+    }
+    body.is-loaded .reveal {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+    .reveal:nth-child(1) { transition-delay: 0.05s; }
+    .reveal:nth-child(2) { transition-delay: 0.15s; }
+    .reveal:nth-child(3) { transition-delay: 0.25s; }
 
-      .glass-card {
-        position: relative;
-        overflow: hidden;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-      }
-      .glass-card::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        opacity: 0;
-        background:
-          radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.35), transparent 60%),
-          radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
-        transition: opacity 350ms ease;
-      }
-      .glass-card:hover::before { opacity: 1; }
+    /* Улучшенные стеклянные карточки */
+    .glass-card {
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--card-shadow);
+      transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+    }
+    .glass-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      background: 
+        radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.3), transparent 60%),
+        radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
+      transition: opacity 0.5s ease;
+    }
+    .glass-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+      box-shadow: var(--card-shadow-hover);
+    }
+    .glass-card:hover::before {
+      opacity: 1;
+    }
 
-      .hover-lift {
-        transition: transform 250ms cubic-bezier(.2,.8,.2,1), box-shadow 250ms cubic-bezier(.2,.8,.2,1);
-      }
-      .hover-lift:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 20px 60px -40px var(--glow);
-      }
+    /* Эффект подъема */
+    .hover-lift {
+      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.4, 1), box-shadow 0.3s ease;
+    }
+    .hover-lift:hover {
+      transform: translateY(-6px);
+    }
 
-      .input-glass {
-        transition: transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms cubic-bezier(.2,.8,.2,1);
-      }
-      .input-glass:focus {
-        transform: translateY(-1px);
-        box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.35), 0 10px 40px -30px rgba(99, 102, 241, 0.55);
-        outline: none;
-      }
+    /* Поля ввода с эффектом стекла */
+    .input-glass {
+      background: rgba(2, 6, 23, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s, background 0.2s;
+    }
+    .input-glass:hover {
+      background: rgba(2, 6, 23, 0.7);
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+    .input-glass:focus {
+      outline: none;
+      border-color: rgba(99, 102, 241, 0.8);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 10px 30px -20px rgba(99, 102, 241, 0.6);
+      background: rgba(2, 6, 23, 0.8);
+      transform: translateY(-2px);
+    }
 
-      .shake { animation: shake 320ms ease-in-out; }
-      @keyframes shake {
-        0% { transform: translateX(0); }
-        25% { transform: translateX(-6px); }
-        50% { transform: translateX(6px); }
-        75% { transform: translateX(-4px); }
-        100% { transform: translateX(0); }
-      }
+    /* Стили для селектов (как на главной) */
+    select.ui-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-color: rgba(2, 6, 23, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(226, 232, 240, 0.95);
+      border-radius: 1rem;
+      padding: 8px 36px 8px 16px;
+      font-size: 0.9rem;
+      line-height: 1.2;
+      outline: none;
+      backdrop-filter: blur(8px);
+      transition: all 0.2s;
+    }
+    select.ui-select:hover {
+      background-color: rgba(2, 6, 23, 0.8);
+      border-color: rgba(99, 102, 241, 0.4);
+    }
+    select.ui-select:focus {
+      border-color: rgba(99, 102, 241, 0.8);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    select.ui-select option {
+      background-color: #0b1220;
+      color: rgba(226, 232, 240, 0.95);
+    }
+    .select-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 100%;
+    }
+    .select-wrap::after {
+      content: "▾";
+      position: absolute;
+      right: 14px;
+      color: rgba(148, 163, 184, 0.9);
+      pointer-events: none;
+      font-size: 14px;
+      transform: translateY(1px);
+    }
 
-      ::-webkit-scrollbar { width: 10px; height: 10px; }
-      ::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.55); border-radius: 999px; }
-      ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.55); border-radius: 999px; border: 2px solid rgba(30,41,59,0.55); }
-      ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.8); }
-      * { scrollbar-width: thin; scrollbar-color: rgba(99,102,241,0.55) rgba(30,41,59,0.55); }
+    /* Кастомный скролл */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.55); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.55); border-radius: 999px; border: 2px solid rgba(30,41,59,0.55); }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.8); }
+    * { scrollbar-width: thin; scrollbar-color: rgba(99,102,241,0.55) rgba(30,41,59,0.55); }
 
-      select.ui-select {
-        appearance: none;
-        -webkit-appearance: none;
-        background-color: rgba(2, 6, 23, 0.35);
-        border: 1px solid rgba(255,255,255,0.10);
-        color: rgba(226,232,240,0.95);
-        border-radius: 1rem;
-        padding: 6px 34px 6px 12px;
-        line-height: 1.2;
-        outline: none;
-      }
-      select.ui-select:focus {
-        box-shadow: 0 0 0 2px rgba(99,102,241,0.45);
-        border-color: rgba(99,102,241,0.45);
-      }
-      select.ui-select option {
-        background-color: #0b1220;
-        color: rgba(226,232,240,0.95);
-      }
-      .select-wrap { position: relative; display: inline-flex; align-items: center; }
-      .select-wrap::after {
-        content: "▾";
-        position: absolute;
-        right: 12px;
-        color: rgba(148,163,184,0.9);
-        pointer-events: none;
-        font-size: 12px;
-        transform: translateY(1px);
-      }
-    </style>
-  </head>
+    /* Стили для навигации */
+    .nav-link {
+      position: relative;
+      transition: color 0.2s;
+    }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 1rem;
+      right: 1rem;
+      height: 2px;
+      background: linear-gradient(90deg, #6366f1, #38bdf8);
+      border-radius: 2px;
+      opacity: 0;
+      transform: scaleX(0.7);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .nav-link.active::after,
+    .nav-link:hover::after {
+      opacity: 1;
+      transform: scaleX(1);
+    }
 
-  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-white">
-    <script>document.body.classList.add("is-loaded");</script>
-      <header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
-      <div class="mx-auto max-w-7xl px-4 py-4 flex flex-wrap items-center justify-between gap-4">
-        <a href="index.html" class="group">
-          <span class="text-base font-semibold text-slate-200 transition-colors group-hover:text-indigo-300">Alvisa</span>
+    /* Адаптивные корректировки */
+    @media (max-width: 640px) {
+      .input-glass { font-size: 16px; padding-top: 14px; padding-bottom: 14px; }
+      .select-wrap::after { right: 10px; }
+      select.ui-select { padding: 8px 32px 8px 14px; }
+      .pt-safe { padding-top: 7rem; }
+    }
+    @media (min-width: 768px) {
+      .pt-safe { padding-top: 6rem; }
+    }
+
+    /* Кнопки */
+    button, .btn-like {
+      transition: all 0.2s;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+
+    #errorBox:not(.hidden) {
+      animation: shake 0.3s ease-in-out;
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20% { transform: translateX(-5px); }
+      40% { transform: translateX(5px); }
+      60% { transform: translateX(-3px); }
+      80% { transform: translateX(3px); }
+    }
+
+    /* Плавный переход цвета для прогресс-бара */
+    #overtimeBarFill {
+      transition: width 0.5s, background-color 0.3s ease;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+  <script>document.body.classList.add("is-loaded");</script>
+
+  <!-- УНИФИЦИРОВАННЫЙ ХЕДЕР (активный пункт — Профиль) -->
+  <header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
+    <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex flex-wrap items-center justify-between gap-3">
+      <a href="index.html" class="group">
+        <span class="text-base md:text-lg font-semibold bg-gradient-to-r from-indigo-200 to-slate-100 bg-clip-text text-transparent transition-colors group-hover:from-indigo-300 group-hover:to-white">
+          Alvisa
+        </span>
+      </a>
+      <nav class="flex flex-wrap items-center justify-end gap-1 text-sm font-medium">
+        <a href="index.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
+          Калькулятор
         </a>
-        <nav class="flex flex-wrap items-center gap-1 text-sm font-medium">
-          <a href="index.html" 
-            class="rounded-lg px-4 py-2 text-slate-300 transition-all hover:bg-white/10 hover:text-indigo-200">
-            Калькулятор
+        <a href="table.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
+          Табель
+        </a>
+        <a href="profile.html" class="nav-link active relative rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">
+          Профиль
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="relative z-10 mx-auto max-w-6xl px-4 pt-safe pb-12 md:pb-16">
+    <!-- Шапка страницы с заголовком и кнопками -->
+    <header class="mb-8 reveal">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div class="flex items-center gap-3 flex-1">
+          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 shadow-xl text-xl font-bold text-slate-100" aria-hidden="true">
+            A
+          </span>
+          <div>
+            <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
+              <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
+                Личный кабинет
+              </span>
+            </h1>
+            <p class="mt-1 text-sm text-slate-300/80">Табели, переработка и настройки.</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <a id="adminLink" href="admin.html" class="hidden rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">
+            Админка
           </a>
-          <a href="table.html" 
-            class="rounded-lg px-4 py-2 text-slate-300 transition-all hover:bg-white/10 hover:text-indigo-200">
-            Табель
-          </a>
-          <a href="profile.html" 
-            class="relative rounded-lg px-4 py-2 font-semibold text-indigo-300 transition-all hover:bg-white/10 after:absolute after:bottom-0 after:left-4 after:right-4 after:h-0.5 after:bg-indigo-400 after:content-['']">
-            Профиль
-          </a>
-        </nav>
+
+          <button id="logoutBtn" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">
+            Выйти
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-3 flex items-center gap-2 text-xs">
+        <span id="statusPill" class="inline-flex items-center rounded-full bg-white/5 px-4 py-1.5 ring-1 ring-white/10 text-slate-300 backdrop-blur-sm">—</span>
       </div>
     </header>
 
-    <div class="relative z-10 mx-auto max-w-6xl px-4 pt-24 pb-8 sm:pb-10">
-      <header class="mb-6 reveal">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div class="flex items-center gap-3 flex-1">
-            <span
-              class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/30 to-sky-400/10 ring-1 ring-white/10 shadow-[0_20px_60px_-40px_rgba(99,102,241,0.6)] text-lg font-semibold text-slate-100/90"
-              aria-hidden="true"
-            >A</span>
+    <!-- Блок ошибки -->
+    <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
 
-            <div class="flex-1">
-              <h1 class="text-3xl font-semibold tracking-tight">
-                <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
-                  Личный кабинет
-                </span>
-              </h1>
-              <p class="mt-1 text-sm text-slate-300/90">Табели, переработка и настройки.</p>
-            </div>
+    <!-- Основная сетка -->
+    <main class="grid gap-6 lg:grid-cols-3 reveal">
+      <!-- Левая колонка: информация и настройки профиля -->
+      <section class="glass-card hover-lift rounded-3xl p-6 md:p-7">
+        <div class="flex items-center gap-4">
+          <div class="relative h-16 w-16 overflow-hidden rounded-2xl ring-1 ring-white/10 bg-white/5">
+            <img id="avatarImg" alt="avatar" class="h-full w-full object-cover hidden" />
+            <div id="avatarFallback" class="absolute inset-0 flex items-center justify-center text-xl font-bold text-slate-200/90">A</div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2">
-            <a id="adminLink" href="admin.html" class="hidden rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">
-              Админка
-            </a>
+          <div class="min-w-0 flex-1">
+            <div id="displayName" class="truncate text-lg font-semibold">—</div>
+            <div id="emailHint" class="truncate text-xs text-slate-400/80">—</div>
+          </div>
+        </div>
 
-            <button id="logoutBtn" class="rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">
-              Выйти
+        <div class="mt-5 grid gap-4">
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-slate-200" for="displayNameInput">Имя</label>
+            <input
+              id="displayNameInput"
+              class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+              placeholder="Напр. Магомед Раджабов"
+            />
+          </div>
+
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-slate-200" for="genderSelect">Пол</label>
+            <span class="select-wrap w-full">
+              <select id="genderSelect" class="ui-select text-sm w-full">
+                <option value="">Не выбран</option>
+                <option value="male">Мужской</option>
+                <option value="female">Женский</option>
+              </select>
+            </span>
+            <p class="mt-1.5 text-xs text-slate-400/80">Нужен для вычислений нормы.</p>
+          </div>
+
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-slate-200" for="okladInput">Оклад (₽)</label>
+            <input
+              id="okladInput"
+              inputmode="decimal"
+              class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+              placeholder="Напр. 50000"
+            />
+            <p class="mt-1.5 text-xs text-slate-400/80">Будет подставляться в табель/калькулятор.</p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button
+              id="saveProfileBtn"
+              class="rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-4 py-3.5 text-sm font-semibold text-slate-100 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] active:scale-[0.98]"
+            >
+              Сохранить
+            </button>
+
+            <button
+              id="refreshBtn"
+              class="rounded-2xl bg-white/5 px-4 py-3.5 text-sm font-semibold text-slate-200 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30 active:scale-[0.98]"
+            >
+              Обновить
             </button>
           </div>
         </div>
+      </section>
 
-        <div class="mt-3 flex items-center gap-2 text-xs">
-          <span id="statusPill" class="inline-flex items-center rounded-full bg-white/5 px-3 py-1 ring-1 ring-white/10 text-slate-300">—</span>
+      <!-- Правая колонка: переработки и табели -->
+      <section class="glass-card hover-lift rounded-3xl p-6 md:p-7 lg:col-span-2">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 class="text-lg font-semibold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Переработки</h2>
+            <p class="mt-1 text-sm text-slate-300/80">Лимит по закону: <span class="font-semibold text-indigo-300">120 часов в год</span>.</p>
+          </div>
+
+          <div class="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10 backdrop-blur-sm">
+            <label class="text-xs text-slate-300" for="yearSelect">Год</label>
+            <span class="select-wrap">
+              <select id="yearSelect" class="ui-select text-sm"></select>
+            </span>
+          </div>
         </div>
-      </header>
 
-      <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-200 ring-1 ring-rose-500/20"></div>
-
-      <main class="grid gap-6 lg:grid-cols-3 reveal">
-        <section class="glass-card hover-lift rounded-3xl bg-slate-900/35 p-6 ring-1 ring-white/10 shadow-[0_20px_80px_-50px_rgba(99,102,241,0.45)]">
-          <div class="flex items-center gap-4">
-            <div class="relative h-16 w-16 overflow-hidden rounded-2xl ring-1 ring-white/10 bg-white/5">
-              <img id="avatarImg" alt="avatar" class="h-full w-full object-cover hidden" />
-              <div id="avatarFallback" class="absolute inset-0 flex items-center justify-center text-xl font-bold text-slate-200/90">A</div>
-            </div>
-
-            <div class="min-w-0 flex-1">
-              <div id="displayName" class="truncate text-lg font-semibold">—</div>
-              <div id="emailHint" class="truncate text-xs text-slate-400/90">—</div>
-            </div>
+        <!-- Прогресс-бар лимита -->
+        <div class="mt-5 rounded-3xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-xs text-slate-400">Прогресс лимита</div>
+            <div id="overtimeBarText" class="text-xs font-semibold text-slate-200">—</div>
           </div>
 
-          <div class="mt-5 grid gap-4">
-                        <div>
-              <label class="mb-1 block text-sm font-medium text-slate-200" for="displayNameInput">Имя</label>
-              <input
-                id="displayNameInput"
-                class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:ring-2 focus:ring-indigo-400/80"
-                placeholder="Напр. Магомед Раджабов"
-              />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-slate-200" for="genderSelect">Пол</label>
-              <span class="select-wrap w-full">
-                <select id="genderSelect" class="ui-select text-sm w-full">
-                  <option value="">Не выбран</option>
-                  <option value="male">Мужской</option>
-                  <option value="female">Женский</option>
-                </select>
-              </span>
-              <p class="mt-1 text-xs text-slate-400/80">Нужен для вычислений нормы.</p>
-            </div>
-
-            <div>
-              <label class="mb-1 block text-sm font-medium text-slate-200" for="okladInput">Оклад (₽)</label>
-              <input
-                id="okladInput"
-                inputmode="decimal"
-                class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:ring-2 focus:ring-indigo-400/80"
-                placeholder="Напр. 50000"
-              />
-              <p class="mt-1 text-xs text-slate-400/80">Будет подставляться в табель/калькулятор.</p>
-            </div>
-
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button
-                id="saveProfileBtn"
-                class="rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-4 py-3 text-sm font-semibold text-slate-100 ring-1 ring-white/10 shadow-[0_18px_60px_-45px_rgba(99,102,241,0.6)] hover:bg-white/10 active:scale-[0.985] focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
-              >
-                Сохранить
-              </button>
-
-              <button
-                id="refreshBtn"
-                class="rounded-2xl bg-white/5 px-4 py-3 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 active:scale-[0.985]"
-              >
-                Обновить
-              </button>
-            </div>
+          <div class="mt-3 h-3 overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10">
+            <div
+              id="overtimeBarFill"
+              class="h-full w-0 rounded-full transition-[width] duration-500"
+              style="width: 0%"
+            ></div>
           </div>
-        </section>
-        <section class="glass-card hover-lift rounded-3xl bg-slate-900/35 p-6 ring-1 ring-white/10 shadow-[0_20px_80px_-50px_rgba(56,189,248,0.35)] lg:col-span-2">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold">Переработки</h2>
-              <p class="mt-1 text-sm text-slate-300/90">Лимит по закону: <b>120 часов в год</b>.</p>
-            </div>
+        </div>
 
-            <div class="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
-              <label class="text-xs text-slate-300" for="yearSelect">Год</label>
-              <span class="select-wrap">
-                <select id="yearSelect" class="ui-select text-sm"></select>
-              </span>
-            </div>
+        <!-- Карточки с цифрами -->
+        <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <div class="text-xs text-slate-400">Баланс за год (±)</div>
+            <div id="overtimeYear" class="mt-1 text-2xl font-semibold tracking-tight">—</div>
           </div>
 
-          <div class="mt-4 rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
-            <div class="flex items-center justify-between gap-3">
-              <div class="text-xs text-slate-400">Прогресс лимита</div>
-              <div id="overtimeBarText" class="text-xs font-semibold text-slate-200">—</div>
-            </div>
-
-            <div class="mt-3 h-3 overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10">
-              <div
-                id="overtimeBarFill"
-                class="h-full w-0 rounded-full transition-[width] duration-500"
-                style="width: 0%"
-              ></div>
-            </div>
+          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <div class="text-xs text-slate-400">Осталось по закону</div>
+            <div id="overtimeRemaining" class="mt-1 text-2xl font-semibold tracking-tight">—</div>
           </div>
 
-          <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Баланс за год (±)</div>
-              <div id="overtimeYear" class="mt-1 text-2xl font-semibold tracking-tight">—</div>
-            </div>
-
-            <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Осталось по закону</div>
-              <div id="overtimeRemaining" class="mt-1 text-2xl font-semibold tracking-tight">—</div>
-            </div>
-
-            <div class="rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Месяцев в базе (год)</div>
-              <div id="monthsCount" class="mt-1 text-2xl font-semibold tracking-tight">—</div>
-            </div>
+          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <div class="text-xs text-slate-400">Месяцев в базе (год)</div>
+            <div id="monthsCount" class="mt-1 text-2xl font-semibold tracking-tight">—</div>
           </div>
+        </div>
 
-          <div class="mt-5">
-            <div class="flex items-center justify-between">
-              <h3 class="text-sm font-semibold text-slate-200">Табели по месяцам</h3>
-            </div>
+        <!-- Список табелей по месяцам -->
+        <div class="mt-6">
+          <h3 class="text-sm font-semibold text-slate-200">Табели по месяцам</h3>
 
-            <div id="timesheetsList" class="mt-3 grid gap-3 sm:grid-cols-2"></div>
-          </div>
-        </section>
-      </main>
-      <footer class="mt-8 text-center text-xs text-slate-400/70 border-t border-white/10 pt-4">
-        <span style="color: #f91616; font-weight: 700;">ВНИМАНИЕ:</span> Проект находится в стадии разработки. Пожалуйста, уточняйте информацию.
-        <br>Поддержать автора - пару <span style="color: #f97316; font-weight: 700;">ништяков</span> в кабинет <span style="color: #f97316; font-weight: 700;">ЕГАИС =)</span> 
-      </footer>
-    </div>
+          <div id="timesheetsList" class="mt-3 grid gap-3 sm:grid-cols-2"></div>
+        </div>
+      </section>
+    </main>
 
-    <script type="module" src="./profile.js"></script>
-  </body>
+    <!-- Футер -->
+    <footer class="mt-12 text-center text-xs text-slate-400/60 border-t border-white/10 pt-6">
+      <span class="font-bold text-rose-400">ВНИМАНИЕ:</span> Проект находится в стадии разработки. Пожалуйста, уточняйте информацию.
+      <br>Поддержать автора — пару <span class="text-amber-400 font-bold">ништяков</span> в кабинет <span class="text-amber-400 font-bold">ЕГАИС =)</span>
+    </footer>
+  </div>
+
+  <!-- Скрипт для динамического цвета прогресс-бара (без изменения основного JS) -->
+  <script>
+    (function() {
+      const bar = document.getElementById('overtimeBarFill');
+      if (!bar) return;
+
+      // Функция обновления цвета на основе процента ширины
+      function updateColor() {
+        const widthStyle = bar.style.width; // например "45%"
+        if (!widthStyle) return;
+        const percent = parseFloat(widthStyle) || 0; // число от 0 до 100
+        let hue;
+        if (percent <= 50) {
+          // от зелёного (120) до жёлтого (60)
+          hue = 120 - (percent / 50) * 60;
+        } else {
+          // от жёлтого (60) до красного (0)
+          hue = 60 - ((percent - 50) / 50) * 60;
+        }
+        // Насыщенность 90%, светлота 60% — сочные цвета
+        bar.style.backgroundColor = `hsl(${hue}, 90%, 60%)`;
+      }
+
+      // Наблюдатель за изменениями атрибута style (чтобы ловить изменение width)
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.attributeName === 'style') {
+            updateColor();
+          }
+        });
+      });
+      observer.observe(bar, { attributes: true, attributeFilter: ['style'] });
+
+      // Вызовем сразу, если ширина уже задана
+      updateColor();
+    })();
+  </script>
+
+  <!-- Скрипты остаются без изменений -->
+  <script type="module" src="./profile.js"></script>
+</body>
 </html>

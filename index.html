@@ -1,493 +1,571 @@
 <!doctype html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Калькулятор зарплаты Alvisa</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+  <title>Калькулятор зарплаты Alvisa</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
 
-    <style>
-      html,
-      body {
-        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      }
+  <style>
+    html, body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      scroll-behavior: smooth;
+    }
 
-      :root {
-        --glow: rgba(99, 102, 241, 0.35);
-        --glow2: rgba(56, 189, 248, 0.25);
-      }
+    :root {
+      --glow-primary: rgba(99, 102, 241, 0.5);
+      --glow-secondary: rgba(56, 189, 248, 0.4);
+      --glow-accent: rgba(168, 85, 247, 0.3);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-bg: rgba(15, 23, 42, 0.6);
+      --card-shadow: 0 25px 50px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      --card-shadow-hover: 0 35px 70px -30px var(--glow-primary), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
 
-      body {
-        position: relative;
-        overflow-x: hidden;
-        background:
-          radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.12), transparent 60%),
-          radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.10), transparent 60%),
-          radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.08), transparent 60%),
-          #020617;
-      }
+    body {
+      position: relative;
+      overflow-x: hidden;
+      background: #020617;
+      background-image: 
+        radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.18), transparent 60%),
+        radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.15), transparent 60%),
+        radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.12), transparent 60%);
+    }
 
-      body::before {
-        content: "";
-        position: fixed;
-        inset: -25%;
-        pointer-events: none;
-        z-index: 0;
-        background:
-          radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.28), transparent 45%),
-          radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.22), transparent 45%),
-          radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.14), transparent 45%);
-        filter: blur(60px);
-        opacity: 0.7;
-        transform: translate3d(0, 0, 0);
-        animation: bgFloat 12s ease-in-out infinite alternate;
-      }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -25%;
+      pointer-events: none;
+      z-index: 0;
+      background: 
+        radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.4), transparent 45%),
+        radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.3), transparent 45%),
+        radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.2), transparent 45%);
+      filter: blur(70px);
+      opacity: 0.6;
+      animation: bgFloat 18s ease-in-out infinite alternate;
+    }
 
-      body::after {
-        content: "";
-        position: fixed;
-        inset: 0;
-        pointer-events: none;
-        z-index: 0;
-        background-image: radial-gradient(rgba(148, 163, 184, 0.11) 1px, transparent 1px);
-        background-size: 24px 24px;
-        opacity: 0.25;
-        mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 72%);
-      }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image: radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.2;
+      mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 80%);
+    }
 
-      @keyframes bgFloat {
-        0% { transform: translate3d(-2%, -2%, 0) scale(1); }
-        100% { transform: translate3d(2%, 2%, 0) scale(1.05); }
-      }
+    @keyframes bgFloat {
+      0% { transform: translate3d(-2%, -2%, 0) scale(1); }
+      100% { transform: translate3d(3%, 3%, 0) scale(1.08); }
+    }
 
-      .reveal {
-        opacity: 0;
-        transform: translateY(18px);
-        filter: blur(6px);
-        transition:
-          opacity 700ms cubic-bezier(.2,.8,.2,1),
-          transform 700ms cubic-bezier(.2,.8,.2,1),
-          filter 700ms cubic-bezier(.2,.8,.2,1);
-        will-change: opacity, transform, filter;
-      }
-      body.is-loaded .reveal {
-        opacity: 1;
-        transform: translateY(0);
-        filter: blur(0);
-      }
+    /* Анимация появления */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      filter: blur(8px);
+      transition: opacity 800ms cubic-bezier(0.2, 0.9, 0.3, 1),
+                  transform 800ms cubic-bezier(0.2, 0.9, 0.3, 1),
+                  filter 800ms cubic-bezier(0.2, 0.9, 0.3, 1);
+      will-change: opacity, transform, filter;
+    }
+    body.is-loaded .reveal {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+    /* Задержки для последовательного появления */
+    .reveal:nth-child(1) { transition-delay: 0.05s; }
+    .reveal:nth-child(2) { transition-delay: 0.15s; }
+    .reveal:nth-child(3) { transition-delay: 0.25s; }
 
+    /* Улучшенные стеклянные карточки */
+    .glass-card {
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--card-shadow);
+      transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+    }
+    .glass-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      background: 
+        radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.3), transparent 60%),
+        radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
+      transition: opacity 0.5s ease;
+    }
+    .glass-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+      box-shadow: var(--card-shadow-hover);
+    }
+    .glass-card:hover::before {
+      opacity: 1;
+    }
+
+    /* Эффект подъема */
+    .hover-lift {
+      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.4, 1), box-shadow 0.3s ease;
+    }
+    .hover-lift:hover {
+      transform: translateY(-6px);
+    }
+
+    /* Поля ввода с эффектом стекла */
+    .input-glass {
+      background: rgba(2, 6, 23, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s, background 0.2s;
+    }
+    .input-glass:hover {
+      background: rgba(2, 6, 23, 0.7);
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+    .input-glass:focus {
+      outline: none;
+      border-color: rgba(99, 102, 241, 0.8);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 10px 30px -20px rgba(99, 102, 241, 0.6);
+      background: rgba(2, 6, 23, 0.8);
+      transform: translateY(-2px);
+    }
+
+    /* Кастомный чекбокс в стиле glass */
+    .custom-checkbox {
+      appearance: none;
+      width: 1.3rem;
+      height: 1.3rem;
+      background: rgba(2, 6, 23, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 0.375rem;
+      backdrop-filter: blur(4px);
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .custom-checkbox:checked {
+      background: linear-gradient(145deg, #4f46e5, #6366f1);
+      border-color: #818cf8;
+      box-shadow: 0 0 10px #6366f1;
+    }
+    .custom-checkbox:checked::after {
+      content: "✓";
+      color: white;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+    .custom-checkbox:focus {
+      outline: 2px solid rgba(99, 102, 241, 0.5);
+      outline-offset: 2px;
+    }
+
+    /* Анимация для праздничных полей */
+    .holiday-fields {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.3s ease,
+                  transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .holiday-fields.is-open {
+      max-height: 280px; /* достаточно для двух полей с отступами */
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Кнопка сброса с улучшенной анимацией */
+    .btn-reset {
+      background: linear-gradient(145deg, #1e293b, #0f172a);
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 10px 25px -12px #00000080;
+      transition: all 0.2s;
+    }
+    .btn-reset:hover {
+      background: linear-gradient(145deg, #334155, #1e293b);
+      border-color: rgba(99, 102, 241, 0.4);
+      box-shadow: 0 18px 35px -18px #6366f1;
+      transform: scale(1.02);
+    }
+    .btn-reset:active {
+      transform: scale(0.98);
+    }
+
+    /* Адаптивные корректировки */
+    @media (max-width: 640px) {
       .glass-card {
-        position: relative;
-        overflow: hidden;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
+        backdrop-filter: blur(20px); /* сильнее на мобильных */
       }
-      .glass-card::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        opacity: 0;
-        background:
-          radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.35), transparent 60%),
-          radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
-        transition: opacity 350ms ease;
-      }
-      .glass-card:hover::before {
-        opacity: 1;
-      }
-
-      .hover-lift {
-        transition:
-          transform 250ms cubic-bezier(.2,.8,.2,1),
-          box-shadow 250ms cubic-bezier(.2,.8,.2,1),
-          border-color 250ms ease;
-      }
-      .hover-lift:hover {
-        transform: translateY(-4px);
-        box-shadow:
-          0 20px 60px -40px var(--glow),
-          0 14px 40px -28px rgba(0, 0, 0, 0.7);
-      }
-
       .input-glass {
-        transition:
-          transform 180ms cubic-bezier(.2,.8,.2,1),
-          box-shadow 180ms cubic-bezier(.2,.8,.2,1),
-          border-color 180ms ease,
-          background-color 180ms ease;
+        font-size: 16px; /* предотвращает зум при фокусе на iOS */
+        padding-top: 14px;
+        padding-bottom: 14px;
       }
-      .input-glass:focus {
-        transform: translateY(-1px);
-        box-shadow:
-          0 0 0 1px rgba(99, 102, 241, 0.35),
-          0 10px 40px -30px rgba(99, 102, 241, 0.55);
+      .btn-reset {
+        height: 56px; /* больше область касания */
       }
+      /* увеличиваем отступ сверху под хедер с учётом возможного переноса */
+      .pt-safe {
+        padding-top: 7rem; /* 28 (как pt-28) */
+      }
+    }
+    @media (min-width: 768px) {
+      .pt-safe {
+        padding-top: 6rem; /* 24 */
+      }
+    }
 
-      .holiday-fields {
-        overflow: hidden;
-        max-height: 0;
-        opacity: 0;
-        transform: translateY(-6px);
-        transition:
-          max-height 280ms cubic-bezier(.2,.8,.2,1),
-          opacity 200ms ease,
-          transform 280ms cubic-bezier(.2,.8,.2,1);
-      }
-      .holiday-fields.is-open {
-        max-height: 220px;
-        opacity: 1;
-        transform: translateY(0);
-      }
+    /* Микроанимации для ссылок навигации */
+    .nav-link {
+      position: relative;
+      transition: color 0.2s;
+    }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 1rem;
+      right: 1rem;
+      height: 2px;
+      background: linear-gradient(90deg, #6366f1, #38bdf8);
+      border-radius: 2px;
+      opacity: 0;
+      transform: scaleX(0.7);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .nav-link.active::after,
+    .nav-link:hover::after {
+      opacity: 1;
+      transform: scaleX(1);
+    }
 
-      .pop { animation: pop 260ms cubic-bezier(.2,.8,.2,1); }
-      @keyframes pop {
-        0% { transform: translateY(0) scale(1); }
-        45% { transform: translateY(-2px) scale(1.03); }
-        100% { transform: translateY(0) scale(1); }
-      }
+    /* Сообщение об ошибке */
+    #errorBox:not(.hidden) {
+      animation: shake 0.3s ease-in-out;
+    }
 
-      .shake { animation: shake 320ms ease-in-out; }
-      @keyframes shake {
-        0% { transform: translateX(0); }
-        25% { transform: translateX(-6px); }
-        50% { transform: translateX(6px); }
-        75% { transform: translateX(-4px); }
-        100% { transform: translateX(0); }
-      }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-5px); }
+      40% { transform: translateX(5px); }
+      60% { transform: translateX(-3px); }
+      80% { transform: translateX(3px); }
+    }
 
-      @media (prefers-reduced-motion: reduce) {
-        body::before { animation: none; }
-        .reveal { transition: none; opacity: 1; transform: none; filter: none; }
-        .hover-lift { transition: none; }
-        .input-glass { transition: none; }
-        .pop, .shake { animation: none; }
-        .holiday-fields { transition: none; max-height: none; opacity: 1; transform: none; }
+    /* Плавный скролл и уменьшение motion */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
       }
-    </style>
-  </head>
+    }
+  </style>
+</head>
 
-  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-white">
-    <script>
-      document.body.classList.add("is-loaded");
-    </script>
-          <header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
-      <div class="mx-auto max-w-7xl px-4 py-4 flex flex-wrap items-center justify-between gap-4">
-        <a href="index.html" class="group">
-          <span class="text-base font-semibold text-slate-200 transition-colors group-hover:text-indigo-300">Alvisa</span>
-        </a>
-        <nav class="flex flex-wrap items-center gap-1 text-sm font-medium">
-          <a href="index.html" 
-            class="relative rounded-lg px-4 py-2 font-semibold text-indigo-300 transition-all hover:bg-white/10 after:absolute after:bottom-0 after:left-4 after:right-4 after:h-0.5 after:bg-indigo-400 after:content-['']">
-            Калькулятор
-          </a>
-          <a href="table.html" 
-            class="rounded-lg px-4 py-2 text-slate-300 transition-all hover:bg-white/10 hover:text-indigo-200">
-            Табель
-          </a>
-          <a href="profile.html" 
-            class="rounded-lg px-4 py-2 text-slate-300 transition-all hover:bg-white/10 hover:text-indigo-200">
-            Профиль
-          </a>
-        </nav>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+<script>
+  document.body.classList.add("is-loaded");
+</script>
+
+<!-- ========== УНИФИЦИРОВАННЫЙ ХЕДЕР ========== -->
+<header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
+  <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex flex-wrap items-center justify-between gap-3">
+    <a href="index.html" class="group">
+      <span class="text-base md:text-lg font-semibold bg-gradient-to-r from-indigo-200 to-slate-100 bg-clip-text text-transparent transition-colors group-hover:from-indigo-300 group-hover:to-white">
+        Alvisa
+      </span>
+    </a>
+    <nav class="flex flex-wrap items-center justify-end gap-1 text-sm font-medium">
+      <a href="index.html"
+         class="nav-link active relative rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">
+        Калькулятор
+      </a>
+      <a href="table.html"
+         class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
+        Табель
+      </a>
+      <a href="profile.html"
+         class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
+        Профиль
+      </a>
+    </nav>
+  </div>
+</header>
+
+<!-- Основной контент с защитным отступом (pt-safe) -->
+<div class="relative z-10 mx-auto max-w-5xl px-4 pt-safe pb-12 md:pb-16">
+  <!-- Верхний блок с заголовком и кнопками авторизации -->
+  <header class="mb-8 reveal">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+      <div class="flex items-center gap-3 flex-1">
+        <span
+          class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 shadow-xl text-xl font-bold text-slate-100"
+          aria-hidden="true"
+        >
+          А
+        </span>
+        <div>
+          <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
+            <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
+              Калькулятор зарплаты
+            </span>
+          </h1>
+          <p class="mt-1 text-sm text-slate-300/80">Сохраняй табель и оклад в аккаунте.</p>
+        </div>
       </div>
-    </header>
 
+      <div class="flex items-center gap-2 self-end sm:self-center">
+        <a id="loginLink" href="login.html?next=index.html"
+           class="hidden rounded-2xl bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">
+          Войти
+        </a>
+        <a id="adminLink" href="admin.html"
+           class="hidden rounded-2xl bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">
+          Админка
+        </a>
+        <button id="logoutBtn" type="button"
+                class="hidden rounded-2xl bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">
+          Выйти
+        </button>
+      </div>
+    </div>
+  </header>
 
-    <div class="relative z-10 mx-auto max-w-5xl px-4 pt-24 pb-10">
-      <header class="mb-6 reveal">
-        <div class="flex items-center gap-3">
-          <span
-            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/30 to-sky-400/10 ring-1 ring-white/10 shadow-[0_20px_60px_-40px_rgba(99,102,241,0.6)] text-lg font-semibold text-slate-100/90"
-            aria-hidden="true"
-          >
-            А
-          </span>
+  <!-- Основная сетка: форма и результаты -->
+  <main class="grid gap-8 lg:grid-cols-2">
+    <!-- Карточка формы -->
+    <section class="reveal glass-card hover-lift rounded-3xl p-6 md:p-7">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold tracking-tight bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Данные</h2>
+      </div>
 
-          <div class="flex-1">
-            <h1 class="text-3xl font-semibold tracking-tight">
-              <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
-                Калькулятор зарплаты Alvisa
-              </span>
-            </h1>
-            <p class="mt-1 text-sm text-slate-300/90">Сохраняй табель и оклад в аккаунте.</p>
+      <form id="salaryForm" class="mt-6 space-y-5" novalidate>
+        <!-- Оклад -->
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-200" for="oklad">Оклад (за норму часов)</label>
+          <input
+            id="oklad"
+            name="oklad"
+            inputmode="decimal"
+            placeholder="Напр. 50 000"
+            class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+          />
+          <p class="mt-1.5 text-xs text-slate-400/80">₽, можно с пробелами и запятыми.</p>
+        </div>
+
+        <!-- Норма и отработано -->
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-slate-200" for="normHours">Норма часов (в месяце)</label>
+            <input
+              id="normHours"
+              name="normHours"
+              inputmode="decimal"
+              placeholder="Напр. 160"
+              class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+            />
           </div>
-
-          <div class="flex items-center gap-2">
-            <a
-              id="loginLink"
-              href="login.html?next=index.html"
-              class="hidden rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
-            >
-              Войти
-            </a>
-
-            <a
-              id="adminLink"
-              href="admin.html"
-              class="hidden rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
-            >
-              Админка
-            </a>
-
-            <button
-              id="logoutBtn"
-              type="button"
-              class="hidden rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
-            >
-              Выйти
-            </button>
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-slate-200" for="workedHours">Отработано часов</label>
+            <input
+              id="workedHours"
+              name="workedHours"
+              inputmode="decimal"
+              placeholder="Напр. 160"
+              class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+            />
           </div>
         </div>
-      </header>
 
-      <main class="grid gap-7 lg:grid-cols-2">
-        <section
-          class="reveal glass-card hover-lift rounded-3xl bg-slate-900/35 p-6 shadow-[0_20px_80px_-50px_rgba(99,102,241,0.45)] ring-1 ring-white/10"
-        >
-          <div class="flex items-center justify-between">
-            <h2 class="text-xl font-semibold tracking-tight">Данные</h2>
+        <!-- Ночные часы -->
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-200" for="nightHours">Ночных часов</label>
+          <input
+            id="nightHours"
+            name="nightHours"
+            inputmode="decimal"
+            placeholder="Напр. 70"
+            class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+          />
+          <p class="mt-1.5 text-xs text-slate-400/80">Ночные: надбавка +40% к базовой ставке.</p>
+        </div>
+
+        <!-- Первая половина месяца -->
+        <div class="space-y-5">
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-slate-200" for="firstHalfHours">Часы за первую половину месяца</label>
+            <input
+              id="firstHalfHours"
+              name="firstHalfHours"
+              inputmode="decimal"
+              placeholder="Напр. 80"
+              class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+            />
+            <p class="mt-1.5 text-xs text-slate-400/80">До 15 числа</p>
           </div>
 
-          <form id="salaryForm" class="mt-5 space-y-4" novalidate>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label class="mb-1 block text-sm font-medium text-slate-200" for="oklad">
-                Оклад (за норму часов)
-              </label>
+              <label class="mb-1.5 block text-sm font-medium text-slate-200" for="firstHalfNightHours">Ночные часы за первую половину</label>
               <input
-                id="oklad"
-                name="oklad"
+                id="firstHalfNightHours"
+                name="firstHalfNightHours"
                 inputmode="decimal"
-                placeholder="Напр. 50 000"
-                class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                placeholder="Напр. 35"
+                class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
               />
-              <p class="mt-1 text-xs text-slate-400/90">₽, можно с пробелами и запятыми.</p>
             </div>
-
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label class="mb-1 block text-sm font-medium text-slate-200" for="normHours">
-                  Норма часов (в месяце)
-                </label>
-                <input
-                  id="normHours"
-                  name="normHours"
-                  inputmode="decimal"
-                  placeholder="Напр. 160"
-                  class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
-                />
-              </div>
-
-              <div>
-                <label class="mb-1 block text-sm font-medium text-slate-200" for="workedHours">
-                  Отработано часов
-                </label>
-                <input
-                  id="workedHours"
-                  name="workedHours"
-                  inputmode="decimal"
-                  placeholder="Напр. 160"
-                  class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
-                />
-              </div>
+            <div class="flex flex-col justify-end">
+              <button
+                type="button"
+                id="resetBtn"
+                class="btn-reset w-full rounded-2xl px-4 py-3.5 font-medium text-slate-100 transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
+              >
+                Сбросить
+              </button>
             </div>
+          </div>
+        </div>
 
+        <!-- Праздничные дни -->
+        <div class="pt-2 border-t border-white/10">
+          <label class="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              id="holidayToggle"
+              type="checkbox"
+              class="custom-checkbox"
+              aria-controls="holidayFields"
+              aria-expanded="false"
+            />
+            <span class="text-sm font-medium text-slate-200">Работали в праздничные дни?</span>
+          </label>
+
+          <div id="holidayFields" class="holiday-fields mt-4 grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label class="mb-1 block text-sm font-medium text-slate-200" for="nightHours">
-                Ночных часов
-              </label>
+              <label for="holidayShifts" class="block text-sm font-medium text-slate-200 mb-1.5">Количество смен в праздники</label>
               <input
-                id="nightHours"
-                name="nightHours"
-                inputmode="decimal"
-                placeholder="Напр. 70"
-                class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                id="holidayShifts"
+                name="holidayShifts"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                step="1"
+                placeholder="Напр. 2"
+                class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
               />
-              <p class="mt-1 text-xs text-slate-400/90">Ночные: надбавка +40% к базовой ставке.</p>
             </div>
-
-            <div class="space-y-4">
-              <div class="min-w-0">
-                <label class="mb-1 block text-sm font-medium text-slate-200" for="firstHalfHours">
-                  Часы за первую половину месяца
-                </label>
-                <input
-                  id="firstHalfHours"
-                  name="firstHalfHours"
-                  inputmode="decimal"
-                  placeholder="Напр. 80"
-                  class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 placeholder:tracking-wide placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
-                />
-                <p class="mt-1 text-xs text-slate-400/90 min-h-[16px]">До 15 числа</p>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="min-w-0 grid gap-1">
-                  <label class="block text-sm font-medium text-slate-200 h-10 leading-5 flex items-end" for="firstHalfNightHours">
-                    Ночные часы за первую половину
-                  </label>
-                  <input
-                    id="firstHalfNightHours"
-                    name="firstHalfNightHours"
-                    inputmode="decimal"
-                    placeholder="Напр. 35"
-                    class="input-glass w-full h-[52px] rounded-2xl bg-slate-950/45 px-4 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
-                  />
-                  <p class="text-xs text-slate-400/90 min-h-[16px]"></p>
-                </div>
-
-                <div class="min-w-0 grid gap-1">
-                  <div class="h-10" aria-hidden="true"></div>
-                  <button
-                    type="button"
-                    id="resetBtn"
-                    class="w-full h-[52px] rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-4 font-medium text-slate-100 ring-1 ring-white/10 shadow-[0_18px_60px_-45px_rgba(99,102,241,0.6)] transition-transform duration-150 hover:shadow-[0_22px_70px_-45px_rgba(56,189,248,0.55)] hover:ring-indigo-400/30 active:scale-[0.985] focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
-                  >
-                    Сбросить
-                  </button>
-                  <p class="min-h-[16px] opacity-0 select-none" aria-hidden="true">x</p>
-                </div>
-              </div>
+            <div>
+              <label for="holidayNightShifts" class="block text-sm font-medium text-slate-200 mb-1.5">Сколько из них ночных</label>
+              <input
+                id="holidayNightShifts"
+                name="holidayNightShifts"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                step="1"
+                placeholder="Напр. 1"
+                class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+              />
             </div>
+          </div>
+        </div>
 
-            <div class="pt-3 border-t border-white/10">
-              <label class="flex items-center gap-3 cursor-pointer select-none">
-                <input
-                  id="holidayToggle"
-                  type="checkbox"
-                  class="h-5 w-5 rounded border-white/10 bg-slate-950/45 text-indigo-400 focus:ring-indigo-400/80"
-                  aria-controls="holidayFields"
-                  aria-expanded="false"
-                />
-                <span class="text-sm font-medium text-slate-200">Работали в праздничные дни?</span>
-              </label>
+        <!-- Блок ошибки -->
+        <div id="errorBox" class="hidden rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
+      </form>
+    </section>
 
-              <div id="holidayFields" class="holiday-fields mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-                <div class="min-w-0 flex flex-col gap-1">
-                  <label for="holidayShifts" class="block text-sm font-medium text-slate-200 h-10 leading-5 flex items-end">
-                    Количество смен в праздники
-                  </label>
-                  <input
-                    id="holidayShifts"
-                    name="holidayShifts"
-                    type="number"
-                    inputmode="numeric"
-                    min="0"
-                    step="1"
-                    placeholder="Напр. 2"
-                    class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
-                  />
-                  <p class="text-xs text-slate-400/90 min-h-[16px]"></p>
-                </div>
+    <!-- Карточка результатов -->
+    <aside class="reveal glass-card hover-lift rounded-3xl p-6 md:p-7">
+      <h2 class="text-xl font-semibold tracking-tight bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Результат</h2>
 
-                <div class="min-w-0 flex flex-col gap-1">
-                  <label for="holidayNightShifts" class="block text-sm font-medium text-slate-200 h-10 leading-5 flex items-end">
-                    Сколько из них ночных
-                  </label>
-                  <input
-                    id="holidayNightShifts"
-                    name="holidayNightShifts"
-                    type="number"
-                    inputmode="numeric"
-                    min="0"
-                    step="1"
-                    placeholder="Напр. 1"
-                    class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
-                  />
-                  <p class="text-xs text-slate-400/90 min-h-[16px]"></p>
-                </div>
-              </div>
-            </div>
-
-            <div
-              id="errorBox"
-              class="hidden rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-200 ring-1 ring-rose-500/20 shadow-[0_14px_50px_-40px_rgba(244,63,94,0.55)]"
-            ></div>
-          </form>
-        </section>
-
-        <aside class="reveal glass-card hover-lift rounded-3xl bg-slate-900/25 p-6 shadow-[0_20px_80px_-50px_rgba(56,189,248,0.35)] ring-1 ring-white/10">
+      <div class="mt-6 space-y-5">
+        <!-- Итоговая сумма -->
+        <div class="glass-card rounded-3xl bg-gradient-to-b from-indigo-500/20 via-slate-900/50 to-slate-900/30 p-6 ring-1 ring-white/10">
           <div class="flex items-center justify-between">
-            <h2 class="text-xl font-semibold tracking-tight">Результат</h2>
+            <p class="text-sm text-slate-200/80">К выплате</p>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300 ring-1 ring-white/10 backdrop-blur-sm">
+              <span class="h-2 w-2 rounded-full bg-emerald-400/80"></span>
+              нетто
+            </span>
           </div>
+          <p id="net" class="mt-3 text-4xl md:text-5xl font-bold tracking-tight text-slate-50 drop-shadow-[0_15px_30px_rgba(99,102,241,0.5)]">—</p>
+          <p id="summary" class="mt-3 text-sm text-slate-300/70"></p>
+        </div>
 
-          <div class="mt-5 grid gap-4">
-            <div class="glass-card rounded-3xl bg-gradient-to-b from-indigo-500/15 via-slate-950/35 to-slate-950/20 p-5 ring-1 ring-white/10 shadow-[0_30px_90px_-65px_rgba(99,102,241,0.8)]">
-              <div class="flex items-center justify-between">
-                <p class="text-sm text-slate-200/90">К выплате</p>
-                <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1 text-[11px] text-slate-300 ring-1 ring-white/10">
-                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-400/80"></span>
-                  нетто
-                </span>
-              </div>
-
-              <p id="net" class="mt-2 text-4xl font-semibold tracking-tight text-slate-50 drop-shadow-[0_10px_35px_rgba(99,102,241,0.35)]">—</p>
-              <p id="summary" class="mt-2 text-sm text-slate-300/80"></p>
-            </div>
-
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
-                <p class="text-xs text-slate-400">Часовая ставка</p>
-                <p id="hourRate" class="mt-1 text-lg font-semibold tracking-tight">—</p>
-              </div>
-              <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
-                <p class="text-xs text-slate-400">Оклад за факт</p>
-                <p id="baseFact" class="mt-1 text-lg font-semibold tracking-tight">—</p>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
-                <p class="text-xs text-slate-400">Премия 35%</p>
-                <p id="bonus" class="mt-1 text-lg font-semibold tracking-tight">—</p>
-              </div>
-              <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
-                <p class="text-xs text-slate-400">Ночные</p>
-                <p id="nightExtra" class="mt-1 text-lg font-semibold tracking-tight">—</p>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
-                <div class="flex items-center justify-between">
-                  <p class="text-xs text-slate-400">Аванс</p>
-                  <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1 text-[11px] text-slate-300 ring-1 ring-white/10">
-                    <span class="h-1.5 w-1.5 rounded-full bg-yellow-400/80"></span>
-                    бета
-                  </span>
-                </div>
-                <p id="advance" class="mt-1 text-lg font-semibold tracking-tight">—</p>
-              </div>
-
-              <div class="glass-card hover-lift rounded-3xl bg-slate-950/30 p-4 ring-1 ring-white/10">
-                <div class="flex items-center justify-between">
-                  <p class="text-xs text-slate-400">Остаток</p>
-                  <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1 text-[11px] text-slate-300 ring-1 ring-white/10">
-                    <span class="h-1.5 w-1.5 rounded-full bg-yellow-400/80"></span>
-                    бета
-                  </span>
-                </div>
-                <p id="remaining" class="mt-1 text-lg font-semibold tracking-tight">—</p>
-              </div>
-            </div>
+        <!-- Детали в два столбца -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <p class="text-xs text-slate-400">Часовая ставка</p>
+            <p id="hourRate" class="mt-2 text-xl font-semibold tracking-tight">—</p>
           </div>
-        </aside>
-      </main>
+          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <p class="text-xs text-slate-400">Оклад за факт</p>
+            <p id="baseFact" class="mt-2 text-xl font-semibold tracking-tight">—</p>
+          </div>
+          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <p class="text-xs text-slate-400">Премия 35%</p>
+            <p id="bonus" class="mt-2 text-xl font-semibold tracking-tight">—</p>
+          </div>
+          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <p class="text-xs text-slate-400">Ночные</p>
+            <p id="nightExtra" class="mt-2 text-xl font-semibold tracking-tight">—</p>
+          </div>
+          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <div class="flex items-center justify-between">
+              <p class="text-xs text-slate-400">Аванс</p>
+              <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-300 ring-1 ring-white/10">
+                <span class="h-1.5 w-1.5 rounded-full bg-yellow-400/80"></span>
+                бета
+              </span>
+            </div>
+            <p id="advance" class="mt-2 text-xl font-semibold tracking-tight">—</p>
+          </div>
+          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <div class="flex items-center justify-between">
+              <p class="text-xs text-slate-400">Остаток</p>
+              <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-300 ring-1 ring-white/10">
+                <span class="h-1.5 w-1.5 rounded-full bg-yellow-400/80"></span>
+                бета
+              </span>
+            </div>
+            <p id="remaining" class="mt-2 text-xl font-semibold tracking-tight">—</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
 
-      <footer class="mt-8 text-center text-xs text-slate-400/70 border-t border-white/10 pt-4">
-        <span style="color: #f91616; font-weight: 700;">ВНИМАНИЕ:</span> Проект находится в стадии разработки. Пожалуйста, уточняйте информацию.
-        <br>Поддержать автора - пару <span style="color: #f97316; font-weight: 700;">ништяков</span> в кабинет <span style="color: #f97316; font-weight: 700;">ЕГАИС =)</span> 
-      </footer>
-    </div>
+  <!-- Футер -->
+  <footer class="mt-12 text-center text-xs text-slate-400/60 border-t border-white/10 pt-6">
+    <span class="font-bold text-rose-400">ВНИМАНИЕ:</span> Проект находится в стадии разработки. Пожалуйста, уточняйте информацию.
+    <br>Поддержать автора — пару <span class="text-amber-400 font-bold">ништяков</span> в кабинет <span class="text-amber-400 font-bold">ЕГАИС =)</span>
+  </footer>
+</div>
 
-    <script type="module" src="./app.js"></script>
-  </body>
+<!-- Скрипты остаются без изменений -->
+<script type="module" src="./app.js"></script>
+</body>
 </html>
