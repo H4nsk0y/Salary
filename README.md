@@ -11,6 +11,9 @@ Salary
 ├─ index.html
 ├─ login.html
 ├─ login.js
+├─ profile.html
+├─ profile.js
+├─ README.md
 ├─ storage.js
 ├─ supabaseClient.js
 ├─ table.html

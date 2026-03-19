@@ -1,7 +1,9 @@
-// /table.js
+// =========================
+// FILE: /table.js
+// =========================
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
-import { getMyProfile, updateMyOklad, loadTimesheet, saveTimesheet } from "./db.js";
+import { getMyProfile, loadTimesheet, saveTimesheet } from "./db.js";
 
 document.body.classList.add("is-loaded");
 
@@ -14,7 +16,6 @@ const LEAVE_HOURS_PER_DAY = 8;
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
 const saveBtn = document.getElementById("saveBtn");
-const exportBtn = document.getElementById("exportBtn");
 const saveStatus = document.getElementById("saveStatus");
 
 const monthSelect = document.getElementById("monthSelect");
@@ -184,7 +185,6 @@ let profileOklad = null;
 
 // saving
 let timesheetSaveTimer = null;
-let okladSaveTimer = null;
 let lastSavedJSON = "";
 let dirty = false;
 
@@ -205,10 +205,6 @@ function sumRange(arr, startIdx, endIdxInclusive) {
   return s;
 }
 
-/**
- * ✅ Норма месяца (для СТАВКИ) — как в вашем правиле:
- * уменьшается ТОЛЬКО от официальных праздников (будние дни, отмеченные holiday).
- */
 function calendarNormHours() {
   let weekdays = 0;
   let holidayWeekdays = 0;
@@ -222,9 +218,6 @@ function calendarNormHours() {
   return (weekdays - holidayWeekdays) * 8;
 }
 
-/**
- * ✅ Личная норма (для переработки) — уменьшает ОТ/Б, но НЕ влияет на ставку.
- */
 function personalNormHours(monthNorm) {
   const vacDays = leaveType.filter((t) => t === "vacation").length;
   const sickDays = leaveType.filter((t) => t === "sick").length;
@@ -232,9 +225,6 @@ function personalNormHours(monthNorm) {
   return { vacDays, sickDays, personalNorm };
 }
 
-/**
- * ✅ Праздничные часы (фактически отработанные) — для доплаты x2 (только за часы).
- */
 function holidayWorkedTotals() {
   let hDay = 0;
   let hNight = 0;
@@ -310,21 +300,6 @@ function scheduleSave() {
   }, 900);
 }
 
-function maybeSaveProfileOklad(okladNumber) {
-  if (!Number.isFinite(okladNumber) || okladNumber <= 0) return;
-  if (profileOklad != null && Math.abs(Number(profileOklad) - okladNumber) < 0.0001) return;
-
-  if (okladSaveTimer) clearTimeout(okladSaveTimer);
-  okladSaveTimer = setTimeout(async () => {
-    try {
-      await updateMyOklad(okladNumber);
-      profileOklad = okladNumber;
-    } catch {
-      // ignore
-    }
-  }, 800);
-}
-
 function clearMoneyUI() {
   netPayEl.textContent = "—";
   moneySummaryEl.textContent = "";
@@ -345,18 +320,13 @@ function clearMoneyUI() {
 function recalcAll() {
   monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
 
-  // ✅ monthNorm влияет на ставку (как калькулятор: normHours)
   const monthNorm = calendarNormHours();
-
-  // ✅ personalNorm только для переработки/инфо
   const { vacDays, sickDays, personalNorm } = personalNormHours(monthNorm);
 
-  // totals from cells
   const totalDay = sum(dayHours);
   const totalNight = sum(nightHours);
   const workedHours = totalDay + totalNight;
 
-  // UI blocks
   animateNumber(totalHoursEl, workedHours, (v) => v.toFixed(1), 360);
   dayNightHoursEl.textContent = `${totalDay.toFixed(1)} / ${totalNight.toFixed(1)}`;
   bump(dayNightHoursEl);
@@ -379,11 +349,6 @@ function recalcAll() {
 
   setError(null);
 
-  /**
-   * ✅ САМОЕ ВАЖНОЕ:
-   * Денежный расчёт табеля делаем через тот же computeSalary(),
-   * что и калькулятор — это гарантирует 1-в-1 совпадение.
-   */
   const calc = computeSalary({
     oklad,
     normHours: monthNorm,
@@ -399,13 +364,6 @@ function recalcAll() {
 
   const r = calc.result;
 
-  /**
-   * ✅ Праздничные x2:
-   * computeSalary уже оплатил эти часы как обычные (1x).
-   * Чтобы стало 2x, добавляем “доплату” = ещё 1x:
-   * - за праздничные часы: (base + bonus) * holidayTotal
-   * - за праздничные ночные дополнительно: base * 0.4 * holidayNight
-   */
   const baseHourRateGross = oklad / monthNorm;
   const bonusPerHourGross = (oklad * BONUS_RATE) / monthNorm;
 
@@ -423,14 +381,11 @@ function recalcAll() {
   const taxTotal = r.tax + holidayTax;
   const netTotal = r.net + holidayNet;
 
-  // ✅ hourRateNet — как в калькуляторе (r.hourRate), округление как у тебя
   animateNumber(hourRateNetEl, r.hourRate, (v) => formatRub(v, 0), 360);
 
-  // ✅ nightHourNet = hourRateNet + (baseGross*0.4)*(1-0.13)
   const nightHourNet = r.hourRate + baseHourRateGross * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
   animateNumber(nightHourNetEl, nightHourNet, (v) => formatRub(v, 0), 360);
 
-  // breakdown (как в калькуляторе)
   animateNumber(baseFactGrossEl, r.baseFact, (v) => formatRub(v, 0), 360);
   animateNumber(bonusGrossEl, r.bonus, (v) => formatRub(v, 0), 360);
   animateNumber(nightExtraGrossEl, r.nightExtra, (v) => formatRub(v, 0), 360);
@@ -446,10 +401,6 @@ function recalcAll() {
   moneySummaryEl.textContent =
     `Брутто: ${formatRub(grossTotal, 0)} • Налог: ${formatRub(taxTotal, 0)} • Праздничные x2 (доплата): ${formatRub(holidayExtraGross, 0)}`;
 
-  /**
-   * ✅ Аванс/остаток — табель должен повторять калькулятор:
-   * калькулятор считает аванс от оклада (без премии) по часам 1–15 и ночным 1–15.
-   */
   const endFH = Math.min(14, daysInMonth - 1);
   const fhDay = sumRange(dayHours, 0, endFH);
   const fhNight = sumRange(nightHours, 0, endFH);
@@ -464,8 +415,9 @@ function recalcAll() {
   advancePayEl.textContent = `~ ${formatRub(advanceApprox, 0)}`;
   remainingPayEl.textContent = `~ ${formatRub(remainingApprox, 0)}`;
 
-  // проф. оклад
-  maybeSaveProfileOklad(oklad);
+  if (normHint) {
+    normHint.textContent = `Норма месяца (для ставки): ${monthNorm.toFixed(0)} ч`;
+  }
 }
 
 function resetTableDom() {
@@ -725,47 +677,6 @@ async function loadCurrentMonthFromDb() {
   }
 }
 
-function exportToXlsx() {
-  const XLSX = window.XLSX;
-  if (!XLSX) {
-    setError("Библиотека XLSX не загрузилась. Проверь интернет/блокировщики.");
-    return;
-  }
-
-  const header = ["", ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-
-  const dayRowVals = ["День"];
-  const nightRowVals = ["Ночь"];
-
-  for (let i = 0; i < daysInMonth; i++) {
-    const dt = leaveType[i];
-    if (dt === "vacation") dayRowVals.push("ОТ");
-    else if (dt === "sick") dayRowVals.push("Б");
-    else dayRowVals.push(dayHours[i] ?? 0);
-
-    nightRowVals.push(dt ? "" : (nightHours[i] ?? 0));
-  }
-
-  const meta = [
-    ["Год", year],
-    ["Месяц", monthNames[month]],
-    ["Оклад", String(okladInput.value || "")],
-    ["Примечание", "Праздник отмечается кликом по числу. x2 только за фактические часы этого дня."],
-    [],
-  ];
-
-  const matrix = [...meta, header, dayRowVals, nightRowVals];
-
-  const ws = XLSX.utils.aoa_to_sheet(matrix);
-  ws["!cols"] = [{ wch: 10 }, ...Array.from({ length: daysInMonth }, () => ({ wch: 6 }))];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Timesheet");
-
-  const filename = `timesheet_${year}_${String(month + 1).padStart(2, "0")}.xlsx`;
-  XLSX.writeFile(wb, filename);
-}
-
 // events
 logoutBtn?.addEventListener("click", async () => {
   try { await signOut(); } finally { location.href = "login.html?next=table.html"; }
@@ -775,11 +686,8 @@ saveBtn?.addEventListener("click", async () => {
   await doSaveTimesheet();
 });
 
-exportBtn?.addEventListener("click", () => exportToXlsx());
-
 okladInput.addEventListener("input", () => {
   recalcAll();
-  scheduleSave();
 });
 
 monthSelect.addEventListener("change", async () => {

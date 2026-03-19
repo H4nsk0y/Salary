@@ -176,11 +176,31 @@
   </head>
 
   <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-white">
-    <script>  
-    document.body.classList.add("is-loaded");
+    <script>
+      document.body.classList.add("is-loaded");
     </script>
-    
-    <div class="relative z-10 mx-auto max-w-5xl px-4 py-10">
+
+    <header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
+      <div class="mx-auto max-w-6xl px-4 py-3 grid grid-cols-3 items-center">
+      <a href="index.html" class="justify-self-start flex items-center gap-2">
+        <span
+          class="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/30 to-sky-400/10 ring-1 ring-white/10 shadow-[0_20px_60px_-40px_rgba(99,102,241,0.6)] text-sm font-semibold text-slate-100/90"
+          aria-hidden="true"
+        >A</span>
+        <span class="text-sm font-semibold text-slate-200">Alvisa</span>
+      </a>
+
+      <nav class="justify-self-center flex items-center gap-4 text-sm">
+        <a href="index.html" class="text-indigo-300 hover:text-indigo-200 font-medium">Калькулятор</a>
+        <a href="table.html" class="text-slate-300 hover:text-indigo-200">Табель</a>
+        <a href="profile.html" class="text-slate-300 hover:text-indigo-200">Профиль</a>
+      </nav>
+
+      <div class="justify-self-end"></div>
+    </div>
+    </header>
+
+    <div class="relative z-10 mx-auto max-w-5xl px-4 pt-24 pb-10">
       <header class="mb-6 reveal">
         <div class="flex items-center gap-3">
           <span
@@ -227,14 +247,7 @@
         </div>
       </header>
 
-      <div class="mb-6 flex gap-4 border-b border-white/10 pb-4 reveal">
-        <a href="index.html" class="text-indigo-300 hover:text-indigo-200 font-medium">Калькулятор зарплаты</a>
-        <a href="table.html" class="text-slate-300 hover:text-indigo-200">Табель учёта</a>
-        <a href="profile.html" class="text-slate-300 hover:text-indigo-200">Профиль</a>
-      </div>
-
       <main class="grid gap-7 lg:grid-cols-2">
-        <!-- Form -->
         <section
           class="reveal glass-card hover-lift rounded-3xl bg-slate-900/35 p-6 shadow-[0_20px_80px_-50px_rgba(99,102,241,0.45)] ring-1 ring-white/10"
         >
@@ -299,7 +312,6 @@
               <p class="mt-1 text-xs text-slate-400/90">Ночные: надбавка +40% к базовой ставке.</p>
             </div>
 
-            <!-- АВАНС -->
             <div class="space-y-4">
               <div class="min-w-0">
                 <label class="mb-1 block text-sm font-medium text-slate-200" for="firstHalfHours">
@@ -344,7 +356,6 @@
               </div>
             </div>
 
-            <!-- Holiday toggle -->
             <div class="pt-3 border-t border-white/10">
               <label class="flex items-center gap-3 cursor-pointer select-none">
                 <input
@@ -401,7 +412,6 @@
           </form>
         </section>
 
-        <!-- Result -->
         <aside class="reveal glass-card hover-lift rounded-3xl bg-slate-900/25 p-6 shadow-[0_20px_80px_-50px_rgba(56,189,248,0.35)] ring-1 ring-white/10">
           <div class="flex items-center justify-between">
             <h2 class="text-xl font-semibold tracking-tight">Результат</h2>

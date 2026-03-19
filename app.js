@@ -1,6 +1,6 @@
 import { computeSalary, parseNumber, TAX_RATE, NIGHT_EXTRA_RATE, BONUS_RATE } from "./calc.js";
 import { getSession, signOut } from "./auth.js";
-import { getMyProfile, updateMyOklad } from "./db.js";
+import { getMyProfile } from "./db.js";
 
 document.body.classList.add("is-loaded");
 
@@ -47,8 +47,6 @@ const HOLIDAY_MULTIPLIER = 2;
 
 let profileRole = "user";
 let profileOklad = null;
-
-let saveOkladTimer = null;
 
 function formatRub(value, digits) {
   const n = Number(value);
@@ -239,23 +237,6 @@ function computeAdvanceApproxNet(oklad, normHours, firstHalfHours, firstHalfNigh
   return baseNetHourly * firstHalfHours + nightExtraNetHourly * firstHalfNightHours;
 }
 
-function maybeSaveProfileOklad(okladNumber) {
-  if (!Number.isFinite(okladNumber) || okladNumber <= 0) return;
-  if (profileOklad != null && Math.abs(Number(profileOklad) - okladNumber) < 0.0001) return;
-
-  if (saveOkladTimer) clearTimeout(saveOkladTimer);
-  saveOkladTimer = setTimeout(async () => {
-    try {
-      const session = await getSession();
-      if (!session) return;
-      await updateMyOklad(okladNumber);
-      profileOklad = okladNumber;
-    } catch {
-      // ignore
-    }
-  }, 800);
-}
-
 function render() {
   const parsed = readInput();
   if (!parsed.ok) {
@@ -325,9 +306,6 @@ function render() {
 
   const holidayPart = holidayExtraGross > 0 ? ` • Праздничные: +${formatRub(holidayNet, 0)}` : "";
   els.summary.textContent = `Брутто: ${formatRub(grossTotal, 0)} • Налог: ${formatRub(taxTotal, 0)}${holidayPart}`;
-
-  // проф. оклад
-  maybeSaveProfileOklad(parsed.input.oklad);
 }
 
 function reset() {
