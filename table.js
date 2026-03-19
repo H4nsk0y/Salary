@@ -11,6 +11,8 @@ const prefersReducedMotion =
   window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
 
 const LEAVE_HOURS_PER_DAY = 8;
+const MAX_HOURS_PER_DAY = 24;
+const SHORT_DAY_REDUCTION_HOURS = 1;
 
 // header controls
 const logoutBtn = document.getElementById("logoutBtn");
@@ -20,6 +22,18 @@ const saveStatus = document.getElementById("saveStatus");
 
 const monthSelect = document.getElementById("monthSelect");
 const yearSelect = document.getElementById("yearSelect");
+
+function ensureShortDayStyles() {
+  if (document.getElementById("shortDayStyles")) return;
+  const st = document.createElement("style");
+  st.id = "shortDayStyles";
+  st.textContent = `
+    .short-col { background-color: rgba(16, 185, 129, 0.18) !important; }
+    .timesheet-table th.short-col { background-color: rgba(16, 185, 129, 0.22) !important; color: rgba(167, 243, 208, 0.95) !important; }
+  `;
+  document.head.appendChild(st);
+}
+ensureShortDayStyles();
 
 function setSaveStatus(text, tone = "neutral") {
   if (!saveStatus) return;
@@ -129,6 +143,107 @@ function parseHoursOrLeave(raw) {
   return { kind: "hours", hours: n };
 }
 
+function sanitizeHourNumber(n) {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, n);
+}
+
+function formatHourForInput(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x) || Math.abs(x) < 1e-9) return "";
+  return String(x);
+}
+
+function clampDayTotalOrRevert({ index, nextDay, nextNight, onRevert }) {
+  const d = sanitizeHourNumber(nextDay);
+  const n = sanitizeHourNumber(nextNight);
+
+  if (d > MAX_HOURS_PER_DAY || n > MAX_HOURS_PER_DAY || d + n > MAX_HOURS_PER_DAY) {
+    const maxAllowedForThis = Math.max(0, MAX_HOURS_PER_DAY - (Number.isFinite(nextDay) ? sanitizeHourNumber(nextNight) : 0));
+    setError(`В сутки нельзя больше ${MAX_HOURS_PER_DAY} ч. Проверьте день ${index + 1}.`);
+    onRevert?.();
+    return false;
+  }
+
+  return true;
+}
+
+function isFocusableInput(el) {
+  return Boolean(el) && !el.disabled;
+}
+
+function focusAndSelect(el) {
+  if (!el) return;
+  el.focus();
+  // select() удобен как в Excel: сразу заменяешь значение
+  if (typeof el.select === "function") el.select();
+}
+
+function getGridInput(rowType, idx) {
+  return rowType === "day" ? dayInputs[idx] : nightInputs[idx];
+}
+
+function focusCell(rowType, idx) {
+  const primary = getGridInput(rowType, idx);
+  if (isFocusableInput(primary)) {
+    focusAndSelect(primary);
+    return true;
+  }
+  // fallback: если ночь недоступна (ОТ/Б), попробуем день
+  const fallback = getGridInput("day", idx);
+  if (isFocusableInput(fallback)) {
+    focusAndSelect(fallback);
+    return true;
+  }
+  return false;
+}
+
+function focusHorizontal(rowType, startIdx, step) {
+  let i = startIdx;
+  while (i >= 0 && i < daysInMonth) {
+    if (focusCell(rowType, i)) return;
+    i += step;
+  }
+}
+
+function attachArrowNavigation(inputEl, rowType, index) {
+  inputEl.dataset.row = rowType;
+  inputEl.dataset.idx = String(index);
+
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+
+    const k = e.key;
+    if (k !== "ArrowLeft" && k !== "ArrowRight" && k !== "ArrowUp" && k !== "ArrowDown") return;
+
+    // Для ←/→ не ломаем перемещение курсора внутри числа,
+    // если курсор НЕ на границе текста.
+    if ((k === "ArrowLeft" || k === "ArrowRight") && typeof inputEl.selectionStart === "number") {
+      const start = inputEl.selectionStart ?? 0;
+      const end = inputEl.selectionEnd ?? 0;
+      const len = String(inputEl.value ?? "").length;
+
+      const atLeftEdge = start === 0 && end === 0;
+      const atRightEdge = start === len && end === len;
+
+      if (k === "ArrowLeft" && !atLeftEdge) return;
+      if (k === "ArrowRight" && !atRightEdge) return;
+    }
+
+    e.preventDefault();
+
+    const idx = Number(inputEl.dataset.idx);
+    const row = inputEl.dataset.row;
+
+    if (k === "ArrowLeft") focusHorizontal(row, idx - 1, -1);
+    else if (k === "ArrowRight") focusHorizontal(row, idx + 1, +1);
+    else if (k === "ArrowUp" || k === "ArrowDown") {
+      const targetRow = row === "day" ? "night" : "day";
+      focusCell(targetRow, idx);
+    }
+  });
+}
+
 const monthNames = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const monthYearDisplay = document.getElementById("monthYearDisplay");
 
@@ -171,6 +286,7 @@ let month = new Date().getMonth();
 let daysInMonth = 30;
 
 let isHoliday = [];
+let isShortDay = [];
 let dayHours = [];
 let nightHours = [];
 let leaveType = [];
@@ -205,19 +321,30 @@ function sumRange(arr, startIdx, endIdxInclusive) {
   return s;
 }
 
+/**
+ * ✅ Норма месяца (для СТАВКИ):
+ * - будни * 8
+ * - минус 8 за праздничные будни
+ * - минус 1 за сокращённые будни
+ */
 function calendarNormHours() {
   let weekdays = 0;
   let holidayWeekdays = 0;
+  let shortWeekdays = 0;
 
   for (let i = 0; i < daysInMonth; i++) {
     if (isWeekendByIndex(year, month, i)) continue;
     weekdays++;
     if (isHoliday[i]) holidayWeekdays++;
+    if (isShortDay[i]) shortWeekdays++;
   }
 
-  return (weekdays - holidayWeekdays) * 8;
+  return weekdays * 8 - holidayWeekdays * 8 - shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
 }
 
+/**
+ * ✅ Личная норма (для переработки) — уменьшает ОТ/Б, но НЕ влияет на ставку.
+ */
 function personalNormHours(monthNorm) {
   const vacDays = leaveType.filter((t) => t === "vacation").length;
   const sickDays = leaveType.filter((t) => t === "sick").length;
@@ -225,6 +352,9 @@ function personalNormHours(monthNorm) {
   return { vacDays, sickDays, personalNorm };
 }
 
+/**
+ * ✅ Праздничные часы (фактически отработанные) — для доплаты x2 (только за часы).
+ */
 function holidayWorkedTotals() {
   let hDay = 0;
   let hNight = 0;
@@ -239,7 +369,7 @@ function holidayWorkedTotals() {
   return { hDay, hNight };
 }
 
-function updateHolidayColumnClasses(index) {
+function updateDayMarkClasses(index) {
   const col = [
     headerCells[index],
     dayInputs[index]?.closest("td"),
@@ -247,8 +377,9 @@ function updateHolidayColumnClasses(index) {
   ].filter(Boolean);
 
   for (const el of col) {
+    el.classList.remove("holiday-col", "short-col");
     if (isHoliday[index]) el.classList.add("holiday-col");
-    else el.classList.remove("holiday-col");
+    else if (isShortDay[index]) el.classList.add("short-col");
   }
 }
 
@@ -257,14 +388,27 @@ function toggleHoliday(index) {
     setError("Уберите ОТ/Б в этом дне, затем отмечайте праздник.");
     return;
   }
+  isShortDay[index] = false;
   isHoliday[index] = !isHoliday[index];
-  updateHolidayColumnClasses(index);
+  updateDayMarkClasses(index);
+  recalcAll();
+  scheduleSave();
+}
+
+function toggleShort(index) {
+  if (leaveType[index]) {
+    setError("Уберите ОТ/Б в этом дне, затем отмечайте сокращённый день.");
+    return;
+  }
+  if (isHoliday[index]) isHoliday[index] = false;
+  isShortDay[index] = !isShortDay[index];
+  updateDayMarkClasses(index);
   recalcAll();
   scheduleSave();
 }
 
 function currentPayload() {
-  return { v: 1, year, month, isHoliday, dayHours, nightHours, leaveType };
+  return { v: 2, year, month, isHoliday, isShortDay, dayHours, nightHours, leaveType };
 }
 
 async function doSaveTimesheet() {
@@ -342,7 +486,7 @@ function recalcAll() {
   }
 
   if (!(monthNorm > 0)) {
-    setError("Норма месяца стала ≤ 0. Проверьте праздники.");
+    setError("Норма месяца стала ≤ 0. Проверьте праздники/сокращённые дни.");
     clearMoneyUI();
     return;
   }
@@ -437,12 +581,23 @@ function makeLabelCell(text) {
   return td;
 }
 
+function attachPrevValueTracking(inputEl) {
+  inputEl.addEventListener("focus", () => {
+    inputEl.dataset.prev = inputEl.value ?? "";
+  });
+}
+
+function revertToPrev(inputEl) {
+  inputEl.value = inputEl.dataset.prev ?? "";
+}
+
 function buildTableForMonth() {
   resetTableDom();
 
   daysInMonth = new Date(year, month + 1, 0).getDate();
 
   isHoliday = new Array(daysInMonth).fill(false);
+  isShortDay = new Array(daysInMonth).fill(false);
   dayHours = new Array(daysInMonth).fill(0);
   nightHours = new Array(daysInMonth).fill(0);
   leaveType = new Array(daysInMonth).fill(null);
@@ -460,8 +615,26 @@ function buildTableForMonth() {
     if (weekend) th.classList.add("weekend-col");
 
     th.style.cursor = "pointer";
-    th.title = "Тап/клик — праздник (норма месяца -8ч)";
-    th.addEventListener("click", (e) => toggleHoliday(Number(e.currentTarget.dataset.dayIndex)));
+    th.title = "Клик — праздник (−8ч в будни, x2 за часы). Даблклик — сокращённый день (−1ч в будни).";
+
+    let clickTimer = null;
+    th.addEventListener("click", (e) => {
+      const idx = Number(e.currentTarget.dataset.dayIndex);
+      if (clickTimer) return;
+      clickTimer = setTimeout(() => {
+        clickTimer = null;
+        toggleHoliday(idx);
+      }, 240);
+    });
+
+    th.addEventListener("dblclick", (e) => {
+      const idx = Number(e.currentTarget.dataset.dayIndex);
+      if (clickTimer) {
+        clearTimeout(clickTimer);
+        clickTimer = null;
+      }
+      toggleShort(idx);
+    });
 
     headerRow.appendChild(th);
     headerCells.push(th);
@@ -479,10 +652,23 @@ function buildTableForMonth() {
     const dayInput = document.createElement("input");
     dayInput.type = "text";
     dayInput.inputMode = "text";
-    dayInput.placeholder = "0";
+    dayInput.placeholder = "";
     dayInput.classList.add("input-hour", "input-glass");
     dayInput.autocapitalize = "characters";
     dayInput.spellcheck = false;
+
+    attachPrevValueTracking(dayInput);
+    attachArrowNavigation(dayInput, "day", i);
+
+    dayInput.addEventListener("blur", () => {
+      const s = String(dayInput.value ?? "").trim();
+      if (s === "0" || s === "0.0" || s === "0,0") {
+        dayInput.value = "";
+        dayHours[i] = 0;
+        scheduleSave();
+        recalcAll();
+      }
+    });
 
     dayInput.addEventListener("input", () => {
       const raw = dayInput.value;
@@ -491,12 +677,12 @@ function buildTableForMonth() {
       if (parsed.kind === "leave") {
         if (weekend) {
           setError("ОТ/Б нельзя ставить на выходные (сб/вс).");
-          dayInput.value = "";
+          revertToPrev(dayInput);
           return;
         }
-        if (isHoliday[i]) {
-          setError("ОТ/Б нельзя ставить на праздник. Сначала уберите отметку праздника.");
-          dayInput.value = "";
+        if (isHoliday[i] || isShortDay[i]) {
+          setError("ОТ/Б нельзя ставить на праздник/сокращённый день. Сначала уберите отметку.");
+          revertToPrev(dayInput);
           return;
         }
 
@@ -511,6 +697,7 @@ function buildTableForMonth() {
           nightInputs[i].classList.add("opacity-50", "cursor-not-allowed");
         }
 
+        dayInput.dataset.prev = dayInput.value;
         recalcAll();
         scheduleSave();
         return;
@@ -527,7 +714,20 @@ function buildTableForMonth() {
           }
         }
 
-        dayHours[i] = Math.max(0, parsed.hours);
+        const nextDay = sanitizeHourNumber(parsed.hours);
+        const nextNight = sanitizeHourNumber(nightHours[i] || 0);
+
+        const ok = clampDayTotalOrRevert({
+          index: i,
+          nextDay,
+          nextNight,
+          onRevert: () => revertToPrev(dayInput),
+        });
+        if (!ok) return;
+
+        dayHours[i] = nextDay;
+        dayInput.dataset.prev = dayInput.value;
+
         recalcAll();
         scheduleSave();
         return;
@@ -543,6 +743,7 @@ function buildTableForMonth() {
           }
         }
         dayHours[i] = 0;
+        dayInput.dataset.prev = "";
         recalcAll();
         scheduleSave();
         return;
@@ -562,9 +763,22 @@ function buildTableForMonth() {
     const nightInput = document.createElement("input");
     nightInput.type = "text";
     nightInput.inputMode = "decimal";
-    nightInput.placeholder = "0";
+    nightInput.placeholder = "";
     nightInput.classList.add("input-hour", "input-glass");
     nightInput.spellcheck = false;
+
+    attachPrevValueTracking(nightInput);
+    attachArrowNavigation(nightInput, "night", i);
+
+    nightInput.addEventListener("blur", () => {
+      const s = String(nightInput.value ?? "").trim();
+      if (s === "0" || s === "0.0" || s === "0,0") {
+        nightInput.value = "";
+        nightHours[i] = 0;
+        scheduleSave();
+        recalcAll();
+      }
+    });
 
     nightInput.addEventListener("input", () => {
       if (leaveType[i]) return;
@@ -573,6 +787,7 @@ function buildTableForMonth() {
       if (!raw.trim()) {
         setError(null);
         nightHours[i] = 0;
+        nightInput.dataset.prev = "";
         recalcAll();
         scheduleSave();
         return;
@@ -584,8 +799,20 @@ function buildTableForMonth() {
         return;
       }
 
+      const nextNight = sanitizeHourNumber(n);
+      const nextDay = sanitizeHourNumber(dayHours[i] || 0);
+
+      const ok = clampDayTotalOrRevert({
+        index: i,
+        nextDay,
+        nextNight,
+        onRevert: () => revertToPrev(nightInput),
+      });
+      if (!ok) return;
+
       setError(null);
-      nightHours[i] = Math.max(0, n);
+      nightHours[i] = nextNight;
+      nightInput.dataset.prev = nightInput.value;
       recalcAll();
       scheduleSave();
     });
@@ -600,17 +827,23 @@ function applyPayload(payload) {
   if (!payload || typeof payload !== "object") return;
 
   if (Array.isArray(payload.isHoliday) && payload.isHoliday.length === daysInMonth) isHoliday = payload.isHoliday;
+  if (Array.isArray(payload.isShortDay) && payload.isShortDay.length === daysInMonth) isShortDay = payload.isShortDay;
+
   if (Array.isArray(payload.dayHours) && payload.dayHours.length === daysInMonth) dayHours = payload.dayHours;
   if (Array.isArray(payload.nightHours) && payload.nightHours.length === daysInMonth) nightHours = payload.nightHours;
   if (Array.isArray(payload.leaveType) && payload.leaveType.length === daysInMonth) leaveType = payload.leaveType;
 
   for (let i = 0; i < daysInMonth; i++) {
-    updateHolidayColumnClasses(i);
+    updateDayMarkClasses(i);
 
     const dt = leaveType[i];
-    if (dt === "vacation") dayInputs[i].value = "ОТ";
-    else if (dt === "sick") dayInputs[i].value = "Б";
-    else dayInputs[i].value = String(dayHours[i] ?? 0);
+    if (dt === "vacation") {
+      dayInputs[i].value = "ОТ";
+    } else if (dt === "sick") {
+      dayInputs[i].value = "Б";
+    } else {
+      dayInputs[i].value = formatHourForInput(dayHours[i]);
+    }
 
     if (leaveType[i]) {
       nightInputs[i].value = "";
@@ -619,8 +852,11 @@ function applyPayload(payload) {
     } else {
       nightInputs[i].disabled = false;
       nightInputs[i].classList.remove("opacity-50", "cursor-not-allowed");
-      nightInputs[i].value = String(nightHours[i] ?? 0);
+      nightInputs[i].value = formatHourForInput(nightHours[i]);
     }
+
+    dayInputs[i].dataset.prev = dayInputs[i].value ?? "";
+    nightInputs[i].dataset.prev = nightInputs[i].value ?? "";
   }
 }
 
