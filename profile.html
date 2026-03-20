@@ -346,6 +346,27 @@
     @media (prefers-reduced-motion: reduce) {
       * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
+
+    /* Timesheet marks on calendar: highlight date (no dot) */
+    .cal-ts-holiday {
+      background: rgba(245, 158, 11, 0.22) !important;
+      box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.35) inset;
+      color: rgba(253, 230, 138, 0.95);
+    }
+
+    .cal-ts-short {
+      background: rgba(16, 185, 129, 0.18) !important;
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.30) inset;
+      color: rgba(167, 243, 208, 0.95);
+    }
+
+    /* если вдруг одновременно и праздник и сокращённый — приоритет празднику */
+    .cal-ts-holiday.cal-ts-short {
+      background: rgba(245, 158, 11, 0.22) !important;
+      box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.35) inset;
+      color: rgba(253, 230, 138, 0.95);
+    }
+
   </style>
 </head>
 

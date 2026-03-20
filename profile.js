@@ -507,13 +507,20 @@ async function renderCalendar() {
     btn.appendChild(num);
 
     // markers for timesheet flags
+  // markers for timesheet flags (NO DOTS) — highlight the whole date
     const markHoliday = Boolean(tsHoliday?.[idx]);
     const markShort = Boolean(tsShort?.[idx]);
 
-    if (markHoliday || markShort) {
-      const dot = document.createElement("span");
-      dot.className = "cal-mark " + (markHoliday ? "holiday" : "short");
-      btn.appendChild(dot);
+    if (markHoliday) {
+      btn.classList.add("cal-ts-holiday");
+    } else {
+      btn.classList.remove("cal-ts-holiday");
+    }
+
+    if (markShort) {
+      btn.classList.add("cal-ts-short");
+    } else {
+      btn.classList.remove("cal-ts-short");
     }
 
     // tags: leave / night
