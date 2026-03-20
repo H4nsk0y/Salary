@@ -1,4 +1,4 @@
-// /profile.js
+// FILE: /profile.js
 import { requireSession, signOut } from "./auth.js";
 import {
   getMyProfile,
@@ -12,6 +12,7 @@ document.body.classList.add("is-loaded");
 
 const OVERTIME_LIMIT_YEAR = 120;
 const LEAVE_HOURS_PER_DAY = 8;
+const SHORT_DAY_REDUCTION_HOURS = 1;
 
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
@@ -36,11 +37,26 @@ const overtimeRemainingEl = document.getElementById("overtimeRemaining");
 const monthsCountEl = document.getElementById("monthsCount");
 const timesheetsList = document.getElementById("timesheetsList");
 
-// ✅ progress bar
 const overtimeBarFill = document.getElementById("overtimeBarFill");
 const overtimeBarText = document.getElementById("overtimeBarText");
 
-const monthNames = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
+/* Calendar DOM */
+const calMonthLabel = document.getElementById("calMonthLabel");
+const calDowRow = document.getElementById("calDowRow");
+const calGrid = document.getElementById("calGrid");
+const calPrevBtn = document.getElementById("calPrevBtn");
+const calNextBtn = document.getElementById("calNextBtn");
+const calTodayBtn = document.getElementById("calTodayBtn");
+
+const monthNamesShort = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
+const monthNamesFull = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+const WEEK_LABELS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+
+let loadedYear = new Date().getFullYear();
+let payloadByMonth = new Map(); // month -> payload (current loaded year)
+
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
 
 function requireDom(el, name) {
   if (el) return true;
@@ -97,13 +113,10 @@ function sum(arr) {
 }
 
 /**
- * ✅ Изменение #1:
- * Теперь считаем "баланс" месяца со знаком:
- * overtimeSigned = workedTotal - personalNorm
- *
- * - Норма месяца уменьшается только за праздники (будни, отмеченные holiday)
- * - Личная норма = норма месяца - (ОТ+Б)*8
- * - Возвращаем signed (может быть + или -)
+ * ✅ Align with table.js rules:
+ * - month norm: weekdays*8 - holidayWeekdays*8 - shortWeekdays*1
+ * - personal norm: monthNorm - leaveEffective*8
+ *   (leaveEffective excludes holiday days to avoid double subtraction)
  */
 function computeMonthOvertimeSigned(payload) {
   if (!payload || typeof payload !== "object") return 0;
@@ -113,26 +126,36 @@ function computeMonthOvertimeSigned(payload) {
   const daysInMonth = new Date(y, m + 1, 0).getDate();
 
   const isHoliday = Array.isArray(payload.isHoliday) ? payload.isHoliday : new Array(daysInMonth).fill(false);
+  const isShortDay = Array.isArray(payload.isShortDay) ? payload.isShortDay : new Array(daysInMonth).fill(false);
   const dayHours = Array.isArray(payload.dayHours) ? payload.dayHours : new Array(daysInMonth).fill(0);
   const nightHours = Array.isArray(payload.nightHours) ? payload.nightHours : new Array(daysInMonth).fill(0);
   const leaveType = Array.isArray(payload.leaveType) ? payload.leaveType : new Array(daysInMonth).fill(null);
 
   let weekdays = 0;
   let holidayWeekdays = 0;
+  let shortWeekdays = 0;
+
   for (let i = 0; i < daysInMonth; i++) {
     if (isWeekendByIndex(y, m, i)) continue;
     weekdays++;
     if (isHoliday[i]) holidayWeekdays++;
+    else if (isShortDay[i]) shortWeekdays++;
   }
 
-  const normMonth = (weekdays - holidayWeekdays) * 8;
+  const monthNorm = weekdays * 8 - holidayWeekdays * 8 - shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
 
-  const vacDays = leaveType.filter((t) => t === "vacation").length;
-  const sickDays = leaveType.filter((t) => t === "sick").length;
-  const personalNorm = normMonth - (vacDays + sickDays) * LEAVE_HOURS_PER_DAY;
+  let leaveEffective = 0;
+  for (let i = 0; i < daysInMonth; i++) {
+    const lt = leaveType[i];
+    if (lt !== "vacation" && lt !== "sick") continue;
+    if (isHoliday[i]) continue; // ✅ avoid double subtraction on holiday+leave
+    leaveEffective++;
+  }
 
+  const personalNorm = monthNorm - leaveEffective * LEAVE_HOURS_PER_DAY;
   const workedTotal = sum(dayHours) + sum(nightHours);
-  return workedTotal - personalNorm; // signed
+
+  return workedTotal - personalNorm;
 }
 
 function formatHoursSigned(h) {
@@ -166,10 +189,16 @@ function fillYearOptions(currentYear) {
   yearSelect.value = String(currentYear);
 }
 
-/**
- * ✅ Изменение #2:
- * Прогресс лимита считаем только по "использованным" часам, т.е. по положительной части баланса.
- */
+function ensureYearOption(y) {
+  if (!yearSelect) return;
+  const exists = Array.from(yearSelect.options).some((o) => Number(o.value) === y);
+  if (exists) return;
+  const opt = document.createElement("option");
+  opt.value = String(y);
+  opt.textContent = String(y);
+  yearSelect.appendChild(opt);
+}
+
 function applyOvertimeProgress(usedHoursForLimit) {
   if (!overtimeBarFill || !overtimeBarText) return;
 
@@ -177,7 +206,6 @@ function applyOvertimeProgress(usedHoursForLimit) {
   const pct = Math.min(100, (used / OVERTIME_LIMIT_YEAR) * 100);
 
   overtimeBarText.textContent = `${used.toFixed(1)} / ${OVERTIME_LIMIT_YEAR} ч`;
-
   overtimeBarFill.style.width = `${pct}%`;
 
   overtimeBarFill.classList.remove(
@@ -214,7 +242,7 @@ function createTimesheetCard(row) {
 
   const title = document.createElement("div");
   title.className = "text-base font-semibold text-slate-100 truncate";
-  title.textContent = `${monthNames[m]} ${y}`;
+  title.textContent = `${monthNamesShort[m]} ${y}`;
 
   const meta = document.createElement("div");
   meta.className = "mt-1 text-xs text-slate-400/90";
@@ -253,7 +281,7 @@ function createTimesheetCard(row) {
   delBtn.textContent = "Удалить";
 
   delBtn.addEventListener("click", async () => {
-    const ok = confirm(`Удалить табель за ${monthNames[m]} ${y}? Это действие нельзя отменить.`);
+    const ok = confirm(`Удалить табель за ${monthNamesShort[m]} ${y}? Это действие нельзя отменить.`);
     if (!ok) return;
 
     setStatus("Удаляю…", "busy");
@@ -263,6 +291,7 @@ function createTimesheetCard(row) {
       await deleteMyTimesheet(y, m);
       setStatus("Удалено", "ok");
       await refreshTimesheets();
+      await renderCalendar(); // sync
     } catch (e) {
       setStatus("Ошибка удаления", "err");
       setError(e?.message || "Не удалось удалить табель.");
@@ -288,14 +317,14 @@ async function refreshProfile() {
   const name = profile?.display_name || "Пользователь";
   const oklad = profile?.oklad;
 
-if (!requireDom(displayNameEl, "displayName")) return;
-if (!requireDom(displayNameInput, "displayNameInput")) return;
-if (!requireDom(okladInput, "okladInput")) return;
+  if (!requireDom(displayNameEl, "displayName")) return;
+  if (!requireDom(displayNameInput, "displayNameInput")) return;
+  if (!requireDom(okladInput, "okladInput")) return;
 
-    displayNameEl.textContent = name;
-    displayNameInput.value = profile?.display_name ?? "";
-    okladInput.value = oklad != null ? String(oklad) : "";
-    if (genderSelect) genderSelect.value = profile?.gender ?? "";
+  displayNameEl.textContent = name;
+  displayNameInput.value = profile?.display_name ?? "";
+  okladInput.value = oklad != null ? String(oklad) : "";
+  if (genderSelect) genderSelect.value = profile?.gender ?? "";
 
   if (profile?.avatar_url) {
     avatarImg.src = profile.avatar_url;
@@ -314,28 +343,271 @@ if (!requireDom(okladInput, "okladInput")) return;
   setStatus("Профиль загружен", "ok");
 }
 
+/* ========= Production calendar (isdayoff) + cache ========= */
+
+function prodCacheKey(y, m) {
+  return `alvisa_prodcal_v1_${y}_${String(m + 1).padStart(2, "0")}`;
+}
+
+function parseProdMonth(text, daysInMonth) {
+  const s = String(text ?? "").trim();
+  if (!s || s.length < daysInMonth) return null;
+  const out = [];
+  for (let i = 0; i < daysInMonth; i++) {
+    const ch = s[i];
+    const n = Number(ch);
+    out.push(Number.isFinite(n) ? n : 0);
+  }
+  return out.length === daysInMonth ? out : null;
+}
+
+async function getProductionMonth(y, m) {
+  const days = new Date(y, m + 1, 0).getDate();
+  const key = prodCacheKey(y, m);
+
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (obj && Array.isArray(obj.data) && obj.data.length === days) return obj.data;
+    }
+  } catch {
+    // ignore
+  }
+
+  const mm = String(m + 1).padStart(2, "0");
+  const url = `https://isdayoff.ru/api/getdata?year=${y}&month=${mm}&pre=1&holiday=1`;
+
+  try {
+    const resp = await fetch(url, { method: "GET" });
+    if (!resp.ok) throw new Error(`HTTP_${resp.status}`);
+    const txt = await resp.text();
+    const parsed = parseProdMonth(txt, days);
+    if (!parsed) throw new Error("BAD_PROD_DATA");
+
+    try {
+      localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data: parsed }));
+    } catch {
+      // ignore
+    }
+
+    return parsed;
+  } catch {
+    // fallback: weekends only (0=work,1=weekend)
+    const out = [];
+    for (let i = 0; i < days; i++) {
+      out.push(isWeekendByIndex(y, m, i) ? 1 : 0);
+    }
+    return out;
+  }
+}
+
+/* ========= Calendar rendering ========= */
+
+function initCalendarDow() {
+  if (!calDowRow) return;
+  if (calDowRow.childElementCount) return;
+  for (const label of WEEK_LABELS) {
+    const el = document.createElement("div");
+    el.className = "cal-dow";
+    el.textContent = label;
+    calDowRow.appendChild(el);
+  }
+}
+
+function mondayIndex(jsDay) {
+  // JS: 0=Sun..6=Sat -> Mon=0..Sun=6
+  return (jsDay + 6) % 7;
+}
+
+function clamp01(x) {
+  const n = Number(x);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1, n));
+}
+
+function computeHeat(totalHours) {
+  const HEAT_MAX = 12; // 11ч смена близко к 1.0
+  return clamp01((Number(totalHours) || 0) / HEAT_MAX);
+}
+
+function getTimesheetForCalendarMonth() {
+  if (calYear !== loadedYear) return null;
+  return payloadByMonth.get(calMonth) ?? null;
+}
+
+async function renderCalendar() {
+  if (!requireDom(calGrid, "calGrid")) return;
+  if (!requireDom(calMonthLabel, "calMonthLabel")) return;
+
+  initCalendarDow();
+
+  const first = new Date(calYear, calMonth, 1);
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const lead = mondayIndex(first.getDay());
+  const totalCells = Math.ceil((lead + daysInMonth) / 7) * 7;
+
+  calMonthLabel.textContent = `${monthNamesFull[calMonth]} ${calYear}`;
+
+  const prod = await getProductionMonth(calYear, calMonth);
+  const payload = getTimesheetForCalendarMonth();
+
+  const tsHoliday = Array.isArray(payload?.isHoliday) ? payload.isHoliday : null;
+  const tsShort = Array.isArray(payload?.isShortDay) ? payload.isShortDay : null;
+  const tsDay = Array.isArray(payload?.dayHours) ? payload.dayHours : null;
+  const tsNight = Array.isArray(payload?.nightHours) ? payload.nightHours : null;
+  const tsLeave = Array.isArray(payload?.leaveType) ? payload.leaveType : null;
+
+  const today = new Date();
+  const isThisMonth = today.getFullYear() === calYear && today.getMonth() === calMonth;
+  const todayDay = isThisMonth ? today.getDate() : -1;
+
+  calGrid.innerHTML = "";
+  const frag = document.createDocumentFragment();
+
+  for (let cell = 0; cell < totalCells; cell++) {
+    const dayNum = cell - lead + 1;
+
+    if (dayNum < 1 || dayNum > daysInMonth) {
+      const empty = document.createElement("div");
+      empty.className = "cal-cell cal-empty";
+      frag.appendChild(empty);
+      continue;
+    }
+
+    const idx = dayNum - 1;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cal-cell";
+
+    // official layer
+    const code = Number(prod?.[idx] ?? 0);
+    const offHoliday = code === 8;
+    const offShort = code === 2;
+    const offWeekend = code === 1;
+
+    if (offHoliday) btn.classList.add("cal-off-holiday");
+    else if (offShort) btn.classList.add("cal-off-short");
+    else if (offWeekend) btn.classList.add("cal-off-weekend");
+
+    // today ring
+    if (dayNum === todayDay) btn.classList.add("cal-today");
+
+    // heat layer from timesheet
+    const dh = Number(tsDay?.[idx] ?? 0);
+    const nh = Number(tsNight?.[idx] ?? 0);
+    const total = dh + nh;
+    btn.style.setProperty("--heat", String(computeHeat(total)));
+
+    // numbers (small)
+    const num = document.createElement("div");
+    num.className = "cal-daynum";
+    num.textContent = String(dayNum);
+    btn.appendChild(num);
+
+    // markers for timesheet flags
+    const markHoliday = Boolean(tsHoliday?.[idx]);
+    const markShort = Boolean(tsShort?.[idx]);
+
+    if (markHoliday || markShort) {
+      const dot = document.createElement("span");
+      dot.className = "cal-mark " + (markHoliday ? "holiday" : "short");
+      btn.appendChild(dot);
+    }
+
+    // tags: leave / night
+    const tags = document.createElement("div");
+    tags.className = "cal-tags";
+
+    const lt = tsLeave?.[idx];
+    if (lt === "vacation") {
+      const t = document.createElement("span");
+      t.className = "cal-tag leave";
+      t.textContent = "ОТ";
+      tags.appendChild(t);
+    } else if (lt === "sick") {
+      const t = document.createElement("span");
+      t.className = "cal-tag sick";
+      t.textContent = "Б";
+      tags.appendChild(t);
+    }
+
+    if ((Number(nh) || 0) > 0.0001) {
+      const t = document.createElement("span");
+      t.className = "cal-tag night";
+      t.textContent = "Н";
+      tags.appendChild(t);
+    }
+
+    if (tags.childElementCount) btn.appendChild(tags);
+
+    // tooltip (no clutter in UI)
+    const parts = [];
+    if (total > 0) parts.push(`Часы: ${total.toFixed(1)} (день ${dh.toFixed(1)}, ночь ${nh.toFixed(1)})`);
+    if (lt === "vacation") parts.push("Отпуск");
+    if (lt === "sick") parts.push("Больничный");
+    if (offHoliday) parts.push("Официальный праздник");
+    if (offShort) parts.push("Официальный сокращённый");
+    if (offWeekend) parts.push("Официальный выходной");
+    if (markHoliday) parts.push("Отметка табеля: праздник");
+    if (markShort) parts.push("Отметка табеля: сокращённый");
+    btn.title = parts.length ? parts.join(" • ") : "Открыть табель";
+
+    btn.addEventListener("click", () => {
+      location.href = `table.html?year=${calYear}&month=${calMonth}&day=${dayNum}`;
+    });
+
+    frag.appendChild(btn);
+  }
+
+  calGrid.appendChild(frag);
+}
+
+async function shiftCalendarMonth(delta) {
+  const next = new Date(calYear, calMonth + delta, 1);
+  calYear = next.getFullYear();
+  calMonth = next.getMonth();
+
+  // keep yearSelect in sync when year changes
+  ensureYearOption(calYear);
+  if (yearSelect && Number(yearSelect.value) !== calYear) {
+    yearSelect.value = String(calYear);
+    await refreshTimesheets(); // loads payloadByMonth for new year
+  } else {
+    await renderCalendar();
+  }
+}
+
+/* ========= Timesheets ========= */
+
 async function refreshTimesheets() {
   if (!requireDom(yearSelect, "yearSelect")) return;
   if (!requireDom(timesheetsList, "timesheetsList")) return;
   if (!requireDom(monthsCountEl, "monthsCount")) return;
   if (!requireDom(overtimeYearEl, "overtimeYear")) return;
   if (!requireDom(overtimeRemainingEl, "overtimeRemaining")) return;
+
   const y = Number(yearSelect.value);
+  loadedYear = y;
+
   setStatus("Загружаю табели…", "busy");
   setError(null);
 
   const rows = await listMyTimesheetsByYear(y, { withPayload: true });
 
+  // map month->payload for calendar
+  payloadByMonth = new Map();
+  for (const r of rows) {
+    if (r && typeof r.month === "number" && r.payload) payloadByMonth.set(r.month, r.payload);
+  }
+
   timesheetsList.innerHTML = "";
   monthsCountEl.textContent = String(rows.length);
 
-  // ✅ годовой баланс со знаком
   let yearBalanceSigned = 0;
-  for (const r of rows) {
-    yearBalanceSigned += r?.payload ? computeMonthOvertimeSigned(r.payload) : 0;
-  }
+  for (const r of rows) yearBalanceSigned += r?.payload ? computeMonthOvertimeSigned(r.payload) : 0;
 
-  // ✅ лимит и прогресс считаем только по положительной части баланса
   const usedForLimit = Math.max(0, yearBalanceSigned);
   const remaining = Math.max(0, OVERTIME_LIMIT_YEAR - usedForLimit);
 
@@ -350,20 +622,27 @@ async function refreshTimesheets() {
     empty.textContent = "Пока нет сохранённых табелей за этот год.";
     timesheetsList.appendChild(empty);
     setStatus("Нечего показывать", "neutral");
+    await renderCalendar();
     return;
   }
 
   rows.sort((a, b) => (a.month ?? 0) - (b.month ?? 0));
-  for (const row of rows) {
-    timesheetsList.appendChild(createTimesheetCard(row));
-  }
+  for (const row of rows) timesheetsList.appendChild(createTimesheetCard(row));
 
   setStatus("Готово", "ok");
+
+  // calendar should reflect newly loaded year payloads
+  if (calYear !== loadedYear) {
+    calYear = loadedYear;
+    calMonth = new Date().getMonth();
+  }
+  await renderCalendar();
 }
 
 async function saveProfile() {
   if (!requireDom(displayNameInput, "displayNameInput")) return;
   if (!requireDom(okladInput, "okladInput")) return;
+
   const displayName = displayNameInput.value.trim();
   const oklad = parseNumber(okladInput.value);
   const gender = genderSelect ? String(genderSelect.value || "") : "";
@@ -376,11 +655,10 @@ async function saveProfile() {
     setError("Оклад должен быть числом ≥ 0.");
     return;
   }
-
   if (gender && gender !== "male" && gender !== "female") {
-  setError("Пол должен быть: мужской или женский.");
-  return;
-}
+    setError("Пол должен быть: мужской или женский.");
+    return;
+  }
 
   setStatus("Сохраняю…", "busy");
   setError(null);
@@ -399,13 +677,15 @@ async function saveProfile() {
   }
 }
 
-// events
+/* ========= events ========= */
+
 logoutBtn?.addEventListener("click", async () => {
   try { await signOut(); }
   finally { location.href = "login.html?next=profile.html"; }
 });
 
 saveProfileBtn?.addEventListener("click", () => void saveProfile());
+
 refreshBtn?.addEventListener("click", async () => {
   try {
     await refreshProfile();
@@ -416,9 +696,29 @@ refreshBtn?.addEventListener("click", async () => {
   }
 });
 
-yearSelect?.addEventListener("change", () => void refreshTimesheets());
+yearSelect?.addEventListener("change", async () => {
+  // sync calendar year with selected year, keep month the same
+  calYear = Number(yearSelect.value);
+  await refreshTimesheets();
+});
 
-// boot
+calPrevBtn?.addEventListener("click", () => void shiftCalendarMonth(-1));
+calNextBtn?.addEventListener("click", () => void shiftCalendarMonth(+1));
+calTodayBtn?.addEventListener("click", async () => {
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  ensureYearOption(calYear);
+  if (yearSelect && Number(yearSelect.value) !== calYear) {
+    yearSelect.value = String(calYear);
+    await refreshTimesheets();
+  } else {
+    await renderCalendar();
+  }
+});
+
+/* ========= boot ========= */
+
 (async () => {
   try {
     await requireSession();
@@ -427,8 +727,11 @@ yearSelect?.addEventListener("change", () => void refreshTimesheets());
     return;
   }
 
-  const currentYear = new Date().getFullYear();
-  fillYearOptions(currentYear);
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+
+  fillYearOptions(now.getFullYear());
 
   try {
     await refreshProfile();

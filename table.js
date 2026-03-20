@@ -1,6 +1,4 @@
-// =========================
 // FILE: /table.js
-// =========================
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
 import { getMyProfile, loadTimesheet, saveTimesheet } from "./db.js";
@@ -14,7 +12,8 @@ const LEAVE_HOURS_PER_DAY = 8;
 const MAX_HOURS_PER_DAY = 24;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 
-// header controls
+let focusDayIndex = null; // ✅ from ?day=DD
+
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
 const saveBtn = document.getElementById("saveBtn");
@@ -51,8 +50,8 @@ const leaveDaysEl = document.getElementById("leaveDays");
 // DOM (summary)
 const totalHoursEl = document.getElementById("totalHours");
 const dayNightHoursEl = document.getElementById("dayNightHours");
-const normMonthEl = document.getElementById("normMonth");        // ✅ NEW
-const normEffectiveEl = document.getElementById("normEffective"); // personal
+const normMonthEl = document.getElementById("normMonth");
+const normEffectiveEl = document.getElementById("normEffective");
 const overtimeEl = document.getElementById("overtime");
 
 // Table DOM
@@ -67,6 +66,8 @@ function ensureShortDayStyles() {
   st.textContent = `
     .short-col { background-color: rgba(16, 185, 129, 0.18) !important; }
     .timesheet-table th.short-col { background-color: rgba(16, 185, 129, 0.22) !important; color: rgba(167, 243, 208, 0.95) !important; }
+    .focus-col { box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.55); }
+    .timesheet-table th.focus-col { color: rgba(224, 231, 255, 0.95) !important; }
   `;
   document.head.appendChild(st);
 }
@@ -168,22 +169,16 @@ function sanitizeDayCellValue(raw) {
   s = s.replaceAll("O", "О").replaceAll("T", "Т").replaceAll("B", "Б");
   s = s.replace(/\s+/g, "");
 
-  // если есть буквы — оставляем только О/Т/Б
   const lettersOnly = s.replace(/[^ОТБ]/g, "");
   if (lettersOnly) {
-  if (lettersOnly.includes("Б")) return "Б";
-  if (lettersOnly.includes("О")) return lettersOnly.includes("Т") ? "ОТ" : "О"; 
-  return "";
+    if (lettersOnly.includes("Б")) return "Б";
+    if (lettersOnly.includes("О")) return lettersOnly.includes("Т") ? "ОТ" : "О";
+    return "";
   }
 
-  // иначе число: только цифры и .,
   let num = s.replace(/[^0-9.,]/g, "");
   if (!num) return "";
-
-  // если и . и , — заменяем все , на .
   if (num.includes(".") && num.includes(",")) num = num.replace(/,/g, ".");
-
-  // допускаем только один разделитель
   const sepIdx = num.search(/[.,]/);
   if (sepIdx !== -1) {
     const before = num.slice(0, sepIdx);
@@ -191,7 +186,6 @@ function sanitizeDayCellValue(raw) {
     const after = num.slice(sepIdx + 1).replace(/[.,]/g, "");
     num = before + sep + after;
   }
-
   return num;
 }
 
@@ -342,11 +336,9 @@ let leaveType = [];
 
 let headerCells = [];
 
-// profile cache
 let profileRole = "user";
 let profileOklad = null;
 
-// saving
 let timesheetSaveTimer = null;
 let lastSavedJSON = "";
 let dirty = false;
@@ -367,12 +359,6 @@ function sumRange(arr, startIdx, endIdxInclusive) {
   return s;
 }
 
-/**
- * ✅ Норма месяца (для ставки):
- * - будни * 8
- * - минус 8 за праздничные будни
- * - минус 1 за сокращённые будни
- */
 function calendarNormHours() {
   let weekdays = 0;
   let holidayWeekdays = 0;
@@ -382,12 +368,11 @@ function calendarNormHours() {
     if (isWeekendByIndex(year, month, i)) continue;
     weekdays++;
     if (isHoliday[i]) holidayWeekdays++;
-    if (isShortDay[i]) shortWeekdays++;
+    else if (isShortDay[i]) shortWeekdays++;
   }
 
   return weekdays * 8 - holidayWeekdays * 8 - shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
 }
-
 
 function personalNormHours(monthNorm) {
   let vacTotal = 0;
@@ -411,9 +396,6 @@ function personalNormHours(monthNorm) {
   return { vacTotal, sickTotal, personalNorm };
 }
 
-/**
- * ✅ Праздничные часы фактически отработанные (для x2 доплаты)
- */
 function holidayWorkedTotals() {
   let hDay = 0;
   let hNight = 0;
@@ -442,9 +424,6 @@ function updateDayMarkClasses(index) {
   }
 }
 
-/**
- * ✅ Теперь разрешаем ставить праздник/сокращённый даже при ОТ/Б
- */
 function toggleHoliday(index) {
   isShortDay[index] = false;
   isHoliday[index] = !isHoliday[index];
@@ -529,7 +508,6 @@ function recalcAll() {
   dayNightHoursEl.textContent = `${totalDay.toFixed(1)} / ${totalNight.toFixed(1)}`;
   bump(dayNightHoursEl);
 
-  // ✅ NEW UI
   animateNumber(normMonthEl, monthNorm, (v) => v.toFixed(1), 360);
   animateNumber(normEffectiveEl, personalNorm, (v) => v.toFixed(1), 360);
 
@@ -663,6 +641,35 @@ function unlockNightCell(i) {
   el.classList.remove("opacity-50", "cursor-not-allowed");
 }
 
+function clearFocusColumn() {
+  for (let i = 0; i < headerCells.length; i++) {
+    headerCells[i]?.classList.remove("focus-col");
+    dayInputs[i]?.closest("td")?.classList.remove("focus-col");
+    nightInputs[i]?.closest("td")?.classList.remove("focus-col");
+  }
+}
+
+function focusDayColumn(dayIdx0) {
+  if (!Number.isInteger(dayIdx0) || dayIdx0 < 0 || dayIdx0 >= daysInMonth) return;
+  clearFocusColumn();
+
+  headerCells[dayIdx0]?.classList.add("focus-col");
+  dayInputs[dayIdx0]?.closest("td")?.classList.add("focus-col");
+  nightInputs[dayIdx0]?.closest("td")?.classList.add("focus-col");
+
+  try {
+    headerCells[dayIdx0]?.scrollIntoView({
+      block: "nearest",
+      inline: "center",
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+    });
+  } catch {
+    // ignore
+  }
+
+  focusCell("day", dayIdx0);
+}
+
 function buildTableForMonth() {
   resetTableDom();
 
@@ -753,7 +760,6 @@ function buildTableForMonth() {
 
       const raw = dayInput.value;
 
-      // пусто
       if (!raw.trim()) {
         setError(null);
         if (leaveType[i]) {
@@ -795,7 +801,7 @@ function buildTableForMonth() {
       if (parsed.kind === "hours") {
         setError(null);
 
-       if (leaveType[i]) {
+        if (leaveType[i]) {
           leaveType[i] = null;
           unlockNightCell(i);
         }
@@ -911,17 +917,12 @@ function applyPayload(payload) {
     updateDayMarkClasses(i);
 
     const dt = leaveType[i];
-    if (dt === "vacation") {
-      dayInputs[i].value = "ОТ";
-    } else if (dt === "sick") {
-      dayInputs[i].value = "Б";
-    } else {
-      dayInputs[i].value = formatHourForInput(dayHours[i]);
-    }
+    if (dt === "vacation") dayInputs[i].value = "ОТ";
+    else if (dt === "sick") dayInputs[i].value = "Б";
+    else dayInputs[i].value = formatHourForInput(dayHours[i]);
 
-    if (leaveType[i]) {
-      lockNightCell(i);
-    } else {
+    if (leaveType[i]) lockNightCell(i);
+    else {
       unlockNightCell(i);
       nightInputs[i].value = formatHourForInput(nightHours[i]);
     }
@@ -935,9 +936,16 @@ function setFromQueryOrNow() {
   const u = new URL(location.href);
   const qYear = Number(u.searchParams.get("year"));
   const qMonth = Number(u.searchParams.get("month"));
+  const qDay = Number(u.searchParams.get("day"));
 
   if (Number.isInteger(qYear) && qYear >= 2000 && qYear <= 2100) year = qYear;
   if (Number.isInteger(qMonth) && qMonth >= 0 && qMonth <= 11) month = qMonth;
+
+  if (Number.isInteger(qDay) && qDay >= 1 && qDay <= 31) {
+    focusDayIndex = qDay - 1;
+  } else {
+    focusDayIndex = null;
+  }
 
   monthSelect.value = String(month);
 }
@@ -961,6 +969,8 @@ function updateUrlForMonth() {
   const u = new URL(location.href);
   u.searchParams.set("year", String(year));
   u.searchParams.set("month", String(month));
+  u.searchParams.delete("day"); // ✅ when user changes month/year manually
+  focusDayIndex = null;
   history.replaceState(null, "", u.toString());
 }
 
@@ -1044,4 +1054,9 @@ yearSelect.addEventListener("change", async () => {
 
   await loadCurrentMonthFromDb();
   recalcAll();
+
+  
+  if (Number.isInteger(focusDayIndex) && focusDayIndex >= 0 && focusDayIndex < daysInMonth) {
+    focusDayColumn(focusDayIndex);
+  }
 })();
