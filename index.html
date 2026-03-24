@@ -1,3 +1,4 @@
+<!-- FILE: /index.html (Калькулятор) -->
 <!doctype html>
 <html lang="ru">
 <head>
@@ -34,7 +35,7 @@
       position: relative;
       overflow-x: hidden;
       background: #020617;
-      background-image: 
+      background-image:
         radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.18), transparent 60%),
         radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.15), transparent 60%),
         radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.12), transparent 60%);
@@ -46,7 +47,7 @@
       inset: -25%;
       pointer-events: none;
       z-index: 0;
-      background: 
+      background:
         radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.4), transparent 45%),
         radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.3), transparent 45%),
         radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.2), transparent 45%);
@@ -72,7 +73,6 @@
       100% { transform: translate3d(3%, 3%, 0) scale(1.08); }
     }
 
-    /* Анимация появления */
     .reveal {
       opacity: 0;
       transform: translateY(24px);
@@ -87,12 +87,10 @@
       transform: translateY(0);
       filter: blur(0);
     }
-    /* Задержки для последовательного появления */
     .reveal:nth-child(1) { transition-delay: 0.05s; }
     .reveal:nth-child(2) { transition-delay: 0.15s; }
     .reveal:nth-child(3) { transition-delay: 0.25s; }
 
-    /* Улучшенные стеклянные карточки */
     .glass-card {
       position: relative;
       overflow: hidden;
@@ -109,7 +107,7 @@
       inset: 0;
       pointer-events: none;
       opacity: 0;
-      background: 
+      background:
         radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.3), transparent 60%),
         radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
       transition: opacity 0.5s ease;
@@ -118,19 +116,13 @@
       border-color: rgba(99, 102, 241, 0.3);
       box-shadow: var(--card-shadow-hover);
     }
-    .glass-card:hover::before {
-      opacity: 1;
-    }
+    .glass-card:hover::before { opacity: 1; }
 
-    /* Эффект подъема */
     .hover-lift {
       transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.4, 1), box-shadow 0.3s ease;
     }
-    .hover-lift:hover {
-      transform: translateY(-6px);
-    }
+    .hover-lift:hover { transform: translateY(-6px); }
 
-    /* Поля ввода с эффектом стекла */
     .input-glass {
       background: rgba(2, 6, 23, 0.6);
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -149,7 +141,6 @@
       transform: translateY(-2px);
     }
 
-    /* Кастомный чекбокс в стиле glass */
     .custom-checkbox {
       appearance: none;
       width: 1.3rem;
@@ -180,7 +171,6 @@
       outline-offset: 2px;
     }
 
-    /* Анимация для праздничных полей */
     .holiday-fields {
       overflow: hidden;
       max-height: 0;
@@ -191,12 +181,11 @@
                   transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .holiday-fields.is-open {
-      max-height: 280px; /* достаточно для двух полей с отступами */
+      max-height: 280px;
       opacity: 1;
       transform: translateY(0);
     }
 
-    /* Кнопка сброса с улучшенной анимацией */
     .btn-reset {
       background: linear-gradient(145deg, #1e293b, #0f172a);
       border: 1px solid rgba(255,255,255,0.1);
@@ -209,39 +198,19 @@
       box-shadow: 0 18px 35px -18px #6366f1;
       transform: scale(1.02);
     }
-    .btn-reset:active {
-      transform: scale(0.98);
-    }
+    .btn-reset:active { transform: scale(0.98); }
 
-    /* Адаптивные корректировки */
     @media (max-width: 640px) {
-      .glass-card {
-        backdrop-filter: blur(20px); /* сильнее на мобильных */
-      }
-      .input-glass {
-        font-size: 16px; /* предотвращает зум при фокусе на iOS */
-        padding-top: 14px;
-        padding-bottom: 14px;
-      }
-      .btn-reset {
-        height: 56px; /* больше область касания */
-      }
-      /* увеличиваем отступ сверху под хедер с учётом возможного переноса */
-      .pt-safe {
-        padding-top: 7rem; /* 28 (как pt-28) */
-      }
+      .glass-card { backdrop-filter: blur(20px); }
+      .input-glass { font-size: 16px; padding-top: 14px; padding-bottom: 14px; }
+      .btn-reset { height: 56px; }
+      .pt-safe { padding-top: 7rem; }
     }
     @media (min-width: 768px) {
-      .pt-safe {
-        padding-top: 6rem; /* 24 */
-      }
+      .pt-safe { padding-top: 6rem; }
     }
 
-    /* Микроанимации для ссылок навигации */
-    .nav-link {
-      position: relative;
-      transition: color 0.2s;
-    }
+    .nav-link { position: relative; transition: color 0.2s; }
     .nav-link::after {
       content: '';
       position: absolute;
@@ -256,16 +225,9 @@
       transition: opacity 0.2s, transform 0.2s;
     }
     .nav-link.active::after,
-    .nav-link:hover::after {
-      opacity: 1;
-      transform: scaleX(1);
-    }
+    .nav-link:hover::after { opacity: 1; transform: scaleX(1); }
 
-    /* Сообщение об ошибке */
-    #errorBox:not(.hidden) {
-      animation: shake 0.3s ease-in-out;
-    }
-
+    #errorBox:not(.hidden) { animation: shake 0.3s ease-in-out; }
     @keyframes shake {
       0%, 100% { transform: translateX(0); }
       20% { transform: translateX(-5px); }
@@ -274,12 +236,46 @@
       80% { transform: translateX(3px); }
     }
 
-    /* Плавный скролл и уменьшение motion */
     @media (prefers-reduced-motion: reduce) {
-      * {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
-      }
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+
+    /* =========================
+       Confidential results mask
+       ========================= */
+    .results-wrap { position: relative; }
+    .results-wrap.is-hidden .results-content {
+      filter: blur(10px);
+      user-select: none;
+      pointer-events: none;
+    }
+    .results-wrap .results-mask {
+      display: none;
+      position: absolute;
+      inset: 0;
+      border-radius: 1.5rem;
+      background: rgba(2, 6, 23, 0.62);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 30px 80px -50px rgba(0,0,0,0.8);
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+    }
+    .results-wrap.is-hidden .results-mask { display: flex; }
+
+    .results-mask .mask-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(226,232,240,0.9);
+      font-size: 12px;
+      font-weight: 600;
     }
   </style>
 </head>
@@ -289,7 +285,6 @@
   document.body.classList.add("is-loaded");
 </script>
 
-<!-- ========== УНИФИЦИРОВАННЫЙ ХЕДЕР ========== -->
 <header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
   <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex flex-wrap items-center justify-between gap-3">
     <a href="index.html" class="group">
@@ -314,16 +309,11 @@
   </div>
 </header>
 
-<!-- Основной контент с защитным отступом (pt-safe) -->
 <div class="relative z-10 mx-auto max-w-5xl px-4 pt-safe pb-12 md:pb-16">
-  <!-- Верхний блок с заголовком и кнопками авторизации -->
   <header class="mb-8 reveal">
     <div class="flex flex-col sm:flex-row sm:items-center gap-4">
       <div class="flex items-center gap-3 flex-1">
-        <span
-          class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 shadow-xl text-xl font-bold text-slate-100"
-          aria-hidden="true"
-        >
+        <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 shadow-xl text-xl font-bold text-slate-100" aria-hidden="true">
           А
         </span>
         <div>
@@ -353,47 +343,42 @@
     </div>
   </header>
 
-  <!-- Основная сетка: форма и результаты -->
   <main class="grid gap-8 lg:grid-cols-2">
-    <!-- Карточка формы -->
     <section class="reveal glass-card hover-lift rounded-3xl p-6 md:p-7">
       <div class="flex items-center justify-between">
         <h2 class="text-xl font-semibold tracking-tight bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Данные</h2>
       </div>
 
       <form id="salaryForm" class="mt-6 space-y-5" novalidate>
-        <!-- Оклад -->
         <div>
           <label class="mb-1.5 block text-sm font-medium text-slate-200" for="oklad">Оклад (за норму часов)</label>
           <div class="relative">
-        <input
-          id="oklad"
-          name="oklad"
-          type="password"
-          inputmode="decimal"
-          autocomplete="off"
-          placeholder="Напр. 50 000"
-          class="input-glass w-full rounded-2xl px-4 py-3.5 pr-12 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
-        />
-        <button
-          id="okladPeekBtn"
-          type="button"
-          class="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-slate-300/80 hover:bg-white/5 hover:text-slate-100 ring-1 ring-white/10"
-          aria-label="Показать оклад"
-          tabindex="-1"
-        >
-          <!-- eye icon -->
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-        </button>
-      </div>
+            <input
+              id="oklad"
+              name="oklad"
+              type="password"
+              inputmode="decimal"
+              autocomplete="off"
+              placeholder="Напр. 50 000"
+              class="input-glass w-full rounded-2xl px-4 py-3.5 pr-12 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+            />
+            <button
+              id="okladPeekBtn"
+              type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-slate-300/80 hover:bg-white/5 hover:text-slate-100 ring-1 ring-white/10"
+              aria-label="Показать оклад"
+              tabindex="-1"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
           <p class="mt-1.5 text-xs text-slate-400/80">₽, можно с пробелами и запятыми.</p>
         </div>
 
-        <!-- Норма и отработано -->
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="normHours">Норма часов (в месяце)</label>
@@ -417,7 +402,6 @@
           </div>
         </div>
 
-        <!-- Ночные часы -->
         <div>
           <label class="mb-1.5 block text-sm font-medium text-slate-200" for="nightHours">Ночных часов</label>
           <input
@@ -430,7 +414,6 @@
           <p class="mt-1.5 text-xs text-slate-400/80">Ночные: надбавка +40% к базовой ставке.</p>
         </div>
 
-        <!-- Первая половина месяца -->
         <div class="space-y-5">
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="firstHalfHours">Часы за первую половину месяца</label>
@@ -467,7 +450,6 @@
           </div>
         </div>
 
-        <!-- Праздничные дни -->
         <div class="pt-2 border-t border-white/10">
           <label class="flex items-center gap-3 cursor-pointer select-none">
             <input
@@ -510,80 +492,108 @@
           </div>
         </div>
 
-        <!-- Блок ошибки -->
         <div id="errorBox" class="hidden rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
       </form>
     </section>
 
-    <!-- Карточка результатов -->
     <aside class="reveal glass-card hover-lift rounded-3xl p-6 md:p-7">
-      <h2 class="text-xl font-semibold tracking-tight bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Результат</h2>
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="text-xl font-semibold tracking-tight bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Результат</h2>
 
-      <div class="mt-6 space-y-5">
-        <!-- Итоговая сумма -->
-        <div class="glass-card rounded-3xl bg-gradient-to-b from-indigo-500/20 via-slate-900/50 to-slate-900/30 p-6 ring-1 ring-white/10">
-          <div class="flex items-center justify-between">
-            <p class="text-sm text-slate-200/80">К выплате</p>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300 ring-1 ring-white/10 backdrop-blur-sm">
-              <span class="h-2 w-2 rounded-full bg-emerald-400/80"></span>
-              нетто
-            </span>
+        <!-- ✅ toggle button for results -->
+        <button
+          id="resultsPeekBtn"
+          type="button"
+          class="inline-flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
+          aria-pressed="false"
+          aria-label="Показать результаты"
+          title="Показать / скрыть результаты"
+        >
+          <span id="resultsPeekIcon" aria-hidden="true">
+            <!-- eye -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </span>
+          <span id="resultsPeekText">Показать</span>
+        </button>
+      </div>
+
+      <!-- ✅ Wrap results -->
+      <div id="resultsWrap" class="results-wrap is-hidden mt-6">
+        <div class="results-mask rounded-3xl">
+          <div class="mask-pill">
+            <span class="h-2 w-2 rounded-full bg-sky-400/80"></span>
+            Скрыто (Нажмите на "Показать")
           </div>
-          <p id="net" class="mt-3 text-4xl md:text-5xl font-bold tracking-tight text-slate-50 drop-shadow-[0_15px_30px_rgba(99,102,241,0.5)]">—</p>
-          <p id="summary" class="mt-3 text-sm text-slate-300/70"></p>
         </div>
 
-        <!-- Детали в два столбца -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-            <p class="text-xs text-slate-400">Часовая ставка</p>
-            <p id="hourRate" class="mt-2 text-xl font-semibold tracking-tight">—</p>
-          </div>
-          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-            <p class="text-xs text-slate-400">Оклад за факт</p>
-            <p id="baseFact" class="mt-2 text-xl font-semibold tracking-tight">—</p>
-          </div>
-          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-            <p class="text-xs text-slate-400">Премия 35%</p>
-            <p id="bonus" class="mt-2 text-xl font-semibold tracking-tight">—</p>
-          </div>
-          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-            <p class="text-xs text-slate-400">Ночные</p>
-            <p id="nightExtra" class="mt-2 text-xl font-semibold tracking-tight">—</p>
-          </div>
-          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+        <div class="results-content space-y-5">
+          <div class="glass-card rounded-3xl bg-gradient-to-b from-indigo-500/20 via-slate-900/50 to-slate-900/30 p-6 ring-1 ring-white/10">
             <div class="flex items-center justify-between">
-              <p class="text-xs text-slate-400">Аванс</p>
-              <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-300 ring-1 ring-white/10">
-                <span class="h-1.5 w-1.5 rounded-full bg-yellow-400/80"></span>
-                бета
+              <p class="text-sm text-slate-200/80">К выплате</p>
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300 ring-1 ring-white/10 backdrop-blur-sm">
+                <span class="h-2 w-2 rounded-full bg-emerald-400/80"></span>
+                нетто
               </span>
             </div>
-            <p id="advance" class="mt-2 text-xl font-semibold tracking-tight">—</p>
+            <p id="net" class="mt-3 text-4xl md:text-5xl font-bold tracking-tight text-slate-50 drop-shadow-[0_15px_30px_rgba(99,102,241,0.5)]">—</p>
+            <p id="summary" class="mt-3 text-sm text-slate-300/70"></p>
           </div>
-          <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-            <div class="flex items-center justify-between">
-              <p class="text-xs text-slate-400">Остаток</p>
-              <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-300 ring-1 ring-white/10">
-                <span class="h-1.5 w-1.5 rounded-full bg-yellow-400/80"></span>
-                бета
-              </span>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+              <p class="text-xs text-slate-400">Часовая ставка</p>
+              <p id="hourRate" class="mt-2 text-xl font-semibold tracking-tight">—</p>
             </div>
-            <p id="remaining" class="mt-2 text-xl font-semibold tracking-tight">—</p>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+              <p class="text-xs text-slate-400">Оклад за факт</p>
+              <p id="baseFact" class="mt-2 text-xl font-semibold tracking-tight">—</p>
+            </div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+              <p class="text-xs text-slate-400">Премия 35%</p>
+              <p id="bonus" class="mt-2 text-xl font-semibold tracking-tight">—</p>
+            </div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+              <p class="text-xs text-slate-400">Ночные</p>
+              <p id="nightExtra" class="mt-2 text-xl font-semibold tracking-tight">—</p>
+            </div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+              <div class="flex items-center justify-between">
+                <p class="text-xs text-slate-400">Аванс</p>
+                <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-300 ring-1 ring-white/10">
+                  <span class="h-1.5 w-1.5 rounded-full bg-yellow-400/80"></span>
+                  бета
+                </span>
+              </div>
+              <p id="advance" class="mt-2 text-xl font-semibold tracking-tight">—</p>
+            </div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+              <div class="flex items-center justify-between">
+                <p class="text-xs text-slate-400">Остаток</p>
+                <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-300 ring-1 ring-white/10">
+                  <span class="h-1.5 w-1.5 rounded-full bg-yellow-400/80"></span>
+                  бета
+                </span>
+              </div>
+              <p id="remaining" class="mt-2 text-xl font-semibold tracking-tight">—</p>
+            </div>
           </div>
         </div>
       </div>
     </aside>
   </main>
 
-  <!-- Футер -->
   <footer class="mt-12 text-center text-xs text-slate-400/60 border-t border-white/10 pt-6">
     <span class="font-bold text-rose-400">ВНИМАНИЕ:</span> Проект находится в стадии разработки. Пожалуйста, уточняйте информацию.
     <br>Поддержать автора — пару <span class="text-amber-400 font-bold">ништяков</span> в кабинет <span class="text-amber-400 font-bold">ЕГАИС =)</span>
-    <br> Created by H4nSk0y 
+    <br> Created by H4nSk0y
   </footer>
 </div>
 
+<!-- ✅ оклад: удержание -->
 <script>
   (function attachPeek(inputId, btnId) {
     const input = document.getElementById(inputId);
@@ -593,17 +603,14 @@
     const show = () => { input.type = "text"; };
     const hide = () => { input.type = "password"; };
 
-    
     btn.addEventListener("mousedown", (e) => { e.preventDefault(); show(); });
     btn.addEventListener("mouseup", hide);
     btn.addEventListener("mouseleave", hide);
 
-    
     btn.addEventListener("touchstart", (e) => { e.preventDefault(); show(); }, { passive: false });
     btn.addEventListener("touchend", hide);
     btn.addEventListener("touchcancel", hide);
 
-    
     btn.addEventListener("keydown", (e) => {
       if (e.key === " " || e.key === "Enter") { e.preventDefault(); show(); }
     });
@@ -613,7 +620,59 @@
   })("oklad", "okladPeekBtn");
 </script>
 
-<!-- Скрипты остаются без изменений -->
+<!-- ✅ результаты: toggle по клику -->
+<script>
+  (function attachResultsToggle(wrapId, btnId, textId, iconId) {
+    const wrap = document.getElementById(wrapId);
+    const btn = document.getElementById(btnId);
+    const textEl = document.getElementById(textId);
+    const iconEl = document.getElementById(iconId);
+    if (!wrap || !btn || !textEl || !iconEl) return;
+
+    const eye = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+    `;
+    const eyeOff = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.733 5.076A10.744 10.744 0 0 1 12 5c6.5 0 10 7 10 7a16.88 16.88 0 0 1-1.67 2.68"></path>
+        <path d="M6.61 6.61A16.88 16.88 0 0 0 2 12s3.5 7 10 7a10.75 10.75 0 0 0 5.39-1.61"></path>
+        <path d="M8.71 8.71a3 3 0 0 0 4.58 4.58"></path>
+        <path d="M9.88 9.88a3 3 0 0 1 4.24 4.24"></path>
+        <path d="M2 2l20 20"></path>
+      </svg>
+    `;
+
+    function apply(hidden) {
+      if (hidden) {
+        wrap.classList.add("is-hidden");
+        btn.setAttribute("aria-pressed", "false");
+        btn.setAttribute("aria-label", "Показать результаты");
+        textEl.textContent = "Показать";
+        iconEl.innerHTML = eye;
+      } else {
+        wrap.classList.remove("is-hidden");
+        btn.setAttribute("aria-pressed", "true");
+        btn.setAttribute("aria-label", "Скрыть результаты");
+        textEl.textContent = "Скрыть";
+        iconEl.innerHTML = eyeOff;
+      }
+    }
+
+    // default hidden
+    apply(true);
+
+    btn.addEventListener("click", () => {
+      const hidden = wrap.classList.contains("is-hidden");
+      apply(!hidden);
+    });
+  })("resultsWrap", "resultsPeekBtn", "resultsPeekText", "resultsPeekIcon");
+</script>
+
 <script type="module" src="./app.js"></script>
 </body>
 </html>
