@@ -443,6 +443,24 @@
           </div>
         </div>
 
+        <!-- Avatar actions -->
+      <div class="mt-2 flex flex-wrap items-center gap-2">
+        <input id="avatarFileInput" type="file" accept="image/*" class="hidden" />
+
+        <button id="avatarUploadBtn" type="button"
+          class="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">
+          Загрузить аватар
+        </button>
+
+        <button id="avatarRemoveBtn" type="button"
+          class="rounded-xl bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-500/20 hover:bg-rose-500/15"
+          disabled>
+          Удалить
+        </button>
+
+        <span id="avatarHint" class="text-[11px] text-slate-400/80"></span>
+      </div>
+
         <div class="mt-5 grid gap-4">
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="displayNameInput">Имя</label>

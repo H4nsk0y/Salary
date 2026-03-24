@@ -1,4 +1,6 @@
+// =========================
 // FILE: /table.js
+// =========================
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
 import { getMyProfile, loadTimesheet, saveTimesheet } from "./db.js";
@@ -8,11 +10,16 @@ document.body.classList.add("is-loaded");
 const prefersReducedMotion =
   window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
 
-const LEAVE_HOURS_PER_DAY = 8;
+const DEFAULT_DAY_HOURS = 8;
+const FEMALE_DAY_HOURS = 7.2;
+
+let BASE_DAY_HOURS = DEFAULT_DAY_HOURS;     // ✅ будет подтянут из профиля
+let LEAVE_HOURS_PER_DAY = DEFAULT_DAY_HOURS; // ✅ = BASE_DAY_HOURS
+
 const MAX_HOURS_PER_DAY = 24;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 
-let focusDayIndex = null; // ✅ from ?day=DD
+let focusDayIndex = null; // from ?day=DD
 
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
@@ -348,7 +355,7 @@ function markDirty() {
   setSaveStatus("Есть несохранённые изменения", "neutral");
 }
 
-function sum(arr) {
+function sumArr(arr) {
   return arr.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
 }
 function sumRange(arr, startIdx, endIdxInclusive) {
@@ -359,6 +366,12 @@ function sumRange(arr, startIdx, endIdxInclusive) {
   return s;
 }
 
+/**
+ * ✅ Норма месяца (для ставки) — теперь с учетом BASE_DAY_HOURS:
+ * - будни * BASE_DAY_HOURS
+ * - минус BASE_DAY_HOURS за праздничные будни
+ * - минус 1 за сокращённые будни
+ */
 function calendarNormHours() {
   let weekdays = 0;
   let holidayWeekdays = 0;
@@ -371,9 +384,17 @@ function calendarNormHours() {
     else if (isShortDay[i]) shortWeekdays++;
   }
 
-  return weekdays * 8 - holidayWeekdays * 8 - shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
+  return (
+    weekdays * BASE_DAY_HOURS -
+    holidayWeekdays * BASE_DAY_HOURS -
+    shortWeekdays * SHORT_DAY_REDUCTION_HOURS
+  );
 }
 
+/**
+ * ✅ Личная норма — отпуск/больничный уменьшают на LEAVE_HOURS_PER_DAY (то же, что BASE_DAY_HOURS)
+ *    Эффективные дни ОТ/Б не учитываются, если день праздничный (чтобы не вычитать дважды)
+ */
 function personalNormHours(monthNorm) {
   let vacTotal = 0;
   let sickTotal = 0;
@@ -500,8 +521,8 @@ function recalcAll() {
   const monthNorm = calendarNormHours();
   const { vacTotal, sickTotal, personalNorm } = personalNormHours(monthNorm);
 
-  const totalDay = sum(dayHours);
-  const totalNight = sum(nightHours);
+  const totalDay = sumArr(dayHours);
+  const totalNight = sumArr(nightHours);
   const workedHours = totalDay + totalNight;
 
   animateNumber(totalHoursEl, workedHours, (v) => v.toFixed(1), 360);
@@ -517,7 +538,11 @@ function recalcAll() {
   const oklad = parseNumber(okladInput.value);
   if (!Number.isFinite(oklad) || oklad <= 0) {
     clearMoneyUI();
-    if (normHint) normHint.textContent = monthNorm > 0 ? `Норма месяца: ${monthNorm.toFixed(0)} ч` : "";
+    if (normHint) {
+      normHint.textContent = monthNorm > 0
+        ? `Норма месяца: ${monthNorm.toFixed(1)} ч`
+        : "";
+    }
     return;
   }
 
@@ -596,7 +621,8 @@ function recalcAll() {
   remainingPayEl.textContent = `~ ${formatRub(remainingApprox, 0)}`;
 
   if (normHint) {
-    normHint.textContent = `Норма месяца: ${monthNorm.toFixed(0)} ч • Личная: ${personalNorm.toFixed(0)} ч`;
+    normHint.textContent =
+      `Норма месяца: ${monthNorm.toFixed(1)} ч • Личная: ${personalNorm.toFixed(1)} ч • Базовый день: ${BASE_DAY_HOURS.toFixed(1)} ч`;
   }
 }
 
@@ -694,7 +720,7 @@ function buildTableForMonth() {
     if (weekend) th.classList.add("weekend-col");
 
     th.style.cursor = "pointer";
-    th.title = "Клик — праздник (−8ч в будни, x2 за часы). Даблклик — сокращённый день (−1ч в будни).";
+    th.title = "Клик — праздник. Даблклик — сокращённый день.";
 
     let clickTimer = null;
     th.addEventListener("click", (e) => {
@@ -969,7 +995,7 @@ function updateUrlForMonth() {
   const u = new URL(location.href);
   u.searchParams.set("year", String(year));
   u.searchParams.set("month", String(month));
-  u.searchParams.delete("day"); // ✅ when user changes month/year manually
+  u.searchParams.delete("day");
   focusDayIndex = null;
   history.replaceState(null, "", u.toString());
 }
@@ -1043,6 +1069,12 @@ yearSelect.addEventListener("change", async () => {
     profileRole = profile?.role ?? "user";
     profileOklad = profile?.oklad ?? null;
 
+  
+    if (profile?.gender === "female") BASE_DAY_HOURS = FEMALE_DAY_HOURS;
+    else BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
+
+    LEAVE_HOURS_PER_DAY = BASE_DAY_HOURS;
+
     if (profileRole === "admin") adminLink?.classList.remove("hidden");
 
     if (profileOklad != null && String(okladInput?.value ?? "").trim() === "") {
@@ -1055,7 +1087,6 @@ yearSelect.addEventListener("change", async () => {
   await loadCurrentMonthFromDb();
   recalcAll();
 
-  
   if (Number.isInteger(focusDayIndex) && focusDayIndex >= 0 && focusDayIndex < daysInMonth) {
     focusDayColumn(focusDayIndex);
   }

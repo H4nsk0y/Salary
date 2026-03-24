@@ -7,12 +7,17 @@ import {
   deleteMyTimesheet,
 } from "./db.js";
 import { parseNumber } from "./calc.js";
+import { supabase } from "./supabaseClient.js";
 
 document.body.classList.add("is-loaded");
 
 const OVERTIME_LIMIT_YEAR = 120;
-const LEAVE_HOURS_PER_DAY = 8;
 const SHORT_DAY_REDUCTION_HOURS = 1;
+
+// ✅ базовая дневная норма (будет выставляться из профиля)
+const DEFAULT_DAY_HOURS = 8;
+const FEMALE_DAY_HOURS = 7.2;
+let BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
 
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
@@ -48,12 +53,23 @@ const calPrevBtn = document.getElementById("calPrevBtn");
 const calNextBtn = document.getElementById("calNextBtn");
 const calTodayBtn = document.getElementById("calTodayBtn");
 
+/* Avatar DOM */
+const avatarFileInput = document.getElementById("avatarFileInput");
+const avatarUploadBtn = document.getElementById("avatarUploadBtn");
+const avatarRemoveBtn = document.getElementById("avatarRemoveBtn");
+const avatarHint = document.getElementById("avatarHint");
+
+/* ===== Avatar upload settings ===== */
+const AVATAR_BUCKET = "avatars";
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2MB
+const AVATAR_ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 const monthNamesShort = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
 const monthNamesFull = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const WEEK_LABELS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
 
 let loadedYear = new Date().getFullYear();
-let payloadByMonth = new Map(); // month -> payload (current loaded year)
+let payloadByMonth = new Map();
 
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
@@ -113,9 +129,9 @@ function sum(arr) {
 }
 
 /**
- * ✅ Align with table.js rules:
- * - month norm: weekdays*8 - holidayWeekdays*8 - shortWeekdays*1
- * - personal norm: monthNorm - leaveEffective*8
+ * ✅ Align with table.js rules + BASE_DAY_HOURS:
+ * - month norm: weekdays*BASE_DAY_HOURS - holidayWeekdays*BASE_DAY_HOURS - shortWeekdays*1
+ * - personal norm: monthNorm - leaveEffective*BASE_DAY_HOURS
  *   (leaveEffective excludes holiday days to avoid double subtraction)
  */
 function computeMonthOvertimeSigned(payload) {
@@ -142,17 +158,20 @@ function computeMonthOvertimeSigned(payload) {
     else if (isShortDay[i]) shortWeekdays++;
   }
 
-  const monthNorm = weekdays * 8 - holidayWeekdays * 8 - shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
+  const monthNorm =
+    weekdays * BASE_DAY_HOURS -
+    holidayWeekdays * BASE_DAY_HOURS -
+    shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
 
   let leaveEffective = 0;
   for (let i = 0; i < daysInMonth; i++) {
     const lt = leaveType[i];
     if (lt !== "vacation" && lt !== "sick") continue;
-    if (isHoliday[i]) continue; // ✅ avoid double subtraction on holiday+leave
+    if (isHoliday[i]) continue;
     leaveEffective++;
   }
 
-  const personalNorm = monthNorm - leaveEffective * LEAVE_HOURS_PER_DAY;
+  const personalNorm = monthNorm - leaveEffective * BASE_DAY_HOURS;
   const workedTotal = sum(dayHours) + sum(nightHours);
 
   return workedTotal - personalNorm;
@@ -291,7 +310,7 @@ function createTimesheetCard(row) {
       await deleteMyTimesheet(y, m);
       setStatus("Удалено", "ok");
       await refreshTimesheets();
-      await renderCalendar(); // sync
+      await renderCalendar();
     } catch (e) {
       setStatus("Ошибка удаления", "err");
       setError(e?.message || "Не удалось удалить табель.");
@@ -307,6 +326,97 @@ function createTimesheetCard(row) {
   card.appendChild(top);
   return card;
 }
+
+/* ========= Avatar helpers (без изменений логики) ========= */
+
+function setAvatarHint(text) {
+  if (!avatarHint) return;
+  avatarHint.textContent = text || "";
+}
+
+function setAvatarUI(url, name) {
+  if (url) {
+    avatarImg.src = url;
+    avatarImg.classList.remove("hidden");
+    avatarFallback.classList.add("hidden");
+    if (avatarRemoveBtn) avatarRemoveBtn.disabled = false;
+  } else {
+    avatarImg.removeAttribute("src");
+    avatarImg.classList.add("hidden");
+    avatarFallback.classList.remove("hidden");
+    avatarFallback.textContent = (name?.trim?.()[0] || "A").toUpperCase();
+    if (avatarRemoveBtn) avatarRemoveBtn.disabled = true;
+  }
+}
+
+function guessExt(file) {
+  const t = String(file?.type || "").toLowerCase();
+  if (t.includes("jpeg")) return "jpg";
+  if (t.includes("png")) return "png";
+  if (t.includes("webp")) return "webp";
+  return "png";
+}
+
+async function getUserIdOrThrow() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  const uid = data?.session?.user?.id;
+  if (!uid) throw new Error("NO_SESSION");
+  return uid;
+}
+
+async function uploadAvatar(file) {
+  if (!file) throw new Error("NO_FILE");
+  if (!AVATAR_ALLOWED_TYPES.has(file.type)) throw new Error("Поддерживаются только JPG, PNG или WebP.");
+  if (file.size > AVATAR_MAX_BYTES) throw new Error("Файл слишком большой. Максимум 2 MB.");
+
+  const uid = await getUserIdOrThrow();
+  const ext = guessExt(file);
+  const path = `${uid}/avatar.${ext}`;
+
+  const { error: upErr } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+
+  if (upErr) throw upErr;
+
+  const { data: signed, error: signErr } =
+    await supabase.storage.from(AVATAR_BUCKET).createSignedUrl(path, 60 * 60);
+
+  if (signErr) throw signErr;
+
+  const publicUrl = signed?.signedUrl ?? null;
+  if (!publicUrl) throw new Error("Не удалось получить ссылку на аватар.");
+
+  await updateMyProfile({ avatarUrl: publicUrl });
+  return publicUrl;
+}
+
+async function removeAvatar() {
+  const uid = await getUserIdOrThrow();
+
+  const { data: list, error: listErr } = await supabase.storage.from(AVATAR_BUCKET).list(uid, { limit: 100 });
+  if (listErr) throw listErr;
+
+  const files = (list || []).map((f) => `${uid}/${f.name}`);
+  if (files.length) {
+    const { error: rmErr } = await supabase.storage.from(AVATAR_BUCKET).remove(files);
+    if (rmErr) throw rmErr;
+  }
+
+  await updateMyProfile({ avatarUrl: null });
+}
+
+avatarImg?.addEventListener("error", () => {
+  const src = String(avatarImg?.src || "");
+  if (src.startsWith("blob:")) return;
+
+  setError("Аватар не загрузился по ссылке. Проверь доступ к Storage.");
+  const name = displayNameEl?.textContent || "A";
+  setAvatarUI(null, name);
+});
+
+/* ========= Profile load ========= */
 
 async function refreshProfile() {
   setStatus("Загружаю профиль…", "busy");
@@ -326,22 +436,19 @@ async function refreshProfile() {
   okladInput.value = oklad != null ? String(oklad) : "";
   if (genderSelect) genderSelect.value = profile?.gender ?? "";
 
-  if (profile?.avatar_url) {
-    avatarImg.src = profile.avatar_url;
-    avatarImg.classList.remove("hidden");
-    avatarFallback.classList.add("hidden");
-  } else {
-    avatarImg.removeAttribute("src");
-    avatarFallback.classList.remove("hidden");
-    avatarImg.classList.add("hidden");
-    avatarFallback.textContent = (name?.trim?.()[0] || "A").toUpperCase();
-  }
+  // ✅ выставляем базовый день по полу
+  BASE_DAY_HOURS = profile?.gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
+
+  setAvatarUI(profile?.avatar_url || null, name);
 
   if (profile?.role === "admin") adminLink?.classList.remove("hidden");
   else adminLink?.classList.add("hidden");
 
   setStatus("Профиль загружен", "ok");
 }
+
+/* ========= Production calendar + rendering ========= */
+/* ... остальная часть твоего profile.js без изменений ... */
 
 /* ========= Production calendar (isdayoff) + cache ========= */
 
@@ -371,9 +478,7 @@ async function getProductionMonth(y, m) {
       const obj = JSON.parse(raw);
       if (obj && Array.isArray(obj.data) && obj.data.length === days) return obj.data;
     }
-  } catch {
-    // ignore
-  }
+  } catch {}
 
   const mm = String(m + 1).padStart(2, "0");
   const url = `https://isdayoff.ru/api/getdata?year=${y}&month=${mm}&pre=1&holiday=1`;
@@ -387,22 +492,15 @@ async function getProductionMonth(y, m) {
 
     try {
       localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data: parsed }));
-    } catch {
-      // ignore
-    }
+    } catch {}
 
     return parsed;
   } catch {
-    // fallback: weekends only (0=work,1=weekend)
     const out = [];
-    for (let i = 0; i < days; i++) {
-      out.push(isWeekendByIndex(y, m, i) ? 1 : 0);
-    }
+    for (let i = 0; i < days; i++) out.push(isWeekendByIndex(y, m, i) ? 1 : 0);
     return out;
   }
 }
-
-/* ========= Calendar rendering ========= */
 
 function initCalendarDow() {
   if (!calDowRow) return;
@@ -416,7 +514,6 @@ function initCalendarDow() {
 }
 
 function mondayIndex(jsDay) {
-  // JS: 0=Sun..6=Sat -> Mon=0..Sun=6
   return (jsDay + 6) % 7;
 }
 
@@ -427,7 +524,7 @@ function clamp01(x) {
 }
 
 function computeHeat(totalHours) {
-  const HEAT_MAX = 12; // 11ч смена близко к 1.0
+  const HEAT_MAX = 12;
   return clamp01((Number(totalHours) || 0) / HEAT_MAX);
 }
 
@@ -481,7 +578,6 @@ async function renderCalendar() {
     btn.type = "button";
     btn.className = "cal-cell";
 
-    // official layer
     const code = Number(prod?.[idx] ?? 0);
     const offHoliday = code === 8;
     const offShort = code === 2;
@@ -491,39 +587,27 @@ async function renderCalendar() {
     else if (offShort) btn.classList.add("cal-off-short");
     else if (offWeekend) btn.classList.add("cal-off-weekend");
 
-    // today ring
     if (dayNum === todayDay) btn.classList.add("cal-today");
 
-    // heat layer from timesheet
     const dh = Number(tsDay?.[idx] ?? 0);
     const nh = Number(tsNight?.[idx] ?? 0);
     const total = dh + nh;
     btn.style.setProperty("--heat", String(computeHeat(total)));
 
-    // numbers (small)
     const num = document.createElement("div");
     num.className = "cal-daynum";
     num.textContent = String(dayNum);
     btn.appendChild(num);
 
-    // markers for timesheet flags
-  // markers for timesheet flags (NO DOTS) — highlight the whole date
     const markHoliday = Boolean(tsHoliday?.[idx]);
     const markShort = Boolean(tsShort?.[idx]);
 
-    if (markHoliday) {
-      btn.classList.add("cal-ts-holiday");
-    } else {
-      btn.classList.remove("cal-ts-holiday");
-    }
+    if (markHoliday) btn.classList.add("cal-ts-holiday");
+    else btn.classList.remove("cal-ts-holiday");
 
-    if (markShort) {
-      btn.classList.add("cal-ts-short");
-    } else {
-      btn.classList.remove("cal-ts-short");
-    }
+    if (markShort) btn.classList.add("cal-ts-short");
+    else btn.classList.remove("cal-ts-short");
 
-    // tags: leave / night
     const tags = document.createElement("div");
     tags.className = "cal-tags";
 
@@ -549,7 +633,6 @@ async function renderCalendar() {
 
     if (tags.childElementCount) btn.appendChild(tags);
 
-    // tooltip (no clutter in UI)
     const parts = [];
     if (total > 0) parts.push(`Часы: ${total.toFixed(1)} (день ${dh.toFixed(1)}, ночь ${nh.toFixed(1)})`);
     if (lt === "vacation") parts.push("Отпуск");
@@ -576,17 +659,14 @@ async function shiftCalendarMonth(delta) {
   calYear = next.getFullYear();
   calMonth = next.getMonth();
 
-  // keep yearSelect in sync when year changes
   ensureYearOption(calYear);
   if (yearSelect && Number(yearSelect.value) !== calYear) {
     yearSelect.value = String(calYear);
-    await refreshTimesheets(); // loads payloadByMonth for new year
+    await refreshTimesheets();
   } else {
     await renderCalendar();
   }
 }
-
-/* ========= Timesheets ========= */
 
 async function refreshTimesheets() {
   if (!requireDom(yearSelect, "yearSelect")) return;
@@ -603,7 +683,6 @@ async function refreshTimesheets() {
 
   const rows = await listMyTimesheetsByYear(y, { withPayload: true });
 
-  // map month->payload for calendar
   payloadByMonth = new Map();
   for (const r of rows) {
     if (r && typeof r.month === "number" && r.payload) payloadByMonth.set(r.month, r.payload);
@@ -638,7 +717,6 @@ async function refreshTimesheets() {
 
   setStatus("Готово", "ok");
 
-  // calendar should reflect newly loaded year payloads
   if (calYear !== loadedYear) {
     calYear = loadedYear;
     calMonth = new Date().getMonth();
@@ -676,7 +754,12 @@ async function saveProfile() {
       oklad: okladInput.value.trim() ? oklad : null,
       gender: gender ? gender : null,
     });
+
+    // ✅ сразу обновим локальную норму после сохранения пола
+    BASE_DAY_HOURS = gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
+
     await refreshProfile();
+    await refreshTimesheets();
     setStatus("Сохранено", "ok");
   } catch (e) {
     setStatus("Ошибка сохранения", "err");
@@ -704,7 +787,6 @@ refreshBtn?.addEventListener("click", async () => {
 });
 
 yearSelect?.addEventListener("change", async () => {
-  // sync calendar year with selected year, keep month the same
   calYear = Number(yearSelect.value);
   await refreshTimesheets();
 });
@@ -721,6 +803,67 @@ calTodayBtn?.addEventListener("click", async () => {
     await refreshTimesheets();
   } else {
     await renderCalendar();
+  }
+});
+
+/* ===== Avatar events (как у тебя) ===== */
+
+avatarUploadBtn?.addEventListener("click", () => {
+  setError(null);
+  setAvatarHint("");
+  avatarFileInput?.click();
+});
+
+avatarFileInput?.addEventListener("change", async () => {
+  const file = avatarFileInput?.files?.[0];
+  if (!file) return;
+
+  try {
+    setError(null);
+    setStatus("Загружаю аватар…", "busy");
+    setAvatarHint("Загрузка…");
+
+    try {
+      const localUrl = URL.createObjectURL(file);
+      setAvatarUI(localUrl, displayNameEl?.textContent || "A");
+    } catch {}
+
+    const url = await uploadAvatar(file);
+    setAvatarUI(url, displayNameEl?.textContent || "A");
+
+    setAvatarHint("Готово");
+    setStatus("Профиль обновлён", "ok");
+  } catch (e) {
+    setAvatarHint("");
+    setStatus("Ошибка", "err");
+    setError(e?.message || "Не удалось загрузить аватар.");
+    try { await refreshProfile(); } catch {}
+  } finally {
+    if (avatarFileInput) avatarFileInput.value = "";
+  }
+});
+
+avatarRemoveBtn?.addEventListener("click", async () => {
+  const ok = confirm("Удалить аватар?");
+  if (!ok) return;
+
+  try {
+    setError(null);
+    setStatus("Удаляю аватар…", "busy");
+    setAvatarHint("Удаление…");
+
+    await removeAvatar();
+
+    const name = displayNameEl?.textContent || "A";
+    setAvatarUI(null, name);
+
+    setAvatarHint("Удалено");
+    setStatus("Профиль обновлён", "ok");
+  } catch (e) {
+    setAvatarHint("");
+    setStatus("Ошибка", "err");
+    setError(e?.message || "Не удалось удалить аватар.");
+    try { await refreshProfile(); } catch {}
   }
 });
 
@@ -741,7 +884,7 @@ calTodayBtn?.addEventListener("click", async () => {
   fillYearOptions(now.getFullYear());
 
   try {
-    await refreshProfile();
+    await refreshProfile();   // ✅ тут выставится BASE_DAY_HOURS
     await refreshTimesheets();
   } catch (e) {
     setStatus("Ошибка загрузки", "err");
