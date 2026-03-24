@@ -217,8 +217,7 @@
     }
 
     button, .btn-like { transition: all 0.2s; }
-    button:active { transform: scale(0.98); }
-
+  
     #errorBox:not(.hidden) { animation: shake 0.3s ease-in-out; }
     @keyframes shake {
       0%,100% { transform: translateX(0); }
@@ -367,6 +366,8 @@
       color: rgba(253, 230, 138, 0.95);
     }
 
+    
+
   </style>
 </head>
 
@@ -485,12 +486,29 @@
 
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="okladInput">Оклад (₽)</label>
-            <input
-              id="okladInput"
-              inputmode="decimal"
-              class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
-              placeholder="Напр. 50000"
-            />
+            <div class="relative">
+        <input
+          id="okladInput"
+          type="password"
+          inputmode="decimal"
+          autocomplete="off"
+          class="input-glass w-full rounded-2xl px-4 py-3.5 pr-12 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+          placeholder="Напр. 50000"
+        />
+        <button
+          id="okladInputPeekBtn"
+          type="button"
+          class="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-slate-300/80 hover:bg-white/5 hover:text-slate-100 ring-1 ring-white/10"
+          aria-label="Показать оклад"
+          tabindex="-1"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
+      </div>
             <p class="mt-1.5 text-xs text-slate-400/80">Будет подставляться в табель/калькулятор.</p>
           </div>
 
@@ -624,6 +642,32 @@
       observer.observe(bar, { attributes: true, attributeFilter: ['style'] });
       updateColor();
     })();
+  </script>
+
+    <script>
+    (function attachPeek(inputId, btnId) {
+      const input = document.getElementById(inputId);
+      const btn = document.getElementById(btnId);
+      if (!input || !btn) return;
+
+      const show = () => { input.type = "text"; };
+      const hide = () => { input.type = "password"; };
+
+      btn.addEventListener("mousedown", (e) => { e.preventDefault(); show(); });
+      btn.addEventListener("mouseup", hide);
+      btn.addEventListener("mouseleave", hide);
+
+      btn.addEventListener("touchstart", (e) => { e.preventDefault(); show(); }, { passive: false });
+      btn.addEventListener("touchend", hide);
+      btn.addEventListener("touchcancel", hide);
+
+      btn.addEventListener("keydown", (e) => {
+        if (e.key === " " || e.key === "Enter") { e.preventDefault(); show(); }
+      });
+      btn.addEventListener("keyup", (e) => {
+        if (e.key === " " || e.key === "Enter") { e.preventDefault(); hide(); }
+      });
+    })("okladInput", "okladInputPeekBtn");
   </script>
 
   <script type="module" src="./profile.js"></script>
