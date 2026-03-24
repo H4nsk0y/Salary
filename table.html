@@ -11,6 +11,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/driver.js@0.9.8/dist/driver.min.css" />
+<script src="https://unpkg.com/driver.js@0.9.8/dist/driver.min.js"></script>
 
   <style>
     html, body {
@@ -323,6 +325,138 @@
       font-size: 12px;
       font-weight: 600;
     }
+
+    /* =========================
+   Driver.js 0.9.8 custom
+   ========================= */
+
+#driver-page-overlay {
+  background: rgba(2, 6, 23, 0.58) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+#driver-highlighted-element-stage {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.driver-highlighted-element {
+  background: transparent !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 0 0 2px rgba(99, 102, 241, 0.95),
+    0 0 0 6px rgba(99, 102, 241, 0.18),
+    0 14px 34px rgba(15, 23, 42, 0.35) !important;
+}
+
+#driver-popover-item.alvisa-tour {
+  background: linear-gradient(
+    135deg,
+    rgba(10, 19, 52, 0.96) 0%,
+    rgba(20, 32, 74, 0.92) 55%,
+    rgba(35, 24, 78, 0.90) 100%
+  ) !important;
+  color: #eef2ff !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border-radius: 22px !important;
+  padding: 18px !important;
+  min-width: 280px !important;
+  max-width: 360px !important;
+  box-shadow:
+    0 24px 60px rgba(2, 6, 23, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(99, 102, 241, 0.14) !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-tip {
+  display: none !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-title {
+  color: #f8fbff !important;
+  font-size: 1.06rem !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+  margin: 0 0 10px 0 !important;
+  letter-spacing: -0.01em !important;
+  font-family: Inter, system-ui, -apple-system, sans-serif !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-description {
+  color: rgba(226, 232, 240, 0.92) !important;
+  font-size: 0.94rem !important;
+  line-height: 1.58 !important;
+  font-weight: 400 !important;
+  margin: 0 !important;
+  font-family: Inter, system-ui, -apple-system, sans-serif !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-footer {
+  display: block !important;
+  margin-top: 18px !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-btn {
+  float: left !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-footer .driver-btn-group,
+#driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-only-btn {
+  float: right !important;
+  display: flex !important;
+  gap: 10px !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-footer button {
+  appearance: none !important;
+  border: none !important;
+  border-radius: 14px !important;
+  min-height: 42px !important;
+  padding: 8px 16px !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  font-family: Inter, system-ui, -apple-system, sans-serif !important;
+  text-shadow: none !important;
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22) !important;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease !important;
+  cursor: pointer !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-close-btn,
+#driver-popover-item.alvisa-tour .driver-prev-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #dbeafe !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-next-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-close-btn:hover,
+#driver-popover-item.alvisa-tour .driver-prev-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  transform: translateY(-1px) !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-next-btn:hover {
+  background: linear-gradient(135deg, #7074ff 0%, #8b5cf6 100%) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 12px 28px rgba(99, 102, 241, 0.34) !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-next-btn:active,
+#driver-popover-item.alvisa-tour .driver-prev-btn:active,
+#driver-popover-item.alvisa-tour .driver-close-btn:active {
+  transform: translateY(0) !important;
+}
+
   </style>
 </head>
 
@@ -649,5 +783,33 @@
   </script>
 
   <script type="module" src="./table.js"></script>
+
+<script type="module">
+  import { startTour } from './tour.js';
+
+  let pageName = '';
+  if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname === '') {
+    pageName = 'calculator';
+  } else if (window.location.pathname.includes('table.html')) {
+    pageName = 'table';
+  } else if (window.location.pathname.includes('profile.html')) {
+    pageName = 'profile';
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const tourParam = urlParams.get('tour');
+
+  if (tourParam && tourParam === pageName) {
+    // Ждём появления таблицы
+    const checkInterval = setInterval(() => {
+      if (document.querySelector('#timesheet')) {
+        clearInterval(checkInterval);
+        startTour(pageName);
+      }
+    }, 100);
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+</script>
+
 </body>
 </html>

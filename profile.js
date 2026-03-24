@@ -14,7 +14,6 @@ document.body.classList.add("is-loaded");
 const OVERTIME_LIMIT_YEAR = 120;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 
-// ✅ базовая дневная норма (будет выставляться из профиля)
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
 let BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
@@ -327,7 +326,7 @@ function createTimesheetCard(row) {
   return card;
 }
 
-/* ========= Avatar helpers (без изменений логики) ========= */
+/* ========= Avatar helpers ========= */
 
 function setAvatarHint(text) {
   if (!avatarHint) return;
@@ -365,6 +364,35 @@ async function getUserIdOrThrow() {
   return uid;
 }
 
+function extractAvatarPath(storedValue) {
+  const value = String(storedValue || "").trim();
+  if (!value) return null;
+
+  if (!/^https?:\/\//i.test(value)) return value;
+
+  try {
+    const url = new URL(value);
+    const marker = `/storage/v1/object/sign/${AVATAR_BUCKET}/`;
+    const idx = url.pathname.indexOf(marker);
+    if (idx === -1) return null;
+    return decodeURIComponent(url.pathname.slice(idx + marker.length));
+  } catch {
+    return null;
+  }
+}
+
+async function createFreshAvatarUrl(storedValue) {
+  const path = extractAvatarPath(storedValue);
+  if (!path) return null;
+
+  const { data, error } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .createSignedUrl(path, 60 * 60);
+
+  if (error) throw error;
+  return data?.signedUrl ?? null;
+}
+
 async function uploadAvatar(file) {
   if (!file) throw new Error("NO_FILE");
   if (!AVATAR_ALLOWED_TYPES.has(file.type)) throw new Error("Поддерживаются только JPG, PNG или WebP.");
@@ -376,20 +404,21 @@ async function uploadAvatar(file) {
 
   const { error: upErr } = await supabase.storage
     .from(AVATAR_BUCKET)
-    .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+    .upload(path, file, {
+      upsert: true,
+      contentType: file.type,
+      cacheControl: "3600"
+    });
 
   if (upErr) throw upErr;
 
-  const { data: signed, error: signErr } =
-    await supabase.storage.from(AVATAR_BUCKET).createSignedUrl(path, 60 * 60);
+  // Сохраняем в профиле именно path, а не временную signed URL
+  await updateMyProfile({ avatarUrl: path });
 
-  if (signErr) throw signErr;
+  const freshUrl = await createFreshAvatarUrl(path);
+  if (!freshUrl) throw new Error("Не удалось получить ссылку на аватар.");
 
-  const publicUrl = signed?.signedUrl ?? null;
-  if (!publicUrl) throw new Error("Не удалось получить ссылку на аватар.");
-
-  await updateMyProfile({ avatarUrl: publicUrl });
-  return publicUrl;
+  return freshUrl;
 }
 
 async function removeAvatar() {
@@ -436,10 +465,16 @@ async function refreshProfile() {
   okladInput.value = oklad != null ? String(oklad) : "";
   if (genderSelect) genderSelect.value = profile?.gender ?? "";
 
-  // ✅ выставляем базовый день по полу
   BASE_DAY_HOURS = profile?.gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
 
-  setAvatarUI(profile?.avatar_url || null, name);
+  let avatarUrl = null;
+  try {
+    avatarUrl = await createFreshAvatarUrl(profile?.avatar_url || null);
+  } catch (e) {
+    console.warn("Не удалось получить свежую ссылку на аватар:", e);
+  }
+
+  setAvatarUI(avatarUrl, name);
 
   if (profile?.role === "admin") adminLink?.classList.remove("hidden");
   else adminLink?.classList.add("hidden");
@@ -448,9 +483,6 @@ async function refreshProfile() {
 }
 
 /* ========= Production calendar + rendering ========= */
-/* ... остальная часть твоего profile.js без изменений ... */
-
-/* ========= Production calendar (isdayoff) + cache ========= */
 
 function prodCacheKey(y, m) {
   return `alvisa_prodcal_v1_${y}_${String(m + 1).padStart(2, "0")}`;
@@ -755,7 +787,6 @@ async function saveProfile() {
       gender: gender ? gender : null,
     });
 
-    // ✅ сразу обновим локальную норму после сохранения пола
     BASE_DAY_HOURS = gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
 
     await refreshProfile();
@@ -806,7 +837,7 @@ calTodayBtn?.addEventListener("click", async () => {
   }
 });
 
-/* ===== Avatar events (как у тебя) ===== */
+/* ===== Avatar events ===== */
 
 avatarUploadBtn?.addEventListener("click", () => {
   setError(null);
@@ -884,10 +915,31 @@ avatarRemoveBtn?.addEventListener("click", async () => {
   fillYearOptions(now.getFullYear());
 
   try {
-    await refreshProfile();   // ✅ тут выставится BASE_DAY_HOURS
+    await refreshProfile();
     await refreshTimesheets();
   } catch (e) {
     setStatus("Ошибка загрузки", "err");
     setError(e?.message || "Не удалось загрузить данные кабинета.");
   }
 })();
+
+// ===== Кнопки обучения =====
+const tourCalcBtn = document.getElementById('tourCalcBtn');
+const tourTableBtn = document.getElementById('tourTableBtn');
+const tourProfileBtn = document.getElementById('tourProfileBtn');
+
+if (tourCalcBtn) {
+  tourCalcBtn.addEventListener('click', () => {
+    window.location.href = 'index.html?tour=calculator';
+  });
+}
+if (tourTableBtn) {
+  tourTableBtn.addEventListener('click', () => {
+    window.location.href = 'table.html?tour=table';
+  });
+}
+if (tourProfileBtn) {
+  tourProfileBtn.addEventListener('click', () => {
+    window.location.href = 'profile.html?tour=profile';
+  });
+}
