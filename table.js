@@ -620,10 +620,10 @@ function recalcAll() {
   advancePayEl.textContent = `~ ${formatRub(advanceApprox, 0)}`;
   remainingPayEl.textContent = `~ ${formatRub(remainingApprox, 0)}`;
 
-  if (normHint) {
-    normHint.textContent =
-      `Норма месяца: ${monthNorm.toFixed(1)} ч • Личная: ${personalNorm.toFixed(1)} ч • Базовый день: ${BASE_DAY_HOURS.toFixed(1)} ч`;
-  }
+  // if (normHint) {
+  //   normHint.textContent =
+  //     `Норма месяца: ${monthNorm.toFixed(1)} ч • Личная: ${personalNorm.toFixed(1)} ч`;
+  // }
 }
 
 function resetTableDom() {
@@ -960,12 +960,22 @@ function applyPayload(payload) {
 
 function setFromQueryOrNow() {
   const u = new URL(location.href);
+
+  const hasYear = u.searchParams.has("year");
+  const hasMonth = u.searchParams.has("month");
+
   const qYear = Number(u.searchParams.get("year"));
   const qMonth = Number(u.searchParams.get("month"));
   const qDay = Number(u.searchParams.get("day"));
 
-  if (Number.isInteger(qYear) && qYear >= 2000 && qYear <= 2100) year = qYear;
-  if (Number.isInteger(qMonth) && qMonth >= 0 && qMonth <= 11) month = qMonth;
+  if (!hasYear && !hasMonth) {
+    const now = new Date();
+    year = now.getFullYear();
+    month = now.getMonth();
+  } else {
+    if (Number.isInteger(qYear) && qYear >= 2000 && qYear <= 2100) year = qYear;
+    if (Number.isInteger(qMonth) && qMonth >= 0 && qMonth <= 11) month = qMonth;
+  }
 
   if (Number.isInteger(qDay) && qDay >= 1 && qDay <= 31) {
     focusDayIndex = qDay - 1;
@@ -973,7 +983,7 @@ function setFromQueryOrNow() {
     focusDayIndex = null;
   }
 
-  monthSelect.value = String(month);
+  if (monthSelect) monthSelect.value = String(month);
 }
 
 function fillYearOptions() {
