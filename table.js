@@ -13,13 +13,13 @@ const prefersReducedMotion =
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
 
-let BASE_DAY_HOURS = DEFAULT_DAY_HOURS;     // ✅ будет подтянут из профиля
-let LEAVE_HOURS_PER_DAY = DEFAULT_DAY_HOURS; // ✅ = BASE_DAY_HOURS
+let BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
+let LEAVE_HOURS_PER_DAY = DEFAULT_DAY_HOURS;
 
 const MAX_HOURS_PER_DAY = 24;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 
-let focusDayIndex = null; // from ?day=DD
+let focusDayIndex = null;
 
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
@@ -32,7 +32,6 @@ const yearSelect = document.getElementById("yearSelect");
 const monthNames = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const monthYearDisplay = document.getElementById("monthYearDisplay");
 
-// DOM (money)
 const okladInput = document.getElementById("okladInput");
 const normHint = document.getElementById("normHint");
 
@@ -54,17 +53,34 @@ const advancePayEl = document.getElementById("advancePay");
 const remainingPayEl = document.getElementById("remainingPay");
 const leaveDaysEl = document.getElementById("leaveDays");
 
-// DOM (summary)
 const totalHoursEl = document.getElementById("totalHours");
 const dayNightHoursEl = document.getElementById("dayNightHours");
 const normMonthEl = document.getElementById("normMonth");
 const normEffectiveEl = document.getElementById("normEffective");
 const overtimeEl = document.getElementById("overtime");
 
-// Table DOM
 const headerRow = document.getElementById("headerRow");
 const dayRow = document.getElementById("dayRow");
 const nightRow = document.getElementById("nightRow");
+
+// ✅ Mobile toolbar elements (no cards)
+const mobileBar = document.getElementById("mobileSheetBar");
+const mPrevDayBtn = document.getElementById("mPrevDay");
+const mNextDayBtn = document.getElementById("mNextDay");
+const mTodayBtn = document.getElementById("mToday");
+const mModeBtn = document.getElementById("mModeToggle");
+const mDayLabel = document.getElementById("mDayLabel");
+const mHolidayBtn = document.getElementById("mHolidayToggle");
+const mShortBtn = document.getElementById("mShortToggle");
+
+function isMobileNow() {
+  return window.matchMedia?.("(max-width: 767px)")?.matches ?? (window.innerWidth < 768);
+}
+
+// "scroll" = привычная таблица с горизонтальным скроллом
+// "focus"  = показываем 1 день (быстро, удобно на телефоне)
+let mobileMode = "scroll";
+let mobileFocusIdx = 0;
 
 function ensureShortDayStyles() {
   if (document.getElementById("shortDayStyles")) return;
@@ -259,10 +275,11 @@ function clampDayTotalOrRevert({ index, nextDay, nextNight, onRevert }) {
   return true;
 }
 
-// Excel-like navigation
 let daysInMonth = 30;
 let dayInputs = [];
 let nightInputs = [];
+let dayTds = [];
+let nightTds = [];
 
 function isFocusableInput(el) {
   return Boolean(el) && !el.disabled;
@@ -275,7 +292,25 @@ function focusAndSelect(el) {
 function getGridInput(rowType, idx) {
   return rowType === "day" ? dayInputs[idx] : nightInputs[idx];
 }
+
+function setMobileFocusIndex(idx) {
+  if (!Number.isInteger(idx)) return;
+  if (idx < 0) idx = 0;
+  if (idx >= daysInMonth) idx = daysInMonth - 1;
+  mobileFocusIdx = idx;
+
+  if (mobileMode === "focus" && isMobileNow()) {
+    applyMobileColumnVisibility();
+  }
+  updateMobileToolbar();
+  focusDayColumn(mobileFocusIdx);
+}
+
 function focusCell(rowType, idx) {
+  if (mobileMode === "focus" && isMobileNow()) {
+    setMobileFocusIndex(idx);
+  }
+
   const primary = getGridInput(rowType, idx);
   if (isFocusableInput(primary)) {
     focusAndSelect(primary);
@@ -288,6 +323,7 @@ function focusCell(rowType, idx) {
   }
   return false;
 }
+
 function focusHorizontal(rowType, startIdx, step) {
   let i = startIdx;
   while (i >= 0 && i < daysInMonth) {
@@ -295,6 +331,7 @@ function focusHorizontal(rowType, startIdx, step) {
     i += step;
   }
 }
+
 function attachArrowNavigation(inputEl, rowType, index) {
   inputEl.dataset.row = rowType;
   inputEl.dataset.idx = String(index);
@@ -331,7 +368,6 @@ function attachArrowNavigation(inputEl, rowType, index) {
   });
 }
 
-// State
 let year = new Date().getFullYear();
 let month = new Date().getMonth();
 
@@ -366,12 +402,6 @@ function sumRange(arr, startIdx, endIdxInclusive) {
   return s;
 }
 
-/**
- * ✅ Норма месяца (для ставки) — теперь с учетом BASE_DAY_HOURS:
- * - будни * BASE_DAY_HOURS
- * - минус BASE_DAY_HOURS за праздничные будни
- * - минус 1 за сокращённые будни
- */
 function calendarNormHours() {
   let weekdays = 0;
   let holidayWeekdays = 0;
@@ -391,10 +421,6 @@ function calendarNormHours() {
   );
 }
 
-/**
- * ✅ Личная норма — отпуск/больничный уменьшают на LEAVE_HOURS_PER_DAY (то же, что BASE_DAY_HOURS)
- *    Эффективные дни ОТ/Б не учитываются, если день праздничный (чтобы не вычитать дважды)
- */
 function personalNormHours(monthNorm) {
   let vacTotal = 0;
   let sickTotal = 0;
@@ -431,6 +457,33 @@ function holidayWorkedTotals() {
   return { hDay, hNight };
 }
 
+function updateMobileToolbar() {
+  if (!mobileBar) return;
+  if (!isMobileNow()) return;
+
+  const DOW = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+  const d = new Date(year, month, mobileFocusIdx + 1);
+  const dow = DOW[d.getDay()];
+  if (mDayLabel) mDayLabel.textContent = `${mobileFocusIdx + 1} · ${dow}`;
+
+  if (mModeBtn) mModeBtn.textContent = mobileMode === "focus" ? "Прокрутка" : "Фокус";
+
+  const applyState = (btn, active, theme) => {
+    if (!btn) return;
+    const on = theme === "holiday"
+      ? ["bg-amber-500/25", "text-amber-300", "ring-amber-500/30"]
+      : ["bg-emerald-500/25", "text-emerald-300", "ring-emerald-500/30"];
+
+    const off = ["bg-white/5", "text-slate-300", "ring-white/10"];
+
+    for (const c of on) btn.classList.toggle(c, active);
+    for (const c of off) btn.classList.toggle(c, !active);
+  };
+
+  applyState(mHolidayBtn, Boolean(isHoliday[mobileFocusIdx]), "holiday");
+  applyState(mShortBtn, Boolean(isShortDay[mobileFocusIdx]), "short");
+}
+
 function updateDayMarkClasses(index) {
   const col = [
     headerCells[index],
@@ -443,6 +496,8 @@ function updateDayMarkClasses(index) {
     if (isHoliday[index]) el.classList.add("holiday-col");
     else if (isShortDay[index]) el.classList.add("short-col");
   }
+
+  updateMobileToolbar();
 }
 
 function toggleHoliday(index) {
@@ -619,12 +674,136 @@ function recalcAll() {
 
   advancePayEl.textContent = `~ ${formatRub(advanceApprox, 0)}`;
   remainingPayEl.textContent = `~ ${formatRub(remainingApprox, 0)}`;
-
-  // if (normHint) {
-  //   normHint.textContent =
-  //     `Норма месяца: ${monthNorm.toFixed(1)} ч • Личная: ${personalNorm.toFixed(1)} ч`;
-  // }
 }
+
+// =========================
+// Mobile layout: focus mode
+// =========================
+
+function applyMobileColumnVisibility() {
+  const mobile = isMobileNow();
+  const focus = mobile && mobileMode === "focus";
+
+  document.body.classList.toggle("mobile-focus", focus);
+
+  for (let i = 0; i < daysInMonth; i++) {
+    const show = !focus || i === mobileFocusIdx;
+
+    if (headerCells[i]) headerCells[i].style.display = show ? "" : "none";
+    if (dayTds[i]) dayTds[i].style.display = show ? "" : "none";
+    if (nightTds[i]) nightTds[i].style.display = show ? "" : "none";
+  }
+
+  const sc = document.querySelector(".scrollable");
+  if (sc && focus) sc.scrollLeft = 0;
+}
+
+function setMobileMode(nextMode) {
+  mobileMode = nextMode === "focus" ? "focus" : "scroll";
+  applyMobileColumnVisibility();
+  updateMobileToolbar();
+}
+
+function attachMobileBarEvents() {
+  if (!mobileBar) return;
+
+  mPrevDayBtn?.addEventListener("click", () => setMobileFocusIndex(mobileFocusIdx - 1));
+  mNextDayBtn?.addEventListener("click", () => setMobileFocusIndex(mobileFocusIdx + 1));
+
+  mTodayBtn?.addEventListener("click", () => {
+    const today = new Date();
+    if (today.getFullYear() === year && today.getMonth() === month) {
+      setMobileFocusIndex(today.getDate() - 1);
+      focusDayIndex = today.getDate() - 1;
+    }
+  });
+
+  mModeBtn?.addEventListener("click", () => {
+    setMobileMode(mobileMode === "focus" ? "scroll" : "focus");
+  });
+
+  mHolidayBtn?.addEventListener("click", () => {
+    toggleHoliday(mobileFocusIdx);
+  });
+
+  mShortBtn?.addEventListener("click", () => {
+    toggleShort(mobileFocusIdx);
+  });
+
+  // swipe left/right in focus mode
+  const sc = document.querySelector(".scrollable");
+  if (!sc) return;
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let active = false;
+
+  sc.addEventListener("touchstart", (e) => {
+    if (!(mobileMode === "focus" && isMobileNow())) return;
+    const t = e.touches?.[0];
+    if (!t) return;
+    active = true;
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+  }, { passive: true });
+
+  sc.addEventListener("touchend", (e) => {
+    if (!active) return;
+    active = false;
+    if (!(mobileMode === "focus" && isMobileNow())) return;
+
+    const t = e.changedTouches?.[0];
+    if (!t) return;
+
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+
+    if (Math.abs(dx) < 42) return;
+    if (Math.abs(dy) > Math.abs(dx) * 0.7) return;
+
+    if (dx < 0) setMobileFocusIndex(mobileFocusIdx + 1);
+    else setMobileFocusIndex(mobileFocusIdx - 1);
+  }, { passive: true });
+}
+
+function initMobileUXAfterBuild() {
+  if (!isMobileNow()) {
+    document.body.classList.remove("mobile-focus");
+    setMobileMode("scroll");
+    return;
+  }
+
+  const today = new Date();
+  const defaultIdx =
+    (today.getFullYear() === year && today.getMonth() === month)
+      ? today.getDate() - 1
+      : 0;
+
+  if (Number.isInteger(focusDayIndex) && focusDayIndex >= 0 && focusDayIndex < daysInMonth) {
+    mobileFocusIdx = focusDayIndex;
+  } else {
+    mobileFocusIdx = defaultIdx;
+  }
+
+  applyMobileColumnVisibility();
+  updateMobileToolbar();
+}
+
+function handleResize() {
+  const mobile = isMobileNow();
+  if (!mobile) {
+    // leaving mobile: always show all cols
+    setMobileMode("scroll");
+    return;
+  }
+  // entering mobile: restore current mode + focus
+  applyMobileColumnVisibility();
+  updateMobileToolbar();
+}
+
+// =========================
+// Table DOM functions
+// =========================
 
 function resetTableDom() {
   headerRow.innerHTML = "";
@@ -633,6 +812,8 @@ function resetTableDom() {
   headerCells = [];
   dayInputs = [];
   nightInputs = [];
+  dayTds = [];
+  nightTds = [];
 }
 
 function makeLabelCell(text) {
@@ -640,6 +821,10 @@ function makeLabelCell(text) {
   td.textContent = text;
   td.style.fontWeight = "600";
   td.style.color = "#cbd5e1";
+  td.style.position = "sticky";
+  td.style.left = "0";
+  td.style.zIndex = "3";
+  td.style.background = "rgba(15, 23, 42, 0.92)";
   return td;
 }
 
@@ -654,17 +839,19 @@ function revertToPrev(inputEl) {
 
 function lockNightCell(i) {
   const el = nightInputs?.[i];
-  if (!el) return;
-  el.value = "";
-  el.disabled = true;
-  el.classList.add("opacity-50", "cursor-not-allowed");
+  if (el) {
+    el.value = "";
+    el.disabled = true;
+    el.classList.add("opacity-50", "cursor-not-allowed");
+  }
 }
 
 function unlockNightCell(i) {
   const el = nightInputs?.[i];
-  if (!el) return;
-  el.disabled = false;
-  el.classList.remove("opacity-50", "cursor-not-allowed");
+  if (el) {
+    el.disabled = false;
+    el.classList.remove("opacity-50", "cursor-not-allowed");
+  }
 }
 
 function clearFocusColumn() {
@@ -692,8 +879,6 @@ function focusDayColumn(dayIdx0) {
   } catch {
     // ignore
   }
-
-  focusCell("day", dayIdx0);
 }
 
 function buildTableForMonth() {
@@ -709,6 +894,9 @@ function buildTableForMonth() {
 
   const emptyTh = document.createElement("th");
   emptyTh.textContent = "";
+  emptyTh.style.position = "sticky";
+  emptyTh.style.left = "0";
+  emptyTh.style.zIndex = "4";
   headerRow.appendChild(emptyTh);
 
   for (let i = 1; i <= daysInMonth; i++) {
@@ -720,15 +908,23 @@ function buildTableForMonth() {
     if (weekend) th.classList.add("weekend-col");
 
     th.style.cursor = "pointer";
-    th.title = "Клик — праздник. Даблклик — сокращённый день.";
+    th.title = "Клик — праздник. На телефоне удержание — сокращённый день. (На ПК: даблклик — сокращённый).";
 
+    // Desktop: click/dblclick
     let clickTimer = null;
     th.addEventListener("click", (e) => {
+      // if long-press fired, ignore click
+      if (th.dataset.longpress === "1") {
+        th.dataset.longpress = "0";
+        return;
+      }
+
       const idx = Number(e.currentTarget.dataset.dayIndex);
       if (clickTimer) return;
       clickTimer = setTimeout(() => {
         clickTimer = null;
         toggleHoliday(idx);
+        if (mobileMode === "focus" && isMobileNow()) setMobileFocusIndex(idx);
       }, 240);
     });
 
@@ -739,7 +935,32 @@ function buildTableForMonth() {
         clickTimer = null;
       }
       toggleShort(idx);
+      if (mobileMode === "focus" && isMobileNow()) setMobileFocusIndex(idx);
     });
+
+    // Mobile: long-press for short day
+    let lpTimer = null;
+    const clearLP = () => {
+      if (lpTimer) clearTimeout(lpTimer);
+      lpTimer = null;
+    };
+
+    th.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch") return;
+      clearLP();
+      const idx = Number(th.dataset.dayIndex);
+      lpTimer = setTimeout(() => {
+        th.dataset.longpress = "1";
+        toggleShort(idx);
+        if (navigator.vibrate) navigator.vibrate(10);
+        if (mobileMode === "focus" && isMobileNow()) setMobileFocusIndex(idx);
+        clearLP();
+      }, 520);
+    });
+
+    th.addEventListener("pointerup", clearLP);
+    th.addEventListener("pointercancel", clearLP);
+    th.addEventListener("pointerleave", clearLP);
 
     headerRow.appendChild(th);
     headerCells.push(th);
@@ -753,6 +974,7 @@ function buildTableForMonth() {
 
     const dayTd = document.createElement("td");
     if (weekend) dayTd.classList.add("weekend-col");
+    dayTds.push(dayTd);
 
     const dayInput = document.createElement("input");
     dayInput.type = "text";
@@ -861,6 +1083,7 @@ function buildTableForMonth() {
     const nightTd = document.createElement("td");
     nightTd.classList.add("night-cell");
     if (weekend) nightTd.classList.add("weekend-col");
+    nightTds.push(nightTd);
 
     const nightInput = document.createElement("input");
     nightInput.type = "text";
@@ -927,6 +1150,8 @@ function buildTableForMonth() {
     nightRow.appendChild(nightTd);
     nightInputs.push(nightInput);
   }
+
+  initMobileUXAfterBuild();
 }
 
 function applyPayload(payload) {
@@ -956,6 +1181,8 @@ function applyPayload(payload) {
     dayInputs[i].dataset.prev = dayInputs[i].value ?? "";
     nightInputs[i].dataset.prev = nightInputs[i].value ?? "";
   }
+
+  updateMobileToolbar();
 }
 
 function setFromQueryOrNow() {
@@ -1030,7 +1257,10 @@ async function loadCurrentMonthFromDb() {
   }
 }
 
-// events
+// =========================
+// Events
+// =========================
+
 logoutBtn?.addEventListener("click", async () => {
   try { await signOut(); } finally { location.href = "login.html?next=table.html"; }
 });
@@ -1059,7 +1289,10 @@ yearSelect.addEventListener("change", async () => {
   recalcAll();
 });
 
-// boot
+// =========================
+// Boot
+// =========================
+
 (async () => {
   try {
     await requireSession();
@@ -1067,6 +1300,9 @@ yearSelect.addEventListener("change", async () => {
     location.href = "login.html?next=table.html";
     return;
   }
+
+  attachMobileBarEvents();
+  window.addEventListener("resize", handleResize);
 
   setFromQueryOrNow();
   fillYearOptions();
@@ -1079,7 +1315,6 @@ yearSelect.addEventListener("change", async () => {
     profileRole = profile?.role ?? "user";
     profileOklad = profile?.oklad ?? null;
 
-  
     if (profile?.gender === "female") BASE_DAY_HOURS = FEMALE_DAY_HOURS;
     else BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
 
@@ -1098,6 +1333,9 @@ yearSelect.addEventListener("change", async () => {
   recalcAll();
 
   if (Number.isInteger(focusDayIndex) && focusDayIndex >= 0 && focusDayIndex < daysInMonth) {
+    setMobileFocusIndex(focusDayIndex);
     focusDayColumn(focusDayIndex);
+  } else {
+    updateMobileToolbar();
   }
 })();

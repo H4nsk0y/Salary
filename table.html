@@ -1,4 +1,6 @@
-<!-- FILE: /table.html (Табель) -->
+// =========================
+// FILE: /table.html (Табель)
+// =========================
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -11,8 +13,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="https://unpkg.com/driver.js@0.9.8/dist/driver.min.css" />
-<script src="https://unpkg.com/driver.js@0.9.8/dist/driver.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/driver.js@0.9.8/dist/driver.min.css" />
+  <script src="https://unpkg.com/driver.js@0.9.8/dist/driver.min.js"></script>
 
   <style>
     html, body {
@@ -268,8 +270,8 @@
     .nav-link:hover::after { opacity: 1; transform: scaleX(1); }
 
     @media (max-width: 640px) {
-      .input-hour { width: 50px; padding: 6px 2px; font-size: 0.85rem; }
-      .timesheet-table th { font-size: 0.8rem; padding: 10px 2px; }
+      .input-hour { width: 54px; padding: 7px 4px; font-size: 0.86rem; }
+      .timesheet-table th { font-size: 0.82rem; padding: 10px 2px; }
       .select-wrap::after { right: 10px; }
       select.ui-select { padding: 6px 30px 6px 12px; }
       .pt-safe { padding-top: 7rem; }
@@ -327,136 +329,117 @@
     }
 
     /* =========================
-   Driver.js 0.9.8 custom
-   ========================= */
+       Mobile Focus mode tweaks
+       ========================= */
+    body.mobile-focus .scrollable { overflow-x: hidden; }
+    body.mobile-focus .timesheet-table { min-width: 0 !important; width: 100% !important; }
+    body.mobile-focus .timesheet-table th,
+    body.mobile-focus .timesheet-table td { padding-left: 6px; padding-right: 6px; }
 
-#driver-page-overlay {
-  background: rgba(2, 6, 23, 0.58) !important;
-  backdrop-filter: blur(4px) !important;
-}
-
-#driver-highlighted-element-stage {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-.driver-highlighted-element {
-  background: transparent !important;
-  border-radius: 18px !important;
-  box-shadow:
-    0 0 0 2px rgba(99, 102, 241, 0.95),
-    0 0 0 6px rgba(99, 102, 241, 0.18),
-    0 14px 34px rgba(15, 23, 42, 0.35) !important;
-}
-
-#driver-popover-item.alvisa-tour {
-  background: linear-gradient(
-    135deg,
-    rgba(10, 19, 52, 0.96) 0%,
-    rgba(20, 32, 74, 0.92) 55%,
-    rgba(35, 24, 78, 0.90) 100%
-  ) !important;
-  color: #eef2ff !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
-  border-radius: 22px !important;
-  padding: 18px !important;
-  min-width: 280px !important;
-  max-width: 360px !important;
-  box-shadow:
-    0 24px 60px rgba(2, 6, 23, 0.50),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 0 1px rgba(99, 102, 241, 0.14) !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-tip {
-  display: none !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-title {
-  color: #f8fbff !important;
-  font-size: 1.06rem !important;
-  font-weight: 700 !important;
-  line-height: 1.35 !important;
-  margin: 0 0 10px 0 !important;
-  letter-spacing: -0.01em !important;
-  font-family: Inter, system-ui, -apple-system, sans-serif !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-description {
-  color: rgba(226, 232, 240, 0.92) !important;
-  font-size: 0.94rem !important;
-  line-height: 1.58 !important;
-  font-weight: 400 !important;
-  margin: 0 !important;
-  font-family: Inter, system-ui, -apple-system, sans-serif !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-footer {
-  display: block !important;
-  margin-top: 18px !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-btn {
-  float: left !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-footer .driver-btn-group,
-#driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-only-btn {
-  float: right !important;
-  display: flex !important;
-  gap: 10px !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-footer button {
-  appearance: none !important;
-  border: none !important;
-  border-radius: 14px !important;
-  min-height: 42px !important;
-  padding: 8px 16px !important;
-  font-size: 0.9rem !important;
-  font-weight: 600 !important;
-  font-family: Inter, system-ui, -apple-system, sans-serif !important;
-  text-shadow: none !important;
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22) !important;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease,
-    color 0.18s ease !important;
-  cursor: pointer !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-close-btn,
-#driver-popover-item.alvisa-tour .driver-prev-btn {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #dbeafe !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-next-btn {
-  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-close-btn:hover,
-#driver-popover-item.alvisa-tour .driver-prev-btn:hover {
-  background: rgba(255, 255, 255, 0.12) !important;
-  transform: translateY(-1px) !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-next-btn:hover {
-  background: linear-gradient(135deg, #7074ff 0%, #8b5cf6 100%) !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 12px 28px rgba(99, 102, 241, 0.34) !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-next-btn:active,
-#driver-popover-item.alvisa-tour .driver-prev-btn:active,
-#driver-popover-item.alvisa-tour .driver-close-btn:active {
-  transform: translateY(0) !important;
-}
-
+    /* =========================
+       Driver.js 0.9.8 custom
+       ========================= */
+    #driver-page-overlay {
+      background: rgba(2, 6, 23, 0.58) !important;
+      backdrop-filter: blur(4px) !important;
+    }
+    #driver-highlighted-element-stage {
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    .driver-highlighted-element {
+      background: transparent !important;
+      border-radius: 18px !important;
+      box-shadow:
+        0 0 0 2px rgba(99, 102, 241, 0.95),
+        0 0 0 6px rgba(99, 102, 241, 0.18),
+        0 14px 34px rgba(15, 23, 42, 0.35) !important;
+    }
+    #driver-popover-item.alvisa-tour {
+      background: linear-gradient(
+        135deg,
+        rgba(10, 19, 52, 0.96) 0%,
+        rgba(20, 32, 74, 0.92) 55%,
+        rgba(35, 24, 78, 0.90) 100%
+      ) !important;
+      color: #eef2ff !important;
+      border: 1px solid rgba(255, 255, 255, 0.10) !important;
+      border-radius: 22px !important;
+      padding: 18px !important;
+      min-width: 280px !important;
+      max-width: 360px !important;
+      box-shadow:
+        0 24px 60px rgba(2, 6, 23, 0.50),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 0 0 1px rgba(99, 102, 241, 0.14) !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-popover-tip { display: none !important; }
+    #driver-popover-item.alvisa-tour .driver-popover-title {
+      color: #f8fbff !important;
+      font-size: 1.06rem !important;
+      font-weight: 700 !important;
+      line-height: 1.35 !important;
+      margin: 0 0 10px 0 !important;
+      letter-spacing: -0.01em !important;
+      font-family: Inter, system-ui, -apple-system, sans-serif !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-popover-description {
+      color: rgba(226, 232, 240, 0.92) !important;
+      font-size: 0.94rem !important;
+      line-height: 1.58 !important;
+      font-weight: 400 !important;
+      margin: 0 !important;
+      font-family: Inter, system-ui, -apple-system, sans-serif !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-popover-footer {
+      display: block !important;
+      margin-top: 18px !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-btn { float: left !important; }
+    #driver-popover-item.alvisa-tour .driver-popover-footer .driver-btn-group,
+    #driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-only-btn {
+      float: right !important;
+      display: flex !important;
+      gap: 10px !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-popover-footer button {
+      appearance: none !important;
+      border: none !important;
+      border-radius: 14px !important;
+      min-height: 42px !important;
+      padding: 8px 16px !important;
+      font-size: 0.9rem !important;
+      font-weight: 600 !important;
+      font-family: Inter, system-ui, -apple-system, sans-serif !important;
+      text-shadow: none !important;
+      box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22) !important;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease !important;
+      cursor: pointer !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-close-btn,
+    #driver-popover-item.alvisa-tour .driver-prev-btn {
+      background: rgba(255, 255, 255, 0.08) !important;
+      color: #dbeafe !important;
+      border: 1px solid rgba(255, 255, 255, 0.10) !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-next-btn {
+      background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%) !important;
+      color: #ffffff !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-close-btn:hover,
+    #driver-popover-item.alvisa-tour .driver-prev-btn:hover {
+      background: rgba(255, 255, 255, 0.12) !important;
+      transform: translateY(-1px) !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-next-btn:hover {
+      background: linear-gradient(135deg, #7074ff 0%, #8b5cf6 100%) !important;
+      transform: translateY(-1px) !important;
+      box-shadow: 0 12px 28px rgba(99, 102, 241, 0.34) !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-next-btn:active,
+    #driver-popover-item.alvisa-tour .driver-prev-btn:active,
+    #driver-popover-item.alvisa-tour .driver-close-btn:active { transform: translateY(0) !important; }
   </style>
 </head>
 
@@ -535,6 +518,39 @@
       <div class="mt-3 flex items-center gap-2 text-xs">
         <span id="saveStatus" class="inline-flex items-center rounded-full bg-white/5 px-4 py-1.5 ring-1 ring-white/10 text-slate-300 backdrop-blur-sm">—</span>
       </div>
+
+      <!-- ✅ Mobile-only toolbar (no cards) -->
+      <div id="mobileSheetBar" class="mt-3 md:hidden flex flex-wrap items-center gap-2">
+        <div class="flex items-center gap-1 rounded-2xl bg-white/5 px-2 py-1 ring-1 ring-white/10 backdrop-blur-sm">
+          <button id="mPrevDay" type="button"
+            class="rounded-xl px-3 py-2 text-sm font-bold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
+            aria-label="Предыдущий день">‹</button>
+          <div id="mDayLabel" class="px-2 text-sm font-semibold text-slate-200 select-none">—</div>
+          <button id="mNextDay" type="button"
+            class="rounded-xl px-3 py-2 text-sm font-bold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
+            aria-label="Следующий день">›</button>
+        </div>
+
+        <button id="mToday" type="button"
+          class="rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">
+          Сегодня
+        </button>
+
+        <button id="mModeToggle" type="button"
+          class="rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">
+          Фокус
+        </button>
+
+        <button id="mHolidayToggle" type="button"
+          class="rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10">
+          Праздник
+        </button>
+
+        <button id="mShortToggle" type="button"
+          class="rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10">
+          Сокращ.
+        </button>
+      </div>
     </header>
 
     <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
@@ -581,12 +597,13 @@
         <div class="mt-3 grid gap-2 text-sm text-slate-300/90 leading-6 text-justify">
           <div>• <strong>Дневная смена:</strong> указывается фактическое количество отработанных часов в ячейках столбца «День».</div>
           <div>• <strong>Ночная смена</strong> обозначается комбинацией <strong>день/ночь</strong>: <strong>2/2</strong> или <strong>2/5</strong> (вводится раздельно в «День» и «Ночь». <span class="font-bold text-rose-400">Внимание:</span> у женщин смены проставляются иначе).</div>
-          <div>• <strong>Праздничный день:</strong> клик по числу — чтобы отметить день <span class="text-amber-400 font-semibold">праздничным</span>. Даблклик — чтобы отметить день <span class="text-green-400 font-semibold">сокращённым</span>.</div>
+          <div>• <strong>Праздничный день:</strong> клик по числу — <span class="text-amber-400 font-semibold">праздник</span>. <strong>На телефоне:</strong> удержание по числу — <span class="text-green-400 font-semibold">сокращённый</span> (или кнопка «Сокращ.» в панели).</div>
           <div>• <span class="font-bold text-rose-400">Важно:</span> система находится в разработке и временно не учитывает индивидуальные условия.</div>
         </div>
       </section>
     </div>
 
+    <!-- ✅ One table for all devices -->
     <div class="scrollable reveal">
       <table class="timesheet-table" id="timesheet">
         <thead><tr id="headerRow"></tr></thead>
@@ -606,7 +623,6 @@
     </div>
 
     <div class="glass-card hover-lift rounded-3xl p-6 md:p-7 reveal">
-      <!-- ✅ header with toggle next to "К выплате" -->
       <div class="flex items-center justify-between gap-3">
         <div class="text-sm text-slate-300/90">К выплате (нетто)</div>
 
@@ -629,7 +645,6 @@
         </button>
       </div>
 
-      <!-- ✅ Wrap pay results -->
       <div id="payResultsWrap" class="pay-results-wrap is-hidden mt-2">
         <div class="pay-results-mask rounded-3xl">
           <div class="mask-pill">
@@ -702,7 +717,7 @@
     </footer>
   </div>
 
-  <!-- ✅ оклад: удержание -->
+  <!-- оклад: удержание -->
   <script>
     (function attachPeek(inputId, btnId) {
       const input = document.getElementById(inputId);
@@ -729,7 +744,7 @@
     })("okladInput", "okladInputPeekBtn");
   </script>
 
-  <!-- ✅ выплаты: toggle по клику -->
+  <!-- выплаты: toggle по клику -->
   <script>
     (function attachPayToggle(wrapId, btnId, textId, iconId) {
       const wrap = document.getElementById(wrapId);
@@ -772,7 +787,6 @@
         }
       }
 
-      // default hidden
       apply(true);
 
       btn.addEventListener("click", () => {
@@ -784,32 +798,31 @@
 
   <script type="module" src="./table.js"></script>
 
-<script type="module">
-  import { startTour } from './tour.js';
+  <script type="module">
+    import { startTour } from './tour.js';
 
-  let pageName = '';
-  if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname === '') {
-    pageName = 'calculator';
-  } else if (window.location.pathname.includes('table.html')) {
-    pageName = 'table';
-  } else if (window.location.pathname.includes('profile.html')) {
-    pageName = 'profile';
-  }
+    let pageName = '';
+    if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname === '') {
+      pageName = 'calculator';
+    } else if (window.location.pathname.includes('table.html')) {
+      pageName = 'table';
+    } else if (window.location.pathname.includes('profile.html')) {
+      pageName = 'profile';
+    }
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const tourParam = urlParams.get('tour');
+    const urlParams = new URLSearchParams(window.location.search);
+    const tourParam = urlParams.get('tour');
 
-  if (tourParam && tourParam === pageName) {
-    // Ждём появления таблицы
-    const checkInterval = setInterval(() => {
-      if (document.querySelector('#timesheet')) {
-        clearInterval(checkInterval);
-        startTour(pageName);
-      }
-    }, 100);
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-</script>
+    if (tourParam && tourParam === pageName) {
+      const checkInterval = setInterval(() => {
+        if (document.querySelector('#timesheet')) {
+          clearInterval(checkInterval);
+          startTour(pageName);
+        }
+      }, 100);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  </script>
 
 </body>
 </html>
