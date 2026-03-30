@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/driver.js@0.9.8/dist/driver.min.css" />
-<script src="https://unpkg.com/driver.js@0.9.8/dist/driver.min.js"></script>
+  <script src="https://unpkg.com/driver.js@0.9.8/dist/driver.min.js"></script>
 
   <style>
     html, body {
@@ -111,10 +111,7 @@
         radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
       transition: opacity 0.5s ease;
     }
-    .glass-card:hover {
-      border-color: rgba(99, 102, 241, 0.3);
-      box-shadow: var(--card-shadow-hover);
-    }
+    .glass-card:hover { border-color: rgba(99, 102, 241, 0.3); box-shadow: var(--card-shadow-hover); }
     .glass-card:hover::before { opacity: 1; }
 
     .hover-lift {
@@ -128,10 +125,7 @@
       backdrop-filter: blur(8px);
       transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s, background 0.2s;
     }
-    .input-glass:hover {
-      background: rgba(2, 6, 23, 0.7);
-      border-color: rgba(99, 102, 241, 0.3);
-    }
+    .input-glass:hover { background: rgba(2, 6, 23, 0.7); border-color: rgba(99, 102, 241, 0.3); }
     .input-glass:focus {
       outline: none;
       border-color: rgba(99, 102, 241, 0.8);
@@ -154,18 +148,10 @@
       backdrop-filter: blur(8px);
       transition: all 0.2s;
     }
-    select.ui-select:hover {
-      background-color: rgba(2, 6, 23, 0.8);
-      border-color: rgba(99, 102, 241, 0.4);
-    }
-    select.ui-select:focus {
-      border-color: rgba(99, 102, 241, 0.8);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-    }
-    select.ui-select option {
-      background-color: #0b1220;
-      color: rgba(226, 232, 240, 0.95);
-    }
+    select.ui-select:hover { background-color: rgba(2, 6, 23, 0.8); border-color: rgba(99, 102, 241, 0.4); }
+    select.ui-select:focus { border-color: rgba(99, 102, 241, 0.8); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); }
+    select.ui-select option { background-color: #0b1220; color: rgba(226, 232, 240, 0.95); }
+
     .select-wrap {
       position: relative;
       display: inline-flex;
@@ -203,10 +189,7 @@
       transition: opacity 0.2s, transform 0.2s;
     }
     .nav-link.active::after,
-    .nav-link:hover::after {
-      opacity: 1;
-      transform: scaleX(1);
-    }
+    .nav-link:hover::after { opacity: 1; transform: scaleX(1); }
 
     @media (max-width: 640px) {
       .input-glass { font-size: 16px; padding-top: 14px; padding-bottom: 14px; }
@@ -214,12 +197,10 @@
       select.ui-select { padding: 8px 32px 8px 14px; }
       .pt-safe { padding-top: 7rem; }
     }
-    @media (min-width: 768px) {
-      .pt-safe { padding-top: 6rem; }
-    }
+    @media (min-width: 768px) { .pt-safe { padding-top: 6rem; } }
 
     button, .btn-like { transition: all 0.2s; }
-  
+
     #errorBox:not(.hidden) { animation: shake 0.3s ease-in-out; }
     @keyframes shake {
       0%,100% { transform: translateX(0); }
@@ -231,7 +212,7 @@
 
     #overtimeBarFill { transition: width 0.5s, background-color 0.3s ease; }
 
-    /* ====== Calendar (Variant C) ====== */
+    /* Calendar */
     .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
     .cal-dow { font-size: 11px; color: rgba(148,163,184,0.9); text-align: center; padding: 2px 0; user-select: none; }
 
@@ -247,13 +228,8 @@
       user-select: none;
       transition: transform 120ms ease, border-color 120ms ease, background-color 120ms ease;
     }
-    .cal-cell:hover {
-      transform: translateY(-1px);
-      border-color: rgba(99,102,241,0.35);
-      background: rgba(2, 6, 23, 0.5);
-    }
+    .cal-cell:hover { transform: translateY(-1px); border-color: rgba(99,102,241,0.35); background: rgba(2, 6, 23, 0.5); }
     .cal-cell:active { transform: translateY(0); }
-
     .cal-cell::after {
       content: "";
       position: absolute;
@@ -271,28 +247,10 @@
     }
     .cal-empty:hover { transform: none; border-color: rgba(255,255,255,0.07); background: rgba(2, 6, 23, 0.08); }
 
-    /* official production layer */
     .cal-off-weekend { border-color: rgba(244,63,94,0.20); background: rgba(244,63,94,0.06); }
     .cal-off-holiday { border-color: rgba(245,158,11,0.22); background: rgba(245,158,11,0.06); }
     .cal-off-short { border-color: rgba(16,185,129,0.18); background: rgba(16,185,129,0.05); }
-
-    /* today ring */
     .cal-today { box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.55); }
-
-    /* timesheet markers (your data layer) */
-    .cal-mark {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: rgba(56, 189, 248, 0.85);
-      box-shadow: 0 0 0 2px rgba(2,6,23,0.55);
-      pointer-events: none;
-    }
-    .cal-mark.short { background: rgba(16,185,129,0.85); }
-    .cal-mark.holiday { background: rgba(245,158,11,0.9); }
 
     .cal-daynum {
       position: absolute;
@@ -344,161 +302,77 @@
       transform: translateY(1px);
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-    }
-
-    /* Timesheet marks on calendar: highlight date (no dot) */
     .cal-ts-holiday {
       background: rgba(245, 158, 11, 0.22) !important;
       box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.35) inset;
       color: rgba(253, 230, 138, 0.95);
     }
-
     .cal-ts-short {
       background: rgba(16, 185, 129, 0.18) !important;
       box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.30) inset;
       color: rgba(167, 243, 208, 0.95);
     }
-
-    /* если вдруг одновременно и праздник и сокращённый — приоритет празднику */
     .cal-ts-holiday.cal-ts-short {
       background: rgba(245, 158, 11, 0.22) !important;
       box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.35) inset;
       color: rgba(253, 230, 138, 0.95);
     }
 
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+
     /* =========================
-   Driver.js 0.9.8 custom
-   ========================= */
-
-#driver-page-overlay {
-  background: rgba(2, 6, 23, 0.58) !important;
-  backdrop-filter: blur(4px) !important;
-}
-
-#driver-highlighted-element-stage {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-.driver-highlighted-element {
-  background: transparent !important;
-  border-radius: 18px !important;
-  box-shadow:
-    0 0 0 2px rgba(99, 102, 241, 0.95),
-    0 0 0 6px rgba(99, 102, 241, 0.18),
-    0 14px 34px rgba(15, 23, 42, 0.35) !important;
-}
-
-#driver-popover-item.alvisa-tour {
-  background: linear-gradient(
-    135deg,
-    rgba(10, 19, 52, 0.96) 0%,
-    rgba(20, 32, 74, 0.92) 55%,
-    rgba(35, 24, 78, 0.90) 100%
-  ) !important;
-  color: #eef2ff !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
-  border-radius: 22px !important;
-  padding: 18px !important;
-  min-width: 280px !important;
-  max-width: 360px !important;
-  box-shadow:
-    0 24px 60px rgba(2, 6, 23, 0.50),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 0 1px rgba(99, 102, 241, 0.14) !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-tip {
-  display: none !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-title {
-  color: #f8fbff !important;
-  font-size: 1.06rem !important;
-  font-weight: 700 !important;
-  line-height: 1.35 !important;
-  margin: 0 0 10px 0 !important;
-  letter-spacing: -0.01em !important;
-  font-family: Inter, system-ui, -apple-system, sans-serif !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-description {
-  color: rgba(226, 232, 240, 0.92) !important;
-  font-size: 0.94rem !important;
-  line-height: 1.58 !important;
-  font-weight: 400 !important;
-  margin: 0 !important;
-  font-family: Inter, system-ui, -apple-system, sans-serif !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-footer {
-  display: block !important;
-  margin-top: 18px !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-btn {
-  float: left !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-footer .driver-btn-group,
-#driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-only-btn {
-  float: right !important;
-  display: flex !important;
-  gap: 10px !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-popover-footer button {
-  appearance: none !important;
-  border: none !important;
-  border-radius: 14px !important;
-  min-height: 42px !important;
-  padding: 8px 16px !important;
-  font-size: 0.9rem !important;
-  font-weight: 600 !important;
-  font-family: Inter, system-ui, -apple-system, sans-serif !important;
-  text-shadow: none !important;
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22) !important;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease,
-    color 0.18s ease !important;
-  cursor: pointer !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-close-btn,
-#driver-popover-item.alvisa-tour .driver-prev-btn {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #dbeafe !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-next-btn {
-  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-close-btn:hover,
-#driver-popover-item.alvisa-tour .driver-prev-btn:hover {
-  background: rgba(255, 255, 255, 0.12) !important;
-  transform: translateY(-1px) !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-next-btn:hover {
-  background: linear-gradient(135deg, #7074ff 0%, #8b5cf6 100%) !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 12px 28px rgba(99, 102, 241, 0.34) !important;
-}
-
-#driver-popover-item.alvisa-tour .driver-next-btn:active,
-#driver-popover-item.alvisa-tour .driver-prev-btn:active,
-#driver-popover-item.alvisa-tour .driver-close-btn:active {
-  transform: translateY(0) !important;
-}
-
+       Driver.js 0.9.8 custom
+       ========================= */
+    #driver-page-overlay { background: rgba(2, 6, 23, 0.58) !important; backdrop-filter: blur(4px) !important; }
+    #driver-highlighted-element-stage { background: transparent !important; box-shadow: none !important; }
+    .driver-highlighted-element {
+      background: transparent !important;
+      border-radius: 18px !important;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.95), 0 0 0 6px rgba(99, 102, 241, 0.18), 0 14px 34px rgba(15, 23, 42, 0.35) !important;
+    }
+    #driver-popover-item.alvisa-tour {
+      background: linear-gradient(135deg, rgba(10, 19, 52, 0.96) 0%, rgba(20, 32, 74, 0.92) 55%, rgba(35, 24, 78, 0.90) 100%) !important;
+      color: #eef2ff !important;
+      border: 1px solid rgba(255, 255, 255, 0.10) !important;
+      border-radius: 22px !important;
+      padding: 18px !important;
+      min-width: 280px !important;
+      max-width: 360px !important;
+      box-shadow: 0 24px 60px rgba(2, 6, 23, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(99, 102, 241, 0.14) !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-popover-tip { display: none !important; }
+    #driver-popover-item.alvisa-tour .driver-popover-title {
+      color: #f8fbff !important; font-size: 1.06rem !important; font-weight: 700 !important;
+      line-height: 1.35 !important; margin: 0 0 10px 0 !important; letter-spacing: -0.01em !important;
+      font-family: Inter, system-ui, -apple-system, sans-serif !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-popover-description {
+      color: rgba(226, 232, 240, 0.92) !important; font-size: 0.94rem !important;
+      line-height: 1.58 !important; font-weight: 400 !important; margin: 0 !important;
+      font-family: Inter, system-ui, -apple-system, sans-serif !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-popover-footer { display: block !important; margin-top: 18px !important; }
+    #driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-btn { float: left !important; }
+    #driver-popover-item.alvisa-tour .driver-popover-footer .driver-btn-group,
+    #driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-only-btn { float: right !important; display: flex !important; gap: 10px !important; }
+    #driver-popover-item.alvisa-tour .driver-popover-footer button {
+      appearance: none !important; border: none !important; border-radius: 14px !important; min-height: 42px !important;
+      padding: 8px 16px !important; font-size: 0.9rem !important; font-weight: 600 !important;
+      font-family: Inter, system-ui, -apple-system, sans-serif !important; text-shadow: none !important;
+      box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22) !important;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease !important; cursor: pointer !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-close-btn,
+    #driver-popover-item.alvisa-tour .driver-prev-btn { background: rgba(255, 255, 255, 0.08) !important; color: #dbeafe !important; border: 1px solid rgba(255, 255, 255, 0.10) !important; }
+    #driver-popover-item.alvisa-tour .driver-next-btn { background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%) !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.08) !important; }
+    #driver-popover-item.alvisa-tour .driver-close-btn:hover,
+    #driver-popover-item.alvisa-tour .driver-prev-btn:hover { background: rgba(255, 255, 255, 0.12) !important; transform: translateY(-1px) !important; }
+    #driver-popover-item.alvisa-tour .driver-next-btn:hover { background: linear-gradient(135deg, #7074ff 0%, #8b5cf6 100%) !important; transform: translateY(-1px) !important; box-shadow: 0 12px 28px rgba(99, 102, 241, 0.34) !important; }
+    #driver-popover-item.alvisa-tour .driver-next-btn:active,
+    #driver-popover-item.alvisa-tour .driver-prev-btn:active,
+    #driver-popover-item.alvisa-tour .driver-close-btn:active { transform: translateY(0) !important; }
   </style>
 </head>
 
@@ -513,44 +387,30 @@
         </span>
       </a>
       <nav class="flex flex-wrap items-center justify-end gap-1 text-sm font-medium">
-        <a href="index.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
-          Калькулятор
-        </a>
-        <a href="table.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
-          Табель
-        </a>
-        <a href="profile.html" class="nav-link active relative rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">
-          Профиль
-        </a>
+        <a href="index.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Калькулятор</a>
+        <a href="table.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Табель</a>
+        <a href="profile.html" class="nav-link active relative rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">Профиль</a>
+        <a href="help.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Справка</a>
       </nav>
     </div>
   </header>
 
- <div class="relative z-10 mx-auto max-w-8xl px-4 pt-safe pb-12 md:pb-16">
+  <div class="relative z-10 mx-auto max-w-8xl px-4 pt-safe pb-12 md:pb-16">
     <header class="mb-8 reveal">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-3 flex-1">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 shadow-xl text-xl font-bold text-slate-100" aria-hidden="true">
-            A
-          </span>
+          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 shadow-xl text-xl font-bold text-slate-100" aria-hidden="true">A</span>
           <div>
             <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
-              <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
-                Личный кабинет
-              </span>
+              <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">Личный кабинет</span>
             </h1>
             <p class="mt-1 text-sm text-slate-300/80">Табели, переработка и настройки.</p>
           </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-          <a id="adminLink" href="admin.html" class="hidden rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">
-            Админка
-          </a>
-
-          <button id="logoutBtn" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">
-            Выйти
-          </button>
+          <a id="adminLink" href="admin.html" class="hidden rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">Админка</a>
+          <button id="logoutBtn" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">Выйти</button>
         </div>
       </div>
 
@@ -568,55 +428,34 @@
             <img id="avatarImg" alt="avatar" class="h-full w-full object-cover hidden" />
             <div id="avatarFallback" class="absolute inset-0 flex items-center justify-center text-xl font-bold text-slate-200/90">A</div>
           </div>
-
           <div class="min-w-0 flex-1">
             <div id="displayName" class="truncate text-lg font-semibold">—</div>
             <div id="emailHint" class="truncate text-xs text-slate-400/80">—</div>
           </div>
         </div>
 
-        <!-- Avatar actions -->
-      <div class="mt-2 flex flex-wrap items-center gap-2">
-        <input id="avatarFileInput" type="file" accept="image/*" class="hidden" />
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          <input id="avatarFileInput" type="file" accept="image/*" class="hidden" />
+          <button id="avatarUploadBtn" type="button" class="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">Загрузить аватар</button>
+          <button id="avatarRemoveBtn" type="button" class="rounded-xl bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-500/20 hover:bg-rose-500/15" disabled>Удалить</button>
+          <span id="avatarHint" class="text-[11px] text-slate-400/80"></span>
 
-        <button id="avatarUploadBtn" type="button"
-          class="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">
-          Загрузить аватар
-        </button>
-
-        <button id="avatarRemoveBtn" type="button"
-          class="rounded-xl bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-500/20 hover:bg-rose-500/15"
-          disabled>
-          Удалить
-        </button>
-
-        <span id="avatarHint" class="text-[11px] text-slate-400/80"></span>
-        <!-- Блок обучения -->
-        <div class="mt-4 border-t border-white/10 pt-4">
-          <label class="mb-2 block text-sm font-medium text-slate-200">Обучение</label>
-          <div class="flex flex-wrap gap-2">
-            <button id="tourCalcBtn" class="rounded-xl bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 transition-all">
-              🧮 Как считать зарплату
-            </button>
-            <button id="tourTableBtn" class="rounded-xl bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 transition-all">
-              📅 Как заполнить табель
-            </button>
-            <button id="tourProfileBtn" class="rounded-xl bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 transition-all">
-              👤 Как устроен профиль
-            </button>
+          <div class="mt-4 border-t border-white/10 pt-4 w-full">
+            <label class="mb-2 block text-sm font-medium text-slate-200">Обучение</label>
+            <div class="flex flex-wrap gap-2">
+              <button id="tourCalcBtn" class="rounded-xl bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 transition-all">🧮 Как считать зарплату</button>
+              <button id="tourTableBtn" class="rounded-xl bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 transition-all">📅 Как заполнить табель</button>
+              <button id="tourProfileBtn" class="rounded-xl bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 transition-all">👤 Как устроен профиль</button>
+              <a href="help.html" class="rounded-xl bg-indigo-500/10 px-4 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-500/20 hover:bg-indigo-500/15 transition-all">📖 Справка по отпускам</a>
+            </div>
+            <p class="mt-2 text-[11px] text-slate-400/70">Интерактивные подсказки по всем разделам</p>
           </div>
-          <p class="mt-2 text-[11px] text-slate-400/70">Интерактивные подсказки по всем разделам</p>
         </div>
-      </div>
 
         <div class="mt-5 grid gap-4">
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="displayNameInput">Имя</label>
-            <input
-              id="displayNameInput"
-              class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
-              placeholder="Напр. Магомед Раджабов"
-            />
+            <input id="displayNameInput" class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none" placeholder="Напр. Магомед Раджабов" />
           </div>
 
           <div>
@@ -634,45 +473,23 @@
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="okladInput">Оклад (₽)</label>
             <div class="relative">
-        <input
-          id="okladInput"
-          type="password"
-          inputmode="decimal"
-          autocomplete="off"
-          class="input-glass w-full rounded-2xl px-4 py-3.5 pr-12 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
-          placeholder="Напр. 50000"
-        />
-        <button
-          id="okladInputPeekBtn"
-          type="button"
-          class="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-slate-300/80 hover:bg-white/5 hover:text-slate-100 ring-1 ring-white/10"
-          aria-label="Показать оклад"
-          tabindex="-1"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-        </button>
-      </div>
-            <p class="mt-1.5 text-xs text-slate-400/80">Будет подставляться в табель/калькулятор.</p>
+              <input id="okladInput" type="password" inputmode="decimal" autocomplete="off"
+                class="input-glass w-full rounded-2xl px-4 py-3.5 pr-12 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+                placeholder="Напр. 50000" />
+              <button id="okladInputPeekBtn" type="button"
+                class="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-slate-300/80 hover:bg-white/5 hover:text-slate-100 ring-1 ring-white/10"
+                aria-label="Показать оклад" tabindex="-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <p class="mt-1.5 text-xs text-slate-400/80">Его можно узнать из расчетного листа справа сверху.</p>
           </div>
 
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <button
-              id="saveProfileBtn"
-              class="rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-4 py-3.5 text-sm font-semibold text-slate-100 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] active:scale-[0.98]"
-            >
-              Сохранить
-            </button>
-
-            <button
-              id="refreshBtn"
-              class="rounded-2xl bg-white/5 px-4 py-3.5 text-sm font-semibold text-slate-200 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30 active:scale-[0.98]"
-            >
-              Обновить
-            </button>
+            <button id="saveProfileBtn" class="rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-4 py-3.5 text-sm font-semibold text-slate-100 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] active:scale-[0.98]">Сохранить</button>
+            <button id="refreshBtn" class="rounded-2xl bg-white/5 px-4 py-3.5 text-sm font-semibold text-slate-200 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30 active:scale-[0.98]">Обновить</button>
           </div>
         </div>
       </section>
@@ -681,9 +498,8 @@
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 class="text-lg font-semibold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Переработки</h2>
-            <p class="mt-1 text-sm text-slate-300/80">Лимит по закону: <span class="font-semibold text-indigo-300">120 часов в год</span>.</p>
+            <p class="mt-1 text-sm text-slate-300/80">Лимит по закону: <span class="font-semibold text-indigo-300">120 часов в год</span>. <a href="help.html" class="text-indigo-300/80 hover:text-indigo-200 underline underline-offset-2 text-xs">Как считается?</a></p>
           </div>
-
           <div class="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10 backdrop-blur-sm">
             <label class="text-xs text-slate-300" for="yearSelect">Год</label>
             <span class="select-wrap">
@@ -697,34 +513,28 @@
             <div class="text-xs text-slate-400">Прогресс лимита</div>
             <div id="overtimeBarText" class="text-xs font-semibold text-slate-200">—</div>
           </div>
-
           <div class="mt-3 h-3 overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10">
-            <div
-              id="overtimeBarFill"
-              class="h-full w-0 rounded-full transition-[width] duration-500"
-              style="width: 0%"
-            ></div>
+            <div id="overtimeBarFill" class="h-full w-0 rounded-full transition-[width] duration-500" style="width: 0%"></div>
           </div>
         </div>
+
+        <div id="overtimeAdjustment" class="mt-3 text-xs text-slate-300/80 hidden"></div>
 
         <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
             <div class="text-xs text-slate-400">Баланс за год (±)</div>
             <div id="overtimeYear" class="mt-1 text-2xl font-semibold tracking-tight">—</div>
           </div>
-
           <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
             <div class="text-xs text-slate-400">Осталось по закону</div>
             <div id="overtimeRemaining" class="mt-1 text-2xl font-semibold tracking-tight">—</div>
           </div>
-
           <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
             <div class="text-xs text-slate-400">Месяцев в базе (год)</div>
             <div id="monthsCount" class="mt-1 text-2xl font-semibold tracking-tight">—</div>
           </div>
         </div>
 
-        <!-- ✅ New layout: timesheets + calendar -->
         <div class="mt-6 grid gap-4 lg:grid-cols-3">
           <div class="lg:col-span-2">
             <h3 class="text-sm font-semibold text-slate-200">Табели по месяцам</h3>
@@ -737,7 +547,6 @@
                 <div class="text-sm font-semibold text-slate-200">Календарь</div>
                 <div id="calMonthLabel" class="mt-1 text-xs text-slate-400">—</div>
               </div>
-
               <div class="flex items-center gap-2">
                 <button id="calPrevBtn" type="button" class="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10" aria-label="Предыдущий месяц">‹</button>
                 <button id="calTodayBtn" type="button" class="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">Текущий</button>
@@ -770,7 +579,6 @@
     (function() {
       const bar = document.getElementById('overtimeBarFill');
       if (!bar) return;
-
       function updateColor() {
         const widthStyle = bar.style.width;
         if (!widthStyle) return;
@@ -780,7 +588,6 @@
         else hue = 60 - ((percent - 50) / 50) * 60;
         bar.style.backgroundColor = `hsl(${hue}, 90%, 60%)`;
       }
-
       const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
           if (mutation.attributeName === 'style') updateColor();
@@ -791,59 +598,40 @@
     })();
   </script>
 
-    <script>
+  <script>
     (function attachPeek(inputId, btnId) {
       const input = document.getElementById(inputId);
       const btn = document.getElementById(btnId);
       if (!input || !btn) return;
-
       const show = () => { input.type = "text"; };
       const hide = () => { input.type = "password"; };
-
       btn.addEventListener("mousedown", (e) => { e.preventDefault(); show(); });
       btn.addEventListener("mouseup", hide);
       btn.addEventListener("mouseleave", hide);
-
       btn.addEventListener("touchstart", (e) => { e.preventDefault(); show(); }, { passive: false });
       btn.addEventListener("touchend", hide);
       btn.addEventListener("touchcancel", hide);
-
-      btn.addEventListener("keydown", (e) => {
-        if (e.key === " " || e.key === "Enter") { e.preventDefault(); show(); }
-      });
-      btn.addEventListener("keyup", (e) => {
-        if (e.key === " " || e.key === "Enter") { e.preventDefault(); hide(); }
-      });
+      btn.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); show(); } });
+      btn.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); hide(); } });
     })("okladInput", "okladInputPeekBtn");
   </script>
 
   <script type="module" src="./profile.js"></script>
 
- <script type="module">
-  import { startTour } from './tour.js';
-
-  let pageName = '';
-  if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname === '') {
-    pageName = 'calculator';
-  } else if (window.location.pathname.includes('table.html')) {
-    pageName = 'table';
-  } else if (window.location.pathname.includes('profile.html')) {
-    pageName = 'profile';
-  }
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const tourParam = urlParams.get('tour');
-
-  if (tourParam && tourParam === pageName) {
-    // Ждём появления календаря (он рендерится асинхронно)
-    const checkInterval = setInterval(() => {
-      if (document.querySelector('#calGrid')) {
-        clearInterval(checkInterval);
-        startTour(pageName);
-      }
-    }, 100);
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-</script>
+  <script type="module">
+    import { startTour } from './tour.js';
+    let pageName = 'profile';
+    const urlParams = new URLSearchParams(window.location.search);
+    const tourParam = urlParams.get('tour');
+    if (tourParam && tourParam === pageName) {
+      const checkInterval = setInterval(() => {
+        if (document.querySelector('#calGrid')) {
+          clearInterval(checkInterval);
+          startTour(pageName);
+        }
+      }, 100);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  </script>
 </body>
 </html>

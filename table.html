@@ -1,6 +1,4 @@
-// =========================
-// FILE: /table.html (Табель)
-// =========================
+<!-- FILE: /table.html (Табель) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -113,10 +111,7 @@
         radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
       transition: opacity 0.5s ease;
     }
-    .glass-card:hover {
-      border-color: rgba(99, 102, 241, 0.3);
-      box-shadow: var(--card-shadow-hover);
-    }
+    .glass-card:hover { border-color: rgba(99, 102, 241, 0.3); box-shadow: var(--card-shadow-hover); }
     .glass-card:hover::before { opacity: 1; }
 
     .hover-lift {
@@ -130,10 +125,7 @@
       backdrop-filter: blur(8px);
       transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s, background 0.2s;
     }
-    .input-glass:hover {
-      background: rgba(2, 6, 23, 0.7);
-      border-color: rgba(99, 102, 241, 0.3);
-    }
+    .input-glass:hover { background: rgba(2, 6, 23, 0.7); border-color: rgba(99, 102, 241, 0.3); }
     .input-glass:focus {
       outline: none;
       border-color: rgba(99, 102, 241, 0.8);
@@ -156,23 +148,11 @@
       backdrop-filter: blur(8px);
       transition: all 0.2s;
     }
-    select.ui-select:hover {
-      background-color: rgba(2, 6, 23, 0.8);
-      border-color: rgba(99, 102, 241, 0.4);
-    }
-    select.ui-select:focus {
-      border-color: rgba(99, 102, 241, 0.8);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-    }
-    select.ui-select option {
-      background-color: #0b1220;
-      color: rgba(226, 232, 240, 0.95);
-    }
-    .select-wrap {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-    }
+    select.ui-select:hover { background-color: rgba(2, 6, 23, 0.8); border-color: rgba(99, 102, 241, 0.4); }
+    select.ui-select:focus { border-color: rgba(99, 102, 241, 0.8); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); }
+    select.ui-select option { background-color: #0b1220; color: rgba(226, 232, 240, 0.95); }
+
+    .select-wrap { position: relative; display: inline-flex; align-items: center; }
     .select-wrap::after {
       content: "▾";
       position: absolute;
@@ -194,12 +174,13 @@
       border-radius: 1rem;
       margin-bottom: 1.25rem;
       -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
     }
 
     .timesheet-table {
       border-collapse: collapse;
       width: 100%;
-      min-width: 860px;
+      min-width: 760px;
       background: rgba(30, 41, 59, 0.5);
       backdrop-filter: blur(8px);
       border-radius: 1rem;
@@ -225,20 +206,40 @@
     .timesheet-table td:last-child { border-right: none; }
     .timesheet-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
 
+    /* Sticky label column */
+    .timesheet-table .label-cell {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      background: rgba(12, 20, 44, 0.97);
+      backdrop-filter: blur(12px);
+      min-width: 46px;
+      padding-left: 8px;
+      padding-right: 6px;
+      border-right: 1px solid rgba(255,255,255,0.10) !important;
+      font-weight: 600;
+      color: #cbd5e1;
+      white-space: nowrap;
+    }
+    .timesheet-table thead .label-cell {
+      z-index: 4;
+      background: rgba(12, 20, 44, 0.97);
+    }
+
     .weekend-col { background-color: rgba(239, 68, 68, 0.15) !important; }
     .holiday-col { background-color: rgba(245, 158, 11, 0.2) !important; }
     .timesheet-table th.weekend-col { background-color: rgba(239, 68, 68, 0.2) !important; }
     .timesheet-table th.holiday-col { background-color: rgba(245, 158, 11, 0.25) !important; }
 
     .input-hour {
-      width: 62px;
-      padding: 8px 8px;
+      width: 54px;
+      padding: 8px 4px;
       background: rgba(0,0,0,0.4);
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 12px;
       color: white;
       text-align: center;
-      font-size: 0.9rem;
+      font-size: max(16px, 0.9rem);
       text-transform: uppercase;
       transition: all 0.2s;
       backdrop-filter: blur(4px);
@@ -251,6 +252,12 @@
       transform: scale(1.02);
     }
     td.night-cell .input-hour { color: rgba(254,202,202,0.95); }
+
+    @media (max-width: 767px) {
+      .input-hour { width: 50px; min-height: 44px; padding: 10px 2px; border-radius: 10px; }
+      .timesheet-table th { padding: 10px 3px; font-size: 0.82rem; }
+      .timesheet-table td { padding: 8px 2px; }
+    }
 
     .nav-link { position: relative; transition: color 0.2s; }
     .nav-link::after {
@@ -270,8 +277,6 @@
     .nav-link:hover::after { opacity: 1; transform: scaleX(1); }
 
     @media (max-width: 640px) {
-      .input-hour { width: 54px; padding: 7px 4px; font-size: 0.86rem; }
-      .timesheet-table th { font-size: 0.82rem; padding: 10px 2px; }
       .select-wrap::after { right: 10px; }
       select.ui-select { padding: 6px 30px 6px 12px; }
       .pt-safe { padding-top: 7rem; }
@@ -291,9 +296,22 @@
       * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
 
-    /* =========================
-       Confidential pay mask
-       ========================= */
+    /* Mobile toolbar */
+    #mobileBar { display: none; }
+    @media (max-width: 767px) { #mobileBar { display: flex; } }
+
+    #mHolidayBtn.is-active {
+      background: rgba(245, 158, 11, 0.2) !important;
+      color: rgba(253, 186, 64, 1) !important;
+      border-color: rgba(245, 158, 11, 0.45) !important;
+    }
+    #mShortBtn.is-active {
+      background: rgba(16, 185, 129, 0.2) !important;
+      color: rgba(52, 211, 153, 1) !important;
+      border-color: rgba(16, 185, 129, 0.45) !important;
+    }
+
+    /* Pay results mask */
     .pay-results-wrap { position: relative; }
     .pay-results-wrap.is-hidden .pay-results-content {
       filter: blur(10px);
@@ -314,7 +332,6 @@
       z-index: 5;
     }
     .pay-results-wrap.is-hidden .pay-results-mask { display: flex; }
-
     .pay-results-mask .mask-pill {
       display: inline-flex;
       align-items: center;
@@ -327,14 +344,6 @@
       font-size: 12px;
       font-weight: 600;
     }
-
-    /* =========================
-       Mobile Focus mode tweaks
-       ========================= */
-    body.mobile-focus .scrollable { overflow-x: hidden; }
-    body.mobile-focus .timesheet-table { min-width: 0 !important; width: 100% !important; }
-    body.mobile-focus .timesheet-table th,
-    body.mobile-focus .timesheet-table td { padding-left: 6px; padding-right: 6px; }
 
     /* =========================
        Driver.js 0.9.8 custom
@@ -454,15 +463,10 @@
         </span>
       </a>
       <nav class="flex flex-wrap items-center justify-end gap-1 text-sm font-medium">
-        <a href="index.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
-          Калькулятор
-        </a>
-        <a href="table.html" class="nav-link active relative rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">
-          Табель
-        </a>
-        <a href="profile.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
-          Профиль
-        </a>
+        <a href="index.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Калькулятор</a>
+        <a href="table.html" class="nav-link active relative rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">Табель</a>
+        <a href="profile.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Профиль</a>
+        <a href="help.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Справка</a>
       </nav>
     </div>
   </header>
@@ -471,14 +475,10 @@
     <header class="mb-8 reveal">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-3">
         <div class="flex items-center gap-3 flex-1">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 shadow-xl text-xl font-bold text-slate-100" aria-hidden="true">
-            A
-          </span>
+          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 shadow-xl text-xl font-bold text-slate-100" aria-hidden="true">A</span>
           <div>
             <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
-              <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
-                Табель учёта
-              </span>
+              <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">Табель учёта</span>
             </h1>
             <p class="mt-1 text-sm text-slate-300/80" id="monthYearDisplay"></p>
           </div>
@@ -494,16 +494,13 @@
                 <option value="8">Сен</option><option value="9">Окт</option><option value="10">Ноя</option><option value="11">Дек</option>
               </select>
             </span>
-
             <label class="text-xs text-slate-300 ml-2" for="yearSelect">Год</label>
             <span class="select-wrap">
               <select id="yearSelect" class="ui-select text-sm"></select>
             </span>
           </div>
 
-          <a id="adminLink" href="admin.html" class="hidden rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">
-            Админка
-          </a>
+          <a id="adminLink" href="admin.html" class="hidden rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">Админка</a>
 
           <button id="saveBtn" class="rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-5 py-2.5 text-sm font-semibold text-slate-100 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] active:scale-[0.98]">
             Сохранить
@@ -518,42 +515,23 @@
       <div class="mt-3 flex items-center gap-2 text-xs">
         <span id="saveStatus" class="inline-flex items-center rounded-full bg-white/5 px-4 py-1.5 ring-1 ring-white/10 text-slate-300 backdrop-blur-sm">—</span>
       </div>
-
-      <!-- ✅ Mobile-only toolbar (no cards) -->
-      <div id="mobileSheetBar" class="mt-3 md:hidden flex flex-wrap items-center gap-2">
-        <div class="flex items-center gap-1 rounded-2xl bg-white/5 px-2 py-1 ring-1 ring-white/10 backdrop-blur-sm">
-          <button id="mPrevDay" type="button"
-            class="rounded-xl px-3 py-2 text-sm font-bold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
-            aria-label="Предыдущий день">‹</button>
-          <div id="mDayLabel" class="px-2 text-sm font-semibold text-slate-200 select-none">—</div>
-          <button id="mNextDay" type="button"
-            class="rounded-xl px-3 py-2 text-sm font-bold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
-            aria-label="Следующий день">›</button>
-        </div>
-
-        <button id="mToday" type="button"
-          class="rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">
-          Сегодня
-        </button>
-
-        <button id="mModeToggle" type="button"
-          class="rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">
-          Фокус
-        </button>
-
-        <button id="mHolidayToggle" type="button"
-          class="rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10">
-          Праздник
-        </button>
-
-        <button id="mShortToggle" type="button"
-          class="rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10">
-          Сокращ.
-        </button>
-      </div>
     </header>
 
     <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
+
+    <!-- Mobile toolbar -->
+    <div id="mobileBar" class="sticky top-[64px] z-40 mb-4 items-center justify-between gap-2 rounded-2xl bg-slate-950/70 px-3 py-2 ring-1 ring-white/10 backdrop-blur-xl">
+      <div class="flex items-center gap-2">
+        <button id="mPrevDay" class="rounded-xl bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">‹</button>
+        <button id="mNextDay" class="rounded-xl bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">›</button>
+        <button id="mToday" class="rounded-xl bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">Сегодня</button>
+      </div>
+      <div class="text-sm font-semibold text-slate-100" id="mDayLabel">—</div>
+      <div class="flex items-center gap-2">
+        <button id="mHolidayBtn" class="rounded-xl bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">Праздник</button>
+        <button id="mShortBtn" class="rounded-xl bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">Сокращённый день</button>
+      </div>
+    </div>
 
     <div class="grid gap-6 lg:grid-cols-3 reveal mb-6">
       <section class="glass-card hover-lift rounded-3xl p-6 md:p-7">
@@ -561,34 +539,33 @@
         <div class="mt-4">
           <label class="mb-1.5 block text-sm font-medium text-slate-200" for="okladInput">Оклад (₽)</label>
           <div class="relative">
-            <input
-              id="okladInput"
-              type="password"
-              inputmode="decimal"
-              autocomplete="off"
+            <input id="okladInput" type="password" inputmode="decimal" autocomplete="off"
               class="input-glass w-full rounded-2xl px-4 py-3.5 pr-12 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
-              placeholder="Напр. 50000"
-            />
-            <button
-              id="okladInputPeekBtn"
-              type="button"
+              placeholder="Напр. 50000" />
+            <button id="okladInputPeekBtn" type="button"
               class="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-slate-300/80 hover:bg-white/5 hover:text-slate-100 ring-1 ring-white/10"
-              aria-label="Показать оклад"
-              tabindex="-1"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
+              aria-label="Показать оклад" tabindex="-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle>
               </svg>
             </button>
           </div>
           <p class="mt-1.5 text-xs text-slate-400/80" id="normHint"></p>
         </div>
-        <div class="mt-4 text-xs text-slate-400/80 leading-5">
+
+        <div id="leaveCodesHint" class="mt-4 text-xs text-slate-400/80 leading-5">
           <div>Коды в ячейках, которые нужно проставлять в <span class="font-semibold text-slate-200">ДЕНЬ</span>:</div>
-          <div><span class="font-semibold text-slate-200">ОТ</span> — отпуск</div>
-          <div><span class="font-semibold text-slate-200">Б</span> — больничный</div>
+          <div class="mt-1.5 grid gap-1">
+            <div><span class="font-semibold text-slate-200">ОТ</span> — ежегодный оплачиваемый отпуск</div>
+            <div><span class="font-semibold text-slate-200">Б</span> — больничный</div>
+            <div><span class="font-semibold text-slate-200">ОД</span> — отпуск без оплаты (по заявлению)</div>
+            <div><span class="font-semibold text-slate-200">ОЗ</span> — отпуск без оплаты (по закону)</div>
+            <div><span class="font-semibold text-slate-200">У</span> — учебный отпуск (оплачиваемый)</div>
+            <div><span class="font-semibold text-slate-200">УД</span> — учебный отпуск (без оплаты)</div>
+          </div>
+          <div class="mt-2 text-slate-300/80">
+            <span class="font-semibold text-slate-200">Важно:</span> Б, ОД, ОЗ, У, УД вычитаются из годового баланса переработок. <a href="help.html" class="text-indigo-300 hover:text-indigo-200 underline underline-offset-2">Подробнее</a>
+          </div>
         </div>
       </section>
 
@@ -597,14 +574,13 @@
         <div class="mt-3 grid gap-2 text-sm text-slate-300/90 leading-6 text-justify">
           <div>• <strong>Дневная смена:</strong> указывается фактическое количество отработанных часов в ячейках столбца «День».</div>
           <div>• <strong>Ночная смена</strong> обозначается комбинацией <strong>день/ночь</strong>: <strong>2/2</strong> или <strong>2/5</strong> (вводится раздельно в «День» и «Ночь». <span class="font-bold text-rose-400">Внимание:</span> у женщин смены проставляются иначе).</div>
-          <div>• <strong>Праздничный день:</strong> клик по числу — <span class="text-amber-400 font-semibold">праздник</span>. <strong>На телефоне:</strong> удержание по числу — <span class="text-green-400 font-semibold">сокращённый</span> (или кнопка «Сокращ.» в панели).</div>
+          <div>• <strong>Праздник / сокращённый:</strong> на ПК — клик / двойной клик по числу. На телефоне — выберите день стрелками <span class="font-semibold text-indigo-300">‹ ›</span>, затем нажмите <span class="text-amber-400 font-semibold">«Праздник»</span> или <span class="text-green-400 font-semibold">«Сокращённый день»</span>.</div>
           <div>• <span class="font-bold text-rose-400">Важно:</span> система находится в разработке и временно не учитывает индивидуальные условия.</div>
         </div>
       </section>
     </div>
 
-    <!-- ✅ One table for all devices -->
-    <div class="scrollable reveal">
+    <div class="scrollable reveal" id="tableScrollable">
       <table class="timesheet-table" id="timesheet">
         <thead><tr id="headerRow"></tr></thead>
         <tbody>
@@ -625,20 +601,12 @@
     <div class="glass-card hover-lift rounded-3xl p-6 md:p-7 reveal">
       <div class="flex items-center justify-between gap-3">
         <div class="text-sm text-slate-300/90">К выплате (нетто)</div>
-
-        <button
-          id="payPeekBtn"
-          type="button"
+        <button id="payPeekBtn" type="button"
           class="inline-flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
-          aria-pressed="false"
-          aria-label="Показать выплаты"
-          title="Показать / скрыть выплаты"
-        >
+          aria-pressed="false" aria-label="Показать выплаты">
           <span id="payPeekIcon" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
-              <circle cx="12" cy="12" r="3"></circle>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle>
             </svg>
           </span>
           <span id="payPeekText">Показать</span>
@@ -652,59 +620,21 @@
             Скрыто (нажмите на "Показать")
           </div>
         </div>
-
         <div class="pay-results-content">
           <div class="mt-2 text-4xl md:text-5xl font-semibold tracking-tight" id="netPay">—</div>
           <div class="mt-2 text-sm text-slate-300/80" id="moneySummary"></div>
-
           <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Часовая (нетто с премией)</div>
-              <div class="mt-1 text-lg font-semibold" id="hourRateNet">—</div>
-            </div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Ночной час (нетто)</div>
-              <div class="mt-1 text-lg font-semibold text-rose-200" id="nightHourNet">—</div>
-            </div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Праздничные x2 (брутто, доплата)</div>
-              <div class="mt-1 text-lg font-semibold" id="holidayExtraGross">—</div>
-            </div>
-
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Оклад за факт (брутто)</div>
-              <div class="mt-1 text-lg font-semibold" id="baseFactGross">—</div>
-            </div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Премия 35% (брутто)</div>
-              <div class="mt-1 text-lg font-semibold" id="bonusGross">—</div>
-            </div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Ночные (брутто)</div>
-              <div class="mt-1 text-lg font-semibold text-rose-200" id="nightExtraGross">—</div>
-            </div>
-
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Брутто</div>
-              <div class="mt-1 text-lg font-semibold" id="grossPay">—</div>
-            </div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Налог 13%</div>
-              <div class="mt-1 text-lg font-semibold" id="taxPay">—</div>
-            </div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Аванс (~, нетто)</div>
-              <div class="mt-1 text-lg font-semibold" id="advancePay">—</div>
-            </div>
-
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">Остаток (~, нетто)</div>
-              <div class="mt-1 text-lg font-semibold" id="remainingPay">—</div>
-            </div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
-              <div class="text-xs text-slate-400">ОТ / Б (дней)</div>
-              <div class="mt-1 text-lg font-semibold" id="leaveDays">0 / 0</div>
-            </div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Часовая (нетто с премией)</div><div class="mt-1 text-lg font-semibold" id="hourRateNet">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Ночной час (нетто)</div><div class="mt-1 text-lg font-semibold text-rose-200" id="nightHourNet">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Праздничные x2 (брутто, доплата)</div><div class="mt-1 text-lg font-semibold" id="holidayExtraGross">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Оклад за факт (брутто)</div><div class="mt-1 text-lg font-semibold" id="baseFactGross">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Премия 35% (брутто)</div><div class="mt-1 text-lg font-semibold" id="bonusGross">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Ночные (брутто)</div><div class="mt-1 text-lg font-semibold text-rose-200" id="nightExtraGross">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Брутто</div><div class="mt-1 text-lg font-semibold" id="grossPay">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Налог 13%</div><div class="mt-1 text-lg font-semibold" id="taxPay">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Аванс (~, нетто)</div><div class="mt-1 text-lg font-semibold" id="advancePay">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Остаток (~, нетто)</div><div class="mt-1 text-lg font-semibold" id="remainingPay">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Отсутствия (дней)</div><div class="mt-1 text-lg font-semibold" id="leaveDays">—</div></div>
           </div>
         </div>
       </div>
@@ -717,82 +647,42 @@
     </footer>
   </div>
 
-  <!-- оклад: удержание -->
   <script>
-    (function attachPeek(inputId, btnId) {
+    (function(inputId, btnId) {
       const input = document.getElementById(inputId);
       const btn = document.getElementById(btnId);
       if (!input || !btn) return;
-
       const show = () => { input.type = "text"; };
       const hide = () => { input.type = "password"; };
-
       btn.addEventListener("mousedown", (e) => { e.preventDefault(); show(); });
       btn.addEventListener("mouseup", hide);
       btn.addEventListener("mouseleave", hide);
-
       btn.addEventListener("touchstart", (e) => { e.preventDefault(); show(); }, { passive: false });
       btn.addEventListener("touchend", hide);
       btn.addEventListener("touchcancel", hide);
-
-      btn.addEventListener("keydown", (e) => {
-        if (e.key === " " || e.key === "Enter") { e.preventDefault(); show(); }
-      });
-      btn.addEventListener("keyup", (e) => {
-        if (e.key === " " || e.key === "Enter") { e.preventDefault(); hide(); }
-      });
+      btn.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); show(); } });
+      btn.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); hide(); } });
     })("okladInput", "okladInputPeekBtn");
   </script>
 
-  <!-- выплаты: toggle по клику -->
   <script>
-    (function attachPayToggle(wrapId, btnId, textId, iconId) {
+    (function(wrapId, btnId, textId, iconId) {
       const wrap = document.getElementById(wrapId);
       const btn = document.getElementById(btnId);
       const textEl = document.getElementById(textId);
       const iconEl = document.getElementById(iconId);
       if (!wrap || !btn || !textEl || !iconEl) return;
-
-      const eye = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
-          <circle cx="12" cy="12" r="3"></circle>
-        </svg>
-      `;
-      const eyeOff = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M10.733 5.076A10.744 10.744 0 0 1 12 5c6.5 0 10 7 10 7a16.88 16.88 0 0 1-1.67 2.68"></path>
-          <path d="M6.61 6.61A16.88 16.88 0 0 0 2 12s3.5 7 10 7a10.75 10.75 0 0 0 5.39-1.61"></path>
-          <path d="M8.71 8.71a3 3 0 0 0 4.58 4.58"></path>
-          <path d="M9.88 9.88a3 3 0 0 1 4.24 4.24"></path>
-          <path d="M2 2l20 20"></path>
-        </svg>
-      `;
-
+      const eye = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+      const eyeOff = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076A10.744 10.744 0 0 1 12 5c6.5 0 10 7 10 7a16.88 16.88 0 0 1-1.67 2.68"></path><path d="M6.61 6.61A16.88 16.88 0 0 0 2 12s3.5 7 10 7a10.75 10.75 0 0 0 5.39-1.61"></path><path d="M8.71 8.71a3 3 0 0 0 4.58 4.58"></path><path d="M9.88 9.88a3 3 0 0 1 4.24 4.24"></path><path d="M2 2l20 20"></path></svg>`;
       function apply(hidden) {
-        if (hidden) {
-          wrap.classList.add("is-hidden");
-          btn.setAttribute("aria-pressed", "false");
-          btn.setAttribute("aria-label", "Показать выплаты");
-          textEl.textContent = "Показать";
-          iconEl.innerHTML = eye;
-        } else {
-          wrap.classList.remove("is-hidden");
-          btn.setAttribute("aria-pressed", "true");
-          btn.setAttribute("aria-label", "Скрыть выплаты");
-          textEl.textContent = "Скрыть";
-          iconEl.innerHTML = eyeOff;
-        }
+        wrap.classList.toggle("is-hidden", hidden);
+        btn.setAttribute("aria-pressed", String(!hidden));
+        btn.setAttribute("aria-label", hidden ? "Показать выплаты" : "Скрыть выплаты");
+        textEl.textContent = hidden ? "Показать" : "Скрыть";
+        iconEl.innerHTML = hidden ? eye : eyeOff;
       }
-
       apply(true);
-
-      btn.addEventListener("click", () => {
-        const hidden = wrap.classList.contains("is-hidden");
-        apply(!hidden);
-      });
+      btn.addEventListener("click", () => apply(!wrap.classList.contains("is-hidden")));
     })("payResultsWrap", "payPeekBtn", "payPeekText", "payPeekIcon");
   </script>
 
@@ -800,19 +690,9 @@
 
   <script type="module">
     import { startTour } from './tour.js';
-
-    let pageName = '';
-    if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname === '') {
-      pageName = 'calculator';
-    } else if (window.location.pathname.includes('table.html')) {
-      pageName = 'table';
-    } else if (window.location.pathname.includes('profile.html')) {
-      pageName = 'profile';
-    }
-
+    let pageName = 'table';
     const urlParams = new URLSearchParams(window.location.search);
     const tourParam = urlParams.get('tour');
-
     if (tourParam && tourParam === pageName) {
       const checkInterval = setInterval(() => {
         if (document.querySelector('#timesheet')) {
@@ -823,6 +703,5 @@
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   </script>
-
 </body>
 </html>

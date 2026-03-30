@@ -1,0 +1,202 @@
+<!-- FILE: /help.html (Справка) -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+  <title>Справка по табелю – Alvisa</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    html, body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; scroll-behavior: smooth; }
+    :root {
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-bg: rgba(15, 23, 42, 0.6);
+      --card-shadow: 0 25px 50px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+    body {
+      position: relative;
+      overflow-x: hidden;
+      background: #020617;
+      background-image:
+        radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.18), transparent 60%),
+        radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.15), transparent 60%),
+        radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.12), transparent 60%);
+    }
+    .glass-card {
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--card-shadow);
+    }
+    .nav-link { position: relative; transition: color 0.2s; }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 1rem;
+      right: 1rem;
+      height: 2px;
+      background: linear-gradient(90deg, #6366f1, #38bdf8);
+      border-radius: 2px;
+      opacity: 0;
+      transform: scaleX(0.7);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .nav-link.active::after,
+    .nav-link:hover::after { opacity: 1; transform: scaleX(1); }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+  <header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
+    <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex flex-wrap items-center justify-between gap-3">
+      <a href="index.html" class="group">
+        <span class="text-base md:text-lg font-semibold bg-gradient-to-r from-indigo-200 to-slate-100 bg-clip-text text-transparent transition-colors group-hover:from-indigo-300 group-hover:to-white">
+          Alvisa
+        </span>
+      </a>
+      <nav class="flex flex-wrap items-center justify-end gap-1 text-sm font-medium">
+        <a href="index.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
+          Калькулятор
+        </a>
+        <a href="table.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
+          Табель
+        </a>
+        <a href="profile.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
+          Профиль
+        </a>
+        <a href="help.html" class="nav-link active relative rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">
+          Справка
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="relative z-10 mx-auto max-w-5xl px-4 pt-28 pb-14">
+    <section class="glass-card rounded-3xl p-6 md:p-8">
+      <h1 class="text-2xl md:text-3xl font-bold tracking-tight">
+        <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
+          Справка по табелю
+        </span>
+      </h1>
+      <p class="mt-2 text-sm text-slate-300/90 leading-6">
+        Здесь — простое объяснение, как мы используем <b>коды отсутствий</b> и как считаем <b>переработку</b> по месяцу и по году.
+        Мы опираемся на идею условных обозначений из унифицированных табелей (Т-12/Т-13), но в этом приложении мы используем понятный набор кодов для расчёта переработок.
+      </p>
+    </section>
+
+    <section id="codes" class="mt-6 glass-card rounded-3xl p-6 md:p-8">
+      <h2 class="text-xl font-semibold">Коды, которые вводятся в строку «День»</h2>
+
+      <div class="mt-4 overflow-hidden rounded-2xl ring-1 ring-white/10">
+        <div class="grid grid-cols-1 md:grid-cols-3 bg-white/5 text-xs font-semibold text-slate-200">
+          <div class="px-4 py-3">Код</div>
+          <div class="px-4 py-3 md:col-span-2">Что означает</div>
+        </div>
+
+        <div class="divide-y divide-white/10 text-sm">
+          <div class="grid grid-cols-1 md:grid-cols-3">
+            <div class="px-4 py-3 font-semibold text-indigo-200">ОТ</div>
+            <div class="px-4 py-3 md:col-span-2 text-slate-200/90">
+              Ежегодный оплачиваемый отпуск. Нужен, чтобы в месяце не считалась «недоработка».
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3">
+            <div class="px-4 py-3 font-semibold text-indigo-200">Б</div>
+            <div class="px-4 py-3 md:col-span-2 text-slate-200/90">
+              Больничный (временная нетрудоспособность).
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3">
+            <div class="px-4 py-3 font-semibold text-indigo-200">ОД</div>
+            <div class="px-4 py-3 md:col-span-2 text-slate-200/90">
+              Отпуск без сохранения зарплаты (по заявлению работника, согласованный работодателем).
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3">
+            <div class="px-4 py-3 font-semibold text-indigo-200">ОЗ</div>
+            <div class="px-4 py-3 md:col-span-2 text-slate-200/90">
+              Отпуск без сохранения зарплаты, который работодатель обязан предоставить в случаях по закону (например: рождение ребёнка, свадьба, смерть близких родственников и т.п.).
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3">
+            <div class="px-4 py-3 font-semibold text-indigo-200">У</div>
+            <div class="px-4 py-3 md:col-span-2 text-slate-200/90">
+              Учебный отпуск с сохранением среднего заработка.
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3">
+            <div class="px-4 py-3 font-semibold text-indigo-200">УД</div>
+            <div class="px-4 py-3 md:col-span-2 text-slate-200/90">
+              Учебный отпуск без сохранения зарплаты.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 text-sm text-slate-300/90 leading-6">
+        <div>• Код вводится <b>только в «День»</b>. Ночь при коде блокируется.</div>
+        <div>• В выходные (сб/вс) коды отсутствий не ставим.</div>
+        <div>• Можно вводить «О» — система автоматически приведёт к «ОТ».</div>
+      </div>
+    </section>
+
+    <section id="overtime" class="mt-6 glass-card rounded-3xl p-6 md:p-8">
+      <h2 class="text-xl font-semibold">Как считаем переработку</h2>
+
+      <div class="mt-4 grid gap-4">
+        <div class="rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+          <div class="text-sm font-semibold text-slate-200">1) Переработка за месяц</div>
+          <div class="mt-2 text-sm text-slate-300/90 leading-6">
+            <div>Мы считаем «личную норму» месяца: это норма календаря минус дни с кодами отсутствий.</div>
+            <div>Переработка месяца = <b>отработано</b> − <b>личная норма</b>.</div>
+            <div class="mt-2 text-xs text-slate-400/90">
+              Это нужно, чтобы в месяце с отпуском/больничным не появлялась ложная «недоработка».
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+          <div class="text-sm font-semibold text-slate-200">2) Баланс переработки за год (лимит 120 ч)</div>
+          <div class="mt-2 text-sm text-slate-300/90 leading-6">
+            <div>
+              Проблема: если вы, например, были <b>на больничном 2 недели</b>, «личная норма» месяца уменьшится —
+              и если потом вы отработаете эти часы в других месяцах, это не должно считаться сверхурочной работой.
+            </div>
+            <div class="mt-3">
+              Поэтому мы делаем <b>годовую коррекцию</b>:
+              часы по кодам <b>Б, ОД, ОЗ, У, УД</b> вычитаются из годового баланса переработки.
+            </div>
+            <div class="mt-2 text-xs text-slate-400/90">
+              Проще: сначала вы «закрываете» часы отсутствий, и только после этого начинается «настоящая» годовая переработка.
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+          <div class="text-sm font-semibold text-slate-200">Пример</div>
+          <div class="mt-2 text-sm text-slate-300/90 leading-6">
+            <div>• Норма месяца: 100 ч.</div>
+            <div>• Больничный на 50 ч → личная норма месяца: 50 ч.</div>
+            <div>• Отработано в месяце: 50 ч → переработка месяца: 0 ч.</div>
+            <div class="mt-2">
+              Если в другом месяце вы отработали +50 ч сверх своей личной нормы, годовой баланс не вырастет:
+              эти 50 ч сначала «покроют» больничный. Однако, перерабатывать сверх 10 часов за месяц всё равно не стоит — это может вызвать вопросы у работодателя.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="mt-10 text-center text-xs text-slate-400/60 border-t border-white/10 pt-6">
+      По вопросам и предложениям просьба обращаться в ЕГАИС. 
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,3 +1,6 @@
+// =========================
+// FILE: /profile.js
+// =========================
 // FILE: /profile.js
 import { requireSession, signOut } from "./auth.js";
 import {
@@ -38,6 +41,7 @@ const refreshBtn = document.getElementById("refreshBtn");
 const yearSelect = document.getElementById("yearSelect");
 const overtimeYearEl = document.getElementById("overtimeYear");
 const overtimeRemainingEl = document.getElementById("overtimeRemaining");
+const overtimeAdjustmentEl = document.getElementById("overtimeAdjustment");
 const monthsCountEl = document.getElementById("monthsCount");
 const timesheetsList = document.getElementById("timesheetsList");
 
@@ -127,6 +131,63 @@ function sum(arr) {
   return arr.reduce((a, b) => a + (Number.isFinite(Number(b)) ? Number(b) : 0), 0);
 }
 
+function normalizeLeaveTypeLegacy(lt) {
+  if (!lt) return null;
+  if (lt === "vacation") return "vac_paid";
+  if (lt === "sick") return "sick";
+  return String(lt);
+}
+
+function leaveTypeToCode(lt) {
+  const t = normalizeLeaveTypeLegacy(lt);
+  if (!t) return "";
+  if (t === "vac_paid") return "ОТ";
+  if (t === "vac_unpaid") return "ОД";
+  if (t === "vac_unpaid_required") return "ОЗ";
+  if (t === "edu_paid") return "У";
+  if (t === "edu_unpaid") return "УД";
+  if (t === "sick") return "Б";
+  return "";
+}
+
+function leaveTypeToLabel(lt) {
+  const t = normalizeLeaveTypeLegacy(lt);
+  if (!t) return "";
+  if (t === "vac_paid") return "Отпуск (ОТ)";
+  if (t === "vac_unpaid") return "Отпуск без оплаты (ОД)";
+  if (t === "vac_unpaid_required") return "Отпуск без оплаты (ОЗ)";
+  if (t === "edu_paid") return "Учебный отпуск (У)";
+  if (t === "edu_unpaid") return "Учебный отпуск без оплаты (УД)";
+  if (t === "sick") return "Больничный (Б)";
+  return String(t);
+}
+
+function isCompensatoryLeaveForYear(lt) {
+  const t = normalizeLeaveTypeLegacy(lt);
+  // Эти отсутствия НЕ должны снижать годовую норму: их часы вычитаем из годовой переработки.
+  return t === "sick" || t === "vac_unpaid" || t === "vac_unpaid_required" || t === "edu_paid" || t === "edu_unpaid";
+}
+
+function computeCompensatoryLeaveHours(payload) {
+  if (!payload || typeof payload !== "object") return 0;
+
+  const y = safeNum(payload.year);
+  const m = safeNum(payload.month);
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+  const isHoliday = Array.isArray(payload.isHoliday) ? payload.isHoliday : new Array(daysInMonth).fill(false);
+  const leaveType = Array.isArray(payload.leaveType) ? payload.leaveType : new Array(daysInMonth).fill(null);
+
+  let effectiveDays = 0;
+  for (let i = 0; i < daysInMonth; i++) {
+    if (isHoliday[i]) continue;
+    if (!isCompensatoryLeaveForYear(leaveType[i])) continue;
+    effectiveDays++;
+  }
+
+  return effectiveDays * BASE_DAY_HOURS;
+}
+
 /**
  * ✅ Align with table.js rules + BASE_DAY_HOURS:
  * - month norm: weekdays*BASE_DAY_HOURS - holidayWeekdays*BASE_DAY_HOURS - shortWeekdays*1
@@ -164,8 +225,8 @@ function computeMonthOvertimeSigned(payload) {
 
   let leaveEffective = 0;
   for (let i = 0; i < daysInMonth; i++) {
-    const lt = leaveType[i];
-    if (lt !== "vacation" && lt !== "sick") continue;
+    const lt = normalizeLeaveTypeLegacy(leaveType[i]);
+    if (!lt) continue;
     if (isHoliday[i]) continue;
     leaveEffective++;
   }
@@ -643,16 +704,13 @@ async function renderCalendar() {
     const tags = document.createElement("div");
     tags.className = "cal-tags";
 
-    const lt = tsLeave?.[idx];
-    if (lt === "vacation") {
+    const ltRaw = tsLeave?.[idx];
+    const ltNorm = normalizeLeaveTypeLegacy(ltRaw);
+    const ltCode = leaveTypeToCode(ltRaw);
+    if (ltCode) {
       const t = document.createElement("span");
-      t.className = "cal-tag leave";
-      t.textContent = "ОТ";
-      tags.appendChild(t);
-    } else if (lt === "sick") {
-      const t = document.createElement("span");
-      t.className = "cal-tag sick";
-      t.textContent = "Б";
+      t.className = ltNorm === "sick" ? "cal-tag sick" : "cal-tag leave";
+      t.textContent = ltCode;
       tags.appendChild(t);
     }
 
@@ -667,8 +725,7 @@ async function renderCalendar() {
 
     const parts = [];
     if (total > 0) parts.push(`Часы: ${total.toFixed(1)} (день ${dh.toFixed(1)}, ночь ${nh.toFixed(1)})`);
-    if (lt === "vacation") parts.push("Отпуск");
-    if (lt === "sick") parts.push("Больничный");
+    if (ltNorm) parts.push(leaveTypeToLabel(ltRaw));
     if (offHoliday) parts.push("Официальный праздник");
     if (offShort) parts.push("Официальный сокращённый");
     if (offWeekend) parts.push("Официальный выходной");
@@ -724,13 +781,25 @@ async function refreshTimesheets() {
   monthsCountEl.textContent = String(rows.length);
 
   let yearBalanceSigned = 0;
-  for (const r of rows) yearBalanceSigned += r?.payload ? computeMonthOvertimeSigned(r.payload) : 0;
+  let yearAdjustmentHours = 0;
+  for (const r of rows) {
+    if (!r?.payload) continue;
+    yearBalanceSigned += computeMonthOvertimeSigned(r.payload);
+    yearAdjustmentHours += computeCompensatoryLeaveHours(r.payload);
+  }
 
-  const usedForLimit = Math.max(0, yearBalanceSigned);
+  const adjustedYearBalance = yearBalanceSigned - yearAdjustmentHours;
+
+  const usedForLimit = Math.max(0, adjustedYearBalance);
   const remaining = Math.max(0, OVERTIME_LIMIT_YEAR - usedForLimit);
 
-  overtimeYearEl.textContent = formatHoursSigned(yearBalanceSigned);
+  overtimeYearEl.textContent = formatHoursSigned(adjustedYearBalance);
   overtimeRemainingEl.textContent = formatHoursPlain(remaining);
+
+  if (overtimeAdjustmentEl) {
+    overtimeAdjustmentEl.textContent = `Коррекция отсутствиями (Б/ОД/ОЗ/У/УД): −${yearAdjustmentHours.toFixed(1)} ч`;
+    overtimeAdjustmentEl.classList.toggle("hidden", !(yearAdjustmentHours > 0.0001));
+  }
 
   applyOvertimeProgress(usedForLimit);
 
