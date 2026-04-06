@@ -28,6 +28,8 @@
       --glass-bg: rgba(15, 23, 42, 0.6);
       --card-shadow: 0 25px 50px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
       --card-shadow-hover: 0 35px 70px -30px var(--glow-primary), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      /* Header height for sticky calculations */
+      --header-h: 56px;
     }
 
     body {
@@ -169,6 +171,45 @@
     ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.8); }
     * { scrollbar-width: thin; scrollbar-color: rgba(99,102,241,0.55) rgba(30,41,59,0.55); }
 
+    /* ✅ Nav: compact on small screens to keep one row */
+    .nav-link {
+      position: relative;
+      transition: color 0.2s;
+      white-space: nowrap;
+    }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 1rem;
+      right: 1rem;
+      height: 2px;
+      background: linear-gradient(90deg, #6366f1, #38bdf8);
+      border-radius: 2px;
+      opacity: 0;
+      transform: scaleX(0.7);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .nav-link.active::after,
+    .nav-link:hover::after { opacity: 1; transform: scaleX(1); }
+
+    /* Mobile nav — single row, smaller text */
+    @media (max-width: 640px) {
+      header nav {
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        max-width: calc(100vw - 90px);
+      }
+      header nav::-webkit-scrollbar { display: none; }
+      header nav a {
+        font-size: 0.72rem !important;
+        padding: 5px 7px !important;
+      }
+    }
+
     .scrollable {
       overflow-x: auto;
       border-radius: 1rem;
@@ -177,10 +218,13 @@
       scroll-behavior: smooth;
     }
 
+    /* =========================
+       Timesheet table
+       ========================= */
     .timesheet-table {
       border-collapse: collapse;
       width: 100%;
-      min-width: 760px;
+      min-width: 720px;
       background: rgba(30, 41, 59, 0.5);
       backdrop-filter: blur(8px);
       border-radius: 1rem;
@@ -189,12 +233,14 @@
     }
     .timesheet-table th {
       background: rgba(15, 23, 42, 0.8);
-      padding: 14px 4px;
+      padding: 10px 4px 8px;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: #94a3b8;
       border-bottom: 1px solid rgba(255,255,255,0.1);
       user-select: none;
+      line-height: 1.2;
+      text-align: center;
     }
     .timesheet-table td {
       padding: 10px 2px;
@@ -205,6 +251,16 @@
     }
     .timesheet-table td:last-child { border-right: none; }
     .timesheet-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* ✅ Day of week line in header */
+    .th-dow {
+      display: block;
+      font-size: 9px;
+      font-weight: 400;
+      opacity: 0.5;
+      margin-top: 2px;
+      letter-spacing: 0;
+    }
 
     /* Sticky label column */
     .timesheet-table .label-cell {
@@ -255,26 +311,9 @@
 
     @media (max-width: 767px) {
       .input-hour { width: 50px; min-height: 44px; padding: 10px 2px; border-radius: 10px; }
-      .timesheet-table th { padding: 10px 3px; font-size: 0.82rem; }
+      .timesheet-table th { padding: 8px 3px 6px; font-size: 0.8rem; }
       .timesheet-table td { padding: 8px 2px; }
     }
-
-    .nav-link { position: relative; transition: color 0.2s; }
-    .nav-link::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 1rem;
-      right: 1rem;
-      height: 2px;
-      background: linear-gradient(90deg, #6366f1, #38bdf8);
-      border-radius: 2px;
-      opacity: 0;
-      transform: scaleX(0.7);
-      transition: opacity 0.2s, transform 0.2s;
-    }
-    .nav-link.active::after,
-    .nav-link:hover::after { opacity: 1; transform: scaleX(1); }
 
     @media (max-width: 640px) {
       .select-wrap::after { right: 10px; }
@@ -296,12 +335,45 @@
       * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
 
-    /* Mobile toolbar */
-    #mobileBar { display: none; }
-    @media (max-width: 767px) { #mobileBar { display: flex; } }
+    /* =========================
+       ✅ Mobile toolbar
+       — показываем только на телефонах через CSS
+       — двухстрочный layout, нет backdrop-filter (Safari sticky fix)
+       — -webkit-sticky для iOS
+       ========================= */
+    #mobileBar {
+      display: none;
+    }
+    @media (max-width: 767px) {
+      #mobileBar {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        position: -webkit-sticky;
+        position: sticky;
+        /* iOS: header = safe-area-top + ~48px content */
+        top: calc(env(safe-area-inset-top, 0px) + 48px);
+        z-index: 40;
+        /* No backdrop-filter — fixes iOS sticky rendering bug */
+        background: rgba(2, 6, 23, 0.96);
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 16px;
+        padding: 8px 10px;
+        margin-bottom: 12px;
+      }
+    }
 
+    /* ✅ Mobile bar button row */
+    .mbar-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+
+    /* Active states */
     #mHolidayBtn.is-active {
-      background: rgba(245, 158, 11, 0.2) !important;
+      background: rgba(245, 158, 11, 0.22) !important;
       color: rgba(253, 186, 64, 1) !important;
       border-color: rgba(245, 158, 11, 0.45) !important;
     }
@@ -348,104 +420,51 @@
     /* =========================
        Driver.js 0.9.8 custom
        ========================= */
-    #driver-page-overlay {
-      background: rgba(2, 6, 23, 0.58) !important;
-      backdrop-filter: blur(4px) !important;
-    }
-    #driver-highlighted-element-stage {
-      background: transparent !important;
-      box-shadow: none !important;
-    }
+    #driver-page-overlay { background: rgba(2, 6, 23, 0.58) !important; backdrop-filter: blur(4px) !important; }
+    #driver-highlighted-element-stage { background: transparent !important; box-shadow: none !important; }
     .driver-highlighted-element {
       background: transparent !important;
       border-radius: 18px !important;
-      box-shadow:
-        0 0 0 2px rgba(99, 102, 241, 0.95),
-        0 0 0 6px rgba(99, 102, 241, 0.18),
-        0 14px 34px rgba(15, 23, 42, 0.35) !important;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.95), 0 0 0 6px rgba(99, 102, 241, 0.18), 0 14px 34px rgba(15, 23, 42, 0.35) !important;
     }
     #driver-popover-item.alvisa-tour {
-      background: linear-gradient(
-        135deg,
-        rgba(10, 19, 52, 0.96) 0%,
-        rgba(20, 32, 74, 0.92) 55%,
-        rgba(35, 24, 78, 0.90) 100%
-      ) !important;
+      background: linear-gradient(135deg, rgba(10, 19, 52, 0.96) 0%, rgba(20, 32, 74, 0.92) 55%, rgba(35, 24, 78, 0.90) 100%) !important;
       color: #eef2ff !important;
       border: 1px solid rgba(255, 255, 255, 0.10) !important;
       border-radius: 22px !important;
       padding: 18px !important;
       min-width: 280px !important;
       max-width: 360px !important;
-      box-shadow:
-        0 24px 60px rgba(2, 6, 23, 0.50),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08),
-        0 0 0 1px rgba(99, 102, 241, 0.14) !important;
+      box-shadow: 0 24px 60px rgba(2, 6, 23, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(99, 102, 241, 0.14) !important;
     }
     #driver-popover-item.alvisa-tour .driver-popover-tip { display: none !important; }
     #driver-popover-item.alvisa-tour .driver-popover-title {
-      color: #f8fbff !important;
-      font-size: 1.06rem !important;
-      font-weight: 700 !important;
-      line-height: 1.35 !important;
-      margin: 0 0 10px 0 !important;
-      letter-spacing: -0.01em !important;
+      color: #f8fbff !important; font-size: 1.06rem !important; font-weight: 700 !important;
+      line-height: 1.35 !important; margin: 0 0 10px 0 !important; letter-spacing: -0.01em !important;
       font-family: Inter, system-ui, -apple-system, sans-serif !important;
     }
     #driver-popover-item.alvisa-tour .driver-popover-description {
-      color: rgba(226, 232, 240, 0.92) !important;
-      font-size: 0.94rem !important;
-      line-height: 1.58 !important;
-      font-weight: 400 !important;
-      margin: 0 !important;
+      color: rgba(226, 232, 240, 0.92) !important; font-size: 0.94rem !important;
+      line-height: 1.58 !important; font-weight: 400 !important; margin: 0 !important;
       font-family: Inter, system-ui, -apple-system, sans-serif !important;
     }
-    #driver-popover-item.alvisa-tour .driver-popover-footer {
-      display: block !important;
-      margin-top: 18px !important;
-    }
+    #driver-popover-item.alvisa-tour .driver-popover-footer { display: block !important; margin-top: 18px !important; }
     #driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-btn { float: left !important; }
     #driver-popover-item.alvisa-tour .driver-popover-footer .driver-btn-group,
-    #driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-only-btn {
-      float: right !important;
-      display: flex !important;
-      gap: 10px !important;
-    }
+    #driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-only-btn { float: right !important; display: flex !important; gap: 10px !important; }
     #driver-popover-item.alvisa-tour .driver-popover-footer button {
-      appearance: none !important;
-      border: none !important;
-      border-radius: 14px !important;
-      min-height: 42px !important;
-      padding: 8px 16px !important;
-      font-size: 0.9rem !important;
-      font-weight: 600 !important;
-      font-family: Inter, system-ui, -apple-system, sans-serif !important;
-      text-shadow: none !important;
+      appearance: none !important; border: none !important; border-radius: 14px !important; min-height: 42px !important;
+      padding: 8px 16px !important; font-size: 0.9rem !important; font-weight: 600 !important;
+      font-family: Inter, system-ui, -apple-system, sans-serif !important; text-shadow: none !important;
       box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22) !important;
-      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease !important;
-      cursor: pointer !important;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease !important; cursor: pointer !important;
     }
     #driver-popover-item.alvisa-tour .driver-close-btn,
-    #driver-popover-item.alvisa-tour .driver-prev-btn {
-      background: rgba(255, 255, 255, 0.08) !important;
-      color: #dbeafe !important;
-      border: 1px solid rgba(255, 255, 255, 0.10) !important;
-    }
-    #driver-popover-item.alvisa-tour .driver-next-btn {
-      background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%) !important;
-      color: #ffffff !important;
-      border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    }
+    #driver-popover-item.alvisa-tour .driver-prev-btn { background: rgba(255, 255, 255, 0.08) !important; color: #dbeafe !important; border: 1px solid rgba(255, 255, 255, 0.10) !important; }
+    #driver-popover-item.alvisa-tour .driver-next-btn { background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%) !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.08) !important; }
     #driver-popover-item.alvisa-tour .driver-close-btn:hover,
-    #driver-popover-item.alvisa-tour .driver-prev-btn:hover {
-      background: rgba(255, 255, 255, 0.12) !important;
-      transform: translateY(-1px) !important;
-    }
-    #driver-popover-item.alvisa-tour .driver-next-btn:hover {
-      background: linear-gradient(135deg, #7074ff 0%, #8b5cf6 100%) !important;
-      transform: translateY(-1px) !important;
-      box-shadow: 0 12px 28px rgba(99, 102, 241, 0.34) !important;
-    }
+    #driver-popover-item.alvisa-tour .driver-prev-btn:hover { background: rgba(255, 255, 255, 0.12) !important; transform: translateY(-1px) !important; }
+    #driver-popover-item.alvisa-tour .driver-next-btn:hover { background: linear-gradient(135deg, #7074ff 0%, #8b5cf6 100%) !important; transform: translateY(-1px) !important; box-shadow: 0 12px 28px rgba(99, 102, 241, 0.34) !important; }
     #driver-popover-item.alvisa-tour .driver-next-btn:active,
     #driver-popover-item.alvisa-tour .driver-prev-btn:active,
     #driver-popover-item.alvisa-tour .driver-close-btn:active { transform: translateY(0) !important; }
@@ -455,24 +474,25 @@
 <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
   <script>document.body.classList.add("is-loaded");</script>
 
+  <!-- ✅ Fixed header: nav is nowrap + overflow-x auto on mobile (CSS above) -->
   <header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-    <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex flex-wrap items-center justify-between gap-3">
-      <a href="index.html" class="group">
+    <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex items-center justify-between gap-2">
+      <a href="index.html" class="group shrink-0">
         <span class="text-base md:text-lg font-semibold bg-gradient-to-r from-indigo-200 to-slate-100 bg-clip-text text-transparent transition-colors group-hover:from-indigo-300 group-hover:to-white">
           Alvisa
         </span>
       </a>
-      <nav class="flex flex-wrap items-center justify-end gap-1 text-sm font-medium">
-        <a href="index.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Калькулятор</a>
-        <a href="table.html" class="nav-link active relative rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">Табель</a>
-        <a href="profile.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Профиль</a>
-        <a href="help.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Справка</a>
+      <nav class="flex items-center gap-0.5 text-sm font-medium overflow-hidden">
+        <a href="index.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Кальк.</a>
+        <a href="table.html" class="nav-link active rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">Табель</a>
+        <a href="profile.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Профиль</a>
+        <a href="help.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Справка</a>
       </nav>
     </div>
   </header>
 
   <div class="relative z-10 mx-auto max-w-7xl px-4 pt-safe pb-12 md:pb-16">
-    <header class="mb-8 reveal">
+    <header class="mb-6 reveal">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-3">
         <div class="flex items-center gap-3 flex-1">
           <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 shadow-xl text-xl font-bold text-slate-100" aria-hidden="true">A</span>
@@ -517,21 +537,41 @@
       </div>
     </header>
 
-    <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
+    <!-- ✅ Mobile toolbar: 2-row layout, no backdrop-filter, -webkit-sticky -->
+    <div id="mobileBar">
+      <!-- Row 1: day navigation -->
+      <div class="mbar-row">
+        <button id="mPrevDay" type="button"
+          class="rounded-xl bg-white/5 px-3 py-2 text-base font-bold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 min-w-[36px] text-center"
+          aria-label="Предыдущий день">‹</button>
 
-    <!-- Mobile toolbar -->
-    <div id="mobileBar" class="sticky top-[64px] z-40 mb-4 items-center justify-between gap-2 rounded-2xl bg-slate-950/70 px-3 py-2 ring-1 ring-white/10 backdrop-blur-xl">
-      <div class="flex items-center gap-2">
-        <button id="mPrevDay" class="rounded-xl bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">‹</button>
-        <button id="mNextDay" class="rounded-xl bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">›</button>
-        <button id="mToday" class="rounded-xl bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">Сегодня</button>
+        <div id="mDayLabel"
+          class="flex-1 text-center text-sm font-semibold text-slate-100 select-none tabular-nums min-w-[72px]">—</div>
+
+        <button id="mNextDay" type="button"
+          class="rounded-xl bg-white/5 px-3 py-2 text-base font-bold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 min-w-[36px] text-center"
+          aria-label="Следующий день">›</button>
+
+        <button id="mToday" type="button"
+          class="rounded-xl bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 whitespace-nowrap">
+          Сегодня
+        </button>
       </div>
-      <div class="text-sm font-semibold text-slate-100" id="mDayLabel">—</div>
-      <div class="flex items-center gap-2">
-        <button id="mHolidayBtn" class="rounded-xl bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">Праздник</button>
-        <button id="mShortBtn" class="rounded-xl bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">Сокращённый день</button>
+
+      <!-- Row 2: mark buttons -->
+      <div class="mbar-row">
+        <button id="mHolidayBtn" type="button"
+          class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">
+          🎉 Праздник
+        </button>
+        <button id="mShortBtn" type="button"
+          class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">
+          ✂️ Сокращ.
+        </button>
       </div>
     </div>
+
+    <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
 
     <div class="grid gap-6 lg:grid-cols-3 reveal mb-6">
       <section class="glass-card hover-lift rounded-3xl p-6 md:p-7">
@@ -554,7 +594,7 @@
         </div>
 
         <div id="leaveCodesHint" class="mt-4 text-xs text-slate-400/80 leading-5">
-          <div>Коды в ячейках, которые нужно проставлять в <span class="font-semibold text-slate-200">ДЕНЬ</span>:</div>
+          <div>Коды в ячейках (<span class="font-semibold text-slate-200">ДЕНЬ</span>):</div>
           <div class="mt-1.5 grid gap-1">
             <div><span class="font-semibold text-slate-200">ОТ</span> — ежегодный оплачиваемый отпуск</div>
             <div><span class="font-semibold text-slate-200">Б</span> — больничный</div>
@@ -564,7 +604,7 @@
             <div><span class="font-semibold text-slate-200">УД</span> — учебный отпуск (без оплаты)</div>
           </div>
           <div class="mt-2 text-slate-300/80">
-            <span class="font-semibold text-slate-200">Важно:</span> Б, ОД, ОЗ, У, УД вычитаются из годового баланса переработок. <a href="help.html" class="text-indigo-300 hover:text-indigo-200 underline underline-offset-2">Подробнее</a>
+            Б, ОД, ОЗ, У, УД вычитаются из годового баланса. <a href="help.html" class="text-indigo-300 hover:text-indigo-200 underline underline-offset-2">Подробнее</a>
           </div>
         </div>
       </section>
@@ -572,10 +612,10 @@
       <section class="glass-card hover-lift rounded-3xl p-6 md:p-7 lg:col-span-2">
         <h2 class="text-lg font-semibold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Как ставить смены</h2>
         <div class="mt-3 grid gap-2 text-sm text-slate-300/90 leading-6 text-justify">
-          <div>• <strong>Дневная смена:</strong> указывается фактическое количество отработанных часов в ячейках столбца «День».</div>
-          <div>• <strong>Ночная смена</strong> обозначается комбинацией <strong>день/ночь</strong>: <strong>2/2</strong> или <strong>2/5</strong> (вводится раздельно в «День» и «Ночь». <span class="font-bold text-rose-400">Внимание:</span> у женщин смены проставляются иначе).</div>
-          <div>• <strong>Праздник / сокращённый:</strong> на ПК — клик / двойной клик по числу. На телефоне — выберите день стрелками <span class="font-semibold text-indigo-300">‹ ›</span>, затем нажмите <span class="text-amber-400 font-semibold">«Праздник»</span> или <span class="text-green-400 font-semibold">«Сокращённый день»</span>.</div>
-          <div>• <span class="font-bold text-rose-400">Важно:</span> система находится в разработке и временно не учитывает индивидуальные условия.</div>
+          <div>• <strong>Дневная смена:</strong> количество отработанных часов в ячейках строки «День».</div>
+          <div>• <strong>Ночная смена</strong> — вводится раздельно в «День» и «Ночь»: напр. день <strong>2</strong>, ночь <strong>5</strong>. <span class="font-bold text-rose-400">У женщин смены проставляются иначе.</span></div>
+          <div>• <strong>Праздник / сокращённый:</strong> на ПК — клик / двойной клик по числу в шапке. На телефоне — стрелками <span class="font-semibold text-indigo-300">‹ ›</span> выбери день, затем нажми кнопку.</div>
+          <div>• <span class="font-bold text-rose-400">Важно:</span> система в разработке, временно не учитывает индивидуальные условия.</div>
         </div>
       </section>
     </div>
@@ -590,12 +630,38 @@
       </table>
     </div>
 
-    <div class="glass-card hover-lift rounded-3xl p-6 md:p-7 reveal grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-      <div><div class="text-sm text-slate-400">Отработано всего</div><div class="text-2xl font-semibold" id="totalHours">0</div></div>
-      <div><div class="text-sm text-slate-400">Дневные / Ночные</div><div class="text-2xl font-semibold" id="dayNightHours">0 / 0</div></div>
-      <div><div class="text-sm text-slate-400">Норма (месяц)</div><div class="text-2xl font-semibold" id="normMonth">0</div></div>
-      <div><div class="text-sm text-slate-400">Норма (личная)</div><div class="text-2xl font-semibold" id="normEffective">0</div></div>
-      <div><div class="text-sm text-slate-400">Переработка / недоработка</div><div class="text-2xl font-semibold" id="overtime">0</div></div>
+    <!-- ✅ Stats grid: 7 items — added first half norm + first half worked -->
+    <div class="glass-card hover-lift rounded-3xl p-6 md:p-7 reveal grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-4 mb-6">
+      <div>
+        <div class="text-sm text-slate-400">Отработано всего</div>
+        <div class="text-2xl font-semibold" id="totalHours">0</div>
+      </div>
+      <div>
+        <div class="text-sm text-slate-400">День / Ночь</div>
+        <div class="text-2xl font-semibold" id="dayNightHours">0 / 0</div>
+      </div>
+      <div>
+        <div class="text-sm text-slate-400">Норма (месяц)</div>
+        <div class="text-2xl font-semibold" id="normMonth">0</div>
+      </div>
+      <div>
+        <div class="text-sm text-slate-400">Норма (личная)</div>
+        <div class="text-2xl font-semibold" id="normEffective">0</div>
+      </div>
+      <div>
+        <div class="text-sm text-slate-400">Перераб. / недораб.</div>
+        <div class="text-2xl font-semibold" id="overtime">0</div>
+      </div>
+      <!-- ✅ New: first half norm -->
+      <div>
+        <div class="text-sm text-slate-400">Норма (1-я пол.)</div>
+        <div class="text-2xl font-semibold" id="normFirstHalf">—</div>
+      </div>
+      <!-- ✅ New: first half worked -->
+      <div>
+        <div class="text-sm text-slate-400">Отработано (1-я пол.)</div>
+        <div class="text-2xl font-semibold" id="workedFirstHalf">—</div>
+      </div>
     </div>
 
     <div class="glass-card hover-lift rounded-3xl p-6 md:p-7 reveal">

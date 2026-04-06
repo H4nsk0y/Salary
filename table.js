@@ -20,8 +20,6 @@ const MAX_HOURS_PER_DAY = 24;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 
 let focusDayIndex = null;
-
-// ✅ Mobile toolbar: index of the currently "selected" day
 let mobileSelectedIdx = 0;
 
 const logoutBtn = document.getElementById("logoutBtn");
@@ -58,6 +56,10 @@ const dayNightHoursEl = document.getElementById("dayNightHours");
 const normMonthEl = document.getElementById("normMonth");
 const normEffectiveEl = document.getElementById("normEffective");
 const overtimeEl = document.getElementById("overtime");
+
+// ✅ New: first half stats elements
+const normFirstHalfEl = document.getElementById("normFirstHalf");
+const workedFirstHalfEl = document.getElementById("workedFirstHalf");
 
 const headerRow = document.getElementById("headerRow");
 const dayRow = document.getElementById("dayRow");
@@ -158,51 +160,32 @@ function isWeekendByIndex(y, m, dayIndex0) {
 
 function sanitizeDayCellValue(raw) {
   let s = String(raw ?? "").toUpperCase();
-
-  // Latin -> Cyrillic for common codes
-  s = s
-    .replaceAll("O", "О")
-    .replaceAll("T", "Т")
-    .replaceAll("B", "Б")
-    .replaceAll("D", "Д")
-    .replaceAll("Z", "З")
-    .replaceAll("U", "У")
-    .replaceAll("Y", "У");
-
+  s = s.replaceAll("O","О").replaceAll("T","Т").replaceAll("B","Б")
+       .replaceAll("D","Д").replaceAll("Z","З").replaceAll("U","У").replaceAll("Y","У");
   s = s.replace(/\s+/g, "");
-
-  // If user types letters, keep only known code letters.
   const letters = s.replace(/[^ОТБДЗУЛ]/g, "");
   if (letters) {
     if (letters.includes("Б")) return "Б";
-
     if (letters.startsWith("О")) {
       const second = letters[1] || "";
       if (second === "Т") return "ОТ";
       if (second === "Д") return "ОД";
       if (second === "З") return "ОЗ";
-      return "О"; // allow partial; blur will convert to "ОТ"
+      return "О";
     }
-
     if (letters.startsWith("У")) {
       const second = letters[1] || "";
       if (second === "Д") return "УД";
       return "У";
     }
-
     return "";
   }
-
-  // Numeric branch
   let num = s.replace(/[^0-9.,]/g, "");
   if (!num) return "";
   if (num.includes(".") && num.includes(",")) num = num.replace(/,/g, ".");
   const sepIdx = num.search(/[.,]/);
   if (sepIdx !== -1) {
-    const before = num.slice(0, sepIdx);
-    const sep = num[sepIdx];
-    const after = num.slice(sepIdx + 1).replace(/[.,]/g, "");
-    num = before + sep + after;
+    num = num.slice(0, sepIdx) + num[sepIdx] + num.slice(sepIdx + 1).replace(/[.,]/g, "");
   }
   return num;
 }
@@ -213,10 +196,7 @@ function sanitizeNumericValue(raw) {
   if (s.includes(".") && s.includes(",")) s = s.replace(/,/g, ".");
   const sepIdx = s.search(/[.,]/);
   if (sepIdx !== -1) {
-    const before = s.slice(0, sepIdx);
-    const sep = s[sepIdx];
-    const after = s.slice(sepIdx + 1).replace(/[.,]/g, "");
-    s = before + sep + after;
+    s = s.slice(0, sepIdx) + s[sepIdx] + s.slice(sepIdx + 1).replace(/[.,]/g, "");
   }
   return s;
 }
@@ -224,28 +204,15 @@ function sanitizeNumericValue(raw) {
 function normalizeLeaveToken(raw) {
   const s0 = String(raw ?? "").trim().toUpperCase();
   if (!s0) return null;
-
-  // Latin -> Cyrillic for common codes
-  const s = s0
-    .replaceAll("O", "О")
-    .replaceAll("T", "Т")
-    .replaceAll("B", "Б")
-    .replaceAll("D", "Д")
-    .replaceAll("Z", "З")
-    .replaceAll("U", "У")
-    .replaceAll("Y", "У")
-    .replaceAll("L", "Л");
-
-  // Canonical codes (we store types in payload)
+  const s = s0.replaceAll("O","О").replaceAll("T","Т").replaceAll("B","Б")
+               .replaceAll("D","Д").replaceAll("Z","З").replaceAll("U","У")
+               .replaceAll("Y","У").replaceAll("L","Л");
   if (s === "О" || s === "ОТ") return "vac_paid";
   if (s === "ОД") return "vac_unpaid";
   if (s === "ОЗ") return "vac_unpaid_required";
-
   if (s === "Б" || s === "БЛ") return "sick";
-
   if (s === "У") return "edu_paid";
   if (s === "УД") return "edu_unpaid";
-
   return null;
 }
 
@@ -267,10 +234,7 @@ function normalizeLeaveTypeLegacy(lt) {
 function leaveTypeToCode(lt, raw = "") {
   const t = normalizeLeaveTypeLegacy(lt);
   if (!t) return "";
-  if (t === "vac_paid") {
-    const r = String(raw ?? "").trim().toUpperCase();
-    return r === "О" ? "О" : "ОТ";
-  }
+  if (t === "vac_paid") return String(raw ?? "").trim().toUpperCase() === "О" ? "О" : "ОТ";
   if (t === "vac_unpaid") return "ОД";
   if (t === "vac_unpaid_required") return "ОЗ";
   if (t === "edu_paid") return "У";
@@ -280,8 +244,7 @@ function leaveTypeToCode(lt, raw = "") {
 }
 
 function sanitizeLeaveDisplayValue(raw, leaveType) {
-  const code = leaveTypeToCode(leaveType, raw);
-  return code || String(raw ?? "").trim().toUpperCase();
+  return leaveTypeToCode(leaveType, raw) || String(raw ?? "").trim().toUpperCase();
 }
 
 function sanitizeHourNumber(n) {
@@ -394,25 +357,16 @@ function calendarNormHours() {
 }
 
 function personalNormHours(monthNorm) {
-  let otTotal = 0;
-  let sickTotal = 0;
-  let unpaidTotal = 0; // ОД + ОЗ
-  let eduTotal = 0; // У + УД
-
-  let effectiveLeaveDays = 0;
-
+  let otTotal = 0, sickTotal = 0, unpaidTotal = 0, eduTotal = 0, effectiveLeaveDays = 0;
   for (let i = 0; i < daysInMonth; i++) {
     const lt = normalizeLeaveTypeLegacy(leaveType[i]);
     if (!lt) continue;
-
     if (lt === "vac_paid") otTotal++;
     else if (lt === "sick") sickTotal++;
     else if (lt === "vac_unpaid" || lt === "vac_unpaid_required") unpaidTotal++;
     else if (lt === "edu_paid" || lt === "edu_unpaid") eduTotal++;
-
     if (!isHoliday[i]) effectiveLeaveDays++;
   }
-
   const personalNorm = monthNorm - effectiveLeaveDays * LEAVE_HOURS_PER_DAY;
   return { otTotal, sickTotal, unpaidTotal, eduTotal, personalNorm };
 }
@@ -427,81 +381,73 @@ function holidayWorkedTotals() {
   return { hDay, hNight };
 }
 
+// ✅ First half: days 1–15 (indices 0–14)
+function firstHalfStats() {
+  const endIdx = Math.min(14, daysInMonth - 1);
+  let weekdays = 0, holidayWD = 0, shortWD = 0, leaveEffective = 0;
+  for (let i = 0; i <= endIdx; i++) {
+    if (isWeekendByIndex(year, month, i)) continue;
+    weekdays++;
+    if (isHoliday[i]) holidayWD++;
+    else if (isShortDay[i]) shortWD++;
+    const lt = normalizeLeaveTypeLegacy(leaveType[i]);
+    if (lt && !isHoliday[i]) leaveEffective++;
+  }
+  const monthHalfNorm = weekdays * BASE_DAY_HOURS
+    - holidayWD * BASE_DAY_HOURS
+    - shortWD * SHORT_DAY_REDUCTION_HOURS;
+  const personalHalfNorm = monthHalfNorm - leaveEffective * LEAVE_HOURS_PER_DAY;
+  const workedFH = sumRange(dayHours, 0, endIdx) + sumRange(nightHours, 0, endIdx);
+  return { personalHalfNorm, workedFH };
+}
+
 // =========================
-// ✅ Mobile toolbar logic
+// Mobile toolbar
 // =========================
 
 function isMobileNow() {
   return window.matchMedia?.("(max-width: 767px)")?.matches ?? (window.innerWidth < 768);
 }
 
-/**
- * Scroll the table container so the column at `idx` is roughly centred.
- * Works by reading the actual th element's offsetLeft.
- */
 function scrollTableToColumn(idx) {
   if (!tableScrollable) return;
   const th = headerCells[idx];
   if (!th) return;
-
   const containerWidth = tableScrollable.clientWidth;
   const thLeft = th.offsetLeft;
   const thWidth = th.offsetWidth;
-
-  // Label sticky column width (approx)
   const labelWidth = 46;
-
-  // Target: centre the th in the visible scroll area (excluding sticky label)
   const targetScrollLeft = thLeft - labelWidth - (containerWidth - labelWidth) / 2 + thWidth / 2;
-
   tableScrollable.scrollTo({
     left: Math.max(0, targetScrollLeft),
     behavior: prefersReducedMotion ? "auto" : "smooth",
   });
 }
 
-/**
- * Update the day label and highlight/unhighlight buttons in the mobile toolbar.
- */
 function updateMobileToolbar() {
   if (!isMobileNow()) return;
-
   const idx = mobileSelectedIdx;
   if (!Number.isInteger(idx) || idx < 0 || idx >= daysInMonth) return;
-
   const d = new Date(year, month, idx + 1);
   if (mDayLabel) mDayLabel.textContent = `${idx + 1} · ${DOW_SHORT[d.getDay()]}`;
-
   if (mHolidayBtn) mHolidayBtn.classList.toggle("is-active", Boolean(isHoliday[idx]));
   if (mShortBtn) mShortBtn.classList.toggle("is-active", Boolean(isShortDay[idx]));
 }
 
-/**
- * Select a day in the mobile toolbar: update label, highlight column, scroll to it.
- */
 function setMobileDay(idx) {
   if (idx < 0) idx = 0;
   if (idx >= daysInMonth) idx = daysInMonth - 1;
   mobileSelectedIdx = idx;
-
-  // Highlight the column
   focusDayColumn(idx);
-
-  // Scroll table to show the column
   scrollTableToColumn(idx);
-
-  // Update toolbar label + active buttons
   updateMobileToolbar();
 }
 
-// Toolbar events
 mPrevDayBtn?.addEventListener("click", () => setMobileDay(mobileSelectedIdx - 1));
 mNextDayBtn?.addEventListener("click", () => setMobileDay(mobileSelectedIdx + 1));
 mTodayBtn?.addEventListener("click", () => {
   const now = new Date();
-  if (now.getFullYear() === year && now.getMonth() === month) {
-    setMobileDay(now.getDate() - 1);
-  }
+  if (now.getFullYear() === year && now.getMonth() === month) setMobileDay(now.getDate() - 1);
 });
 mHolidayBtn?.addEventListener("click", () => {
   const idx = mobileSelectedIdx;
@@ -530,7 +476,6 @@ function updateDayMarkClasses(index) {
     dayInputs[index]?.closest("td"),
     nightInputs[index]?.closest("td"),
   ].filter(Boolean);
-
   for (const el of col) {
     el.classList.remove("holiday-col", "short-col");
     if (isHoliday[index]) el.classList.add("holiday-col");
@@ -550,10 +495,7 @@ async function doSaveTimesheet() {
     await saveTimesheet(year, month, payload);
     lastSavedJSON = json;
     dirty = false;
-    setSaveStatus(
-      `Сохранено: ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`,
-      "ok"
-    );
+    setSaveStatus(`Сохранено: ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`, "ok");
   } catch (e) {
     setSaveStatus("Ошибка сохранения", "err");
     setError(e?.message || "Не удалось сохранить табель.");
@@ -563,33 +505,19 @@ async function doSaveTimesheet() {
 function scheduleSave() {
   markDirty();
   if (timesheetSaveTimer) clearTimeout(timesheetSaveTimer);
-
   timesheetSaveTimer = setTimeout(async () => {
     const json = JSON.stringify(currentPayload());
-    if (json === lastSavedJSON) {
-      dirty = false;
-      setSaveStatus("Сохранено", "ok");
-      return;
-    }
+    if (json === lastSavedJSON) { dirty = false; setSaveStatus("Сохранено", "ok"); return; }
     await doSaveTimesheet();
   }, 900);
 }
 
 function clearMoneyUI() {
-  if (netPayEl) netPayEl.textContent = "—";
+  for (const el of [netPayEl, hourRateNetEl, nightHourNetEl, holidayExtraGrossEl,
+    baseFactGrossEl, bonusGrossEl, nightExtraGrossEl, grossPayEl, taxPayEl, advancePayEl, remainingPayEl]) {
+    if (el) el.textContent = "—";
+  }
   if (moneySummaryEl) moneySummaryEl.textContent = "";
-  if (hourRateNetEl) hourRateNetEl.textContent = "—";
-  if (nightHourNetEl) nightHourNetEl.textContent = "—";
-  if (holidayExtraGrossEl) holidayExtraGrossEl.textContent = "—";
-
-  if (baseFactGrossEl) baseFactGrossEl.textContent = "—";
-  if (bonusGrossEl) bonusGrossEl.textContent = "—";
-  if (nightExtraGrossEl) nightExtraGrossEl.textContent = "—";
-
-  if (grossPayEl) grossPayEl.textContent = "—";
-  if (taxPayEl) taxPayEl.textContent = "—";
-  if (advancePayEl) advancePayEl.textContent = "—";
-  if (remainingPayEl) remainingPayEl.textContent = "—";
 }
 
 function recalcAll() {
@@ -597,7 +525,6 @@ function recalcAll() {
 
   const monthNorm = calendarNormHours();
   const { otTotal, sickTotal, unpaidTotal, eduTotal, personalNorm } = personalNormHours(monthNorm);
-
   const totalDay = sumArr(dayHours);
   const totalNight = sumArr(nightHours);
   const workedHours = totalDay + totalNight;
@@ -608,6 +535,11 @@ function recalcAll() {
   animateNumber(normEffectiveEl, personalNorm, (v) => v.toFixed(1), 360);
   animateNumber(overtimeEl, workedHours - personalNorm, (v) => (v >= 0 ? "+" : "") + v.toFixed(1), 360);
   if (leaveDaysEl) leaveDaysEl.textContent = `ОТ:${otTotal} • Б:${sickTotal} • ОД/ОЗ:${unpaidTotal} • У/УД:${eduTotal}`;
+
+  // ✅ First half stats
+  const { personalHalfNorm, workedFH } = firstHalfStats();
+  if (normFirstHalfEl) normFirstHalfEl.textContent = personalHalfNorm.toFixed(1);
+  if (workedFirstHalfEl) workedFirstHalfEl.textContent = workedFH.toFixed(1);
 
   const oklad = parseNumber(okladInput.value);
   if (!Number.isFinite(oklad) || oklad <= 0) {
@@ -657,9 +589,9 @@ function recalcAll() {
   if (moneySummaryEl) moneySummaryEl.textContent =
     `Брутто: ${formatRub(grossTotal, 0)} • Налог: ${formatRub(taxTotal, 0)} • Праздничные x2 (доплата): ${formatRub(holidayExtraGross, 0)}`;
 
-  const endFH = Math.min(14, daysInMonth - 1);
-  const fhDay = sumRange(dayHours, 0, endFH);
-  const fhNight = sumRange(nightHours, 0, endFH);
+  // Advance from first half
+  const fhDay = sumRange(dayHours, 0, Math.min(14, daysInMonth - 1));
+  const fhNight = sumRange(nightHours, 0, Math.min(14, daysInMonth - 1));
   const fhTotal = fhDay + fhNight;
   const baseNetHourlyNoBonus = (oklad * (1 - TAX_RATE)) / monthNorm;
   const nightExtraNetHourly = (oklad / monthNorm) * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
@@ -734,18 +666,32 @@ function buildTableForMonth() {
   nightHours = new Array(daysInMonth).fill(0);
   leaveType = new Array(daysInMonth).fill(null);
 
+  // Sticky empty header
   const emptyTh = document.createElement("th");
-  emptyTh.textContent = "";
   emptyTh.classList.add("label-cell");
   headerRow.appendChild(emptyTh);
 
   for (let i = 1; i <= daysInMonth; i++) {
     const th = document.createElement("th");
-    th.textContent = i;
     th.dataset.dayIndex = String(i - 1);
 
     const weekend = isWeekendByIndex(year, month, i - 1);
     if (weekend) th.classList.add("weekend-col");
+
+    // ✅ Date number + day of week abbreviation
+    const dowIdx = new Date(year, month, i).getDay();
+    const numEl = document.createElement("span");
+    numEl.style.display = "block";
+    numEl.textContent = String(i);
+
+    const dowEl = document.createElement("span");
+    dowEl.className = "th-dow";
+    dowEl.textContent = DOW_SHORT[dowIdx];
+    // Make weekends red in DOW too
+    if (weekend) dowEl.style.color = "rgba(252, 165, 165, 0.7)";
+
+    th.appendChild(numEl);
+    th.appendChild(dowEl);
 
     th.style.cursor = "pointer";
     th.title = "Клик — праздник. Даблклик — сокращённый день.";
@@ -767,10 +713,7 @@ function buildTableForMonth() {
 
     th.addEventListener("dblclick", (e) => {
       const idx = Number(e.currentTarget.dataset.dayIndex);
-      if (clickTimer) {
-        clearTimeout(clickTimer);
-        clickTimer = null;
-      }
+      if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
       if (isHoliday[idx]) isHoliday[idx] = false;
       isShortDay[idx] = !isShortDay[idx];
       updateDayMarkClasses(idx);
@@ -796,7 +739,7 @@ function buildTableForMonth() {
     dayInput.type = "text";
     dayInput.inputMode = "text";
     dayInput.placeholder = "";
-    dayInput.classList.add("input-hour", "input-glass");
+    dayInput.classList.add("input-hour","input-glass");
     dayInput.autocapitalize = "characters";
     dayInput.spellcheck = false;
 
@@ -814,87 +757,44 @@ function buildTableForMonth() {
 
     dayInput.addEventListener("blur", () => {
       const s = String(dayInput.value ?? "").trim();
-      if (s === "0" || s === "0.0" || s === "0,0") {
-        dayInput.value = "";
-        dayHours[i] = 0;
-        scheduleSave();
-        recalcAll();
-      }
-      const v = String(dayInput.value ?? "").trim().toUpperCase();
-      if (v === "О") {
-        dayInput.value = "ОТ";
-        dayInput.dataset.prev = "ОТ";
-      }
+      if (s === "0" || s === "0.0" || s === "0,0") { dayInput.value = ""; dayHours[i] = 0; scheduleSave(); recalcAll(); }
+      if (String(dayInput.value ?? "").trim().toUpperCase() === "О") { dayInput.value = "ОТ"; dayInput.dataset.prev = "ОТ"; }
     });
 
     dayInput.addEventListener("input", () => {
       const sanitized = sanitizeDayCellValue(dayInput.value);
       if (sanitized !== dayInput.value) dayInput.value = sanitized;
-
       const raw = dayInput.value;
 
       if (!raw.trim()) {
         setError(null);
-        if (leaveType[i]) {
-          leaveType[i] = null;
-          unlockNightCell(i);
-        }
-        dayHours[i] = 0;
-        dayInput.dataset.prev = "";
-        recalcAll();
-        scheduleSave();
-        return;
+        if (leaveType[i]) { leaveType[i] = null; unlockNightCell(i); }
+        dayHours[i] = 0; dayInput.dataset.prev = "";
+        recalcAll(); scheduleSave(); return;
       }
 
       const parsed = parseHoursOrLeave(raw);
 
       if (parsed.kind === "leave") {
-        if (weekend) {
-          setError("Коды отсутствия нельзя ставить на выходные (сб/вс).");
-          revertToPrev(dayInput);
-          return;
-        }
-
+        if (weekend) { setError("Коды отсутствия нельзя ставить на выходные (сб/вс)."); revertToPrev(dayInput); return; }
         setError(null);
         leaveType[i] = parsed.leave;
         dayInput.value = sanitizeLeaveDisplayValue(raw, parsed.leave);
-
-        dayHours[i] = 0;
-        nightHours[i] = 0;
-
+        dayHours[i] = 0; nightHours[i] = 0;
         lockNightCell(i);
-
         dayInput.dataset.prev = dayInput.value;
-        recalcAll();
-        scheduleSave();
-        return;
+        recalcAll(); scheduleSave(); return;
       }
 
       if (parsed.kind === "hours") {
         setError(null);
-
-        if (leaveType[i]) {
-          leaveType[i] = null;
-          unlockNightCell(i);
-        }
-
+        if (leaveType[i]) { leaveType[i] = null; unlockNightCell(i); }
         const nextDay = sanitizeHourNumber(parsed.hours);
         const nextNight = sanitizeHourNumber(nightHours[i] || 0);
-
-        const ok = clampDayTotalOrRevert({
-          index: i,
-          nextDay,
-          nextNight,
-          onRevert: () => revertToPrev(dayInput),
-        });
+        const ok = clampDayTotalOrRevert({ index: i, nextDay, nextNight, onRevert: () => revertToPrev(dayInput) });
         if (!ok) return;
-
-        dayHours[i] = nextDay;
-        dayInput.dataset.prev = dayInput.value;
-
-        recalcAll();
-        scheduleSave();
-        return;
+        dayHours[i] = nextDay; dayInput.dataset.prev = dayInput.value;
+        recalcAll(); scheduleSave(); return;
       }
 
       setError("Некорректное значение. Допустимы только числа или коды: ОТ, ОД, ОЗ, У, УД, Б.");
@@ -912,7 +812,7 @@ function buildTableForMonth() {
     nightInput.type = "text";
     nightInput.inputMode = "decimal";
     nightInput.placeholder = "";
-    nightInput.classList.add("input-hour", "input-glass");
+    nightInput.classList.add("input-hour","input-glass");
     nightInput.spellcheck = false;
 
     attachPrevValueTracking(nightInput);
@@ -937,17 +837,13 @@ function buildTableForMonth() {
       const sanitized = sanitizeNumericValue(nightInput.value);
       if (sanitized !== nightInput.value) nightInput.value = sanitized;
       const raw = nightInput.value;
-
       if (!raw.trim()) { setError(null); nightHours[i] = 0; nightInput.dataset.prev = ""; recalcAll(); scheduleSave(); return; }
-
       const n = parseNumber(raw);
       if (!Number.isFinite(n)) { setError("Ночные: введите число или оставьте пусто."); return; }
-
       const nextNight = sanitizeHourNumber(n);
       const nextDay = sanitizeHourNumber(dayHours[i] || 0);
       const ok = clampDayTotalOrRevert({ index: i, nextDay, nextNight, onRevert: () => revertToPrev(nightInput) });
       if (!ok) return;
-
       setError(null); nightHours[i] = nextNight; nightInput.dataset.prev = nightInput.value;
       recalcAll(); scheduleSave();
     });
@@ -964,7 +860,8 @@ function applyPayload(payload) {
   if (Array.isArray(payload.isShortDay) && payload.isShortDay.length === daysInMonth) isShortDay = payload.isShortDay;
   if (Array.isArray(payload.dayHours) && payload.dayHours.length === daysInMonth) dayHours = payload.dayHours;
   if (Array.isArray(payload.nightHours) && payload.nightHours.length === daysInMonth) nightHours = payload.nightHours;
-  if (Array.isArray(payload.leaveType) && payload.leaveType.length === daysInMonth) leaveType = payload.leaveType.map((x) => normalizeLeaveTypeLegacy(x));
+  if (Array.isArray(payload.leaveType) && payload.leaveType.length === daysInMonth)
+    leaveType = payload.leaveType.map((x) => normalizeLeaveTypeLegacy(x));
 
   for (let i = 0; i < daysInMonth; i++) {
     updateDayMarkClasses(i);
@@ -978,7 +875,6 @@ function applyPayload(payload) {
     dayInputs[i].dataset.prev = dayInputs[i].value ?? "";
     nightInputs[i].dataset.prev = nightInputs[i].value ?? "";
   }
-
   updateMobileToolbar();
 }
 
@@ -1050,9 +946,7 @@ logoutBtn?.addEventListener("click", async () => {
   try { await signOut(); } finally { location.href = "login.html?next=table.html"; }
 });
 
-saveBtn?.addEventListener("click", async () => {
-  await doSaveTimesheet();
-});
+saveBtn?.addEventListener("click", async () => { await doSaveTimesheet(); });
 
 okladInput?.addEventListener("input", () => { recalcAll(); });
 
@@ -1062,7 +956,7 @@ monthSelect.addEventListener("change", async () => {
   buildTableForMonth();
   await loadCurrentMonthFromDb();
   recalcAll();
-  if (isMobileNow()) setMobileDay(mobileSelectedIdx);
+  if (isMobileNow()) setMobileDay(mobileSelectedIdx < daysInMonth ? mobileSelectedIdx : 0);
 });
 
 yearSelect.addEventListener("change", async () => {
@@ -1071,7 +965,7 @@ yearSelect.addEventListener("change", async () => {
   buildTableForMonth();
   await loadCurrentMonthFromDb();
   recalcAll();
-  if (isMobileNow()) setMobileDay(mobileSelectedIdx);
+  if (isMobileNow()) setMobileDay(mobileSelectedIdx < daysInMonth ? mobileSelectedIdx : 0);
 });
 
 // =========================
@@ -1089,7 +983,6 @@ yearSelect.addEventListener("change", async () => {
   setFromQueryOrNow();
   fillYearOptions();
   updateUrlForMonth();
-
   buildTableForMonth();
 
   try {
@@ -1099,11 +992,9 @@ yearSelect.addEventListener("change", async () => {
 
     if (profile?.gender === "female") BASE_DAY_HOURS = FEMALE_DAY_HOURS;
     else BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
-
     LEAVE_HOURS_PER_DAY = BASE_DAY_HOURS;
 
     if (profileRole === "admin") adminLink?.classList.remove("hidden");
-
     if (profileOklad != null && String(okladInput?.value ?? "").trim() === "") {
       okladInput.value = String(profileOklad);
     }
@@ -1114,11 +1005,13 @@ yearSelect.addEventListener("change", async () => {
   await loadCurrentMonthFromDb();
   recalcAll();
 
-  // Mobile: init toolbar to "today" if in this month, else day 1
+  // Init mobile toolbar
   if (isMobileNow()) {
     const now = new Date();
-    if (now.getFullYear() === year && now.getMonth() === month) setMobileDay(now.getDate() - 1);
-    else setMobileDay(0);
+    const initIdx = (now.getFullYear() === year && now.getMonth() === month)
+      ? now.getDate() - 1
+      : 0;
+    setMobileDay(Math.min(initIdx, daysInMonth - 1));
   }
 
   if (Number.isInteger(focusDayIndex) && focusDayIndex >= 0 && focusDayIndex < daysInMonth) {
