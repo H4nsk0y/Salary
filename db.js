@@ -1,4 +1,6 @@
-// /db.js
+// =========================
+// FILE: /db.js
+// =========================
 import { supabase } from "./supabaseClient.js";
 
 function isNotFoundError(error) {
@@ -15,6 +17,23 @@ async function requireUserId() {
   if (sErr) throw sErr;
   const uid = s.session?.user?.id;
   if (!uid) throw new Error("NO_SESSION");
+  return uid;
+}
+
+async function requireAdmin() {
+  const uid = await requireUserId();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("user_id", uid)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data || data.role !== "admin") {
+    throw new Error("Доступ запрещён. Нужна роль admin.");
+  }
+
   return uid;
 }
 
@@ -50,7 +69,7 @@ export async function updateMyOklad(oklad) {
 export async function updateMyProfile({ displayName, oklad, gender, avatarUrl }) {
   const uid = await requireUserId();
 
-   const patch = {};
+  const patch = {};
   if (displayName !== undefined) patch.display_name = displayName;
   if (oklad !== undefined) patch.oklad = oklad;
   if (gender !== undefined) patch.gender = gender;
@@ -64,7 +83,6 @@ export async function updateMyProfile({ displayName, oklad, gender, avatarUrl })
   if (error) throw error;
 }
 
-/** Удобный алиас (если где-то в коде хочется просто "fields") */
 export async function updateMyProfileFields(fields) {
   const uid = await requireUserId();
   const { error } = await supabase.from("profiles").update(fields).eq("user_id", uid);
@@ -107,10 +125,6 @@ export async function saveTimesheet(year, month, payload) {
   if (error) throw error;
 }
 
-/**
- * Список табелей пользователя (метаданные)
- * — полезно для ЛК "последние месяцы"
- */
 export async function listMyTimesheets(limit = 24) {
   const uid = await requireUserId();
 
@@ -126,13 +140,6 @@ export async function listMyTimesheets(limit = 24) {
   return data ?? [];
 }
 
-/**
- * ✅ Для подсчёта переработки за год / истории:
- * Можно вернуть только мету или сразу payload.
- *
- * @param {number} year
- * @param {{withPayload?: boolean}} options
- */
 export async function listMyTimesheetsByYear(year, options = {}) {
   const uid = await requireUserId();
   const withPayload = Boolean(options.withPayload);
@@ -152,7 +159,6 @@ export async function listMyTimesheetsByYear(year, options = {}) {
   return data ?? [];
 }
 
-/** ✅ Удалить табель за конкретный месяц */
 export async function deleteMyTimesheet(year, month) {
   const uid = await requireUserId();
 
@@ -166,7 +172,6 @@ export async function deleteMyTimesheet(year, month) {
   if (error) throw error;
 }
 
-/** (опционально) проверить, есть ли табель без payload */
 export async function getTimesheetMeta(year, month) {
   const uid = await requireUserId();
 
@@ -187,13 +192,15 @@ export async function getTimesheetMeta(year, month) {
 }
 
 /** =========================
- *  ADMIN (requires RLS policies)
+ *  ADMIN
  *  ========================= */
 
 export async function adminListProfiles(limit = 100) {
+  await requireAdmin();
+
   const { data, error } = await supabase
     .from("profiles")
-    .select("user_id, role, oklad, display_name, avatar_url, created_at")
+    .select("user_id, role, oklad, display_name, avatar_url, gender, created_at")
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -202,6 +209,8 @@ export async function adminListProfiles(limit = 100) {
 }
 
 export async function adminListTimesheets(limit = 100) {
+  await requireAdmin();
+
   const { data, error } = await supabase
     .from("timesheets")
     .select("user_id, year, month, updated_at")
@@ -210,4 +219,67 @@ export async function adminListTimesheets(limit = 100) {
 
   if (error) throw error;
   return data ?? [];
+}
+
+export async function adminGetProfilesByIds(userIds) {
+  await requireAdmin();
+
+  const ids = Array.isArray(userIds)
+    ? userIds.map((x) => String(x)).filter(Boolean)
+    : [];
+
+  if (!ids.length) return [];
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("user_id, role, oklad, gender, display_name, avatar_url, created_at")
+    .in("user_id", ids);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function adminLoadTimesheet(userId, year, month) {
+  await requireAdmin();
+
+  const { data, error } = await supabase
+    .from("timesheets")
+    .select("payload, updated_at")
+    .eq("user_id", userId)
+    .eq("year", year)
+    .eq("month", month)
+    .maybeSingle();
+
+  if (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
+
+  return data?.payload ?? null;
+}
+
+export async function adminSaveTimesheet(userId, year, month, payload) {
+  await requireAdmin();
+
+  const { error } = await supabase
+    .from("timesheets")
+    .upsert(
+      { user_id: userId, year, month, payload },
+      { onConflict: "user_id,year,month" }
+    );
+
+  if (error) throw error;
+}
+
+export async function adminSaveManyTimesheets(items) {
+  await requireAdmin();
+
+  const rows = Array.isArray(items) ? items : [];
+  if (!rows.length) return;
+
+  const { error } = await supabase
+    .from("timesheets")
+    .upsert(rows, { onConflict: "user_id,year,month" });
+
+  if (error) throw error;
 }

@@ -1,178 +1,507 @@
+
 <!doctype html>
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Админка — Alvisa</title>
+    <title>Админ-табель — Alvisa</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
     <style>
-      html, body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-      :root { --glow: rgba(99, 102, 241, 0.35); --glow2: rgba(56, 189, 248, 0.25); }
+      html, body {
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      }
+
+      :root {
+        --glass-bg: rgba(15, 23, 42, 0.64);
+        --glass-border: rgba(255, 255, 255, 0.08);
+      }
 
       body {
         position: relative;
         overflow-x: hidden;
-        background:
-          radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.12), transparent 60%),
-          radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.10), transparent 60%),
-          radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.08), transparent 60%),
-          #020617;
+        background: #020617;
+        background-image:
+          radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.18), transparent 60%),
+          radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.15), transparent 60%),
+          radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.12), transparent 60%);
       }
 
-      body::before{
-        content:"";
-        position:fixed;
-        inset:-25%;
-        pointer-events:none;
-        z-index:0;
+      body::before {
+        content: "";
+        position: fixed;
+        inset: -25%;
+        pointer-events: none;
+        z-index: 0;
         background:
-          radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.28), transparent 45%),
-          radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.22), transparent 45%),
-          radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.14), transparent 45%);
-        filter: blur(60px);
-        opacity: 0.7;
-        transform: translate3d(0,0,0);
-        animation: bgFloat 12s ease-in-out infinite alternate;
+          radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.4), transparent 45%),
+          radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.3), transparent 45%),
+          radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.2), transparent 45%);
+        filter: blur(70px);
+        opacity: 0.6;
+        animation: bgFloat 18s ease-in-out infinite alternate;
       }
 
       @keyframes bgFloat {
         0% { transform: translate3d(-2%, -2%, 0) scale(1); }
-        100% { transform: translate3d(2%, 2%, 0) scale(1.05); }
+        100% { transform: translate3d(3%, 3%, 0) scale(1.08); }
       }
 
-      .reveal{
-        opacity:0;
-        transform: translateY(18px);
-        filter: blur(6px);
-        transition: opacity 700ms cubic-bezier(.2,.8,.2,1), transform 700ms cubic-bezier(.2,.8,.2,1), filter 700ms cubic-bezier(.2,.8,.2,1);
-      }
-      body.is-loaded .reveal{ opacity:1; transform:translateY(0); filter:blur(0); }
-
-      .glass-card{
-        position:relative;
-        overflow:hidden;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
+      .glass-card {
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(16px) saturate(180%);
+        -webkit-backdrop-filter: blur(16px) saturate(180%);
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        box-shadow:
+          0 25px 50px -20px rgba(0, 0, 0, 0.7),
+          0 0 0 1px rgba(255, 255, 255, 0.04);
       }
 
-      .glass-card::before{
-        content:"";
-        position:absolute;
-        inset:0;
-        pointer-events:none;
-        opacity:0;
-        background:
-          radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.35), transparent 60%),
-          radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
-        transition: opacity 350ms ease;
-      }
-      .glass-card:hover::before{ opacity:1; }
-
-      .hover-lift{
-        transition: transform 250ms cubic-bezier(.2,.8,.2,1), box-shadow 250ms cubic-bezier(.2,.8,.2,1);
-      }
-      .hover-lift:hover{
-        transform: translateY(-4px);
-        box-shadow: 0 20px 60px -40px var(--glow);
+      .input-glass {
+        background: rgba(2, 6, 23, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(8px);
+        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
       }
 
-      .shake { animation: shake 320ms ease-in-out; }
+      .input-glass:hover {
+        background: rgba(2, 6, 23, 0.78);
+        border-color: rgba(99, 102, 241, 0.28);
+      }
+
+      .input-glass:focus {
+        outline: none;
+        border-color: rgba(99, 102, 241, 0.8);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+      }
+
+      .select-wrap {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .select-wrap::after {
+        content: "▾";
+        position: absolute;
+        right: 12px;
+        color: rgba(148, 163, 184, 0.9);
+        pointer-events: none;
+        font-size: 13px;
+      }
+
+      select.ui-select {
+        appearance: none;
+        -webkit-appearance: none;
+        background-color: rgba(2, 6, 23, 0.72);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: rgba(226, 232, 240, 0.95);
+        border-radius: 1rem;
+        padding: 8px 34px 8px 14px;
+        font-size: 0.92rem;
+        line-height: 1.2;
+        outline: none;
+        backdrop-filter: blur(8px);
+        transition: all 0.2s;
+      }
+
+      select.ui-select:hover {
+        background-color: rgba(2, 6, 23, 0.84);
+        border-color: rgba(99, 102, 241, 0.4);
+      }
+
+      select.ui-select:focus {
+        border-color: rgba(99, 102, 241, 0.8);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+      }
+
+      .scrollable {
+        overflow-x: auto;
+        border-radius: 1rem;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .admin-matrix {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 1320px;
+        background: rgba(30, 41, 59, 0.52);
+        border-radius: 1rem;
+        overflow: hidden;
+      }
+
+      .admin-matrix th,
+      .admin-matrix td {
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        text-align: center;
+      }
+
+      .admin-matrix th {
+        background: rgba(15, 23, 42, 0.86);
+        color: #94a3b8;
+        font-size: 0.88rem;
+        font-weight: 600;
+        padding: 10px 4px 8px;
+        user-select: none;
+      }
+
+      .admin-matrix td {
+        padding: 8px 2px;
+      }
+
+      .th-dow {
+        display: block;
+        font-size: 9px;
+        font-weight: 400;
+        opacity: 0.55;
+        margin-top: 2px;
+      }
+
+      .label-cell {
+        position: sticky;
+        left: 0;
+        z-index: 4;
+        min-width: 190px;
+        background: rgba(12, 20, 44, 0.98);
+        backdrop-filter: blur(12px);
+        color: #e2e8f0;
+        text-align: left !important;
+        padding: 10px 12px !important;
+        white-space: nowrap;
+        border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+      }
+
+      .label-main {
+        display: block;
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: rgba(241, 245, 249, 0.98);
+      }
+
+      .label-sub {
+        display: block;
+        margin-top: 2px;
+        font-size: 0.72rem;
+        color: rgba(148, 163, 184, 0.92);
+      }
+
+      .label-cell.night .label-sub {
+        color: rgba(254, 202, 202, 0.92);
+      }
+
+      .summary-head {
+        position: sticky;
+        right: 0;
+        z-index: 5;
+        min-width: 220px;
+        background: rgba(12, 20, 44, 0.98) !important;
+        border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
+      }
+
+      .summary-cell {
+        position: sticky;
+        right: 0;
+        z-index: 3;
+        min-width: 220px;
+        background: rgba(8, 15, 34, 0.98);
+        border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
+        padding: 10px !important;
+      }
+
+      .summary-box {
+        text-align: left;
+        display: grid;
+        gap: 8px;
+      }
+
+      .summary-main {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 0.78rem;
+        color: rgba(148, 163, 184, 0.95);
+      }
+
+      .summary-main strong {
+        font-size: 1rem;
+        color: rgba(241, 245, 249, 0.98);
+        font-weight: 800;
+      }
+
+      .summary-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 0.76rem;
+        color: rgba(148, 163, 184, 0.95);
+      }
+
+      .summary-line strong {
+        color: rgba(226, 232, 240, 0.98);
+        font-weight: 700;
+      }
+
+      .summary-line.muted strong {
+        color: rgba(196, 181, 253, 0.98);
+      }
+
+      .weekend-col {
+        background-color: rgba(239, 68, 68, 0.15) !important;
+      }
+
+      .holiday-col {
+        background-color: rgba(245, 158, 11, 0.2) !important;
+      }
+
+      .short-col {
+        background-color: rgba(16, 185, 129, 0.16) !important;
+      }
+
+      .admin-matrix th.weekend-col {
+        background-color: rgba(239, 68, 68, 0.2) !important;
+      }
+
+      .admin-matrix th.holiday-col {
+        background-color: rgba(245, 158, 11, 0.24) !important;
+      }
+
+      .admin-matrix th.short-col {
+        background-color: rgba(16, 185, 129, 0.2) !important;
+      }
+
+      .person-divider td {
+        box-shadow: inset 0 -1px 0 rgba(99, 102, 241, 0.18);
+      }
+
+      .input-hour {
+        width: 54px;
+        padding: 8px 4px;
+        background: rgba(0, 0, 0, 0.38);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        color: white;
+        text-align: center;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        transition: all 0.2s;
+        backdrop-filter: blur(4px);
+      }
+
+      .input-hour:focus {
+        outline: none;
+        border-color: rgba(99, 102, 241, 0.8);
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+        background: rgba(0, 0, 0, 0.56);
+      }
+
+      td.night-cell .input-hour {
+        color: rgba(254, 202, 202, 0.95);
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .shake {
+        animation: shake 0.3s ease-in-out;
+      }
+
       @keyframes shake {
-        0% { transform: translateX(0); }
-        25% { transform: translateX(-6px); }
-        50% { transform: translateX(6px); }
-        75% { transform: translateX(-4px); }
-        100% { transform: translateX(0); }
+        0%, 100% { transform: translateX(0); }
+        20% { transform: translateX(-5px); }
+        40% { transform: translateX(5px); }
+        60% { transform: translateX(-3px); }
+        80% { transform: translateX(3px); }
+      }
+
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: rgba(30, 41, 59, 0.55);
+        border-radius: 999px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(99, 102, 241, 0.55);
+        border-radius: 999px;
+        border: 2px solid rgba(30, 41, 59, 0.55);
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(99, 102, 241, 0.8);
+      }
+
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(99, 102, 241, 0.55) rgba(30, 41, 59, 0.55);
+      }
+
+      @media (max-width: 1024px) {
+        .label-cell {
+          min-width: 170px;
+        }
+
+        .summary-head,
+        .summary-cell {
+          min-width: 200px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .input-hour {
+          width: 50px;
+          min-height: 44px;
+          font-size: 16px;
+        }
+
+        .label-cell {
+          min-width: 150px;
+        }
+
+        .summary-head,
+        .summary-cell {
+          min-width: 180px;
+        }
       }
     </style>
   </head>
 
-  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-white">
-    <script>  
-    document.body.classList.add("is-loaded");
-    </script>
-    <div class="relative z-10 mx-auto max-w-6xl px-4 py-10">
-      <header class="mb-8 reveal">
-        <div class="flex items-center gap-3">
-          <span
-            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/30 to-sky-400/10 ring-1 ring-white/10 shadow-[0_20px_60px_-40px_rgba(99,102,241,0.6)] text-lg font-semibold text-slate-100/90"
-            aria-hidden="true"
-          >A</span>
+  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+    <div class="relative z-10 mx-auto max-w-[1600px] px-4 py-8 md:py-10">
+      <header class="mb-6">
+        <div class="flex flex-col gap-4 rounded-3xl border border-white/10 bg-slate-950/55 p-4 backdrop-blur-xl md:p-5">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex items-center gap-3">
+              <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 text-lg font-bold text-slate-100">A</span>
+              <div>
+                <h1 class="text-2xl md:text-3xl font-bold tracking-tight">
+                  <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
+                    Общий админ-табель
+                  </span>
+                </h1>
+                <p id="monthYearDisplay" class="mt-1 text-sm text-slate-300/80">—</p>
+              </div>
+            </div>
 
-          <div class="flex-1">
-            <h1 class="text-3xl font-semibold tracking-tight">
-              <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
-                Админка
-              </span>
-            </h1>
-            <p class="mt-1 text-sm text-slate-300/90">Пользователи и табели (только для admin).</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <a
+                id="backToTableLink"
+                href="table.html"
+                class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition hover:bg-white/10"
+              >Личный табель</a>
+
+              <button
+                id="reloadBtn"
+                class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition hover:bg-white/10"
+              >Обновить</button>
+
+              <button
+                id="saveBtn"
+                class="rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-5 py-2.5 text-sm font-semibold text-slate-100 ring-1 ring-white/10 transition hover:shadow-[0_0_20px_rgba(99,102,241,0.45)]"
+              >Сохранить всем</button>
+
+              <button
+                id="logoutBtn"
+                class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10"
+              >Выйти</button>
+            </div>
           </div>
 
-          <button
-            id="logoutBtn"
-            class="rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
-          >Выйти</button>
+          <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
+                <label class="text-xs text-slate-300" for="monthSelect">Месяц</label>
+                <span class="select-wrap">
+                  <select id="monthSelect" class="ui-select">
+                    <option value="0">Янв</option>
+                    <option value="1">Фев</option>
+                    <option value="2">Мар</option>
+                    <option value="3">Апр</option>
+                    <option value="4">Май</option>
+                    <option value="5">Июн</option>
+                    <option value="6">Июл</option>
+                    <option value="7">Авг</option>
+                    <option value="8">Сен</option>
+                    <option value="9">Окт</option>
+                    <option value="10">Ноя</option>
+                    <option value="11">Дек</option>
+                  </select>
+                </span>
+
+                <label class="ml-2 text-xs text-slate-300" for="yearSelect">Год</label>
+                <span class="select-wrap">
+                  <select id="yearSelect" class="ui-select"></select>
+                </span>
+              </div>
+
+              <span id="saveStatus" class="inline-flex items-center rounded-full bg-white/5 px-4 py-1.5 text-xs text-slate-300 ring-1 ring-white/10">—</span>
+            </div>
+
+            <div class="text-xs text-slate-400">
+              Клик по дню — <span class="text-amber-300">праздник</span>, двойной клик — <span class="text-emerald-300">сокращённый</span>. Метка применяется сразу ко всем.
+            </div>
+          </div>
         </div>
       </header>
 
-      <div class="mb-6 flex gap-4 border-b border-white/10 pb-4 reveal">
-        <a href="index.html" class="text-slate-300 hover:text-indigo-200">Калькулятор</a>
-        <a href="table.html" class="text-slate-300 hover:text-indigo-200">Табель</a>
-        <span class="ml-auto text-indigo-300 font-medium">Admin</span>
-      </div>
+      <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
 
-      <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-200 ring-1 ring-rose-500/20"></div>
+      <section class="mb-6 grid gap-4 md:grid-cols-3">
+        <div class="glass-card rounded-3xl p-5">
+          <div class="text-sm text-slate-400">Операторов в табеле</div>
+          <div id="teamCount" class="mt-2 text-3xl font-bold text-slate-100">4</div>
+          <div class="mt-2 text-xs text-slate-400">Фиксированный состав из 4 человек</div>
+        </div>
 
-      <main class="grid gap-6 lg:grid-cols-2 reveal">
-        <section class="glass-card hover-lift rounded-3xl bg-slate-900/35 p-6 ring-1 ring-white/10 shadow-[0_20px_80px_-50px_rgba(99,102,241,0.45)]">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold">Пользователи</h2>
-            <button id="reloadProfiles" class="rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-200 ring-1 ring-white/10 hover:bg-white/10">
-              Обновить
-            </button>
-          </div>
-          <div class="mt-4 overflow-x-auto rounded-2xl ring-1 ring-white/10">
-            <table class="w-full text-left text-sm">
-              <thead class="bg-white/5 text-slate-300">
-                <tr>
-                  <th class="px-4 py-3">user_id</th>
-                  <th class="px-4 py-3">role</th>
-                  <th class="px-4 py-3">oklad</th>
-                </tr>
-              </thead>
-              <tbody id="profilesTbody" class="divide-y divide-white/10"></tbody>
-            </table>
-          </div>
-        </section>
+        <div class="glass-card rounded-3xl p-5">
+          <div class="text-sm text-slate-400">Норма по календарю (месяц)</div>
+          <div id="normMonth" class="mt-2 text-3xl font-bold text-slate-100">—</div>
+          <div class="mt-2 text-xs text-slate-400">Личные нормы сотрудников видны справа в строках</div>
+        </div>
 
-        <section class="glass-card hover-lift rounded-3xl bg-slate-900/35 p-6 ring-1 ring-white/10 shadow-[0_20px_80px_-50px_rgba(56,189,248,0.35)]">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold">Табели</h2>
-            <button id="reloadTimesheets" class="rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-200 ring-1 ring-white/10 hover:bg-white/10">
-              Обновить
-            </button>
+        <div class="glass-card rounded-3xl p-5">
+          <div class="text-sm text-slate-400">Норма по календарю (1–15)</div>
+          <div id="normFirstHalf" class="mt-2 text-3xl font-bold text-slate-100">—</div>
+          <div class="mt-2 text-xs text-slate-400">Общая норма первой половины месяца</div>
+        </div>
+      </section>
+
+      <section class="glass-card rounded-3xl p-5 md:p-6">
+        <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 class="text-xl font-semibold text-slate-100">Матрица табеля</h2>
+            <p class="mt-1 text-sm text-slate-400">
+              Справа по каждому сотруднику: <span class="text-slate-200">часы 1-я половина / месяц</span> и <span class="text-slate-200">норма 1-я половина / месяц</span>.
+            </p>
           </div>
-          <div class="mt-4 overflow-x-auto rounded-2xl ring-1 ring-white/10">
-            <table class="w-full text-left text-sm">
-              <thead class="bg-white/5 text-slate-300">
-                <tr>
-                  <th class="px-4 py-3">user_id</th>
-                  <th class="px-4 py-3">год</th>
-                  <th class="px-4 py-3">мес</th>
-                  <th class="px-4 py-3">обновлён</th>
-                </tr>
-              </thead>
-              <tbody id="timesheetsTbody" class="divide-y divide-white/10"></tbody>
-            </table>
+
+          <div class="text-xs text-slate-400">
+            Коды: <span class="text-slate-200">ОТ</span>, <span class="text-slate-200">ОД</span>, <span class="text-slate-200">ОЗ</span>, <span class="text-slate-200">У</span>, <span class="text-slate-200">УД</span>, <span class="text-slate-200">Б</span>
           </div>
-        </section>
-      </main>
+        </div>
+
+        <div class="scrollable" id="tableScrollable">
+          <table class="admin-matrix">
+            <thead>
+              <tr id="headerRow"></tr>
+            </thead>
+            <tbody id="matrixBody"></tbody>
+          </table>
+        </div>
+      </section>
     </div>
 
     <script type="module" src="./admin.js"></script>
