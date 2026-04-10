@@ -304,6 +304,8 @@ function createState(member, profile) {
     dayInputs: [],
     nightInputs: [],
     summaryEl: null,
+    dayRowEl: null,
+    nightRowEl: null,
   };
 }
 
@@ -410,9 +412,10 @@ function applyLoadedPayloads(payloadsByUserId) {
   }
 }
 
-function makeLabelCell(name, shiftLabel, tone = "day") {
+function makeLabelCell(name) {
   const td = document.createElement("td");
-  td.className = `label-cell ${tone}`;
+  td.className = "label-cell";
+  td.rowSpan = 2;
 
   const main = document.createElement("span");
   main.className = "label-main";
@@ -420,9 +423,13 @@ function makeLabelCell(name, shiftLabel, tone = "day") {
 
   const sub = document.createElement("span");
   sub.className = "label-sub";
-  sub.textContent = shiftLabel;
+  sub.textContent = "День / Ночь";
 
-  td.append(main, sub);
+  const meta = document.createElement("span");
+  meta.className = "label-meta";
+  
+
+  td.append(main, sub, meta);
   return td;
 }
 
@@ -755,7 +762,7 @@ function buildTable() {
 
   const labelTh = document.createElement("th");
   labelTh.className = "label-cell";
-  labelTh.textContent = "Оператор / смена";
+  labelTh.textContent = "Оператор";
   headerRow.appendChild(labelTh);
 
   for (let i = 0; i < daysInMonth; i++) {
@@ -781,11 +788,18 @@ function buildTable() {
     const dayTr = document.createElement("tr");
     const nightTr = document.createElement("tr");
 
+    state.dayRowEl = dayTr;
+    state.nightRowEl = nightTr;
+
+    dayTr.classList.add("employee-day-row");
+    nightTr.classList.add("employee-night-row");
+
     if (idx < teamStates.length - 1) {
       nightTr.classList.add("person-divider");
     }
 
-    dayTr.appendChild(makeLabelCell(state.name, "День", "day"));
+    dayTr.appendChild(makeLabelCell(state.name));
+
     for (let i = 0; i < daysInMonth; i++) {
       dayTr.appendChild(createDayInput(state, i));
     }
@@ -796,7 +810,6 @@ function buildTable() {
     state.summaryEl = summaryTd;
     dayTr.appendChild(summaryTd);
 
-    nightTr.appendChild(makeLabelCell(state.name, "Ночь", "night"));
     for (let i = 0; i < daysInMonth; i++) {
       nightTr.appendChild(createNightInput(state, i));
     }
@@ -952,6 +965,15 @@ function updatePersonSummary(state) {
   const { personalNorm } = personalNormHours(state);
   const { personalHalfNorm, workedFH } = firstHalfStats(state);
   const leaves = countLeaves(state);
+
+  const overtime = workedTotal - personalNorm;
+  const hasOvertime = overtime > 0.0001;
+
+  state.dayRowEl?.classList.toggle("overtime-row", hasOvertime);
+  state.dayRowEl?.classList.toggle("overtime-row-top", hasOvertime);
+
+  state.nightRowEl?.classList.toggle("overtime-row", hasOvertime);
+  state.nightRowEl?.classList.toggle("overtime-row-bottom", hasOvertime);
 
   state.summaryEl.innerHTML = `
     <div class="summary-box">
