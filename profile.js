@@ -72,7 +72,21 @@ const monthNamesShort = ["Янв","Фев","Мар","Апр","Май","Июн","
 const monthNamesFull = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const WEEK_LABELS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
 
-const POSITION_VALUES = new Set(["", "senior_operator", "operator", "loader"]);
+const POSITION_VALUES = new Set([
+  "",
+  "egais_head",
+  "egais_senior_operator",
+  "egais_operator",
+  "warehouse_head",
+  "storekeeper",
+  "loader",
+  "driver",
+  "bottling_plant_head",
+  "shift_senior_master",
+  "shift_master",
+  "filling_line_operator",
+  "accountant",
+]);
 
 let loadedYear = new Date().getFullYear();
 let payloadByMonth = new Map();

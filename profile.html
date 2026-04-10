@@ -399,7 +399,20 @@
     <header class="mb-8 reveal">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-3 flex-1">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 shadow-xl text-xl font-bold text-slate-100" aria-hidden="true">A</span>
+          <a
+          href="updates.html"
+          class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/45 to-sky-400/25 ring-1 ring-white/15 shadow-xl text-slate-100 transition-all hover:scale-[1.03] hover:ring-indigo-300/40 hover:shadow-[0_0_24px_rgba(99,102,241,0.35)] active:scale-[0.98]"
+          title="Что нового"
+          aria-label="Открыть страницу обновлений"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 11V5a2 2 0 0 1 2-2h6l8 8v8a2 2 0 0 1-2 2h-6"></path>
+            <path d="M14 3v6h6"></path>
+            <path d="M9 17h6"></path>
+            <path d="M9 13h2"></path>
+            <path d="M9 21h6"></path>
+          </svg>
+        </a>
           <div>
             <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
               <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">Личный кабинет</span>
@@ -457,17 +470,38 @@
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="displayNameInput">Имя</label>
             <input id="displayNameInput" class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none" placeholder="Напр. Магомед Раджабов" />
           </div>
-          <div>
-            <label class="mb-1.5 block text-sm font-medium text-slate-200" for="positionSelect">Должность</label>
-            <span class="select-wrap w-full">
-              <select id="positionSelect" class="ui-select text-sm w-full">
-                <option value="">Не выбрана</option>
-                <option value="senior_operator">Старший оператор</option>
-                <option value="operator">Оператор</option>
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-200" for="positionSelect">Должность</label>
+          <span class="select-wrap w-full">
+            <select id="positionSelect" class="ui-select text-sm w-full">
+              <option value="">Не выбрана</option>
+
+              <optgroup label="Отдел ЕГАИС">
+                <option value="egais_head">Руководитель отдела ЕГАИС</option>
+                <option value="egais_senior_operator">Старший оператор ЕГАИС</option>
+                <option value="egais_operator">Оператор ЕГАИС</option>
+              </optgroup>
+
+              <optgroup label="Склад ГП">
+                <option value="warehouse_head">Руководитель склада</option>
+                <option value="storekeeper">Кладовщик</option>
                 <option value="loader">Грузчик</option>
-              </select>
-            </span>
-          </div>
+                <option value="driver">Водитель</option>
+              </optgroup>
+
+              <optgroup label="Цех розлива">
+                <option value="bottling_plant_head">Руководитель цеха розлива</option>
+                <option value="shift_senior_master">Старший мастер смены</option>
+                <option value="shift_master">Мастер смены</option>
+                <option value="filling_line_operator">Оператор линии розлива</option>
+                <option value="accountant">Учетчик</option>
+              </optgroup>
+            </select>
+          </span>
+          <p class="mt-1.5 text-xs text-slate-400/80">
+            Выберите должность сотрудника.
+          </p>
+        </div>
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="genderSelect">Пол</label>
             <span class="select-wrap w-full">

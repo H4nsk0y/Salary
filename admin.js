@@ -1038,7 +1038,7 @@ async function guardAdmin() {
 
   const profile = await getMyProfile();
   if (!profile || profile.role !== "admin") {
-    setError("Доступ запрещён. Нужна роль admin.");
+    setError("Доступ запрещён. Запросите разрешение у администратора");
     return false;
   }
 

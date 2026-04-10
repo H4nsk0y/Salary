@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+  <title>Что нового — Alvisa Salary</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    html, body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      scroll-behavior: smooth;
+    }
+
+    :root {
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-bg: rgba(15, 23, 42, 0.6);
+      --card-shadow: 0 25px 50px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      --card-shadow-hover: 0 35px 70px -30px rgba(99, 102, 241, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+
+    body {
+      position: relative;
+      overflow-x: hidden;
+      background: #020617;
+      background-image:
+        radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.18), transparent 60%),
+        radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.15), transparent 60%),
+        radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.12), transparent 60%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -25%;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.4), transparent 45%),
+        radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.3), transparent 45%),
+        radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.2), transparent 45%);
+      filter: blur(70px);
+      opacity: 0.6;
+      animation: bgFloat 18s ease-in-out infinite alternate;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image: radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.2;
+      mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 80%);
+    }
+
+    @keyframes bgFloat {
+      0% { transform: translate3d(-2%, -2%, 0) scale(1); }
+      100% { transform: translate3d(3%, 3%, 0) scale(1.08); }
+    }
+
+    .glass-card {
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--card-shadow);
+      transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+    }
+
+    .glass-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      background:
+        radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.3), transparent 60%),
+        radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
+      transition: opacity 0.5s ease;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+      box-shadow: var(--card-shadow-hover);
+    }
+
+    .glass-card:hover::before {
+      opacity: 1;
+    }
+
+    .hover-lift {
+      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.4, 1), box-shadow 0.3s ease;
+    }
+
+    .hover-lift:hover {
+      transform: translateY(-6px);
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      filter: blur(8px);
+      transition:
+        opacity 800ms cubic-bezier(0.2, 0.9, 0.3, 1),
+        transform 800ms cubic-bezier(0.2, 0.9, 0.3, 1),
+        filter 800ms cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+
+    body.is-loaded .reveal {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+
+    .reveal:nth-child(1) { transition-delay: 0.05s; }
+    .reveal:nth-child(2) { transition-delay: 0.15s; }
+    .reveal:nth-child(3) { transition-delay: 0.25s; }
+
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.55); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.55); border-radius: 999px; border: 2px solid rgba(30,41,59,0.55); }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.8); }
+    * { scrollbar-width: thin; scrollbar-color: rgba(99,102,241,0.55) rgba(30,41,59,0.55); }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+  <script>document.body.classList.add("is-loaded");</script>
+
+  <div class="relative z-10 mx-auto max-w-6xl px-4 py-6 md:py-8">
+    <div class="mb-6 reveal">
+      <a
+        href="table.html"
+        class="inline-flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30"
+      >
+        ← Назад к табелю
+      </a>
+    </div>
+
+    <section class="glass-card rounded-3xl p-6 md:p-8 reveal">
+      <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div class="max-w-3xl">
+          <div class="inline-flex items-center rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-500/20">
+            Журнал обновлений
+          </div>
+
+          <h1 class="mt-4 text-3xl md:text-4xl font-bold tracking-tight">
+            <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
+              Что нового в Alvisa Salary
+            </span>
+          </h1>
+
+          <p class="mt-3 text-sm md:text-base text-slate-300/85 leading-7">
+            На этой странице вы сможете ознакомится с последними изменениями, новыми функциями и планами на будущее. Я регулярно обновляю эту страницу, чтобы держать вас в курсе всех улучшений и нововведений. Ваше мнение очень важно для меня, поэтому не стесняйтесь делиться своими идеями и предложениями!
+          </p>
+        </div>
+
+        <div class="glass-card rounded-3xl p-4 ring-1 ring-white/10 bg-slate-950/25 w-full max-w-xs">
+          <div class="text-sm font-semibold text-slate-100">Идеи и предложения</div>
+          <p class="mt-2 text-xs text-slate-400/85 leading-5">
+            Можно написать в Telegram. Отсканируйте QR-код или нажмите на ссылку ниже.
+          </p>
+
+          <div class="mt-4 overflow-hidden rounded-2xl bg-white p-3">
+            <img
+                src="https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=https%3A%2F%2Ft.me%2FHanskoy"
+                alt="QR-код на Telegram"
+                class="mx-auto h-auto w-full max-w-[220px]"
+                />
+          </div>
+
+          <a
+                href="https://t.me/Hanskoy"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/10 transition-all hover:bg-white/10"
+                >
+                Открыть Telegram
+                </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-6 grid gap-6 reveal">
+      <article class="glass-card hover-lift rounded-3xl p-6 md:p-7">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-500/20">
+            Обновление 14.0 (от 10.04.2026)
+          </span>
+          <span class="text-xs text-slate-400">Последние изменения</span>
+        </div>
+
+        <h2 class="mt-4 text-xl font-semibold text-slate-100">Что уже добавлено</h2>
+
+        <div class="mt-4 grid gap-3 text-sm text-slate-300/90 leading-6">
+          <div>• Добавлены должности (список пополняется).</div>
+          <div>• Для грузчиков учитываются специфические условия работы, такие как доплата за вредность производства.</div>
+          <div>• Для руководителей добавлена возможность заполнять табель подчиненных (экспериментальная функция).</div>
+          <div>• Улучшен внешний вид страниц и мобильное отображение.</div>
+          <div>• Улучшена система безопасности.</div>
+        </div>
+      </article>
+
+      <article class="glass-card hover-lift rounded-3xl p-6 md:p-7">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="inline-flex items-center rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-200 ring-1 ring-sky-500/20">
+            Планы
+          </span>
+          <span class="text-xs text-slate-400">Ближайшие идеи</span>
+        </div>
+
+        <h2 class="mt-4 text-xl font-semibold text-slate-100">Что планируется добавить дальше?</h2>
+
+        <div class="mt-4 grid gap-3 text-sm text-slate-300/90 leading-6">
+          <div>• Более гибкие правила расчётов по должностям.</div>
+          <div>• Индивидуальные особенности для должностей и отдельных пользователей.</div>
+          <div>• История изменений табеля.</div>
+          <div>• Дополнительные подсказки и обучающие экраны.</div>
+          <div>• Переход на новую версию приложения, включабщее переход на другой ЯП и переключение на другую базу данных.</div>
+        </div>
+      </article>
+
+      <article class="glass-card hover-lift rounded-3xl p-6 md:p-7">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="inline-flex items-center rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200 ring-1 ring-amber-500/20">
+            Для пользователей
+          </span>
+        </div>
+
+        <h2 class="mt-4 text-xl font-semibold text-slate-100">Как использовать эту страницу</h2>
+
+        <div class="mt-4 grid gap-3 text-sm text-slate-300/90 leading-6">
+          <div>• Следить за тем, какие функции появились в новых версиях.</div>
+          <div>• Смотреть, что уже работает, а что ещё находится в разработке.</div>
+          <div>• Отправлять идеи и предложения через Telegram.</div>
+        </div>
+      </article>
+    </section>
+  </div>
+</body>
+</html>
