@@ -86,6 +86,12 @@ const POSITION_VALUES = new Set([
   "shift_master",
   "filling_line_operator",
   "accountant",
+  "laboratory_head",
+  "deputy_head_laboratory",
+  "entrance_control_engineer",
+  "quality_control_engineer",
+  "chemist",
+  "microbiologist",
 ]);
 
 let loadedYear = new Date().getFullYear();
