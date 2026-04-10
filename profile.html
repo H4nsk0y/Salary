@@ -174,7 +174,11 @@
     ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.8); }
     * { scrollbar-width: thin; scrollbar-color: rgba(99,102,241,0.55) rgba(30,41,59,0.55); }
 
-    .nav-link { position: relative; transition: color 0.2s; }
+    .nav-link {
+        position: relative;
+        transition: color 0.2s;
+        white-space: nowrap;
+      }
     .nav-link::after {
       content: '';
       position: absolute;
@@ -191,12 +195,43 @@
     .nav-link.active::after,
     .nav-link:hover::after { opacity: 1; transform: scaleX(1); }
 
-    @media (max-width: 640px) {
-      .input-glass { font-size: 16px; padding-top: 14px; padding-bottom: 14px; }
-      .select-wrap::after { right: 10px; }
-      select.ui-select { padding: 8px 32px 8px 14px; }
-      .pt-safe { padding-top: 7rem; }
-    }
+   @media (max-width: 640px) {
+  header nav {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    max-width: calc(100vw - 90px);
+  }
+
+  header nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  header nav a {
+    font-size: 0.72rem !important;
+    padding: 5px 7px !important;
+  }
+
+  .input-glass {
+    font-size: 16px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  .select-wrap::after {
+    right: 10px;
+  }
+
+  select.ui-select {
+    padding: 8px 32px 8px 14px;
+  }
+
+  .pt-safe {
+    padding-top: 7rem;
+  }
+}
     @media (min-width: 768px) { .pt-safe { padding-top: 6rem; } }
 
     button, .btn-like { transition: all 0.2s; }
@@ -379,21 +414,21 @@
 <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
   <script>document.body.classList.add("is-loaded");</script>
 
-  <header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-    <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex flex-wrap items-center justify-between gap-3">
-      <a href="index.html" class="group">
-        <span class="text-base md:text-lg font-semibold bg-gradient-to-r from-indigo-200 to-slate-100 bg-clip-text text-transparent transition-colors group-hover:from-indigo-300 group-hover:to-white">
-          Alvisa
-        </span>
-      </a>
-      <nav class="flex flex-wrap items-center justify-end gap-1 text-sm font-medium">
-        <a href="index.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Калькулятор</a>
-        <a href="table.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Табель</a>
-        <a href="profile.html" class="nav-link active relative rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">Профиль</a>
-        <a href="help.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Справка</a>
-      </nav>
-    </div>
-  </header>
+<header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
+  <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex items-center justify-between gap-2">
+    <a href="index.html" class="group shrink-0">
+      <span class="text-base md:text-lg font-semibold bg-gradient-to-r from-indigo-200 to-slate-100 bg-clip-text text-transparent transition-colors group-hover:from-indigo-300 group-hover:to-white">
+        Alvisa
+      </span>
+    </a>
+    <nav class="flex items-center gap-0.5 text-sm font-medium overflow-hidden">
+      <a href="index.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Калькулятор</a>
+      <a href="table.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Табель</a>
+      <a href="profile.html" class="nav-link active rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">Профиль</a>
+      <a href="help.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Справка</a>
+    </nav>
+  </div>
+</header>
 
   <div class="relative z-10 mx-auto max-w-8xl px-4 pt-safe pb-12 md:pb-16">
     <header class="mb-8 reveal">
