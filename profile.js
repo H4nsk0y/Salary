@@ -33,6 +33,7 @@ const displayNameEl = document.getElementById("displayName");
 const emailHint = document.getElementById("emailHint");
 
 const displayNameInput = document.getElementById("displayNameInput");
+const positionSelect = document.getElementById("positionSelect");
 const okladInput = document.getElementById("okladInput");
 const genderSelect = document.getElementById("genderSelect");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
@@ -70,6 +71,8 @@ const AVATAR_ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const monthNamesShort = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
 const monthNamesFull = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const WEEK_LABELS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+
+const POSITION_VALUES = new Set(["", "senior_operator", "operator", "loader"]);
 
 let loadedYear = new Date().getFullYear();
 let payloadByMonth = new Map();
@@ -517,13 +520,15 @@ async function refreshProfile() {
   const name = profile?.display_name || "Пользователь";
   const oklad = profile?.oklad;
 
-  if (!requireDom(displayNameEl, "displayName")) return;
+ if (!requireDom(displayNameEl, "displayName")) return;
   if (!requireDom(displayNameInput, "displayNameInput")) return;
   if (!requireDom(okladInput, "okladInput")) return;
+  if (!requireDom(positionSelect, "positionSelect")) return;
 
   displayNameEl.textContent = name;
   displayNameInput.value = profile?.display_name ?? "";
   okladInput.value = oklad != null ? String(oklad) : "";
+  if (positionSelect) positionSelect.value = profile?.position ?? "";
   if (genderSelect) genderSelect.value = profile?.gender ?? "";
 
   BASE_DAY_HOURS = profile?.gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
@@ -831,6 +836,7 @@ async function saveProfile() {
 
   const displayName = displayNameInput.value.trim();
   const oklad = parseNumber(okladInput.value);
+  const position = positionSelect ? String(positionSelect.value || "") : "";
   const gender = genderSelect ? String(genderSelect.value || "") : "";
 
   if (displayName && displayName.length < 2) {
@@ -841,6 +847,10 @@ async function saveProfile() {
     setError("Оклад должен быть числом ≥ 0.");
     return;
   }
+  if (!POSITION_VALUES.has(position)) {
+  setError("Некорректная должность.");
+  return;
+}
   if (gender && gender !== "male" && gender !== "female") {
     setError("Пол должен быть: мужской или женский.");
     return;
@@ -851,10 +861,11 @@ async function saveProfile() {
 
   try {
     await updateMyProfile({
-      displayName: displayName || null,
-      oklad: okladInput.value.trim() ? oklad : null,
-      gender: gender ? gender : null,
-    });
+    displayName: displayName || null,
+    oklad: okladInput.value.trim() ? oklad : null,
+    position: position || null,
+    gender: gender ? gender : null,
+  });
 
     BASE_DAY_HOURS = gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
 

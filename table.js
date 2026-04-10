@@ -12,6 +12,7 @@ const prefersReducedMotion =
 
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
+const HAZARD_POSITION_RATE = 0.04;
 
 let BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
 let LEAVE_HOURS_PER_DAY = DEFAULT_DAY_HOURS;
@@ -140,6 +141,12 @@ function formatRub(value, digits = 0) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";
   return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: digits }).format(n);
+}
+
+function getHazardRateByPosition(position) {
+  const p = String(position ?? "").trim().toLowerCase();
+  if (p === "loader" || p === "грузчик") return HAZARD_POSITION_RATE;
+  return 0;
 }
 
 function setError(msg) {
@@ -328,6 +335,7 @@ let leaveType = [];
 
 let profileRole = "user";
 let profileOklad = null;
+let profilePosition = "";
 
 let timesheetSaveTimer = null;
 let lastSavedJSON = "";
@@ -530,19 +538,21 @@ function recalcAll() {
   const workedHours = totalDay + totalNight;
 
   animateNumber(totalHoursEl, workedHours, (v) => v.toFixed(1), 360);
-  if (dayNightHoursEl) { dayNightHoursEl.textContent = `${totalDay.toFixed(1)} / ${totalNight.toFixed(1)}`; bump(dayNightHoursEl); }
+  if (dayNightHoursEl) {
+    dayNightHoursEl.textContent = `${totalDay.toFixed(1)} / ${totalNight.toFixed(1)}`;
+    bump(dayNightHoursEl);
+  }
   animateNumber(normMonthEl, monthNorm, (v) => v.toFixed(1), 360);
   animateNumber(normEffectiveEl, personalNorm, (v) => v.toFixed(1), 360);
   animateNumber(overtimeEl, workedHours - personalNorm, (v) => (v >= 0 ? "+" : "") + v.toFixed(1), 360);
   if (leaveDaysEl) leaveDaysEl.textContent = `ОТ:${otTotal} • Б:${sickTotal} • ОД/ОЗ:${unpaidTotal} • У/УД:${eduTotal}`;
 
-  // ✅ First half stats
   const { personalHalfNorm, workedFH } = firstHalfStats();
   if (normFirstHalfEl) normFirstHalfEl.textContent = personalHalfNorm.toFixed(1);
   if (workedFirstHalfEl) workedFirstHalfEl.textContent = workedFH.toFixed(1);
 
-  const oklad = parseNumber(okladInput.value);
-  if (!Number.isFinite(oklad) || oklad <= 0) {
+  const baseOklad = parseNumber(okladInput.value);
+  if (!Number.isFinite(baseOklad) || baseOklad <= 0) {
     clearMoneyUI();
     if (normHint) normHint.textContent = monthNorm > 0 ? `Норма месяца: ${monthNorm.toFixed(1)} ч` : "";
     return;
@@ -556,12 +566,31 @@ function recalcAll() {
 
   setError(null);
 
-  const calc = computeSalary({ oklad, normHours: monthNorm, workedHours, nightHours: totalNight });
-  if (!calc.ok) { setError(calc.error); clearMoneyUI(); return; }
+  const hazardRate = getHazardRateByPosition(profilePosition);
+  const effectiveOklad = baseOklad * (1 + hazardRate);
+
+  if (normHint) {
+    normHint.textContent = hazardRate > 0
+      ? `Норма месяца: ${monthNorm.toFixed(1)} ч • Оклад с вредностью +${(hazardRate * 100).toFixed(0)}%: ${formatRub(effectiveOklad, 0)}`
+      : `Норма месяца: ${monthNorm.toFixed(1)} ч`;
+  }
+
+  const calc = computeSalary({
+    oklad: effectiveOklad,
+    normHours: monthNorm,
+    workedHours,
+    nightHours: totalNight,
+  });
+
+  if (!calc.ok) {
+    setError(calc.error);
+    clearMoneyUI();
+    return;
+  }
 
   const r = calc.result;
-  const baseHourRateGross = oklad / monthNorm;
-  const bonusPerHourGross = (oklad * BONUS_RATE) / monthNorm;
+  const baseHourRateGross = effectiveOklad / monthNorm;
+  const bonusPerHourGross = (effectiveOklad * BONUS_RATE) / monthNorm;
   const { hDay, hNight } = holidayWorkedTotals();
   const holidayTotal = hDay + hNight;
 
@@ -576,7 +605,12 @@ function recalcAll() {
   const netTotal = r.net + holidayNet;
 
   animateNumber(hourRateNetEl, r.hourRate, (v) => formatRub(v, 0), 360);
-  animateNumber(nightHourNetEl, r.hourRate + baseHourRateGross * NIGHT_EXTRA_RATE * (1 - TAX_RATE), (v) => formatRub(v, 0), 360);
+  animateNumber(
+    nightHourNetEl,
+    r.hourRate + baseHourRateGross * NIGHT_EXTRA_RATE * (1 - TAX_RATE),
+    (v) => formatRub(v, 0),
+    360
+  );
   animateNumber(baseFactGrossEl, r.baseFact, (v) => formatRub(v, 0), 360);
   animateNumber(bonusGrossEl, r.bonus, (v) => formatRub(v, 0), 360);
   animateNumber(nightExtraGrossEl, r.nightExtra, (v) => formatRub(v, 0), 360);
@@ -586,16 +620,19 @@ function recalcAll() {
   animateNumber(netPayEl, netTotal, (v) => formatRub(v, 0), 520);
   bump(netPayEl);
 
-  if (moneySummaryEl) moneySummaryEl.textContent =
-    `Брутто: ${formatRub(grossTotal, 0)} • Налог: ${formatRub(taxTotal, 0)} • Праздничные x2 (доплата): ${formatRub(holidayExtraGross, 0)}`;
+  if (moneySummaryEl) {
+    moneySummaryEl.textContent = hazardRate > 0
+      ? `Брутто: ${formatRub(grossTotal, 0)} • Налог: ${formatRub(taxTotal, 0)} • Праздничные x2 (доплата): ${formatRub(holidayExtraGross, 0)} • Вредность: +${(hazardRate * 100).toFixed(0)}%`
+      : `Брутто: ${formatRub(grossTotal, 0)} • Налог: ${formatRub(taxTotal, 0)} • Праздничные x2 (доплата): ${formatRub(holidayExtraGross, 0)}`;
+  }
 
-  // Advance from first half
   const fhDay = sumRange(dayHours, 0, Math.min(14, daysInMonth - 1));
   const fhNight = sumRange(nightHours, 0, Math.min(14, daysInMonth - 1));
   const fhTotal = fhDay + fhNight;
-  const baseNetHourlyNoBonus = (oklad * (1 - TAX_RATE)) / monthNorm;
-  const nightExtraNetHourly = (oklad / monthNorm) * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
+  const baseNetHourlyNoBonus = (effectiveOklad * (1 - TAX_RATE)) / monthNorm;
+  const nightExtraNetHourly = (effectiveOklad / monthNorm) * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
   const advanceApprox = baseNetHourlyNoBonus * fhTotal + nightExtraNetHourly * fhNight;
+
   if (advancePayEl) advancePayEl.textContent = `~ ${formatRub(advanceApprox, 0)}`;
   if (remainingPayEl) remainingPayEl.textContent = `~ ${formatRub(netTotal - advanceApprox, 0)}`;
 }
@@ -989,6 +1026,7 @@ yearSelect.addEventListener("change", async () => {
     const profile = await getMyProfile();
     profileRole = profile?.role ?? "user";
     profileOklad = profile?.oklad ?? null;
+    profilePosition = profile?.position ?? "";
 
     if (profile?.gender === "female") BASE_DAY_HOURS = FEMALE_DAY_HOURS;
     else BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
