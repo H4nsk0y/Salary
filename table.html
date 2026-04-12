@@ -468,6 +468,28 @@
     #driver-popover-item.alvisa-tour .driver-next-btn:active,
     #driver-popover-item.alvisa-tour .driver-prev-btn:active,
     #driver-popover-item.alvisa-tour .driver-close-btn:active { transform: translateY(0) !important; }
+
+
+    .help-toggle {
+    border-radius: 1.5rem;
+    }
+
+    .help-toggle summary {
+      list-style: none;
+    }
+
+    .help-toggle summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .help-toggle-arrow {
+      transition: transform 0.2s ease;
+    }
+
+    .help-toggle[open] .help-toggle-arrow {
+      transform: rotate(180deg);
+    }
+
   </style>
 </head>
 
@@ -610,13 +632,29 @@
       </section>
 
       <section class="glass-card hover-lift rounded-3xl p-6 md:p-7 lg:col-span-2">
-        <h2 class="text-lg font-semibold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Как ставить смены</h2>
-        <div class="mt-3 grid gap-2 text-sm text-slate-300/90 leading-6 text-justify">
-          <div>• <strong><span class="font-bold text-red-400">Дневная смена</span></strong> — количество отработанных часов в день проставляются в ячейках строки «День». Смена с 8 до 5 - у мужчин проставляется 8 часов, у женщин - 7,2 часа. Смена с 8 до 8 у мужчин проставляется 11 часов, у женщин - 10,2 часа.</div>
-          <div>• <strong><span class="font-bold text-blue-400">Ночная смена</span></strong> — вводится раздельно в «День» и «Ночь»: напр. если вы вышли в ночную смену с <strong>10</strong> по <strong>11</strong>, то в день 10-ого числа вы проставляете <strong>2</strong>, ночь <strong>2</strong>, а уже в 11 число в день вы проставляете <strong>2</strong>, а в ночь <strong>5</strong>. У женщин смены проставляются <strong>2/2</strong>, но уже <strong>1/5 в переходящей дате</strong>.</div>
-          <div>• <strong>Праздник / сокращённый:</strong> на ПК — кликните по числу, чтобы отметить его <span class="font-bold text-yellow-400">праздничным выходным / выходным днем</span>. Чтобы отметить день <span class="font-bold text-green-400">сокращенным</span> кликните по числу дважды. На телефоне — стрелками <span class="font-semibold text-indigo-300">‹ ›</span> выберите нужный день, затем нажмите на соответсвующую кнопку.</div>
-          <div>• <strong>Отпуск/Больничные и т.д. —</strong> Не забывайте проставлять коды в ячейках, если находитесь в отпусках, больничных и так далее - это обязательное условие для правильного подсчета личной нормы месяца.</div>
-        </div>
+        <details class="help-toggle group">
+          <summary class="flex cursor-pointer items-center justify-between gap-3 rounded-2xl bg-white/5 px-4 py-3 text-left ring-1 ring-white/10 transition-all hover:bg-white/10">
+            <div>
+              <h2 class="text-lg font-semibold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">
+                Как ставить смены
+              </h2>
+              <p class="mt-1 text-xs text-slate-400/80">
+                Нажмите, чтобы развернуть или свернуть инструкцию
+              </p>
+            </div>
+
+            <svg class="help-toggle-arrow h-5 w-5 shrink-0 text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" />
+            </svg>
+          </summary>
+
+          <div class="mt-4 grid gap-2 text-sm text-slate-300/90 leading-6 text-justify">
+            <div>• <strong><span class="font-bold text-red-400">Дневная смена</span></strong> — количество отработанных часов в день проставляются в ячейках строки «День». Смена с 8 до 5 - у мужчин проставляется 8 часов, у женщин - 7,2 часа. Смена с 8 до 8 у мужчин проставляется 11 часов, у женщин - 10,2 часа.</div>
+            <div>• <strong><span class="font-bold text-blue-400">Ночная смена</span></strong> — вводится раздельно в «День» и «Ночь»: напр. если вы вышли в ночную смену с <strong>10</strong> по <strong>11</strong>, то в день 10-ого числа вы проставляете <strong>2</strong>, ночь <strong>2</strong>, а уже в 11 число в день вы проставляете <strong>2</strong>, а в ночь <strong>5</strong>. У женщин смены проставляются <strong>2/2</strong>, но уже <strong>1/5 в переходящей дате</strong>.</div>
+            <div>• <strong>Праздник / сокращённый:</strong> на ПК — кликните по числу, чтобы отметить его <span class="font-bold text-yellow-400">праздничным выходным / выходным днем</span>. Чтобы отметить день <span class="font-bold text-green-400">сокращенным</span> кликните по числу дважды. На телефоне — стрелками <span class="font-semibold text-indigo-300">‹ ›</span> выберите нужный день, затем нажмите на соответсвующую кнопку.</div>
+            <div>• <strong>Отпуск/Больничные и т.д. —</strong> Не забывайте проставлять коды в ячейках, если находитесь в отпусках, больничных и так далее - это обязательное условие для правильного подсчета личной нормы месяца.</div>
+          </div>
+        </details>
       </section>
     </div>
 
