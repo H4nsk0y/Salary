@@ -545,9 +545,14 @@ async function refreshProfile() {
   if (!requireDom(okladInput, "okladInput")) return;
   if (!requireDom(positionSelect, "positionSelect")) return;
 
+  const hideMoney = profile?.hide_money !== false;
+
   displayNameEl.textContent = name;
   displayNameInput.value = profile?.display_name ?? "";
   okladInput.value = oklad != null ? String(oklad) : "";
+  okladInput.dataset.defaultHidden = String(hideMoney);
+  okladInput.type = hideMoney ? "password" : "text";
+
   if (positionSelect) positionSelect.value = profile?.position ?? "";
   if (genderSelect) genderSelect.value = profile?.gender ?? "";
 

@@ -45,7 +45,7 @@ export async function getMyProfile() {
   const uid = await requireUserId();
   const { data, error } = await supabase
     .from("profiles")
-    .select("role, oklad, gender, position, display_name, avatar_url")
+    .select("role, oklad, gender, position, display_name, avatar_url, hide_money")
     .eq("user_id", uid)
     .maybeSingle();
 
