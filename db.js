@@ -69,7 +69,7 @@ export async function updateMyOklad(oklad) {
 export async function updateMyProfile({ displayName, oklad, gender, position, avatarUrl }) {
   const uid = await requireUserId();
 
-  const patch = {};
+  const patch = { user_id: uid };
   if (displayName !== undefined) patch.display_name = displayName;
   if (oklad !== undefined) patch.oklad = oklad;
   if (gender !== undefined) patch.gender = gender;
@@ -78,15 +78,19 @@ export async function updateMyProfile({ displayName, oklad, gender, position, av
 
   const { error } = await supabase
     .from("profiles")
-    .update(patch)
-    .eq("user_id", uid);
+    .upsert(patch, { onConflict: "user_id" });
 
   if (error) throw error;
 }
 
 export async function updateMyProfileFields(fields) {
   const uid = await requireUserId();
-  const { error } = await supabase.from("profiles").update(fields).eq("user_id", uid);
+  const patch = { user_id: uid, ...(fields || {}) };
+
+  const { error } = await supabase
+    .from("profiles")
+    .upsert(patch, { onConflict: "user_id" });
+
   if (error) throw error;
 }
 

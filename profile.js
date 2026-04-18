@@ -17,6 +17,13 @@ import {
 } from "./calc.js";
 import { supabase } from "./supabaseClient.js";
 
+import {
+  getMissingRequiredProfileFields,
+  getMissingRequiredProfileLabels,
+  isProfileCompleteForTimesheet,
+  normalizeInternalNextUrl,
+} from "./profileCompletion.js";
+
 document.body.classList.add("is-loaded");
 
 const OVERTIME_LIMIT_YEAR = 120;
@@ -71,6 +78,20 @@ const avatarFileInput = document.getElementById("avatarFileInput");
 const avatarUploadBtn = document.getElementById("avatarUploadBtn");
 const avatarRemoveBtn = document.getElementById("avatarRemoveBtn");
 const avatarHint = document.getElementById("avatarHint");
+
+const displayNameLabel = document.querySelector('label[for="displayNameInput"]');
+const positionLabel = document.querySelector('label[for="positionSelect"]');
+const genderLabel = document.querySelector('label[for="genderSelect"]');
+const okladLabel = document.querySelector('label[for="okladInput"]');
+
+const profileRequiredNotice = document.getElementById("profileRequiredNotice");
+const profileRequiredNoticeTitle = document.getElementById("profileRequiredNoticeTitle");
+const profileRequiredNoticeText = document.getElementById("profileRequiredNoticeText");
+const profileRequiredNoticeBackLink = document.getElementById("profileRequiredNoticeBackLink");
+
+const pageParams = new URLSearchParams(window.location.search);
+const mustCompleteProfile = pageParams.get("completeProfile") === "1";
+const nextAfterProfile = normalizeInternalNextUrl(pageParams.get("next"), "table.html");
 
 /* ===== Avatar upload settings ===== */
 const AVATAR_BUCKET = "avatars";
@@ -227,6 +248,142 @@ function getHazardRateByPosition(position) {
   if (p === "loader" || p === "грузчик") return HAZARD_POSITION_RATE;
   return 0;
 }
+
+function setRequiredLabelState(labelEl, required) {
+  if (!labelEl) return;
+  if (!labelEl.dataset.baseText) {
+    labelEl.dataset.baseText = labelEl.textContent.trim();
+  }
+
+  labelEl.textContent = required
+    ? `${labelEl.dataset.baseText} — обязательно`
+    : labelEl.dataset.baseText;
+
+  labelEl.classList.toggle("text-rose-200", required);
+}
+
+function clearFieldHighlightStyles(fieldEl) {
+  if (!fieldEl) return;
+  fieldEl.classList.remove("required-missing-field");
+  fieldEl.style.borderColor = "";
+  fieldEl.style.boxShadow = "";
+  fieldEl.style.background = "";
+}
+
+function applyFieldHighlightStyles(fieldEl) {
+  if (!fieldEl) return;
+  fieldEl.classList.add("required-missing-field");
+  fieldEl.style.borderColor = "rgba(251, 113, 133, 0.70)";
+  fieldEl.style.boxShadow =
+    "0 0 0 2px rgba(251, 113, 133, 0.22), 0 10px 30px -20px rgba(251, 113, 133, 0.45)";
+  fieldEl.style.background = "rgba(190, 24, 93, 0.08)";
+}
+
+function clearRequiredFieldHighlights() {
+  const items = [
+    [displayNameInput, displayNameLabel],
+    [positionSelect, positionLabel],
+    [genderSelect, genderLabel],
+    [okladInput, okladLabel],
+  ];
+
+  for (const [fieldEl, labelEl] of items) {
+    clearFieldHighlightStyles(fieldEl);
+    setRequiredLabelState(labelEl, false);
+  }
+}
+
+function applyRequiredFieldHighlights(profile) {
+  clearRequiredFieldHighlights();
+
+  const missing = new Set(getMissingRequiredProfileFields(profile));
+  const config = {
+    display_name: [displayNameInput, displayNameLabel],
+    position: [positionSelect, positionLabel],
+    gender: [genderSelect, genderLabel],
+    oklad: [okladInput, okladLabel],
+  };
+
+  for (const [key, [fieldEl, labelEl]] of Object.entries(config)) {
+    const required = missing.has(key);
+    setRequiredLabelState(labelEl, required);
+
+    if (required) {
+      applyFieldHighlightStyles(fieldEl);
+    }
+  }
+
+  return [...missing];
+}
+
+function renderProfileRequiredNotice(profile) {
+  const missingLabels = getMissingRequiredProfileLabels(profile);
+
+  if (!profileRequiredNotice || !profileRequiredNoticeTitle || !profileRequiredNoticeText) {
+    return missingLabels;
+  }
+
+  profileRequiredNotice.classList.remove(
+    "hidden",
+    "notice-warning",
+    "notice-success"
+  );
+
+  if (!missingLabels.length) {
+    if (!mustCompleteProfile) {
+      profileRequiredNotice.classList.add("hidden");
+      profileRequiredNoticeBackLink?.classList.add("hidden");
+      return missingLabels;
+    }
+
+    profileRequiredNotice.classList.add("notice-success");
+    profileRequiredNoticeTitle.textContent = "Профиль заполнен";
+    profileRequiredNoticeText.textContent = "Все обязательные поля заполнены. Теперь можно вернуться в табель.";
+
+    if (profileRequiredNoticeBackLink) {
+      profileRequiredNoticeBackLink.href = nextAfterProfile;
+      profileRequiredNoticeBackLink.textContent = "Вернуться в табель";
+      profileRequiredNoticeBackLink.classList.remove("hidden");
+    }
+
+    return missingLabels;
+  }
+
+  profileRequiredNotice.classList.add("notice-warning");
+  profileRequiredNoticeTitle.textContent = mustCompleteProfile
+    ? "Табель недоступен, пока профиль не заполнен"
+    : "Профиль заполнен не полностью";
+  profileRequiredNoticeText.textContent = mustCompleteProfile
+    ? `Чтобы открыть табель, заполните и сохраните обязательные поля: ${missingLabels.join(", ")}.`
+    : `Для корректной работы табеля заполните обязательные поля: ${missingLabels.join(", ")}.`;
+
+  profileRequiredNoticeBackLink?.classList.add("hidden");
+  return missingLabels;
+}
+
+function focusFirstMissingRequiredField(profile) {
+  const missing = getMissingRequiredProfileFields(profile);
+  if (!missing.length) return;
+
+  const fieldMap = {
+    display_name: displayNameInput,
+    position: positionSelect,
+    gender: genderSelect,
+    oklad: okladInput,
+  };
+
+  const target = fieldMap[missing[0]];
+  if (!target) return;
+
+  requestAnimationFrame(() => {
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.focus();
+    if (typeof target.select === "function" && target.tagName === "INPUT") {
+      target.select();
+    }
+  });
+}
+
 
 function computeCalendarNormFromPayload(payload, baseDayHours) {
   if (!payload || typeof payload !== "object") return 0;
@@ -691,42 +848,68 @@ async function refreshProfile() {
   setStatus("Загружаю профиль…", "busy");
   setError(null);
 
-  const profile = await getMyProfile();
-  currentProfile = profile ?? null;
+ const profile = await getMyProfile();
+currentProfile = profile ?? null;
 
-  const name = profile?.display_name || "Пользователь";
-  const oklad = profile?.oklad;
+const effectiveProfile = profile ?? {
+  display_name: "",
+  position: "",
+  gender: "",
+  oklad: null,
+  role: "user",
+  avatar_url: null,
+  hide_money: true,
+};
+
+const name = effectiveProfile.display_name || "Пользователь";
+const oklad = effectiveProfile.oklad;
 
   if (!requireDom(displayNameEl, "displayName")) return;
   if (!requireDom(displayNameInput, "displayNameInput")) return;
   if (!requireDom(okladInput, "okladInput")) return;
   if (!requireDom(positionSelect, "positionSelect")) return;
 
-  const hideMoney = profile?.hide_money !== false;
+  const hideMoney = effectiveProfile.hide_money !== false;
 
-  displayNameEl.textContent = name;
-  displayNameInput.value = profile?.display_name ?? "";
-  okladInput.value = oklad != null ? String(oklad) : "";
-  okladInput.dataset.defaultHidden = String(hideMoney);
-  okladInput.type = hideMoney ? "password" : "text";
+displayNameEl.textContent = name;
+displayNameInput.value = effectiveProfile.display_name ?? "";
+okladInput.value = oklad != null ? String(oklad) : "";
+okladInput.dataset.defaultHidden = String(hideMoney);
+okladInput.type = hideMoney ? "password" : "text";
 
-  if (positionSelect) positionSelect.value = profile?.position ?? "";
-  if (genderSelect) genderSelect.value = profile?.gender ?? "";
+if (positionSelect) positionSelect.value = effectiveProfile.position ?? "";
+if (genderSelect) genderSelect.value = effectiveProfile.gender ?? "";
 
-  BASE_DAY_HOURS = profile?.gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
+BASE_DAY_HOURS = effectiveProfile.gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
 
   let avatarUrl = null;
   try {
-    avatarUrl = await createFreshAvatarUrl(profile?.avatar_url || null);
+    avatarUrl = await createFreshAvatarUrl(effectiveProfile.avatar_url || null);
   } catch (e) {
     console.warn("Не удалось получить свежую ссылку на аватар:", e);
   }
 
-  setAvatarUI(avatarUrl, name);
+    setAvatarUI(avatarUrl, name);
 
-  if (profile?.role === "admin") adminLink?.classList.remove("hidden");
+  if (effectiveProfile.role === "admin") adminLink?.classList.remove("hidden");
   else adminLink?.classList.add("hidden");
 
+  const missingLabels = renderProfileRequiredNotice(effectiveProfile);
+  applyRequiredFieldHighlights(effectiveProfile);
+
+  if (missingLabels.length) {
+    if (mustCompleteProfile) {
+      setError(`Чтобы открыть табель, заполните обязательные поля: ${missingLabels.join(", ")}.`);
+      setStatus("Табель пока недоступен", "err");
+      focusFirstMissingRequiredField(effectiveProfile);
+      return;
+    }
+
+    setStatus("Профиль загружен", "ok");
+    return;
+  }
+
+  setError(null);
   setStatus("Профиль загружен", "ok");
 }
 
@@ -1063,8 +1246,26 @@ async function saveProfile() {
 
     await refreshProfile();
     await refreshTimesheets();
+
+       if (mustCompleteProfile) {
+      if (isProfileCompleteForTimesheet(currentProfile)) {
+        setStatus("Профиль заполнен", "ok");
+        location.href = nextAfterProfile;
+        return;
+      }
+
+      const missingLabels = getMissingRequiredProfileLabels(currentProfile);
+      applyRequiredFieldHighlights(currentProfile);
+      renderProfileRequiredNotice(currentProfile);
+      focusFirstMissingRequiredField(currentProfile);
+      setError(`Профиль ещё не заполнен. Обязательные поля: ${missingLabels.join(", ")}.`);
+      setStatus("Заполните обязательные поля", "err");
+      return;
+    }
+
     setStatus("Сохранено", "ok");
-  } catch (e) {
+  }
+   catch (e) {
     setStatus("Ошибка сохранения", "err");
     setError(e?.message || "Не удалось сохранить профиль.");
   }
@@ -1080,7 +1281,10 @@ logoutBtn?.addEventListener("click", async () => {
   }
 });
 
-saveProfileBtn?.addEventListener("click", () => void saveProfile());
+saveProfileBtn?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  await saveProfile();
+});
 
 refreshBtn?.addEventListener("click", async () => {
   try {

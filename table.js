@@ -4,6 +4,11 @@
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
 import { getMyProfile, loadTimesheet, saveTimesheet } from "./db.js";
+import {
+  buildProfileCompletionUrl,
+  getMissingRequiredProfileFields,
+  getMissingRequiredProfileLabels,
+} from "./profileCompletion.js";
 
 document.body.classList.add("is-loaded");
 
@@ -74,6 +79,72 @@ const mTodayBtn = document.getElementById("mToday");
 const mHolidayBtn = document.getElementById("mHolidayBtn");
 const mShortBtn = document.getElementById("mShortBtn");
 const mDayLabel = document.getElementById("mDayLabel");
+
+let profileCompletionGateEl = null;
+
+function renderProfileCompletionGate(profile) {
+  if (profileCompletionGateEl) return;
+
+  const missingKeys = getMissingRequiredProfileFields(profile);
+  const missingLabels = getMissingRequiredProfileLabels(profile);
+  const nextUrl = `${location.pathname}${location.search}${location.hash}`;
+  const profileUrl = buildProfileCompletionUrl(nextUrl, missingKeys);
+
+  document.body.classList.add("overflow-hidden");
+  setSaveStatus("Заполните профиль", "err");
+  setError(`Табель временно недоступен. Заполните профиль: ${missingLabels.join(", ")}.`);
+
+  const gate = document.createElement("div");
+  gate.id = "profileCompletionGate";
+  gate.className = "fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/88 px-4 backdrop-blur-sm";
+
+  gate.innerHTML = `
+    <div class="w-full max-w-2xl rounded-3xl border border-amber-400/20 bg-slate-900/95 p-6 md:p-8 text-slate-100 shadow-2xl">
+      <div class="inline-flex items-center rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-200 ring-1 ring-amber-400/20">
+        Табель временно заблокирован
+      </div>
+
+      <h2 class="mt-4 text-2xl md:text-3xl font-bold tracking-tight">
+        Сначала заполните профиль
+      </h2>
+
+      <p class="mt-3 text-sm md:text-base text-slate-300">
+        Чтобы табель считал часы, норму и зарплату корректно, нужно заполнить обязательные поля профиля.
+      </p>
+
+      <div class="mt-5 flex flex-wrap gap-2">
+        ${missingLabels.map((label) => `
+          <span class="rounded-full bg-rose-500/12 px-3 py-1.5 text-sm font-medium text-rose-200 ring-1 ring-rose-400/20">
+            ${label}
+          </span>
+        `).join("")}
+      </div>
+
+      <div class="mt-6 rounded-2xl bg-white/5 p-4 text-sm text-slate-300 ring-1 ring-white/10">
+        После сохранения профиля табель станет доступен автоматически.
+      </div>
+
+      <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+        <a
+          href="${profileUrl}"
+          class="inline-flex items-center justify-center rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-indigo-400"
+        >
+          Заполнить профиль
+        </a>
+
+        <a
+          href="index.html"
+          class="inline-flex items-center justify-center rounded-2xl bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 ring-1 ring-white/10 transition-all hover:bg-white/10"
+        >
+          Перейти в калькулятор
+        </a>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(gate);
+  profileCompletionGateEl = gate;
+}
 
 function ensureShortDayStyles() {
   if (document.getElementById("shortDayStyles")) return;
@@ -1057,33 +1128,43 @@ yearSelect.addEventListener("change", async () => {
     return;
   }
 
+  let profile = null;
+
+  try {
+    profile = await getMyProfile();
+  } catch (e) {
+    setSaveStatus("Ошибка профиля", "err");
+    setError(e?.message || "Не удалось загрузить профиль.");
+    return;
+  }
+
+  const missingProfileFields = getMissingRequiredProfileFields(profile);
+  if (missingProfileFields.length) {
+    renderProfileCompletionGate(profile);
+    return;
+  }
+
   setFromQueryOrNow();
   fillYearOptions();
   updateUrlForMonth();
   buildTableForMonth();
 
-  try {
-    const profile = await getMyProfile();
-    profileRole = profile?.role ?? "user";
-    profileOklad = profile?.oklad ?? null;
-    profilePosition = profile?.position ?? "";
+  profileRole = profile?.role ?? "user";
+  profileOklad = profile?.oklad ?? null;
+  profilePosition = profile?.position ?? "";
 
-    if (profile?.gender === "female") BASE_DAY_HOURS = FEMALE_DAY_HOURS;
-    else BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
-    LEAVE_HOURS_PER_DAY = BASE_DAY_HOURS;
+  if (profile?.gender === "female") BASE_DAY_HOURS = FEMALE_DAY_HOURS;
+  else BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
+  LEAVE_HOURS_PER_DAY = BASE_DAY_HOURS;
 
-    if (profileRole === "admin") adminLink?.classList.remove("hidden");
-    if (profileOklad != null && String(okladInput?.value ?? "").trim() === "") {
-      okladInput.value = String(profileOklad);
-    }
-  } catch {
-    // ignore
+  if (profileRole === "admin") adminLink?.classList.remove("hidden");
+  if (profileOklad != null && String(okladInput?.value ?? "").trim() === "") {
+    okladInput.value = String(profileOklad);
   }
 
   await loadCurrentMonthFromDb();
   recalcAll();
 
-  // Init mobile toolbar
   if (isMobileNow()) {
     const now = new Date();
     const initIdx = (now.getFullYear() === year && now.getMonth() === month)
