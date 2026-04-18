@@ -340,6 +340,7 @@ let profilePosition = "";
 let timesheetSaveTimer = null;
 let lastSavedJSON = "";
 let dirty = false;
+let latestPaySummary = null;
 
 function markDirty() {
   dirty = true;
@@ -492,18 +493,39 @@ function updateDayMarkClasses(index) {
 }
 
 function currentPayload() {
-  return { v: 4, year, month, isHoliday, isShortDay, dayHours, nightHours, leaveType };
+  return {
+    v: 4,
+    year,
+    month,
+    isHoliday,
+    isShortDay,
+    dayHours,
+    nightHours,
+    leaveType,
+    paySummary: latestPaySummary ? { ...latestPaySummary } : null,
+  };
 }
 
 async function doSaveTimesheet() {
   setSaveStatus("Сохраняю…", "busy");
+
   try {
     const payload = currentPayload();
-    const json = JSON.stringify(payload);
+
+    if (payload.paySummary) {
+      payload.paySummary.calculatedAt = new Date().toISOString();
+    }
+
+    const json = JSON.stringify(currentPayload());
     await saveTimesheet(year, month, payload);
+
     lastSavedJSON = json;
     dirty = false;
-    setSaveStatus(`Сохранено: ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`, "ok");
+
+    setSaveStatus(
+      `Сохранено: ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`,
+      "ok"
+    );
   } catch (e) {
     setSaveStatus("Ошибка сохранения", "err");
     setError(e?.message || "Не удалось сохранить табель.");
@@ -521,10 +543,13 @@ function scheduleSave() {
 }
 
 function clearMoneyUI() {
+  latestPaySummary = null;
+
   for (const el of [netPayEl, hourRateNetEl, nightHourNetEl, holidayExtraGrossEl,
     baseFactGrossEl, bonusGrossEl, nightExtraGrossEl, grossPayEl, taxPayEl, advancePayEl, remainingPayEl]) {
     if (el) el.textContent = "—";
   }
+
   if (moneySummaryEl) moneySummaryEl.textContent = "";
 }
 
@@ -635,6 +660,21 @@ function recalcAll() {
 
   if (advancePayEl) advancePayEl.textContent = `~ ${formatRub(advanceApprox, 0)}`;
   if (remainingPayEl) remainingPayEl.textContent = `~ ${formatRub(netTotal - advanceApprox, 0)}`;
+  latestPaySummary = {
+  net: Number(netTotal.toFixed(2)),
+  tax: Number(taxTotal.toFixed(2)),
+  gross: Number(grossTotal.toFixed(2)),
+  advance: Number(advanceApprox.toFixed(2)),
+  remaining: Number((netTotal - advanceApprox).toFixed(2)),
+  okladSnapshot: Number(baseOklad.toFixed(2)),
+  effectiveOkladSnapshot: Number(effectiveOklad.toFixed(2)),
+  hazardRate: Number(hazardRate.toFixed(4)),
+  monthNorm: Number(monthNorm.toFixed(2)),
+  personalNorm: Number(personalNorm.toFixed(2)),
+  workedHours: Number(workedHours.toFixed(2)),
+  workedDayHours: Number(totalDay.toFixed(2)),
+  workedNightHours: Number(totalNight.toFixed(2)),
+};
 }
 
 // =========================

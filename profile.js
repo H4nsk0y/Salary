@@ -1,7 +1,6 @@
 // =========================
 // FILE: /profile.js
 // =========================
-// FILE: /profile.js
 import { requireSession, signOut } from "./auth.js";
 import {
   getMyProfile,
@@ -9,17 +8,26 @@ import {
   listMyTimesheetsByYear,
   deleteMyTimesheet,
 } from "./db.js";
-import { parseNumber } from "./calc.js";
+import {
+  parseNumber,
+  BONUS_RATE,
+  TAX_RATE,
+  NIGHT_EXTRA_RATE,
+  computeSalary,
+} from "./calc.js";
 import { supabase } from "./supabaseClient.js";
 
 document.body.classList.add("is-loaded");
 
 const OVERTIME_LIMIT_YEAR = 120;
 const SHORT_DAY_REDUCTION_HOURS = 1;
+const HAZARD_POSITION_RATE = 0.04;
 
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
 let BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
+
+let currentProfile = null;
 
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
@@ -43,7 +51,8 @@ const yearSelect = document.getElementById("yearSelect");
 const overtimeYearEl = document.getElementById("overtimeYear");
 const overtimeRemainingEl = document.getElementById("overtimeRemaining");
 const overtimeAdjustmentEl = document.getElementById("overtimeAdjustment");
-const monthsCountEl = document.getElementById("monthsCount");
+const yearNetIncomeEl = document.getElementById("yearNetIncome");
+const yearTaxPaidEl = document.getElementById("yearTaxPaid");
 const timesheetsList = document.getElementById("timesheetsList");
 
 const overtimeBarFill = document.getElementById("overtimeBarFill");
@@ -65,12 +74,12 @@ const avatarHint = document.getElementById("avatarHint");
 
 /* ===== Avatar upload settings ===== */
 const AVATAR_BUCKET = "avatars";
-const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2MB
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const AVATAR_ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
-const monthNamesShort = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
-const monthNamesFull = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
-const WEEK_LABELS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+const monthNamesShort = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
+const monthNamesFull = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+const WEEK_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
 const POSITION_VALUES = new Set([
   "",
@@ -185,9 +194,178 @@ function leaveTypeToLabel(lt) {
   return String(t);
 }
 
+function formatHoursSigned(h) {
+  const n = Number(h);
+  if (!Number.isFinite(n)) return "—";
+  const abs = Math.abs(n).toFixed(1);
+  if (n > 0.0001) return `+${abs} ч`;
+  if (n < -0.0001) return `−${abs} ч`;
+  return "0.0 ч";
+}
+
+function formatHoursPlain(h) {
+  const n = Number(h);
+  if (!Number.isFinite(n)) return "—";
+  return `${n.toFixed(1)} ч`;
+}
+
+function formatMoney(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return `${n.toLocaleString("ru-RU", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })} ₽`;
+}
+
+function getBaseDayHoursByGender(gender) {
+  return gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
+}
+
+function getHazardRateByPosition(position) {
+  const p = String(position ?? "").trim().toLowerCase();
+  if (p === "loader" || p === "грузчик") return HAZARD_POSITION_RATE;
+  return 0;
+}
+
+function computeCalendarNormFromPayload(payload, baseDayHours) {
+  if (!payload || typeof payload !== "object") return 0;
+
+  const y = safeNum(payload.year);
+  const m = safeNum(payload.month);
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+  const isHoliday = Array.isArray(payload.isHoliday) ? payload.isHoliday : new Array(daysInMonth).fill(false);
+  const isShortDay = Array.isArray(payload.isShortDay) ? payload.isShortDay : new Array(daysInMonth).fill(false);
+
+  let weekdays = 0;
+  let holidayWeekdays = 0;
+  let shortWeekdays = 0;
+
+  for (let i = 0; i < daysInMonth; i++) {
+    if (isWeekendByIndex(y, m, i)) continue;
+    weekdays++;
+    if (isHoliday[i]) holidayWeekdays++;
+    else if (isShortDay[i]) shortWeekdays++;
+  }
+
+  return (
+    weekdays * baseDayHours -
+    holidayWeekdays * baseDayHours -
+    shortWeekdays * SHORT_DAY_REDUCTION_HOURS
+  );
+}
+
+function getHolidayWorkedTotalsFromPayload(payload) {
+  if (!payload || typeof payload !== "object") return { hDay: 0, hNight: 0 };
+
+  const y = safeNum(payload.year);
+  const m = safeNum(payload.month);
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+  const isHoliday = Array.isArray(payload.isHoliday) ? payload.isHoliday : new Array(daysInMonth).fill(false);
+  const leaveType = Array.isArray(payload.leaveType) ? payload.leaveType : new Array(daysInMonth).fill(null);
+  const dayHours = Array.isArray(payload.dayHours) ? payload.dayHours : new Array(daysInMonth).fill(0);
+  const nightHours = Array.isArray(payload.nightHours) ? payload.nightHours : new Array(daysInMonth).fill(0);
+
+  let hDay = 0;
+  let hNight = 0;
+
+  for (let i = 0; i < daysInMonth; i++) {
+    if (!isHoliday[i]) continue;
+    if (normalizeLeaveTypeLegacy(leaveType[i])) continue;
+    hDay += Number(dayHours[i]) || 0;
+    hNight += Number(nightHours[i]) || 0;
+  }
+
+  return { hDay, hNight };
+}
+
+function resolveMoneySummaryFromPayload(payload, profile) {
+  if (!payload || typeof payload !== "object") {
+    return { net: 0, tax: 0 };
+  }
+
+  const storedNet = Number(payload?.paySummary?.net);
+  const storedTax = Number(payload?.paySummary?.tax);
+
+  if (Number.isFinite(storedNet) || Number.isFinite(storedTax)) {
+    return {
+      net: Number.isFinite(storedNet) ? storedNet : 0,
+      tax: Number.isFinite(storedTax) ? storedTax : 0,
+    };
+  }
+
+  const profileOklad = Number(profile?.oklad);
+  const snapshotOklad = Number(payload?.paySummary?.okladSnapshot);
+  const baseOklad =
+    Number.isFinite(snapshotOklad) && snapshotOklad > 0
+      ? snapshotOklad
+      : Number.isFinite(profileOklad) && profileOklad > 0
+        ? profileOklad
+        : 0;
+
+  if (!(baseOklad > 0)) {
+    return { net: 0, tax: 0 };
+  }
+
+  const snapshotHazardRate = Number(payload?.paySummary?.hazardRate);
+  const hazardRate = Number.isFinite(snapshotHazardRate)
+    ? snapshotHazardRate
+    : getHazardRateByPosition(profile?.position);
+
+  const snapshotEffectiveOklad = Number(payload?.paySummary?.effectiveOkladSnapshot);
+  const effectiveOklad =
+    Number.isFinite(snapshotEffectiveOklad) && snapshotEffectiveOklad > 0
+      ? snapshotEffectiveOklad
+      : baseOklad * (1 + hazardRate);
+
+  const baseDayHours = getBaseDayHoursByGender(profile?.gender);
+  const monthNorm = computeCalendarNormFromPayload(payload, baseDayHours);
+
+  if (!(monthNorm > 0)) {
+    return { net: 0, tax: 0 };
+  }
+
+  const dayHours = Array.isArray(payload.dayHours) ? payload.dayHours : [];
+  const nightHours = Array.isArray(payload.nightHours) ? payload.nightHours : [];
+
+  const workedHours = sum(dayHours) + sum(nightHours);
+  const totalNight = sum(nightHours);
+
+  const calc = computeSalary({
+    oklad: effectiveOklad,
+    normHours: monthNorm,
+    workedHours,
+    nightHours: totalNight,
+  });
+
+  if (!calc?.ok || !calc.result) {
+    return { net: 0, tax: 0 };
+  }
+
+  const r = calc.result;
+  const { hDay, hNight } = getHolidayWorkedTotalsFromPayload(payload);
+  const holidayTotal = hDay + hNight;
+
+  const baseHourRateGross = effectiveOklad / monthNorm;
+  const bonusPerHourGross = (effectiveOklad * BONUS_RATE) / monthNorm;
+
+  const holidayExtraGross =
+    (baseHourRateGross + bonusPerHourGross) * holidayTotal +
+    baseHourRateGross * NIGHT_EXTRA_RATE * hNight;
+
+  const holidayTax = holidayExtraGross * TAX_RATE;
+  const holidayNet = holidayExtraGross - holidayTax;
+
+  return {
+    net: (Number(r.net) || 0) + holidayNet,
+    tax: (Number(r.tax) || 0) + holidayTax,
+  };
+}
+
 function isCompensatoryLeaveForYear(lt) {
   const t = normalizeLeaveTypeLegacy(lt);
-  // Эти отсутствия НЕ должны снижать годовую норму: их часы вычитаем из годовой переработки.
   return t === "sick" || t === "vac_unpaid" || t === "vac_unpaid_required" || t === "edu_paid" || t === "edu_unpaid";
 }
 
@@ -211,12 +389,6 @@ function computeCompensatoryLeaveHours(payload) {
   return effectiveDays * BASE_DAY_HOURS;
 }
 
-/**
- * ✅ Align with table.js rules + BASE_DAY_HOURS:
- * - month norm: weekdays*BASE_DAY_HOURS - holidayWeekdays*BASE_DAY_HOURS - shortWeekdays*1
- * - personal norm: monthNorm - leaveEffective*BASE_DAY_HOURS
- *   (leaveEffective excludes holiday days to avoid double subtraction)
- */
 function computeMonthOvertimeSigned(payload) {
   if (!payload || typeof payload !== "object") return 0;
 
@@ -258,21 +430,6 @@ function computeMonthOvertimeSigned(payload) {
   const workedTotal = sum(dayHours) + sum(nightHours);
 
   return workedTotal - personalNorm;
-}
-
-function formatHoursSigned(h) {
-  const n = Number(h);
-  if (!Number.isFinite(n)) return "—";
-  const abs = Math.abs(n).toFixed(1);
-  if (n > 0.0001) return `+${abs} ч`;
-  if (n < -0.0001) return `−${abs} ч`;
-  return `0.0 ч`;
-}
-
-function formatHoursPlain(h) {
-  const n = Number(h);
-  if (!Number.isFinite(n)) return "—";
-  return `${n.toFixed(1)} ч`;
 }
 
 function fillYearOptions(currentYear) {
@@ -496,7 +653,6 @@ async function uploadAvatar(file) {
 
   if (upErr) throw upErr;
 
-  // Сохраняем в профиле именно path, а не временную signed URL
   await updateMyProfile({ avatarUrl: path });
 
   const freshUrl = await createFreshAvatarUrl(path);
@@ -536,11 +692,12 @@ async function refreshProfile() {
   setError(null);
 
   const profile = await getMyProfile();
+  currentProfile = profile ?? null;
 
   const name = profile?.display_name || "Пользователь";
   const oklad = profile?.oklad;
 
- if (!requireDom(displayNameEl, "displayName")) return;
+  if (!requireDom(displayNameEl, "displayName")) return;
   if (!requireDom(displayNameInput, "displayNameInput")) return;
   if (!requireDom(okladInput, "okladInput")) return;
   if (!requireDom(positionSelect, "positionSelect")) return;
@@ -790,9 +947,10 @@ async function shiftCalendarMonth(delta) {
 async function refreshTimesheets() {
   if (!requireDom(yearSelect, "yearSelect")) return;
   if (!requireDom(timesheetsList, "timesheetsList")) return;
-  if (!requireDom(monthsCountEl, "monthsCount")) return;
   if (!requireDom(overtimeYearEl, "overtimeYear")) return;
   if (!requireDom(overtimeRemainingEl, "overtimeRemaining")) return;
+  if (!requireDom(yearNetIncomeEl, "yearNetIncome")) return;
+  if (!requireDom(yearTaxPaidEl, "yearTaxPaid")) return;
 
   const y = Number(yearSelect.value);
   loadedYear = y;
@@ -808,14 +966,21 @@ async function refreshTimesheets() {
   }
 
   timesheetsList.innerHTML = "";
-  monthsCountEl.textContent = String(rows.length);
 
   let yearBalanceSigned = 0;
   let yearAdjustmentHours = 0;
+  let yearNetIncome = 0;
+  let yearTaxPaid = 0;
+
   for (const r of rows) {
     if (!r?.payload) continue;
+
     yearBalanceSigned += computeMonthOvertimeSigned(r.payload);
     yearAdjustmentHours += computeCompensatoryLeaveHours(r.payload);
+
+    const money = resolveMoneySummaryFromPayload(r.payload, currentProfile);
+    yearNetIncome += Number(money.net) || 0;
+    yearTaxPaid += Number(money.tax) || 0;
   }
 
   const adjustedYearBalance = yearBalanceSigned - yearAdjustmentHours;
@@ -825,6 +990,8 @@ async function refreshTimesheets() {
 
   overtimeYearEl.textContent = formatHoursSigned(adjustedYearBalance);
   overtimeRemainingEl.textContent = formatHoursPlain(remaining);
+  yearNetIncomeEl.textContent = formatMoney(yearNetIncome);
+  yearTaxPaidEl.textContent = formatMoney(yearTaxPaid);
 
   if (overtimeAdjustmentEl) {
     overtimeAdjustmentEl.textContent = `Коррекция отсутствиями (Б/ОД/ОЗ/У/УД): −${yearAdjustmentHours.toFixed(1)} ч`;
@@ -873,9 +1040,9 @@ async function saveProfile() {
     return;
   }
   if (!POSITION_VALUES.has(position)) {
-  setError("Некорректная должность.");
-  return;
-}
+    setError("Некорректная должность.");
+    return;
+  }
   if (gender && gender !== "male" && gender !== "female") {
     setError("Пол должен быть: мужской или женский.");
     return;
@@ -886,11 +1053,11 @@ async function saveProfile() {
 
   try {
     await updateMyProfile({
-    displayName: displayName || null,
-    oklad: okladInput.value.trim() ? oklad : null,
-    position: position || null,
-    gender: gender ? gender : null,
-  });
+      displayName: displayName || null,
+      oklad: okladInput.value.trim() ? oklad : null,
+      position: position || null,
+      gender: gender || null,
+    });
 
     BASE_DAY_HOURS = gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
 
@@ -906,8 +1073,11 @@ async function saveProfile() {
 /* ========= events ========= */
 
 logoutBtn?.addEventListener("click", async () => {
-  try { await signOut(); }
-  finally { location.href = "login.html?next=profile.html"; }
+  try {
+    await signOut();
+  } finally {
+    location.href = "login.html?next=profile.html";
+  }
 });
 
 saveProfileBtn?.addEventListener("click", () => void saveProfile());
@@ -973,7 +1143,9 @@ avatarFileInput?.addEventListener("change", async () => {
     setAvatarHint("");
     setStatus("Ошибка", "err");
     setError(e?.message || "Не удалось загрузить аватар.");
-    try { await refreshProfile(); } catch {}
+    try {
+      await refreshProfile();
+    } catch {}
   } finally {
     if (avatarFileInput) avatarFileInput.value = "";
   }
@@ -999,7 +1171,9 @@ avatarRemoveBtn?.addEventListener("click", async () => {
     setAvatarHint("");
     setStatus("Ошибка", "err");
     setError(e?.message || "Не удалось удалить аватар.");
-    try { await refreshProfile(); } catch {}
+    try {
+      await refreshProfile();
+    } catch {}
   }
 });
 
@@ -1029,22 +1203,22 @@ avatarRemoveBtn?.addEventListener("click", async () => {
 })();
 
 // ===== Кнопки обучения =====
-const tourCalcBtn = document.getElementById('tourCalcBtn');
-const tourTableBtn = document.getElementById('tourTableBtn');
-const tourProfileBtn = document.getElementById('tourProfileBtn');
+const tourCalcBtn = document.getElementById("tourCalcBtn");
+const tourTableBtn = document.getElementById("tourTableBtn");
+const tourProfileBtn = document.getElementById("tourProfileBtn");
 
 if (tourCalcBtn) {
-  tourCalcBtn.addEventListener('click', () => {
-    window.location.href = 'index.html?tour=calculator';
+  tourCalcBtn.addEventListener("click", () => {
+    window.location.href = "index.html?tour=calculator";
   });
 }
 if (tourTableBtn) {
-  tourTableBtn.addEventListener('click', () => {
-    window.location.href = 'table.html?tour=table';
+  tourTableBtn.addEventListener("click", () => {
+    window.location.href = "table.html?tour=table";
   });
 }
 if (tourProfileBtn) {
-  tourProfileBtn.addEventListener('click', () => {
-    window.location.href = 'profile.html?tour=profile';
+  tourProfileBtn.addEventListener("click", () => {
+    window.location.href = "profile.html?tour=profile";
   });
 }
