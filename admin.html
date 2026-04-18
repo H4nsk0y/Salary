@@ -441,6 +441,54 @@
           min-width: 180px;
         }
       }
+
+      /* ========= Мобильная панель (аналог table.html) ========= */
+#mobileBar {
+  display: none;
+}
+@media (max-width: 767px) {
+  #mobileBar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: -webkit-sticky;
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 48px);
+    z-index: 40;
+    background: rgba(2, 6, 23, 0.96);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 16px;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+  }
+}
+    .mbar-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+    #mHolidayBtn.is-active {
+      background: rgba(245, 158, 11, 0.22) !important;
+      color: rgba(253, 186, 64, 1) !important;
+      border-color: rgba(245, 158, 11, 0.45) !important;
+    }
+    #mShortBtn.is-active {
+      background: rgba(16, 185, 129, 0.2) !important;
+      color: rgba(52, 211, 153, 1) !important;
+      border-color: rgba(16, 185, 129, 0.45) !important;
+    }
+    /* Подсветка выбранной колонки */
+    .focus-col {
+      box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.6) !important;
+      position: relative;
+      z-index: 2;
+    }
+    .admin-matrix th.focus-col,
+    .admin-matrix td.focus-col {
+      box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.6) !important;
+    }
+
     </style>
   </head>
 
@@ -553,6 +601,25 @@
 
           <div class="text-xs text-slate-400">
             Коды: <span class="text-slate-200">ОТ</span>, <span class="text-slate-200">ОД</span>, <span class="text-slate-200">ОЗ</span>, <span class="text-slate-200">У</span>, <span class="text-slate-200">УД</span>, <span class="text-slate-200">Б</span>
+          </div>
+        </div>
+
+        <!-- Мобильная панель навигации по дням -->
+        <div id="mobileBar">
+          <div class="mbar-row">
+            <button id="mPrevDay" type="button"
+              class="rounded-xl bg-white/5 px-3 py-2 text-base font-bold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 min-w-[36px] text-center">‹</button>
+            <div id="mDayLabel" class="flex-1 text-center text-sm font-semibold text-slate-100 select-none tabular-nums min-w-[72px]">—</div>
+            <button id="mNextDay" type="button"
+              class="rounded-xl bg-white/5 px-3 py-2 text-base font-bold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 min-w-[36px] text-center">›</button>
+            <button id="mToday" type="button"
+              class="rounded-xl bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 whitespace-nowrap">Сегодня</button>
+          </div>
+          <div class="mbar-row">
+            <button id="mHolidayBtn" type="button"
+              class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">🎉 Праздник</button>
+            <button id="mShortBtn" type="button"
+              class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">✂️ Сокращ.</button>
           </div>
         </div>
 

@@ -58,6 +58,7 @@ const teamCountEl = document.getElementById("teamCount");
 
 const headerRow = document.getElementById("headerRow");
 const matrixBody = document.getElementById("matrixBody");
+const tableScrollable = document.getElementById("tableScrollable");
 
 let year = new Date().getFullYear();
 let month = new Date().getMonth();
@@ -68,6 +69,15 @@ let sharedHoliday = [];
 let sharedShortDay = [];
 let headerCells = [];
 let columnCells = [];
+
+// Mobile toolbar
+let mobileSelectedIdx = 0;
+const mPrevDay = document.getElementById("mPrevDay");
+const mNextDay = document.getElementById("mNextDay");
+const mToday = document.getElementById("mToday");
+const mHolidayBtn = document.getElementById("mHolidayBtn");
+const mShortBtn = document.getElementById("mShortBtn");
+const mDayLabel = document.getElementById("mDayLabel");
 
 let dirty = false;
 let lastSavedSignature = "";
@@ -85,6 +95,55 @@ function setError(msg) {
   errorBox.classList.remove("shake");
   errorBox.offsetWidth;
   errorBox.classList.add("shake");
+}
+
+function isMobileNow() {
+  return window.matchMedia?.("(max-width: 767px)")?.matches ?? (window.innerWidth < 768);
+}
+
+function scrollTableToColumn(dayIdx0) {
+  if (!tableScrollable) return;
+  const cells = columnCells[dayIdx0];
+  if (!cells || cells.length === 0) return;
+  const firstCell = cells[0];
+  const containerWidth = tableScrollable.clientWidth;
+  const cellLeft = firstCell.offsetLeft;
+  const cellWidth = firstCell.offsetWidth;
+  const labelWidth = 190;
+  const targetScrollLeft = cellLeft - labelWidth - (containerWidth - labelWidth) / 2 + cellWidth / 2;
+  tableScrollable.scrollTo({
+    left: Math.max(0, targetScrollLeft),
+    behavior: "smooth"
+  });
+}
+
+function clearFocusColumn() {
+  document.querySelectorAll(".focus-col").forEach(el => el.classList.remove("focus-col"));
+}
+
+function focusDayColumn(dayIdx0) {
+  clearFocusColumn();
+  const cells = columnCells[dayIdx0];
+  if (cells) cells.forEach(cell => cell.classList.add("focus-col"));
+}
+
+function updateMobileToolbar() {
+  if (!isMobileNow()) return;
+  const idx = mobileSelectedIdx;
+  if (idx < 0 || idx >= daysInMonth) return;
+  const d = new Date(year, month, idx + 1);
+  mDayLabel.textContent = `${idx + 1} · ${DOW_SHORT[d.getDay()]}`;
+  mHolidayBtn.classList.toggle("is-active", Boolean(sharedHoliday[idx]));
+  mShortBtn.classList.toggle("is-active", Boolean(sharedShortDay[idx]));
+}
+
+function setMobileDay(dayIdx0) {
+  if (dayIdx0 < 0) dayIdx0 = 0;
+  if (dayIdx0 >= daysInMonth) dayIdx0 = daysInMonth - 1;
+  mobileSelectedIdx = dayIdx0;
+  focusDayColumn(dayIdx0);
+  scrollTableToColumn(dayIdx0);
+  updateMobileToolbar();
 }
 
 function setSaveStatus(text, tone = "neutral") {
@@ -457,6 +516,7 @@ function createHeaderCell(dayIndex) {
 
   th.addEventListener("click", () => {
     if (clickTimer) return;
+    if (isMobileNow()) setMobileDay(dayIndex);
     clickTimer = setTimeout(() => {
       clickTimer = null;
       sharedShortDay[dayIndex] = false;
@@ -464,6 +524,7 @@ function createHeaderCell(dayIndex) {
       updateDayMarkClasses(dayIndex);
       recalcAll();
       scheduleSave();
+      updateMobileToolbar();
     }, 240);
   });
 
@@ -472,11 +533,13 @@ function createHeaderCell(dayIndex) {
       clearTimeout(clickTimer);
       clickTimer = null;
     }
+    if (isMobileNow()) setMobileDay(dayIndex);
     if (sharedHoliday[dayIndex]) sharedHoliday[dayIndex] = false;
     sharedShortDay[dayIndex] = !sharedShortDay[dayIndex];
     updateDayMarkClasses(dayIndex);
     recalcAll();
     scheduleSave();
+    updateMobileToolbar();
   });
 
   return th;
@@ -1017,6 +1080,27 @@ function recalcAll() {
   }
 }
 
+function initCurrentDaySelection() {
+  const now = new Date();
+  if (now.getFullYear() === year && now.getMonth() === month) {
+    const dayIdx = Math.min(now.getDate() - 1, daysInMonth - 1);
+    if (dayIdx >= 0) {
+      // Ждём следующего кадра, чтобы гарантировать, что таблица отрисована
+      requestAnimationFrame(() => {
+        focusDayColumn(dayIdx);
+        if (isMobileNow()) {
+          setMobileDay(dayIdx);
+        } else {
+          scrollTableToColumn(dayIdx);
+        }
+      });
+    }
+  } else if (isMobileNow()) {
+    // Если выбран не текущий месяц, на мобильных показываем первый день
+    requestAnimationFrame(() => setMobileDay(0));
+  }
+}
+
 async function doSaveAll() {
   setSaveStatus("Сохраняю…", "busy");
 
@@ -1091,10 +1175,53 @@ async function loadCurrentMonth() {
     lastSavedSignature = currentSignature();
     dirty = false;
     setSaveStatus("Сохранено", "ok");
+
+    // Выделяем текущий день после загрузки
+    initCurrentDaySelection();
   } catch (e) {
     setSaveStatus("Ошибка загрузки", "err");
     setError(e?.message || "Не удалось загрузить общий табель.");
   }
+}
+
+// === Mobile toolbar events ===
+if (mPrevDay) {
+  mPrevDay.addEventListener("click", () => setMobileDay(mobileSelectedIdx - 1));
+}
+if (mNextDay) {
+  mNextDay.addEventListener("click", () => setMobileDay(mobileSelectedIdx + 1));
+}
+if (mToday) {
+  mToday.addEventListener("click", () => {
+    const now = new Date();
+    if (now.getFullYear() === year && now.getMonth() === month) {
+      setMobileDay(now.getDate() - 1);
+    }
+  });
+}
+if (mHolidayBtn) {
+  mHolidayBtn.addEventListener("click", () => {
+    const idx = mobileSelectedIdx;
+    if (idx < 0 || idx >= daysInMonth) return;
+    sharedShortDay[idx] = false;
+    sharedHoliday[idx] = !sharedHoliday[idx];
+    updateDayMarkClasses(idx);
+    recalcAll();
+    scheduleSave();
+    updateMobileToolbar();
+  });
+}
+if (mShortBtn) {
+  mShortBtn.addEventListener("click", () => {
+    const idx = mobileSelectedIdx;
+    if (idx < 0 || idx >= daysInMonth) return;
+    if (sharedHoliday[idx]) sharedHoliday[idx] = false;
+    sharedShortDay[idx] = !sharedShortDay[idx];
+    updateDayMarkClasses(idx);
+    recalcAll();
+    scheduleSave();
+    updateMobileToolbar();
+  });
 }
 
 logoutBtn.addEventListener("click", async () => {
@@ -1117,12 +1244,22 @@ monthSelect.addEventListener("change", async () => {
   month = Number(monthSelect.value);
   updateUrlForMonth();
   await loadCurrentMonth();
+  initCurrentDaySelection();
 });
 
 yearSelect.addEventListener("change", async () => {
   year = Number(yearSelect.value);
   updateUrlForMonth();
   await loadCurrentMonth();
+  initCurrentDaySelection();
+});
+
+window.addEventListener("resize", () => {
+  if (isMobileNow()) {
+    setMobileDay(mobileSelectedIdx);
+  } else {
+    clearFocusColumn();
+  }
 });
 
 window.addEventListener("beforeunload", (e) => {
@@ -1134,18 +1271,15 @@ window.addEventListener("beforeunload", (e) => {
 (async () => {
   try {
     setError(null);
-
     const ok = await guardAdmin();
     if (!ok) return;
-
     setFromQueryOrNow();
     fillYearOptions();
     updateUrlForMonth();
     await loadCurrentMonth();
+    initCurrentDaySelection();  // <-- добавить эту строку
   } catch (e) {
     setError(e?.message || "Ошибка админки.");
     setSaveStatus("Ошибка", "err");
   }
 })();
-
-
