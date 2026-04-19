@@ -5,6 +5,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
   <title>Калькулятор зарплаты Alvisa</title>
+ <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=3" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png?v=3" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png?v=3" />
+  <link rel="shortcut icon" href="/favicon.ico?v=3" />
 
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -821,6 +825,104 @@
 </script>
 
 <script type="module" src="./app.js"></script>
+
+<script type="module">
+  import { getMyProfile } from "./db.js";
+  import {
+    createMoneyAccessGuard,
+    EYE_ICON,
+    EYE_OFF_ICON,
+    isMoneyProtectionEnabled,
+    setRevealButtonState,
+  } from "./moneyPrivacy.js";
+
+  const okladInput = document.getElementById("oklad");
+  const resultsWrap = document.getElementById("resultsWrap");
+  const resultsPeekText = document.getElementById("resultsPeekText");
+  const resultsPeekIcon = document.getElementById("resultsPeekIcon");
+
+  function replaceElementWithClone(el) {
+    if (!el) return null;
+    const clone = el.cloneNode(true);
+    el.replaceWith(clone);
+    return clone;
+  }
+
+  let profile = null;
+
+  try {
+    profile = await getMyProfile();
+  } catch {
+    profile = null;
+  }
+
+  const protectionEnabled = isMoneyProtectionEnabled(profile);
+  const ensureMoneyAccess = createMoneyAccessGuard(profile, {
+    title: "Показать результаты",
+    description: "Введите 4-значный PIN-код, чтобы показать оклад и расчёт зарплаты.",
+    confirmText: "Показать",
+  });
+
+  let okladVisible = !protectionEnabled;
+  let resultsVisible = !protectionEnabled;
+
+  const okladPeekBtn = replaceElementWithClone(document.getElementById("okladPeekBtn"));
+  const resultsPeekBtn = replaceElementWithClone(document.getElementById("resultsPeekBtn"));
+
+  function applyOkladVisibility() {
+    if (!okladInput) return;
+    okladInput.type = okladVisible ? "text" : "password";
+
+    if (!okladPeekBtn) return;
+    okladPeekBtn.innerHTML = okladVisible ? EYE_OFF_ICON : EYE_ICON;
+    okladPeekBtn.setAttribute("aria-label", okladVisible ? "Скрыть оклад" : "Показать оклад");
+  }
+
+  function applyResultsVisibility() {
+    if (resultsWrap) {
+      resultsWrap.classList.toggle("is-hidden", !resultsVisible);
+    }
+
+    if (!resultsPeekBtn) return;
+
+    setRevealButtonState({
+      hidden: !resultsVisible,
+      button: resultsPeekBtn,
+      textEl: resultsPeekText,
+      iconEl: resultsPeekIcon,
+      showText: "Показать",
+      hideText: "Скрыть",
+      showAria: "Показать результаты",
+      hideAria: "Скрыть результаты",
+    });
+  }
+
+  applyOkladVisibility();
+  applyResultsVisibility();
+
+  okladPeekBtn?.addEventListener("click", async (e) => {
+    e.preventDefault();
+
+    if (!okladVisible && protectionEnabled) {
+      const ok = await ensureMoneyAccess();
+      if (!ok) return;
+    }
+
+    okladVisible = !okladVisible;
+    applyOkladVisibility();
+  });
+
+  resultsPeekBtn?.addEventListener("click", async () => {
+    if (!resultsVisible && protectionEnabled) {
+      const ok = await ensureMoneyAccess();
+      if (!ok) return;
+    }
+
+    resultsVisible = !resultsVisible;
+    applyResultsVisibility();
+  });
+</script>
+
 
 <script type="module">
   import { startTour } from './tour.js';

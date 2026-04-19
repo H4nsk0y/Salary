@@ -1,6 +1,3 @@
-// =========================
-// FILE: /db.js
-// =========================
 import { supabase } from "./supabaseClient.js";
 
 function isNotFoundError(error) {
@@ -45,7 +42,7 @@ export async function getMyProfile() {
   const uid = await requireUserId();
   const { data, error } = await supabase
     .from("profiles")
-    .select("role, oklad, gender, position, display_name, avatar_url, hide_money")
+    .select("role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt")
     .eq("user_id", uid)
     .maybeSingle();
 

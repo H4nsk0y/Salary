@@ -24,6 +24,14 @@ import {
   normalizeInternalNextUrl,
 } from "./profileCompletion.js";
 
+import {
+  createMoneyAccessGuard,
+  EYE_ICON,
+  EYE_OFF_ICON,
+  isMoneyProtectionEnabled,
+  setRevealButtonState,
+} from "./moneyPrivacy.js";
+
 document.body.classList.add("is-loaded");
 
 const OVERTIME_LIMIT_YEAR = 120;
@@ -51,6 +59,7 @@ const displayNameInput = document.getElementById("displayNameInput");
 const positionSelect = document.getElementById("positionSelect");
 const okladInput = document.getElementById("okladInput");
 const genderSelect = document.getElementById("genderSelect");
+const okladPeekBtnInitial = document.getElementById("okladInputPeekBtn");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 
@@ -129,6 +138,116 @@ let payloadByMonth = new Map();
 
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
+
+let ensureProfileMoneyAccess = async () => true;
+let okladVisible = true;
+let yearMoneyVisible = true;
+let yearNetIncomeText = "—";
+let yearTaxPaidText = "—";
+let okladPeekBtn = null;
+let profileYearPeekBtn = null;
+
+function replaceElementWithClone(el) {
+  if (!el) return null;
+  const clone = el.cloneNode(true);
+  el.replaceWith(clone);
+  return clone;
+}
+
+function ensureProfileYearPeekButton() {
+  const card = yearNetIncomeEl?.closest(".glass-card");
+  if (!card) return null;
+
+  let btn = card.querySelector("#profileYearPeekBtn");
+  if (btn) return btn;
+
+  card.classList.add("relative");
+
+  btn = document.createElement("button");
+  btn.id = "profileYearPeekBtn";
+  btn.type = "button";
+  btn.className =
+    "absolute right-4 top-4 inline-flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10";
+  btn.innerHTML = `${EYE_ICON}<span>Показать</span>`;
+
+  card.appendChild(btn);
+  return btn;
+}
+
+function applyProfileOkladVisibility() {
+  if (!okladInput) return;
+  okladInput.type = okladVisible ? "text" : "password";
+
+  if (!okladPeekBtn) return;
+  okladPeekBtn.innerHTML = okladVisible ? EYE_OFF_ICON : EYE_ICON;
+  okladPeekBtn.setAttribute("aria-label", okladVisible ? "Скрыть оклад" : "Показать оклад");
+}
+
+function applyProfileYearVisibility() {
+  if (yearNetIncomeEl) {
+    yearNetIncomeEl.textContent = yearMoneyVisible ? yearNetIncomeText : "••••••";
+  }
+  if (yearTaxPaidEl) {
+    yearTaxPaidEl.textContent = yearMoneyVisible ? yearTaxPaidText : "••••••";
+  }
+
+  if (!profileYearPeekBtn) return;
+
+  const textEl = profileYearPeekBtn.querySelector("span");
+  setRevealButtonState({
+    hidden: !yearMoneyVisible,
+    button: profileYearPeekBtn,
+    textEl,
+    iconEl: profileYearPeekBtn,
+    showText: "Показать",
+    hideText: "Скрыть",
+    showAria: "Показать итоги за год",
+    hideAria: "Скрыть итоги за год",
+  });
+
+  profileYearPeekBtn.innerHTML = `${yearMoneyVisible ? EYE_OFF_ICON : EYE_ICON}<span>${yearMoneyVisible ? "Скрыть" : "Показать"}</span>`;
+}
+
+function syncProfileMoneyUi() {
+  const protectedMoney = isMoneyProtectionEnabled(currentProfile);
+
+  if (!protectedMoney) {
+    okladVisible = true;
+    yearMoneyVisible = true;
+  }
+
+  applyProfileOkladVisibility();
+  applyProfileYearVisibility();
+}
+
+function setupProfileMoneyControls() {
+  okladPeekBtn = replaceElementWithClone(okladPeekBtnInitial);
+  profileYearPeekBtn = ensureProfileYearPeekButton();
+
+  okladPeekBtn?.addEventListener("click", async (e) => {
+    e.preventDefault();
+
+    if (!okladVisible && isMoneyProtectionEnabled(currentProfile)) {
+      const ok = await ensureProfileMoneyAccess();
+      if (!ok) return;
+    }
+
+    okladVisible = !okladVisible;
+    applyProfileOkladVisibility();
+  });
+
+  profileYearPeekBtn?.addEventListener("click", async () => {
+    if (!yearMoneyVisible && isMoneyProtectionEnabled(currentProfile)) {
+      const ok = await ensureProfileMoneyAccess();
+      if (!ok) return;
+    }
+
+    yearMoneyVisible = !yearMoneyVisible;
+    applyProfileYearVisibility();
+  });
+
+  syncProfileMoneyUi();
+}
 
 function requireDom(el, name) {
   if (el) return true;
@@ -858,7 +977,7 @@ const effectiveProfile = profile ?? {
   oklad: null,
   role: "user",
   avatar_url: null,
-  hide_money: true,
+  hide_money: false,
 };
 
 const name = effectiveProfile.display_name || "Пользователь";
@@ -869,13 +988,22 @@ const oklad = effectiveProfile.oklad;
   if (!requireDom(okladInput, "okladInput")) return;
   if (!requireDom(positionSelect, "positionSelect")) return;
 
-  const hideMoney = effectiveProfile.hide_money !== false;
+const hideMoney = isMoneyProtectionEnabled(effectiveProfile);
 
 displayNameEl.textContent = name;
 displayNameInput.value = effectiveProfile.display_name ?? "";
 okladInput.value = oklad != null ? String(oklad) : "";
-okladInput.dataset.defaultHidden = String(hideMoney);
-okladInput.type = hideMoney ? "password" : "text";
+
+ensureProfileMoneyAccess = createMoneyAccessGuard(effectiveProfile, {
+  title: "Показать скрытые суммы",
+  description: "Введите 4-значный PIN-код, чтобы показать оклад и годовые итоги.",
+  confirmText: "Показать",
+});
+
+okladVisible = !hideMoney;
+yearMoneyVisible = !hideMoney;
+syncProfileMoneyUi();
+
 
 if (positionSelect) positionSelect.value = effectiveProfile.position ?? "";
 if (genderSelect) genderSelect.value = effectiveProfile.gender ?? "";
@@ -1173,8 +1301,10 @@ async function refreshTimesheets() {
 
   overtimeYearEl.textContent = formatHoursSigned(adjustedYearBalance);
   overtimeRemainingEl.textContent = formatHoursPlain(remaining);
-  yearNetIncomeEl.textContent = formatMoney(yearNetIncome);
-  yearTaxPaidEl.textContent = formatMoney(yearTaxPaid);
+  yearNetIncomeText = formatMoney(yearNetIncome);
+  yearTaxPaidText = formatMoney(yearTaxPaid);
+  applyProfileYearVisibility();
+
 
   if (overtimeAdjustmentEl) {
     overtimeAdjustmentEl.textContent = `Коррекция отсутствиями (Б/ОД/ОЗ/У/УД): −${yearAdjustmentHours.toFixed(1)} ч`;
@@ -1381,6 +1511,8 @@ avatarRemoveBtn?.addEventListener("click", async () => {
   }
 });
 
+setupProfileMoneyControls();
+
 /* ========= boot ========= */
 
 (async () => {
@@ -1426,3 +1558,4 @@ if (tourProfileBtn) {
     window.location.href = "profile.html?tour=profile";
   });
 }
+

@@ -10,6 +10,15 @@ import {
   getMissingRequiredProfileLabels,
 } from "./profileCompletion.js";
 
+import {
+  createMoneyAccessGuard,
+  EYE_ICON,
+  EYE_OFF_ICON,
+  isMoneyProtectionEnabled,
+  setRevealButtonState,
+} from "./moneyPrivacy.js";
+
+
 document.body.classList.add("is-loaded");
 
 const prefersReducedMotion =
@@ -41,6 +50,11 @@ const DOW_SHORT = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
 const monthYearDisplay = document.getElementById("monthYearDisplay");
 
 const okladInput = document.getElementById("okladInput");
+const okladPeekBtnInitial = document.getElementById("okladInputPeekBtn");
+const payResultsWrap = document.getElementById("payResultsWrap");
+const payPeekBtnInitial = document.getElementById("payPeekBtn");
+const payPeekText = document.getElementById("payPeekText");
+const payPeekIcon = document.getElementById("payPeekIcon");
 const normHint = document.getElementById("normHint");
 
 const netPayEl = document.getElementById("netPay");
@@ -407,7 +421,88 @@ let leaveType = [];
 let profileRole = "user";
 let profileOklad = null;
 let profilePosition = "";
+let ensureTableMoneyAccess = async () => true;
+let okladVisible = true;
+let payVisible = true;
+let okladPeekBtn = null;
+let payPeekBtn = null;
+let moneyProfile = null;
 
+function replaceElementWithClone(el) {
+  if (!el) return null;
+  const clone = el.cloneNode(true);
+  el.replaceWith(clone);
+  return clone;
+}
+
+function applyTableOkladVisibility() {
+  if (!okladInput) return;
+  okladInput.type = okladVisible ? "text" : "password";
+
+  if (!okladPeekBtn) return;
+  okladPeekBtn.innerHTML = okladVisible ? EYE_OFF_ICON : EYE_ICON;
+  okladPeekBtn.setAttribute("aria-label", okladVisible ? "Скрыть оклад" : "Показать оклад");
+}
+
+function applyTablePayVisibility() {
+  if (payResultsWrap) {
+    payResultsWrap.classList.toggle("is-hidden", !payVisible);
+  }
+
+  if (!payPeekBtn) return;
+
+  setRevealButtonState({
+    hidden: !payVisible,
+    button: payPeekBtn,
+    textEl: payPeekText,
+    iconEl: payPeekIcon,
+    showText: "Показать",
+    hideText: "Скрыть",
+    showAria: "Показать выплаты",
+    hideAria: "Скрыть выплаты",
+  });
+}
+
+function syncTableMoneyUi() {
+  const protectedMoney = isMoneyProtectionEnabled(moneyProfile);
+
+  if (!protectedMoney) {
+    okladVisible = true;
+    payVisible = true;
+  }
+
+  applyTableOkladVisibility();
+  applyTablePayVisibility();
+}
+
+function setupTableMoneyControls() {
+  okladPeekBtn = replaceElementWithClone(okladPeekBtnInitial);
+  payPeekBtn = replaceElementWithClone(payPeekBtnInitial);
+
+  okladPeekBtn?.addEventListener("click", async (e) => {
+    e.preventDefault();
+
+    if (!okladVisible && isMoneyProtectionEnabled(moneyProfile)) {
+      const ok = await ensureTableMoneyAccess();
+      if (!ok) return;
+    }
+
+    okladVisible = !okladVisible;
+    applyTableOkladVisibility();
+  });
+
+  payPeekBtn?.addEventListener("click", async () => {
+    if (!payVisible && isMoneyProtectionEnabled(moneyProfile)) {
+      const ok = await ensureTableMoneyAccess();
+      if (!ok) return;
+    }
+
+    payVisible = !payVisible;
+    applyTablePayVisibility();
+  });
+
+  syncTableMoneyUi();
+}
 let timesheetSaveTimer = null;
 let lastSavedJSON = "";
 let dirty = false;
@@ -1116,6 +1211,9 @@ yearSelect.addEventListener("change", async () => {
   if (isMobileNow()) setMobileDay(mobileSelectedIdx < daysInMonth ? mobileSelectedIdx : 0);
 });
 
+setupTableMoneyControls();
+
+
 // =========================
 // Boot
 // =========================
@@ -1132,6 +1230,13 @@ yearSelect.addEventListener("change", async () => {
 
   try {
     profile = await getMyProfile();
+
+    moneyProfile = profile ?? null;
+    ensureTableMoneyAccess = createMoneyAccessGuard(profile, {
+      title: "Показать выплаты",
+      description: "Введите 4-значный PIN-код, чтобы показать оклад и расчёт выплат.",
+      confirmText: "Показать",
+    });
   } catch (e) {
     setSaveStatus("Ошибка профиля", "err");
     setError(e?.message || "Не удалось загрузить профиль.");
@@ -1152,6 +1257,11 @@ yearSelect.addEventListener("change", async () => {
   profileRole = profile?.role ?? "user";
   profileOklad = profile?.oklad ?? null;
   profilePosition = profile?.position ?? "";
+
+  const moneyProtected = isMoneyProtectionEnabled(profile);
+  okladVisible = !moneyProtected;
+  payVisible = !moneyProtected;
+  syncTableMoneyUi();
 
   if (profile?.gender === "female") BASE_DAY_HOURS = FEMALE_DAY_HOURS;
   else BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
