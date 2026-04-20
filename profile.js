@@ -702,22 +702,27 @@ function computeCalendarNormFromPayload(payload, baseDayHours) {
   const daysInMonth = new Date(y, m + 1, 0).getDate();
 
   const isHoliday = Array.isArray(payload.isHoliday) ? payload.isHoliday : new Array(daysInMonth).fill(false);
+  const isTransferredOff = Array.isArray(payload.isTransferredOff) ? payload.isTransferredOff : new Array(daysInMonth).fill(false);
   const isShortDay = Array.isArray(payload.isShortDay) ? payload.isShortDay : new Array(daysInMonth).fill(false);
 
   let weekdays = 0;
   let holidayWeekdays = 0;
+  let transferredWeekdays = 0;
   let shortWeekdays = 0;
 
   for (let i = 0; i < daysInMonth; i++) {
     if (isWeekendByIndex(y, m, i)) continue;
     weekdays++;
+
     if (isHoliday[i]) holidayWeekdays++;
+    else if (isTransferredOff[i]) transferredWeekdays++;
     else if (isShortDay[i]) shortWeekdays++;
   }
 
   return (
     weekdays * baseDayHours -
     holidayWeekdays * baseDayHours -
+    transferredWeekdays * baseDayHours -
     shortWeekdays * SHORT_DAY_REDUCTION_HOURS
   );
 }
@@ -756,37 +761,36 @@ function resolveMoneySummaryFromPayload(payload, profile) {
   const actual = moneyState.actual;
   const calculated = moneyState.calculated;
 
-  // FILE: /profile.js
-if (moneyState.confirmed) {
-  const baseNet =
-    Number.isFinite(Number(actual.net))
-      ? Number(actual.net)
-      : Number.isFinite(Number(calculated?.net))
-        ? Number(calculated.net)
+  if (moneyState.confirmed) {
+    const baseNet =
+      Number.isFinite(Number(actual.net))
+        ? Number(actual.net)
+        : Number.isFinite(Number(calculated?.net))
+          ? Number(calculated.net)
+          : 0;
+
+    const paidLeaveNet =
+      Number.isFinite(Number(actual.paidLeaveNet))
+        ? Number(actual.paidLeaveNet)
         : 0;
 
-  const paidLeaveNet =
-    Number.isFinite(Number(actual.paidLeaveNet))
-      ? Number(actual.paidLeaveNet)
-      : 0;
+    const calculatedTax =
+      Number.isFinite(Number(calculated?.tax))
+        ? Number(calculated.tax)
+        : Number.isFinite(Number(payload?.paySummary?.tax))
+          ? Number(payload.paySummary.tax)
+          : 0;
 
-  const calculatedTax =
-    Number.isFinite(Number(calculated?.tax))
-      ? Number(calculated.tax)
-      : Number.isFinite(Number(payload?.paySummary?.tax))
-        ? Number(payload.paySummary.tax)
-        : 0;
+    const taxOverride =
+      Number.isFinite(Number(actual.paidLeaveTax))
+        ? Number(actual.paidLeaveTax)
+        : null;
 
-  const taxOverride =
-    Number.isFinite(Number(actual.paidLeaveTax))
-      ? Number(actual.paidLeaveTax)
-      : null;
-
-  return {
-    net: baseNet + paidLeaveNet,
-    tax: taxOverride !== null ? taxOverride : calculatedTax,
-  };
-}
+    return {
+      net: baseNet + paidLeaveNet,
+      tax: taxOverride !== null ? taxOverride : calculatedTax,
+    };
+  }
 
   if (Number.isFinite(Number(calculated?.net)) || Number.isFinite(Number(calculated?.tax))) {
     return {
@@ -877,11 +881,12 @@ function computeCompensatoryLeaveHours(payload) {
   const daysInMonth = new Date(y, m + 1, 0).getDate();
 
   const isHoliday = Array.isArray(payload.isHoliday) ? payload.isHoliday : new Array(daysInMonth).fill(false);
+  const isTransferredOff = Array.isArray(payload.isTransferredOff) ? payload.isTransferredOff : new Array(daysInMonth).fill(false);
   const leaveType = Array.isArray(payload.leaveType) ? payload.leaveType : new Array(daysInMonth).fill(null);
 
   let effectiveDays = 0;
   for (let i = 0; i < daysInMonth; i++) {
-    if (isHoliday[i]) continue;
+    if (isHoliday[i] || isTransferredOff[i]) continue;
     if (!isCompensatoryLeaveForYear(leaveType[i])) continue;
     effectiveDays++;
   }
@@ -897,6 +902,7 @@ function computeMonthOvertimeSigned(payload) {
   const daysInMonth = new Date(y, m + 1, 0).getDate();
 
   const isHoliday = Array.isArray(payload.isHoliday) ? payload.isHoliday : new Array(daysInMonth).fill(false);
+  const isTransferredOff = Array.isArray(payload.isTransferredOff) ? payload.isTransferredOff : new Array(daysInMonth).fill(false);
   const isShortDay = Array.isArray(payload.isShortDay) ? payload.isShortDay : new Array(daysInMonth).fill(false);
   const dayHours = Array.isArray(payload.dayHours) ? payload.dayHours : new Array(daysInMonth).fill(0);
   const nightHours = Array.isArray(payload.nightHours) ? payload.nightHours : new Array(daysInMonth).fill(0);
@@ -904,25 +910,29 @@ function computeMonthOvertimeSigned(payload) {
 
   let weekdays = 0;
   let holidayWeekdays = 0;
+  let transferredWeekdays = 0;
   let shortWeekdays = 0;
 
   for (let i = 0; i < daysInMonth; i++) {
     if (isWeekendByIndex(y, m, i)) continue;
     weekdays++;
+
     if (isHoliday[i]) holidayWeekdays++;
+    else if (isTransferredOff[i]) transferredWeekdays++;
     else if (isShortDay[i]) shortWeekdays++;
   }
 
   const monthNorm =
     weekdays * BASE_DAY_HOURS -
     holidayWeekdays * BASE_DAY_HOURS -
+    transferredWeekdays * BASE_DAY_HOURS -
     shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
 
   let leaveEffective = 0;
   for (let i = 0; i < daysInMonth; i++) {
     const lt = normalizeLeaveTypeLegacy(leaveType[i]);
     if (!lt) continue;
-    if (isHoliday[i]) continue;
+    if (isHoliday[i] || isTransferredOff[i]) continue;
     leaveEffective++;
   }
 
@@ -1383,6 +1393,7 @@ async function renderCalendar() {
   const payload = getTimesheetForCalendarMonth();
 
   const tsHoliday = Array.isArray(payload?.isHoliday) ? payload.isHoliday : null;
+  const tsTransferredOff = Array.isArray(payload?.isTransferredOff) ? payload.isTransferredOff : null;
   const tsShort = Array.isArray(payload?.isShortDay) ? payload.isShortDay : null;
   const tsDay = Array.isArray(payload?.dayHours) ? payload.dayHours : null;
   const tsNight = Array.isArray(payload?.nightHours) ? payload.nightHours : null;
@@ -1433,13 +1444,14 @@ async function renderCalendar() {
     btn.appendChild(num);
 
     const markHoliday = Boolean(tsHoliday?.[idx]);
+    const markTransferred = Boolean(tsTransferredOff?.[idx]);
     const markShort = Boolean(tsShort?.[idx]);
 
-    if (markHoliday) btn.classList.add("cal-ts-holiday");
-    else btn.classList.remove("cal-ts-holiday");
+    btn.classList.remove("cal-ts-holiday", "cal-ts-transferred", "cal-ts-short");
 
-    if (markShort) btn.classList.add("cal-ts-short");
-    else btn.classList.remove("cal-ts-short");
+    if (markHoliday) btn.classList.add("cal-ts-holiday");
+    else if (markTransferred) btn.classList.add("cal-ts-transferred");
+    else if (markShort) btn.classList.add("cal-ts-short");
 
     const tags = document.createElement("div");
     tags.className = "cal-tags";
@@ -1470,6 +1482,7 @@ async function renderCalendar() {
     if (offShort) parts.push("Официальный сокращённый");
     if (offWeekend) parts.push("Официальный выходной");
     if (markHoliday) parts.push("Отметка табеля: праздник");
+    if (markTransferred) parts.push("Отметка табеля: перенесённый выходной");
     if (markShort) parts.push("Отметка табеля: сокращённый");
     btn.title = parts.length ? parts.join(" • ") : "Открыть табель";
 
