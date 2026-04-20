@@ -1,4 +1,13 @@
+// =========================
+// FILE: /db.js
+// =========================
 import { supabase } from "./supabaseClient.js";
+
+const PROFILE_SELECT =
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt";
+
+const ADMIN_PROFILE_SELECT =
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at";
 
 function isNotFoundError(error) {
   return (
@@ -9,29 +18,49 @@ function isNotFoundError(error) {
   );
 }
 
+function assertValidYearMonth(year, month) {
+  const y = Number(year);
+  const m = Number(month);
+
+  if (!Number.isInteger(y) || y < 2000 || y > 2100) {
+    throw new Error("Некорректный год.");
+  }
+
+  if (!Number.isInteger(m) || m < 0 || m > 11) {
+    throw new Error("Некорректный месяц.");
+  }
+
+  return { year: y, month: m };
+}
+
 async function requireUserId() {
-  const { data: s, error: sErr } = await supabase.auth.getSession();
-  if (sErr) throw sErr;
-  const uid = s.session?.user?.id;
-  if (!uid) throw new Error("NO_SESSION");
-  return uid;
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+
+  const userId = sessionData.session?.user?.id;
+  if (!userId) {
+    throw new Error("NO_SESSION");
+  }
+
+  return userId;
 }
 
 async function requireAdmin() {
-  const uid = await requireUserId();
+  const userId = await requireUserId();
 
   const { data, error } = await supabase
     .from("profiles")
     .select("role")
-    .eq("user_id", uid)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (error) throw error;
+
   if (!data || data.role !== "admin") {
     throw new Error("Доступ запрещён. Нужна роль admin.");
   }
 
-  return uid;
+  return userId;
 }
 
 /** =========================
@@ -39,34 +68,44 @@ async function requireAdmin() {
  *  ========================= */
 
 export async function getMyProfile() {
-  const uid = await requireUserId();
+  const userId = await requireUserId();
+
   const { data, error } = await supabase
     .from("profiles")
-    .select("role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt")
-    .eq("user_id", uid)
+    .select(PROFILE_SELECT)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
     if (isNotFoundError(error)) return null;
     throw error;
   }
+
   return data ?? null;
 }
 
 export async function updateMyOklad(oklad) {
-  const uid = await requireUserId();
+  const userId = await requireUserId();
+
   const { error } = await supabase
     .from("profiles")
     .update({ oklad })
-    .eq("user_id", uid);
+    .eq("user_id", userId);
 
   if (error) throw error;
 }
 
-export async function updateMyProfile({ displayName, oklad, gender, position, avatarUrl }) {
-  const uid = await requireUserId();
+export async function updateMyProfile({
+  displayName,
+  oklad,
+  gender,
+  position,
+  avatarUrl,
+}) {
+  const userId = await requireUserId();
 
-  const patch = { user_id: uid };
+  const patch = { user_id: userId };
+
   if (displayName !== undefined) patch.display_name = displayName;
   if (oklad !== undefined) patch.oklad = oklad;
   if (gender !== undefined) patch.gender = gender;
@@ -81,8 +120,8 @@ export async function updateMyProfile({ displayName, oklad, gender, position, av
 }
 
 export async function updateMyProfileFields(fields) {
-  const uid = await requireUserId();
-  const patch = { user_id: uid, ...(fields || {}) };
+  const userId = await requireUserId();
+  const patch = { user_id: userId, ...(fields || {}) };
 
   const { error } = await supabase
     .from("profiles")
@@ -96,14 +135,15 @@ export async function updateMyProfileFields(fields) {
  *  ========================= */
 
 export async function loadTimesheet(year, month) {
-  const uid = await requireUserId();
+  const userId = await requireUserId();
+  const normalized = assertValidYearMonth(year, month);
 
   const { data, error } = await supabase
     .from("timesheets")
     .select("payload")
-    .eq("user_id", uid)
-    .eq("year", year)
-    .eq("month", month)
+    .eq("user_id", userId)
+    .eq("year", normalized.year)
+    .eq("month", normalized.month)
     .maybeSingle();
 
   if (error) {
@@ -115,25 +155,30 @@ export async function loadTimesheet(year, month) {
 }
 
 export async function saveTimesheet(year, month, payload) {
-  const uid = await requireUserId();
+  const userId = await requireUserId();
+  const normalized = assertValidYearMonth(year, month);
+
+  const row = {
+    user_id: userId,
+    year: normalized.year,
+    month: normalized.month,
+    payload: payload ?? null,
+  };
 
   const { error } = await supabase
     .from("timesheets")
-    .upsert(
-      { user_id: uid, year, month, payload },
-      { onConflict: "user_id,year,month" }
-    );
+    .upsert(row, { onConflict: "user_id,year,month" });
 
   if (error) throw error;
 }
 
 export async function listMyTimesheets(limit = 24) {
-  const uid = await requireUserId();
+  const userId = await requireUserId();
 
   const { data, error } = await supabase
     .from("timesheets")
     .select("year, month, updated_at")
-    .eq("user_id", uid)
+    .eq("user_id", userId)
     .order("year", { ascending: false })
     .order("month", { ascending: false })
     .limit(limit);
@@ -143,9 +188,14 @@ export async function listMyTimesheets(limit = 24) {
 }
 
 export async function listMyTimesheetsByYear(year, options = {}) {
-  const uid = await requireUserId();
-  const withPayload = Boolean(options.withPayload);
+  const userId = await requireUserId();
+  const y = Number(year);
 
+  if (!Number.isInteger(y) || y < 2000 || y > 2100) {
+    throw new Error("Некорректный год.");
+  }
+
+  const withPayload = Boolean(options.withPayload);
   const select = withPayload
     ? "year, month, payload, updated_at"
     : "year, month, updated_at";
@@ -153,8 +203,8 @@ export async function listMyTimesheetsByYear(year, options = {}) {
   const { data, error } = await supabase
     .from("timesheets")
     .select(select)
-    .eq("user_id", uid)
-    .eq("year", year)
+    .eq("user_id", userId)
+    .eq("year", y)
     .order("month", { ascending: true });
 
   if (error) throw error;
@@ -162,27 +212,29 @@ export async function listMyTimesheetsByYear(year, options = {}) {
 }
 
 export async function deleteMyTimesheet(year, month) {
-  const uid = await requireUserId();
+  const userId = await requireUserId();
+  const normalized = assertValidYearMonth(year, month);
 
   const { error } = await supabase
     .from("timesheets")
     .delete()
-    .eq("user_id", uid)
-    .eq("year", year)
-    .eq("month", month);
+    .eq("user_id", userId)
+    .eq("year", normalized.year)
+    .eq("month", normalized.month);
 
   if (error) throw error;
 }
 
 export async function getTimesheetMeta(year, month) {
-  const uid = await requireUserId();
+  const userId = await requireUserId();
+  const normalized = assertValidYearMonth(year, month);
 
   const { data, error } = await supabase
     .from("timesheets")
     .select("year, month, updated_at")
-    .eq("user_id", uid)
-    .eq("year", year)
-    .eq("month", month)
+    .eq("user_id", userId)
+    .eq("year", normalized.year)
+    .eq("month", normalized.month)
     .maybeSingle();
 
   if (error) {
@@ -202,7 +254,7 @@ export async function adminListProfiles(limit = 100) {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("user_id, role, oklad, display_name, avatar_url, gender, created_at")
+    .select(ADMIN_PROFILE_SELECT)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -227,14 +279,14 @@ export async function adminGetProfilesByIds(userIds) {
   await requireAdmin();
 
   const ids = Array.isArray(userIds)
-    ? userIds.map((x) => String(x)).filter(Boolean)
+    ? userIds.map((value) => String(value)).filter(Boolean)
     : [];
 
   if (!ids.length) return [];
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("user_id, role, oklad, gender, display_name, avatar_url, created_at")
+    .select(ADMIN_PROFILE_SELECT)
     .in("user_id", ids);
 
   if (error) throw error;
@@ -243,13 +295,14 @@ export async function adminGetProfilesByIds(userIds) {
 
 export async function adminLoadTimesheet(userId, year, month) {
   await requireAdmin();
+  const normalized = assertValidYearMonth(year, month);
 
   const { data, error } = await supabase
     .from("timesheets")
     .select("payload, updated_at")
     .eq("user_id", userId)
-    .eq("year", year)
-    .eq("month", month)
+    .eq("year", normalized.year)
+    .eq("month", normalized.month)
     .maybeSingle();
 
   if (error) {
@@ -262,13 +315,18 @@ export async function adminLoadTimesheet(userId, year, month) {
 
 export async function adminSaveTimesheet(userId, year, month, payload) {
   await requireAdmin();
+  const normalized = assertValidYearMonth(year, month);
+
+  const row = {
+    user_id: userId,
+    year: normalized.year,
+    month: normalized.month,
+    payload: payload ?? null,
+  };
 
   const { error } = await supabase
     .from("timesheets")
-    .upsert(
-      { user_id: userId, year, month, payload },
-      { onConflict: "user_id,year,month" }
-    );
+    .upsert(row, { onConflict: "user_id,year,month" });
 
   if (error) throw error;
 }
@@ -279,9 +337,20 @@ export async function adminSaveManyTimesheets(items) {
   const rows = Array.isArray(items) ? items : [];
   if (!rows.length) return;
 
+  const normalizedRows = rows.map((item) => {
+    const normalized = assertValidYearMonth(item?.year, item?.month);
+
+    return {
+      user_id: item?.user_id,
+      year: normalized.year,
+      month: normalized.month,
+      payload: item?.payload ?? null,
+    };
+  });
+
   const { error } = await supabase
     .from("timesheets")
-    .upsert(rows, { onConflict: "user_id,year,month" });
+    .upsert(normalizedRows, { onConflict: "user_id,year,month" });
 
   if (error) throw error;
 }

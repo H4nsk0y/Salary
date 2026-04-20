@@ -18,7 +18,6 @@ import {
   setRevealButtonState,
 } from "./moneyPrivacy.js";
 
-
 document.body.classList.add("is-loaded");
 
 const prefersReducedMotion =
@@ -51,10 +50,27 @@ const monthYearDisplay = document.getElementById("monthYearDisplay");
 
 const okladInput = document.getElementById("okladInput");
 const okladPeekBtnInitial = document.getElementById("okladInputPeekBtn");
+const useProfileOkladBtn = document.getElementById("useProfileOkladBtn");
+const monthStatusBadge = document.getElementById("monthStatusBadge");
+
 const payResultsWrap = document.getElementById("payResultsWrap");
 const payPeekBtnInitial = document.getElementById("payPeekBtn");
 const payPeekText = document.getElementById("payPeekText");
 const payPeekIcon = document.getElementById("payPeekIcon");
+const payWarningsBox = document.getElementById("payWarningsBox");
+const actualConfirmHint = document.getElementById("actualConfirmHint");
+const paidLeaveHint = document.getElementById("paidLeaveHint");
+
+const actualNetInput = document.getElementById("actualNetInput");
+const actualAdvanceInput = document.getElementById("actualAdvanceInput");
+const actualRemainingInput = document.getElementById("actualRemainingInput");
+const actualPaidLeaveNetInput = document.getElementById("actualPaidLeaveNetInput");
+const actualPaidLeaveTaxInput = document.getElementById("actualPaidLeaveTaxInput");
+
+const fillActualFromCalcBtn = document.getElementById("fillActualFromCalcBtn");
+const confirmActualBtn = document.getElementById("confirmActualBtn");
+const clearActualBtn = document.getElementById("clearActualBtn");
+
 const normHint = document.getElementById("normHint");
 
 const netPayEl = document.getElementById("netPay");
@@ -77,7 +93,6 @@ const normMonthEl = document.getElementById("normMonth");
 const normEffectiveEl = document.getElementById("normEffective");
 const overtimeEl = document.getElementById("overtime");
 
-// ✅ New: first half stats elements
 const normFirstHalfEl = document.getElementById("normFirstHalf");
 const workedFirstHalfEl = document.getElementById("workedFirstHalf");
 
@@ -86,13 +101,15 @@ const dayRow = document.getElementById("dayRow");
 const nightRow = document.getElementById("nightRow");
 const tableScrollable = document.getElementById("tableScrollable");
 
-// Mobile toolbar elements
 const mPrevDayBtn = document.getElementById("mPrevDay");
 const mNextDayBtn = document.getElementById("mNextDay");
 const mTodayBtn = document.getElementById("mToday");
 const mHolidayBtn = document.getElementById("mHolidayBtn");
 const mShortBtn = document.getElementById("mShortBtn");
 const mDayLabel = document.getElementById("mDayLabel");
+
+const leavePayoutInput = document.getElementById("leavePayoutInput");
+const leavePayoutHint = document.getElementById("leavePayoutHint");
 
 let profileCompletionGateEl = null;
 
@@ -228,6 +245,19 @@ function formatRub(value, digits = 0) {
   return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: digits }).format(n);
 }
 
+function formatDateTime(value) {
+  if (!value) return "—";
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return "—";
+  return dt.toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function getHazardRateByPosition(position) {
   const p = String(position ?? "").trim().toLowerCase();
   if (p === "loader" || p === "грузчик") return HAZARD_POSITION_RATE;
@@ -237,7 +267,12 @@ function getHazardRateByPosition(position) {
 function setError(msg) {
   const box = document.getElementById("errorBox");
   if (!box) return;
-  if (!msg) { box.classList.add("hidden"); box.textContent = ""; box.classList.remove("shake"); return; }
+  if (!msg) {
+    box.classList.add("hidden");
+    box.textContent = "";
+    box.classList.remove("shake");
+    return;
+  }
   box.classList.remove("hidden");
   box.textContent = msg;
   box.classList.remove("shake");
@@ -323,6 +358,82 @@ function normalizeLeaveTypeLegacy(lt) {
   return String(lt);
 }
 
+function hasExtraLeavePaymentCode() {
+  for (let i = 0; i < leaveType.length; i++) {
+    const t = normalizeLeaveTypeLegacy(leaveType[i]);
+    if (t === "vac_paid" || t === "edu_paid" || t === "sick") return true;
+  }
+  return false;
+}
+
+function readLeavePayoutState() {
+  const raw = String(leavePayoutInput?.value ?? "").trim();
+  if (!raw) {
+    return { raw: "", hasValue: false, amount: 0 };
+  }
+
+  const amount = parseNumber(raw);
+  return {
+    raw,
+    hasValue: true,
+    amount: Number.isFinite(amount) ? Math.max(0, amount) : NaN,
+  };
+}
+
+function syncLeavePayoutInputState() {
+  if (!leavePayoutInput) return;
+
+  const hasCode = hasExtraLeavePaymentCode();
+  const current = readLeavePayoutState();
+
+  leavePayoutInput.disabled = !hasCode;
+  leavePayoutInput.classList.toggle("opacity-50", !hasCode);
+  leavePayoutInput.classList.toggle("cursor-not-allowed", !hasCode);
+
+  if (!hasCode) {
+    leavePayoutInput.setAttribute("aria-disabled", "true");
+    leavePayoutInput.placeholder = "Сначала поставьте ОТ, У или Б";
+  } else {
+    leavePayoutInput.removeAttribute("aria-disabled");
+    leavePayoutInput.placeholder = "Напр. 12450";
+  }
+
+  if (!leavePayoutHint) return;
+
+  if (!hasCode && !current.hasValue) {
+    leavePayoutHint.textContent =
+      "Поле станет доступно, когда в табеле появится хотя бы один код ОТ, У или Б.";
+    return;
+  }
+
+  if (!hasCode && current.hasValue) {
+    leavePayoutHint.textContent =
+      "Сумма указана, но в табеле нет кодов ОТ, У или Б. Добавьте код или очистите сумму.";
+    return;
+  }
+
+  leavePayoutHint.textContent =
+    "Сюда можно внести фактически полученную сумму за отпуск, учебный отпуск или больничный.";
+}
+
+function validateLeavePayoutInput() {
+  const state = readLeavePayoutState();
+
+  if (!state.hasValue) return true;
+  if (!Number.isFinite(state.amount)) {
+    setError("Сумма отпускных / учебного отпуска / больничного должна быть числом.");
+    return false;
+  }
+  if (state.amount <= 0) return true;
+
+  if (!hasExtraLeavePaymentCode()) {
+    setError("Указаны отпускные / учебный отпуск / больничный, но в табеле нет кодов ОТ, У или Б.");
+    return false;
+  }
+
+  return true;
+}
+
 function leaveTypeToCode(lt, raw = "") {
   const t = normalizeLeaveTypeLegacy(lt);
   if (!t) return "";
@@ -348,6 +459,33 @@ function formatHourForInput(n) {
   const x = Number(n);
   if (!Number.isFinite(x) || Math.abs(x) < 1e-9) return "";
   return String(x);
+}
+
+function formatMoneyForInput(value) {
+  if (value == null) return "";
+  if (typeof value === "string" && value.trim() === "") return "";
+
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+
+  return String(Number(n.toFixed(2))).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+}
+
+function normalizeMoneyNumber(value) {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+
+  return Number(n.toFixed(2));
+}
+
+function normalizeEnteredMoneyNumber(value) {
+  const n = normalizeMoneyNumber(value);
+  if (n == null) return null;
+  if (n <= 0) return null;
+  return n;
 }
 
 function clampDayTotalOrRevert({ index, nextDay, nextNight, onRevert }) {
@@ -428,12 +566,354 @@ let okladPeekBtn = null;
 let payPeekBtn = null;
 let moneyProfile = null;
 
+let currentLoadedPayload = null;
+let currentMoneySnapshot = null;
+let currentPaySummary = createEmptyPaySummary();
+let suppressActualInputSync = false;
+
 function replaceElementWithClone(el) {
   if (!el) return null;
   const clone = el.cloneNode(true);
   el.replaceWith(clone);
   return clone;
 }
+
+function createEmptyActualSummary() {
+  return {
+    net: null,
+    advance: null,
+    remaining: null,
+    paidLeaveNet: null,
+    paidLeaveTax: null,
+    confirmedAt: null,
+    confirmedCalculatedSignature: null,
+  };
+}
+
+function createEmptyPaySummary() {
+  return {
+    calculated: null,
+    actual: createEmptyActualSummary(),
+    status: "draft",
+  };
+}
+
+function cloneActualSummary(actual) {
+  const src = actual && typeof actual === "object" ? actual : createEmptyActualSummary();
+  return {
+    net: normalizeMoneyNumber(src.net),
+    advance: normalizeMoneyNumber(src.advance),
+    remaining: normalizeMoneyNumber(src.remaining),
+    paidLeaveNet: normalizeMoneyNumber(src.paidLeaveNet),
+    paidLeaveTax: normalizeMoneyNumber(src.paidLeaveTax),
+    confirmedAt: src.confirmedAt ? String(src.confirmedAt) : null,
+    confirmedCalculatedSignature: src.confirmedCalculatedSignature ? String(src.confirmedCalculatedSignature) : null,
+  };
+}
+
+function cloneCalculatedSummary(calculated) {
+  if (!calculated || typeof calculated !== "object") return null;
+  return {
+    net: normalizeMoneyNumber(calculated.net),
+    tax: normalizeMoneyNumber(calculated.tax),
+    gross: normalizeMoneyNumber(calculated.gross),
+    advance: normalizeMoneyNumber(calculated.advance),
+    remaining: normalizeMoneyNumber(calculated.remaining),
+    okladSnapshot: normalizeMoneyNumber(calculated.okladSnapshot),
+    effectiveOkladSnapshot: normalizeMoneyNumber(calculated.effectiveOkladSnapshot),
+    hazardRate: Number.isFinite(Number(calculated.hazardRate)) ? Number(Number(calculated.hazardRate).toFixed(4)) : 0,
+    monthNorm: Number.isFinite(Number(calculated.monthNorm)) ? Number(Number(calculated.monthNorm).toFixed(2)) : null,
+    personalNorm: Number.isFinite(Number(calculated.personalNorm)) ? Number(Number(calculated.personalNorm).toFixed(2)) : null,
+    workedHours: Number.isFinite(Number(calculated.workedHours)) ? Number(Number(calculated.workedHours).toFixed(2)) : null,
+    workedDayHours: Number.isFinite(Number(calculated.workedDayHours)) ? Number(Number(calculated.workedDayHours).toFixed(2)) : null,
+    workedNightHours: Number.isFinite(Number(calculated.workedNightHours)) ? Number(Number(calculated.workedNightHours).toFixed(2)) : null,
+    hourRateNet: normalizeMoneyNumber(calculated.hourRateNet),
+    nightHourNet: normalizeMoneyNumber(calculated.nightHourNet),
+    baseFactGross: normalizeMoneyNumber(calculated.baseFactGross),
+    bonusGross: normalizeMoneyNumber(calculated.bonusGross),
+    nightExtraGross: normalizeMoneyNumber(calculated.nightExtraGross),
+    holidayExtraGross: normalizeMoneyNumber(calculated.holidayExtraGross),
+  };
+}
+
+function normalizeMoneySnapshot(raw) {
+  if (!raw || typeof raw !== "object") return null;
+
+  const okladSnapshot = Number(raw.okladSnapshot);
+  if (!(Number.isFinite(okladSnapshot) && okladSnapshot > 0)) return null;
+
+  const hazardRateSnapshot = Number.isFinite(Number(raw.hazardRateSnapshot))
+    ? Number(Number(raw.hazardRateSnapshot).toFixed(4))
+    : 0;
+
+  const effectiveRaw = Number(raw.effectiveOkladSnapshot);
+  const effectiveOkladSnapshot =
+    Number.isFinite(effectiveRaw) && effectiveRaw > 0
+      ? Number(effectiveRaw.toFixed(2))
+      : Number((okladSnapshot * (1 + hazardRateSnapshot)).toFixed(2));
+
+  return {
+    okladSnapshot: Number(okladSnapshot.toFixed(2)),
+    hazardRateSnapshot,
+    effectiveOkladSnapshot,
+    source: String(raw.source || "manual"),
+    updatedAt: raw.updatedAt ? String(raw.updatedAt) : null,
+  };
+}
+
+function createMoneySnapshot(baseOklad, source = "manual") {
+  const oklad = Number(baseOklad);
+  if (!(Number.isFinite(oklad) && oklad > 0)) return null;
+
+  const hazardRateSnapshot = Number(getHazardRateByPosition(profilePosition).toFixed(4));
+  const effectiveOkladSnapshot = Number((oklad * (1 + hazardRateSnapshot)).toFixed(2));
+
+  return {
+    okladSnapshot: Number(oklad.toFixed(2)),
+    hazardRateSnapshot,
+    effectiveOkladSnapshot,
+    source,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function resolveMoneySnapshotFromPayload(payload) {
+  const direct = normalizeMoneySnapshot(payload?.moneySnapshot);
+  if (direct) return direct;
+
+  const calc = payload?.paySummary?.calculated;
+  const fromNewCalculated = normalizeMoneySnapshot({
+    okladSnapshot: calc?.okladSnapshot,
+    hazardRateSnapshot: calc?.hazardRate,
+    effectiveOkladSnapshot: calc?.effectiveOkladSnapshot,
+    source: "legacy",
+  });
+  if (fromNewCalculated) return fromNewCalculated;
+
+  const legacyFlat = payload?.paySummary;
+  const fromLegacyFlat = normalizeMoneySnapshot({
+    okladSnapshot: legacyFlat?.okladSnapshot,
+    hazardRateSnapshot: legacyFlat?.hazardRate,
+    effectiveOkladSnapshot: legacyFlat?.effectiveOkladSnapshot,
+    source: "legacy",
+  });
+  if (fromLegacyFlat) return fromLegacyFlat;
+
+  return null;
+}
+
+function normalizeStoredPaySummary(raw) {
+  if (!raw || typeof raw !== "object") return createEmptyPaySummary();
+
+  if ("calculated" in raw || "actual" in raw || "status" in raw) {
+    const calculated = cloneCalculatedSummary(raw.calculated);
+    const actual = cloneActualSummary(raw.actual);
+    return {
+      calculated,
+      actual,
+      status: "draft",
+    };
+  }
+
+  const legacyCalculated = cloneCalculatedSummary({
+    net: raw.net,
+    tax: raw.tax,
+    gross: raw.gross,
+    advance: raw.advance,
+    remaining: raw.remaining,
+    okladSnapshot: raw.okladSnapshot,
+    effectiveOkladSnapshot: raw.effectiveOkladSnapshot,
+    hazardRate: raw.hazardRate,
+    monthNorm: raw.monthNorm,
+    personalNorm: raw.personalNorm,
+    workedHours: raw.workedHours,
+    workedDayHours: raw.workedDayHours,
+    workedNightHours: raw.workedNightHours,
+  });
+
+  return {
+    calculated: legacyCalculated,
+    actual: createEmptyActualSummary(),
+    status: "draft",
+  };
+}
+
+function hasAnyActualValues(actual) {
+  if (!actual) return false;
+  return [
+    actual.net,
+    actual.advance,
+    actual.remaining,
+    actual.paidLeaveNet,
+    actual.paidLeaveTax,
+  ].some((x) => normalizeEnteredMoneyNumber(x) !== null);
+}
+
+function hasMainActualValues(actual) {
+  if (!actual) return false;
+  return [
+    actual.net,
+    actual.advance,
+    actual.remaining,
+  ].some((x) => normalizeEnteredMoneyNumber(x) !== null);
+}
+
+function hasPaidLeaveNetActualValue(actual) {
+  if (!actual) return false;
+  return normalizeEnteredMoneyNumber(actual.paidLeaveNet) !== null;
+}
+
+function hasTaxAdjustmentActualValue(actual) {
+  if (!actual) return false;
+  return normalizeEnteredMoneyNumber(actual.paidLeaveTax) !== null;
+}
+
+
+function hasConfirmedActual(actual) {
+  return Boolean(actual?.confirmedAt) && hasAnyActualValues(actual);
+}
+
+function buildCurrentMonthSignature() {
+  const snapshot = normalizeMoneySnapshot(currentMoneySnapshot);
+  return JSON.stringify({
+    year,
+    month,
+    isHoliday: isHoliday.map((x) => Boolean(x)),
+    isShortDay: isShortDay.map((x) => Boolean(x)),
+    dayHours: dayHours.map((x) => Number.isFinite(Number(x)) ? Number(Number(x).toFixed(2)) : 0),
+    nightHours: nightHours.map((x) => Number.isFinite(Number(x)) ? Number(Number(x).toFixed(2)) : 0),
+    leaveType: leaveType.map((x) => normalizeLeaveTypeLegacy(x)),
+    moneySnapshot: snapshot
+      ? {
+          okladSnapshot: snapshot.okladSnapshot,
+          hazardRateSnapshot: snapshot.hazardRateSnapshot,
+          effectiveOkladSnapshot: snapshot.effectiveOkladSnapshot,
+        }
+      : null,
+  });
+}
+
+function computeCurrentPaySummaryStatus() {
+  if (!hasAnyActualValues(currentPaySummary.actual)) return "draft";
+  if (!currentPaySummary.actual.confirmedAt) return "draft";
+
+  const signature = buildCurrentMonthSignature();
+  if (currentPaySummary.actual.confirmedCalculatedSignature === signature) {
+    return "actual_confirmed";
+  }
+  return "changed_after_confirm";
+}
+
+function parseMoneyInputValue(inputEl) {
+  const raw = String(inputEl?.value ?? "").trim();
+  if (!raw) return null;
+  const n = parseNumber(raw);
+  return normalizeEnteredMoneyNumber(n);
+}
+
+function setMoneyInputValue(inputEl, value) {
+  if (!inputEl) return;
+  inputEl.value = formatMoneyForInput(value);
+}
+
+function getActualDraftFromInputs() {
+  return {
+    net: parseMoneyInputValue(actualNetInput),
+    advance: parseMoneyInputValue(actualAdvanceInput),
+    remaining: parseMoneyInputValue(actualRemainingInput),
+    paidLeaveNet: parseMoneyInputValue(actualPaidLeaveNetInput),
+    paidLeaveTax: parseMoneyInputValue(actualPaidLeaveTaxInput),
+    confirmedAt: currentPaySummary.actual?.confirmedAt ?? null,
+    confirmedCalculatedSignature: currentPaySummary.actual?.confirmedCalculatedSignature ?? null,
+  };
+}
+
+function fillActualInputsFromState() {
+  suppressActualInputSync = true;
+  setMoneyInputValue(actualNetInput, currentPaySummary.actual?.net);
+  setMoneyInputValue(actualAdvanceInput, currentPaySummary.actual?.advance);
+  setMoneyInputValue(actualRemainingInput, currentPaySummary.actual?.remaining);
+  setMoneyInputValue(actualPaidLeaveNetInput, currentPaySummary.actual?.paidLeaveNet);
+  setMoneyInputValue(actualPaidLeaveTaxInput, currentPaySummary.actual?.paidLeaveTax);
+  suppressActualInputSync = false;
+}
+
+function syncActualStateFromInputs() {
+  if (suppressActualInputSync) return false;
+
+  const next = getActualDraftFromInputs();
+  const prev = cloneActualSummary(currentPaySummary.actual);
+
+  const valuesChanged =
+    prev.net !== next.net ||
+    prev.advance !== next.advance ||
+    prev.remaining !== next.remaining ||
+    prev.paidLeaveNet !== next.paidLeaveNet ||
+    prev.paidLeaveTax !== next.paidLeaveTax;
+
+  if (!valuesChanged) return false;
+
+  currentPaySummary.actual = {
+    ...next,
+    confirmedAt: null,
+    confirmedCalculatedSignature: null,
+  };
+  currentPaySummary.status = computeCurrentPaySummaryStatus();
+  return true;
+}
+
+function monthHasPaidLeaveCodes() {
+  for (let i = 0; i < daysInMonth; i++) {
+    const lt = normalizeLeaveTypeLegacy(leaveType[i]);
+    if (lt === "vac_paid" || lt === "edu_paid" || lt === "sick") return true;
+  }
+  return false;
+}
+
+function monthHasAnyTimesheetEntries() {
+  for (let i = 0; i < daysInMonth; i++) {
+    if ((Number(dayHours[i]) || 0) > 0) return true;
+    if ((Number(nightHours[i]) || 0) > 0) return true;
+    if (normalizeLeaveTypeLegacy(leaveType[i])) return true;
+  }
+  return false;
+}
+
+function syncPaidLeaveControls() {
+  const hasPaidLeaveCode = monthHasPaidLeaveCodes();
+  const hasPaidLeaveNetValue = hasPaidLeaveNetActualValue(currentPaySummary.actual);
+
+  const netEnabled = hasPaidLeaveCode || hasPaidLeaveNetValue;
+
+  if (actualPaidLeaveNetInput) {
+    actualPaidLeaveNetInput.disabled = !netEnabled;
+    actualPaidLeaveNetInput.classList.toggle("opacity-60", !netEnabled);
+    actualPaidLeaveNetInput.classList.toggle("cursor-not-allowed", !netEnabled);
+  }
+
+  if (actualPaidLeaveTaxInput) {
+    actualPaidLeaveTaxInput.disabled = false;
+    actualPaidLeaveTaxInput.classList.remove("opacity-60", "cursor-not-allowed");
+  }
+
+  if (!paidLeaveHint) return;
+
+  if (hasPaidLeaveCode) {
+    paidLeaveHint.textContent =
+      "Если в табеле есть ОТ, У или Б, можно указать сумму выплаты.";
+    return;
+  }
+
+  if (hasPaidLeaveNetValue) {
+    paidLeaveHint.textContent =
+      "Сумма выплаты сохранена, но сейчас в табеле нет кодов ОТ, У или Б. Проверьте месяц.";
+    return;
+  }
+
+  paidLeaveHint.textContent =
+    "Поле суммы станет доступно, когда в табеле появится код ОТ, У или Б.";
+}
+
 
 function applyTableOkladVisibility() {
   if (!okladInput) return;
@@ -503,10 +983,81 @@ function setupTableMoneyControls() {
 
   syncTableMoneyUi();
 }
+
+function setupActualMoneyControls() {
+  const actualInputs = [
+    actualNetInput,
+    actualAdvanceInput,
+    actualRemainingInput,
+    actualPaidLeaveNetInput,
+    actualPaidLeaveTaxInput,
+  ].filter(Boolean);
+
+  for (const input of actualInputs) {
+    input.addEventListener("input", () => {
+      const sanitized = sanitizeNumericValue(input.value);
+      if (sanitized !== input.value) input.value = sanitized;
+
+      const changed = syncActualStateFromInputs();
+      if (!changed) return;
+
+      recalcAll();
+      scheduleSave();
+    });
+  }
+
+  fillActualFromCalcBtn?.addEventListener("click", () => {
+    const calc = currentPaySummary.calculated;
+    if (!calc) {
+      setError("Сначала нужен авторасчёт месяца.");
+      return;
+    }
+
+    suppressActualInputSync = true;
+    setMoneyInputValue(actualNetInput, calc.net);
+    setMoneyInputValue(actualAdvanceInput, calc.advance);
+    setMoneyInputValue(actualRemainingInput, calc.remaining);
+    suppressActualInputSync = false;
+
+    syncActualStateFromInputs();
+    setError(null);
+    recalcAll();
+    scheduleSave();
+  });
+
+  confirmActualBtn?.addEventListener("click", async () => {
+    const changed = syncActualStateFromInputs();
+    if (changed) {
+      recalcAll();
+    }
+
+    if (!hasAnyActualValues(currentPaySummary.actual)) {
+      setError("Введите хотя бы одну фактическую сумму перед подтверждением.");
+      return;
+    }
+
+    currentPaySummary.actual.confirmedAt = new Date().toISOString();
+    currentPaySummary.actual.confirmedCalculatedSignature = buildCurrentMonthSignature();
+    currentPaySummary.status = computeCurrentPaySummaryStatus();
+
+    setError(null);
+    recalcAll();
+    await doSaveTimesheet();
+  });
+
+  clearActualBtn?.addEventListener("click", () => {
+    currentPaySummary.actual = createEmptyActualSummary();
+    currentPaySummary.status = computeCurrentPaySummaryStatus();
+    fillActualInputsFromState();
+    setError(null);
+    recalcAll();
+    scheduleSave();
+  });
+}
+
 let timesheetSaveTimer = null;
 let lastSavedJSON = "";
 let dirty = false;
-let latestPaySummary = null;
 
 function markDirty() {
   dirty = true;
@@ -556,7 +1107,6 @@ function holidayWorkedTotals() {
   return { hDay, hNight };
 }
 
-// ✅ First half: days 1–15 (indices 0–14)
 function firstHalfStats() {
   const endIdx = Math.min(14, daysInMonth - 1);
   let weekdays = 0, holidayWD = 0, shortWD = 0, leaveEffective = 0;
@@ -576,9 +1126,961 @@ function firstHalfStats() {
   return { personalHalfNorm, workedFH };
 }
 
-// =========================
-// Mobile toolbar
-// =========================
+function setBadgeState(el, tone, text) {
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove(
+    "bg-white/5","text-slate-300","ring-white/10",
+    "bg-emerald-500/10","text-emerald-200","ring-emerald-400/20",
+    "bg-amber-500/10","text-amber-200","ring-amber-400/20",
+    "bg-rose-500/10","text-rose-200","ring-rose-400/20"
+  );
+
+  if (tone === "ok") {
+    el.classList.add("bg-emerald-500/10","text-emerald-200","ring-emerald-400/20");
+    return;
+  }
+  if (tone === "warn") {
+    el.classList.add("bg-amber-500/10","text-amber-200","ring-amber-400/20");
+    return;
+  }
+  if (tone === "err") {
+    el.classList.add("bg-rose-500/10","text-rose-200","ring-rose-400/20");
+    return;
+  }
+
+  el.classList.add("bg-white/5","text-slate-300","ring-white/10");
+}
+
+function renderMonthStatusUi() {
+  const hasActual = hasAnyActualValues(currentPaySummary.actual);
+  const status = currentPaySummary.status;
+
+  if (!hasActual) {
+    setBadgeState(monthStatusBadge, "neutral", "Черновик");
+    return;
+  }
+  if (status === "actual_confirmed") {
+    setBadgeState(monthStatusBadge, "ok", "Факт подтверждён");
+    return;
+  }
+  if (status === "changed_after_confirm") {
+    setBadgeState(monthStatusBadge, "warn", "Изменён после факта");
+    return;
+  }
+  setBadgeState(monthStatusBadge, "neutral", "Факт не подтверждён");
+}
+
+function renderActualHintUi() {
+  if (!actualConfirmHint) return;
+
+  if (!hasAnyActualValues(currentPaySummary.actual)) {
+    actualConfirmHint.textContent =
+      "Можно вручную ввести реальные суммы после получения зарплаты, аванса, отпускных или больничного, а затем нажать «Подтвердить факт».";
+    return;
+  }
+
+  if (!currentPaySummary.actual.confirmedAt) {
+    actualConfirmHint.textContent =
+      "Фактические суммы сейчас сохранены как черновик. Пока вы не нажмёте «Подтвердить факт», в годовых итогах будет использоваться авторасчёт, а не введённые вами суммы.";
+    return;
+  }
+
+  if (currentPaySummary.status === "changed_after_confirm") {
+    actualConfirmHint.textContent =
+      `Фактические суммы были подтверждены ${formatDateTime(currentPaySummary.actual.confirmedAt)}, но после этого табель изменили. Если введённые суммы всё ещё верны, нажмите «Подтвердить факт» ещё раз.`;
+    return;
+  }
+
+  actualConfirmHint.textContent =
+    `Фактические суммы подтверждены: ${formatDateTime(currentPaySummary.actual.confirmedAt)}. Именно они будут использоваться в итогах.`;
+}
+
+function renderPayWarnings(calculated) {
+  if (!payWarningsBox) return;
+
+  const warnings = [];
+  const actual = currentPaySummary.actual;
+  const confirmed = hasConfirmedActual(actual);
+
+  const hasMainFact = hasMainActualValues(actual);
+  const hasPaidLeaveCode = monthHasPaidLeaveCodes();
+  const hasPaidLeaveNetFact = hasPaidLeaveNetActualValue(actual);
+
+  if (hasMainFact && !actual.confirmedAt) {
+    warnings.push({
+      tone: "neutral",
+      text: "Фактические суммы заполнены как черновик. Пока вы не нажмёте «Подтвердить факт», в годовых итогах используется авторасчёт.",
+    });
+  }
+
+  if (currentPaySummary.status === "changed_after_confirm") {
+    warnings.push({
+      tone: "warn",
+      text: "После подтверждения фактических сумм табель был изменён. Проверьте месяц и, если нужно, подтвердите факт заново.",
+    });
+  }
+
+  if (hasAnyActualValues(actual) && !monthHasAnyTimesheetEntries()) {
+    warnings.push({
+      tone: "warn",
+      text: "В месяце почти нет данных табеля, но фактические суммы уже указаны.",
+    });
+  }
+
+  if (hasPaidLeaveNetFact && !hasPaidLeaveCode) {
+    warnings.push({
+      tone: "warn",
+      text: "Указана сумма за отпуск, учебный отпуск или больничный, но в табеле нет кодов ОТ, У или Б.",
+    });
+  }
+
+  if (hasPaidLeaveCode && !hasPaidLeaveNetFact) {
+    warnings.push({
+      tone: "warn",
+      text: "В табеле есть код ОТ, У или Б, но сумма выплаты не указана. Из-за этого сумма за месяц и год может быть неточной.",
+    });
+  }
+
+  if (
+    confirmed &&
+    calculated &&
+    normalizeEnteredMoneyNumber(actual?.net) !== null &&
+    Number.isFinite(calculated?.net)
+  ) {
+    const diff = Math.abs(Number(actual.net) - Number(calculated.net));
+    if (diff >= 1) {
+      warnings.push({
+        tone: "neutral",
+        text: `Фактическая зарплата отличается от авторасчёта на ${formatRub(diff, 0)}.`,
+      });
+    }
+  }
+
+  if (!warnings.length) {
+    payWarningsBox.classList.add("hidden");
+    payWarningsBox.innerHTML = "";
+    return;
+  }
+
+  payWarningsBox.classList.remove("hidden");
+  payWarningsBox.innerHTML = warnings.map((item) => {
+    const cls =
+      item.tone === "warn"
+        ? "border-amber-400/20 bg-amber-500/10 text-amber-100"
+        : item.tone === "err"
+          ? "border-rose-400/20 bg-rose-500/10 text-rose-100"
+          : "border-white/10 bg-white/5 text-slate-200";
+    return `<div class="rounded-2xl border px-4 py-3 text-sm ${cls}">${item.text}</div>`;
+  }).join("");
+}
+
+
+function setTextValue(el, value) {
+  if (!el) return;
+  el.textContent = value;
+}
+
+function clearCalculatedMoneyUi() {
+  for (const el of [
+    hourRateNetEl,
+    nightHourNetEl,
+    holidayExtraGrossEl,
+    baseFactGrossEl,
+    bonusGrossEl,
+    nightExtraGrossEl,
+    grossPayEl,
+  ]) {
+    if (el) el.textContent = "—";
+  }
+}
+
+function renderMoneyUi(calculated) {
+  const actual = currentPaySummary.actual;
+  const confirmed = hasConfirmedActual(actual);
+
+  const confirmedNet = confirmed ? normalizeMoneyNumber(actual.net) : null;
+  const confirmedAdvance = confirmed ? normalizeMoneyNumber(actual.advance) : null;
+  const confirmedRemaining = confirmed ? normalizeMoneyNumber(actual.remaining) : null;
+  const confirmedPaidLeaveNet = confirmed ? (normalizeMoneyNumber(actual.paidLeaveNet) ?? 0) : 0;
+const confirmedTaxOverride = confirmed ? normalizeMoneyNumber(actual.paidLeaveTax) : null;
+
+const displayNetBase =
+  Number.isFinite(confirmedNet)
+    ? confirmedNet
+    : Number.isFinite(calculated?.net)
+      ? calculated.net
+      : null;
+
+const displayNet =
+  Number.isFinite(displayNetBase)
+    ? Number((displayNetBase + confirmedPaidLeaveNet).toFixed(2))
+    : confirmedPaidLeaveNet > 0
+      ? confirmedPaidLeaveNet
+      : null;
+
+const displayAdvance =
+  Number.isFinite(confirmedAdvance)
+    ? confirmedAdvance
+    : Number.isFinite(calculated?.advance)
+      ? calculated.advance
+      : null;
+
+const displayRemaining =
+  Number.isFinite(confirmedRemaining)
+    ? confirmedRemaining
+    : Number.isFinite(calculated?.remaining)
+      ? calculated.remaining
+      : null;
+
+const displayTax =
+  confirmedTaxOverride !== null
+    ? confirmedTaxOverride
+    : Number.isFinite(calculated?.tax)
+      ? calculated.tax
+      : null;
+
+  if (Number.isFinite(displayNet)) {
+    animateNumber(netPayEl, displayNet, (v) => formatRub(v, 0), 520);
+    bump(netPayEl);
+  } else if (netPayEl) {
+    netPayEl.textContent = "—";
+    netPayEl.dataset.value = "";
+  }
+
+  if (Number.isFinite(displayTax)) {
+    animateNumber(taxPayEl, displayTax, (v) => formatRub(v, 0), 360);
+  } else if (taxPayEl) {
+    taxPayEl.textContent = "—";
+  }
+
+  if (Number.isFinite(displayAdvance)) {
+    const prefix = Number.isFinite(confirmedAdvance) ? "" : "~ ";
+    advancePayEl.textContent = `${prefix}${formatRub(displayAdvance, 0)}`;
+  } else if (advancePayEl) {
+    advancePayEl.textContent = "—";
+  }
+
+  if (Number.isFinite(displayRemaining)) {
+    const prefix = Number.isFinite(confirmedRemaining) ? "" : "~ ";
+    remainingPayEl.textContent = `${prefix}${formatRub(displayRemaining, 0)}`;
+  } else if (remainingPayEl) {
+    remainingPayEl.textContent = "—";
+  }
+
+  if (Number.isFinite(calculated?.hourRateNet)) {
+    animateNumber(hourRateNetEl, calculated.hourRateNet, (v) => formatRub(v, 0), 360);
+  } else {
+    setTextValue(hourRateNetEl, "—");
+  }
+
+  if (Number.isFinite(calculated?.nightHourNet)) {
+    animateNumber(nightHourNetEl, calculated.nightHourNet, (v) => formatRub(v, 0), 360);
+  } else {
+    setTextValue(nightHourNetEl, "—");
+  }
+
+  if (Number.isFinite(calculated?.baseFactGross)) {
+    animateNumber(baseFactGrossEl, calculated.baseFactGross, (v) => formatRub(v, 0), 360);
+  } else {
+    setTextValue(baseFactGrossEl, "—");
+  }
+
+  if (Number.isFinite(calculated?.bonusGross)) {
+    animateNumber(bonusGrossEl, calculated.bonusGross, (v) => formatRub(v, 0), 360);
+  } else {
+    setTextValue(bonusGrossEl, "—");
+  }
+
+  if (Number.isFinite(calculated?.nightExtraGross)) {
+    animateNumber(nightExtraGrossEl, calculated.nightExtraGross, (v) => formatRub(v, 0), 360);
+  } else {
+    setTextValue(nightExtraGrossEl, "—");
+  }
+
+  if (Number.isFinite(calculated?.holidayExtraGross)) {
+    animateNumber(holidayExtraGrossEl, calculated.holidayExtraGross, (v) => formatRub(v, 0), 360);
+  } else {
+    setTextValue(holidayExtraGrossEl, "—");
+  }
+
+  if (Number.isFinite(calculated?.gross)) {
+    animateNumber(grossPayEl, calculated.gross, (v) => formatRub(v, 0), 360);
+  } else {
+    clearCalculatedMoneyUi();
+    setTextValue(grossPayEl, "—");
+  }
+
+  const parts = [];
+
+  if (confirmed) {
+    parts.push(
+      currentPaySummary.status === "changed_after_confirm"
+        ? "Показаны подтверждённые фактические суммы, но табель позже менялся."
+        : "Показаны подтверждённые фактические суммы."
+    );
+
+    if (confirmedPaidLeaveNet > 0) {
+      parts.push(`Отпуск / учёба / больничный: ${formatRub(confirmedPaidLeaveNet, 0)}.`);
+    }
+  } else if (calculated) {
+    const hazardText =
+      calculated.hazardRate > 0
+        ? ` • Вредность: +${(calculated.hazardRate * 100).toFixed(0)}%`
+        : "";
+
+    parts.push(
+      `Брутто: ${formatRub(calculated.gross, 0)} • Налог: ${formatRub(calculated.tax, 0)} • Праздничные x2: ${formatRub(calculated.holidayExtraGross, 0)}${hazardText}`
+    );
+  }
+
+  if (!parts.length && confirmedPaidLeaveNet > 0) {
+    parts.push(`Подтверждены только выплаты за отпуск / учёбу / больничный: ${formatRub(confirmedPaidLeaveNet, 0)}.`);
+  }
+
+  moneySummaryEl.textContent = parts.join(" ");
+}
+
+function getResolvedBaseOklad() {
+  const snapshotOklad = Number(currentMoneySnapshot?.okladSnapshot);
+  if (Number.isFinite(snapshotOklad) && snapshotOklad > 0) return snapshotOklad;
+
+  const inputOklad = parseNumber(okladInput?.value);
+  if (Number.isFinite(inputOklad) && inputOklad > 0) return inputOklad;
+
+  return null;
+}
+
+function getResolvedHazardRate() {
+  const snap = Number(currentMoneySnapshot?.hazardRateSnapshot);
+  if (Number.isFinite(snap)) return snap;
+  return getHazardRateByPosition(profilePosition);
+}
+
+function recalcAll() {
+  if (monthYearDisplay) monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
+
+  const monthNorm = calendarNormHours();
+  const { otTotal, sickTotal, unpaidTotal, eduTotal, personalNorm } = personalNormHours(monthNorm);
+  const totalDay = sumArr(dayHours);
+  const totalNight = sumArr(nightHours);
+  const workedHours = totalDay + totalNight;
+
+  animateNumber(totalHoursEl, workedHours, (v) => v.toFixed(1), 360);
+  if (dayNightHoursEl) {
+    dayNightHoursEl.textContent = `${totalDay.toFixed(1)} / ${totalNight.toFixed(1)}`;
+    bump(dayNightHoursEl);
+  }
+  animateNumber(normMonthEl, monthNorm, (v) => v.toFixed(1), 360);
+  animateNumber(normEffectiveEl, personalNorm, (v) => v.toFixed(1), 360);
+  animateNumber(overtimeEl, workedHours - personalNorm, (v) => (v >= 0 ? "+" : "") + v.toFixed(1), 360);
+  if (leaveDaysEl) leaveDaysEl.textContent = `ОТ:${otTotal} • Б:${sickTotal} • ОД/ОЗ:${unpaidTotal} • У/УД:${eduTotal}`;
+
+  const { personalHalfNorm, workedFH } = firstHalfStats();
+  if (normFirstHalfEl) normFirstHalfEl.textContent = personalHalfNorm.toFixed(1);
+  if (workedFirstHalfEl) workedFirstHalfEl.textContent = workedFH.toFixed(1);
+
+  syncPaidLeaveControls();
+
+  const baseOklad = getResolvedBaseOklad();
+  let calculated = null;
+
+  if (!(monthNorm > 0)) {
+    setError("Норма месяца стала ≤ 0. Проверьте праздники/сокращённые дни.");
+    if (normHint) normHint.textContent = "";
+    currentPaySummary.calculated = null;
+    currentPaySummary.status = computeCurrentPaySummaryStatus();
+    renderMoneyUi(null);
+    renderMonthStatusUi();
+    renderActualHintUi();
+    renderPayWarnings(null);
+    return;
+  }
+
+  if (!Number.isFinite(baseOklad) || baseOklad <= 0) {
+    setError(null);
+    if (normHint) normHint.textContent = `Норма месяца: ${monthNorm.toFixed(1)} ч`;
+    currentPaySummary.calculated = null;
+    currentPaySummary.status = computeCurrentPaySummaryStatus();
+    renderMoneyUi(null);
+    renderMonthStatusUi();
+    renderActualHintUi();
+    renderPayWarnings(null);
+    return;
+  }
+
+  setError(null);
+
+  const hazardRate = getResolvedHazardRate();
+  const effectiveOklad = Number(
+    (
+      Number(currentMoneySnapshot?.effectiveOkladSnapshot) ||
+      (baseOklad * (1 + hazardRate))
+    ).toFixed(2)
+  );
+
+  if (normHint) {
+    normHint.textContent = hazardRate > 0
+      ? `Норма месяца: ${monthNorm.toFixed(1)} ч • Оклад с вредностью +${(hazardRate * 100).toFixed(0)}%: ${formatRub(effectiveOklad, 0)}`
+      : `Норма месяца: ${monthNorm.toFixed(1)} ч`;
+  }
+
+  const calc = computeSalary({
+    oklad: effectiveOklad,
+    normHours: monthNorm,
+    workedHours,
+    nightHours: totalNight,
+  });
+
+  if (!calc.ok) {
+    setError(calc.error);
+    currentPaySummary.calculated = null;
+    currentPaySummary.status = computeCurrentPaySummaryStatus();
+    renderMoneyUi(null);
+    renderMonthStatusUi();
+    renderActualHintUi();
+    renderPayWarnings(null);
+    return;
+  }
+
+  const r = calc.result;
+  const baseHourRateGross = effectiveOklad / monthNorm;
+  const bonusPerHourGross = (effectiveOklad * BONUS_RATE) / monthNorm;
+  const { hDay, hNight } = holidayWorkedTotals();
+  const holidayTotal = hDay + hNight;
+
+  const holidayExtraGross =
+    (baseHourRateGross + bonusPerHourGross) * holidayTotal +
+    baseHourRateGross * NIGHT_EXTRA_RATE * hNight;
+
+  const holidayTax = holidayExtraGross * TAX_RATE;
+  const holidayNet = holidayExtraGross - holidayTax;
+  const grossTotal = r.gross + holidayExtraGross;
+  const taxTotal = r.tax + holidayTax;
+  const netTotal = r.net + holidayNet;
+
+  const fhDay = sumRange(dayHours, 0, Math.min(14, daysInMonth - 1));
+  const fhNight = sumRange(nightHours, 0, Math.min(14, daysInMonth - 1));
+  const fhTotal = fhDay + fhNight;
+  const baseNetHourlyNoBonus = (effectiveOklad * (1 - TAX_RATE)) / monthNorm;
+  const nightExtraNetHourly = (effectiveOklad / monthNorm) * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
+  const advanceApprox = baseNetHourlyNoBonus * fhTotal + nightExtraNetHourly * fhNight;
+
+  calculated = cloneCalculatedSummary({
+    net: netTotal,
+    tax: taxTotal,
+    gross: grossTotal,
+    advance: advanceApprox,
+    remaining: netTotal - advanceApprox,
+    okladSnapshot: baseOklad,
+    effectiveOkladSnapshot: effectiveOklad,
+    hazardRate,
+    monthNorm,
+    personalNorm,
+    workedHours,
+    workedDayHours: totalDay,
+    workedNightHours: totalNight,
+    hourRateNet: r.hourRate,
+    nightHourNet: r.hourRate + baseHourRateGross * NIGHT_EXTRA_RATE * (1 - TAX_RATE),
+    baseFactGross: r.baseFact,
+    bonusGross: r.bonus,
+    nightExtraGross: r.nightExtra,
+    holidayExtraGross,
+  });
+
+  currentPaySummary.calculated = calculated;
+  currentPaySummary.status = computeCurrentPaySummaryStatus();
+
+  renderMoneyUi(calculated);
+  renderMonthStatusUi();
+  renderActualHintUi();
+  renderPayWarnings(calculated);
+}
+
+function currentPayload() {
+  return {
+    v: 5,
+    year,
+    month,
+    isHoliday,
+    isShortDay,
+    dayHours,
+    nightHours,
+    leaveType,
+    moneySnapshot: normalizeMoneySnapshot(currentMoneySnapshot),
+    paySummary: {
+      calculated: cloneCalculatedSummary(currentPaySummary.calculated),
+      actual: cloneActualSummary(currentPaySummary.actual),
+      status: computeCurrentPaySummaryStatus(),
+    },
+  };
+}
+
+async function doSaveTimesheet() {
+  setSaveStatus("Сохраняю…", "busy");
+
+  try {
+    syncActualStateFromInputs();
+
+    const payload = currentPayload();
+    const json = JSON.stringify(payload);
+
+    await saveTimesheet(year, month, payload);
+
+    lastSavedJSON = json;
+    dirty = false;
+
+    setSaveStatus(
+      `Сохранено: ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`,
+      "ok"
+    );
+  } catch (e) {
+    setSaveStatus("Ошибка сохранения", "err");
+    setError(e?.message || "Не удалось сохранить табель.");
+  }
+}
+
+function scheduleSave() {
+  markDirty();
+  if (timesheetSaveTimer) clearTimeout(timesheetSaveTimer);
+  timesheetSaveTimer = setTimeout(async () => {
+    const json = JSON.stringify(currentPayload());
+    if (json === lastSavedJSON) {
+      dirty = false;
+      setSaveStatus("Сохранено", "ok");
+      return;
+    }
+    await doSaveTimesheet();
+  }, 900);
+}
+
+function resetTableDom() {
+  headerRow.innerHTML = "";
+  dayRow.innerHTML = "";
+  nightRow.innerHTML = "";
+  headerCells = [];
+  dayInputs = [];
+  nightInputs = [];
+}
+
+function makeLabelCell(text) {
+  const td = document.createElement("td");
+  td.textContent = text;
+  td.classList.add("label-cell");
+  return td;
+}
+
+function attachPrevValueTracking(inputEl) {
+  inputEl.addEventListener("focus", () => { inputEl.dataset.prev = inputEl.value ?? ""; });
+}
+function revertToPrev(inputEl) { inputEl.value = inputEl.dataset.prev ?? ""; }
+
+function lockNightCell(i) {
+  const el = nightInputs?.[i];
+  if (!el) return;
+  el.value = "";
+  el.disabled = true;
+  el.classList.add("opacity-50","cursor-not-allowed");
+}
+
+function unlockNightCell(i) {
+  const el = nightInputs?.[i];
+  if (!el) return;
+  el.disabled = false;
+  el.classList.remove("opacity-50","cursor-not-allowed");
+}
+
+function clearFocusColumn() {
+  for (let i = 0; i < headerCells.length; i++) {
+    headerCells[i]?.classList.remove("focus-col");
+    dayInputs[i]?.closest("td")?.classList.remove("focus-col");
+    nightInputs[i]?.closest("td")?.classList.remove("focus-col");
+  }
+}
+
+function focusDayColumn(dayIdx0) {
+  if (!Number.isInteger(dayIdx0) || dayIdx0 < 0 || dayIdx0 >= daysInMonth) return;
+  clearFocusColumn();
+  headerCells[dayIdx0]?.classList.add("focus-col");
+  dayInputs[dayIdx0]?.closest("td")?.classList.add("focus-col");
+  nightInputs[dayIdx0]?.closest("td")?.classList.add("focus-col");
+}
+
+function buildTableForMonth() {
+  resetTableDom();
+
+  daysInMonth = new Date(year, month + 1, 0).getDate();
+  isHoliday = new Array(daysInMonth).fill(false);
+  isShortDay = new Array(daysInMonth).fill(false);
+  dayHours = new Array(daysInMonth).fill(0);
+  nightHours = new Array(daysInMonth).fill(0);
+  leaveType = new Array(daysInMonth).fill(null);
+
+  currentLoadedPayload = null;
+  currentPaySummary = createEmptyPaySummary();
+  currentMoneySnapshot = null;
+  fillActualInputsFromState();
+  renderMonthStatusUi();
+  renderActualHintUi();
+
+  const emptyTh = document.createElement("th");
+  emptyTh.classList.add("label-cell");
+  headerRow.appendChild(emptyTh);
+
+  for (let i = 1; i <= daysInMonth; i++) {
+    const th = document.createElement("th");
+    th.dataset.dayIndex = String(i - 1);
+
+    const weekend = isWeekendByIndex(year, month, i - 1);
+    if (weekend) th.classList.add("weekend-col");
+
+    const dowIdx = new Date(year, month, i).getDay();
+    const numEl = document.createElement("span");
+    numEl.style.display = "block";
+    numEl.textContent = String(i);
+
+    const dowEl = document.createElement("span");
+    dowEl.className = "th-dow";
+    dowEl.textContent = DOW_SHORT[dowIdx];
+    if (weekend) dowEl.style.color = "rgba(252, 165, 165, 0.7)";
+
+    th.appendChild(numEl);
+    th.appendChild(dowEl);
+
+    th.style.cursor = "pointer";
+    th.title = "Клик — праздник. Даблклик — сокращённый день.";
+
+    let clickTimer = null;
+    th.addEventListener("click", (e) => {
+      const idx = Number(e.currentTarget.dataset.dayIndex);
+      if (clickTimer) return;
+      clickTimer = setTimeout(() => {
+        clickTimer = null;
+        isShortDay[idx] = false;
+        isHoliday[idx] = !isHoliday[idx];
+        updateDayMarkClasses(idx);
+        recalcAll();
+        scheduleSave();
+        updateMobileToolbar();
+      }, 240);
+    });
+
+    th.addEventListener("dblclick", (e) => {
+      const idx = Number(e.currentTarget.dataset.dayIndex);
+      if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+      if (isHoliday[idx]) isHoliday[idx] = false;
+      isShortDay[idx] = !isShortDay[idx];
+      updateDayMarkClasses(idx);
+      recalcAll();
+      scheduleSave();
+      updateMobileToolbar();
+    });
+
+    headerRow.appendChild(th);
+    headerCells.push(th);
+  }
+
+  dayRow.appendChild(makeLabelCell("День"));
+  nightRow.appendChild(makeLabelCell("Ночь"));
+
+  for (let i = 0; i < daysInMonth; i++) {
+    const weekend = isWeekendByIndex(year, month, i);
+
+    const dayTd = document.createElement("td");
+    if (weekend) dayTd.classList.add("weekend-col");
+
+    const dayInput = document.createElement("input");
+    dayInput.type = "text";
+    dayInput.inputMode = "text";
+    dayInput.placeholder = "";
+    dayInput.classList.add("input-hour","input-glass");
+    dayInput.autocapitalize = "characters";
+    dayInput.spellcheck = false;
+
+    attachPrevValueTracking(dayInput);
+    attachArrowNavigation(dayInput, "day", i);
+
+    dayInput.addEventListener("focus", () => {
+      if (isMobileNow()) {
+        mobileSelectedIdx = i;
+        updateMobileToolbar();
+        focusDayColumn(i);
+        scrollTableToColumn(i);
+      }
+    });
+
+    dayInput.addEventListener("blur", () => {
+      const s = String(dayInput.value ?? "").trim();
+      if (s === "0" || s === "0.0" || s === "0,0") {
+        dayInput.value = "";
+        dayHours[i] = 0;
+        scheduleSave();
+        recalcAll();
+      }
+      if (String(dayInput.value ?? "").trim().toUpperCase() === "О") {
+        dayInput.value = "ОТ";
+        dayInput.dataset.prev = "ОТ";
+      }
+    });
+
+    dayInput.addEventListener("input", () => {
+      const sanitized = sanitizeDayCellValue(dayInput.value);
+      if (sanitized !== dayInput.value) dayInput.value = sanitized;
+      const raw = dayInput.value;
+
+      if (!raw.trim()) {
+        setError(null);
+        if (leaveType[i]) { leaveType[i] = null; unlockNightCell(i); }
+        dayHours[i] = 0;
+        dayInput.dataset.prev = "";
+        recalcAll();
+        scheduleSave();
+        return;
+      }
+
+      const parsed = parseHoursOrLeave(raw);
+
+      if (parsed.kind === "leave") {
+        if (weekend) {
+          setError("Коды отсутствия нельзя ставить на выходные (сб/вс).");
+          revertToPrev(dayInput);
+          return;
+        }
+        setError(null);
+        leaveType[i] = parsed.leave;
+        dayInput.value = sanitizeLeaveDisplayValue(raw, parsed.leave);
+        dayHours[i] = 0;
+        nightHours[i] = 0;
+        lockNightCell(i);
+        dayInput.dataset.prev = dayInput.value;
+        recalcAll();
+        scheduleSave();
+        return;
+      }
+
+      if (parsed.kind === "hours") {
+        setError(null);
+        if (leaveType[i]) { leaveType[i] = null; unlockNightCell(i); }
+        const nextDay = sanitizeHourNumber(parsed.hours);
+        const nextNight = sanitizeHourNumber(nightHours[i] || 0);
+        const ok = clampDayTotalOrRevert({ index: i, nextDay, nextNight, onRevert: () => revertToPrev(dayInput) });
+        if (!ok) return;
+        dayHours[i] = nextDay;
+        dayInput.dataset.prev = dayInput.value;
+        recalcAll();
+        scheduleSave();
+        return;
+      }
+
+      setError("Некорректное значение. Допустимы только числа или коды: ОТ, ОД, ОЗ, У, УД, Б.");
+    });
+
+    dayTd.appendChild(dayInput);
+    dayRow.appendChild(dayTd);
+    dayInputs.push(dayInput);
+
+    const nightTd = document.createElement("td");
+    nightTd.classList.add("night-cell");
+    if (weekend) nightTd.classList.add("weekend-col");
+
+    const nightInput = document.createElement("input");
+    nightInput.type = "text";
+    nightInput.inputMode = "decimal";
+    nightInput.placeholder = "";
+    nightInput.classList.add("input-hour","input-glass");
+    nightInput.spellcheck = false;
+
+    attachPrevValueTracking(nightInput);
+    attachArrowNavigation(nightInput, "night", i);
+
+    nightInput.addEventListener("focus", () => {
+      if (isMobileNow()) {
+        mobileSelectedIdx = i;
+        updateMobileToolbar();
+        focusDayColumn(i);
+        scrollTableToColumn(i);
+      }
+    });
+
+    nightInput.addEventListener("blur", () => {
+      const s = String(nightInput.value ?? "").trim();
+      if (s === "0" || s === "0.0" || s === "0,0") {
+        nightInput.value = "";
+        nightHours[i] = 0;
+        scheduleSave();
+        recalcAll();
+      }
+    });
+
+    nightInput.addEventListener("input", () => {
+      if (leaveType[i]) return;
+      const sanitized = sanitizeNumericValue(nightInput.value);
+      if (sanitized !== nightInput.value) nightInput.value = sanitized;
+      const raw = nightInput.value;
+      if (!raw.trim()) {
+        setError(null);
+        nightHours[i] = 0;
+        nightInput.dataset.prev = "";
+        recalcAll();
+        scheduleSave();
+        return;
+      }
+      const n = parseNumber(raw);
+      if (!Number.isFinite(n)) {
+        setError("Ночные: введите число или оставьте пусто.");
+        return;
+      }
+      const nextNight = sanitizeHourNumber(n);
+      const nextDay = sanitizeHourNumber(dayHours[i] || 0);
+      const ok = clampDayTotalOrRevert({ index: i, nextDay, nextNight, onRevert: () => revertToPrev(nightInput) });
+      if (!ok) return;
+      setError(null);
+      nightHours[i] = nextNight;
+      nightInput.dataset.prev = nightInput.value;
+      recalcAll();
+      scheduleSave();
+    });
+
+    nightTd.appendChild(nightInput);
+    nightRow.appendChild(nightTd);
+    nightInputs.push(nightInput);
+  }
+}
+
+function applyMonthMoneyContext(payload) {
+  currentMoneySnapshot = resolveMoneySnapshotFromPayload(payload);
+
+  if (currentMoneySnapshot?.okladSnapshot > 0) {
+    if (okladInput) okladInput.value = formatMoneyForInput(currentMoneySnapshot.okladSnapshot);
+    return;
+  }
+
+  const fallbackProfileOklad = Number(profileOklad);
+  if (Number.isFinite(fallbackProfileOklad) && fallbackProfileOklad > 0) {
+    currentMoneySnapshot = createMoneySnapshot(fallbackProfileOklad, "profile");
+    if (okladInput) okladInput.value = formatMoneyForInput(fallbackProfileOklad);
+    return;
+  }
+
+  currentMoneySnapshot = null;
+  if (okladInput) okladInput.value = "";
+}
+
+function applyPayload(payload) {
+  currentLoadedPayload = payload ?? null;
+
+  if (!payload || typeof payload !== "object") {
+    currentPaySummary = createEmptyPaySummary();
+    fillActualInputsFromState();
+    applyMonthMoneyContext(null);
+    syncPaidLeaveControls();
+    return;
+  }
+
+  if (Array.isArray(payload.isHoliday) && payload.isHoliday.length === daysInMonth) isHoliday = payload.isHoliday;
+  if (Array.isArray(payload.isShortDay) && payload.isShortDay.length === daysInMonth) isShortDay = payload.isShortDay;
+  if (Array.isArray(payload.dayHours) && payload.dayHours.length === daysInMonth) dayHours = payload.dayHours;
+  if (Array.isArray(payload.nightHours) && payload.nightHours.length === daysInMonth) nightHours = payload.nightHours;
+  if (Array.isArray(payload.leaveType) && payload.leaveType.length === daysInMonth) {
+    leaveType = payload.leaveType.map((x) => normalizeLeaveTypeLegacy(x));
+  }
+
+  currentPaySummary = normalizeStoredPaySummary(payload.paySummary);
+  applyMonthMoneyContext(payload);
+
+  for (let i = 0; i < daysInMonth; i++) {
+    updateDayMarkClasses(i);
+    const dt = normalizeLeaveTypeLegacy(leaveType[i]);
+    if (dt) dayInputs[i].value = leaveTypeToCode(dt, "ОТ");
+    else dayInputs[i].value = formatHourForInput(dayHours[i]);
+
+    if (leaveType[i]) lockNightCell(i);
+    else {
+      unlockNightCell(i);
+      nightInputs[i].value = formatHourForInput(nightHours[i]);
+    }
+
+    dayInputs[i].dataset.prev = dayInputs[i].value ?? "";
+    nightInputs[i].dataset.prev = nightInputs[i].value ?? "";
+  }
+
+  fillActualInputsFromState();
+  syncPaidLeaveControls();
+  updateMobileToolbar();
+}
+
+function setFromQueryOrNow() {
+  const u = new URL(location.href);
+  const hasYear = u.searchParams.has("year");
+  const hasMonth = u.searchParams.has("month");
+  const qYear = Number(u.searchParams.get("year"));
+  const qMonth = Number(u.searchParams.get("month"));
+  const qDay = Number(u.searchParams.get("day"));
+
+  if (!hasYear && !hasMonth) {
+    const now = new Date();
+    year = now.getFullYear();
+    month = now.getMonth();
+  } else {
+    if (Number.isInteger(qYear) && qYear >= 2000 && qYear <= 2100) year = qYear;
+    if (Number.isInteger(qMonth) && qMonth >= 0 && qMonth <= 11) month = qMonth;
+  }
+
+  focusDayIndex = (Number.isInteger(qDay) && qDay >= 1 && qDay <= 31) ? qDay - 1 : null;
+  if (monthSelect) monthSelect.value = String(month);
+}
+
+function fillYearOptions() {
+  const nowY = new Date().getFullYear();
+  yearSelect.innerHTML = "";
+  for (let y = nowY - 2; y <= nowY + 1; y++) {
+    const opt = document.createElement("option");
+    opt.value = String(y);
+    opt.textContent = String(y);
+    yearSelect.appendChild(opt);
+  }
+  yearSelect.value = String(year);
+}
+
+function updateUrlForMonth() {
+  const u = new URL(location.href);
+  u.searchParams.set("year", String(year));
+  u.searchParams.set("month", String(month));
+  u.searchParams.delete("day");
+  focusDayIndex = null;
+  history.replaceState(null, "", u.toString());
+}
+
+function syncOkladActionState() {
+  if (!useProfileOkladBtn) return;
+  const canUse = Number.isFinite(Number(profileOklad)) && Number(profileOklad) > 0;
+  useProfileOkladBtn.disabled = !canUse;
+  useProfileOkladBtn.classList.toggle("opacity-60", !canUse);
+  useProfileOkladBtn.classList.toggle("cursor-not-allowed", !canUse);
+}
+
+async function loadCurrentMonthFromDb() {
+  setSaveStatus("Загружаю…", "busy");
+  try {
+    const payload = await loadTimesheet(year, month);
+    applyPayload(payload);
+
+    if (payload) {
+      recalcAll();
+      lastSavedJSON = JSON.stringify(currentPayload());
+      dirty = false;
+      setSaveStatus("Сохранено", "ok");
+    } else {
+      recalcAll();
+      lastSavedJSON = JSON.stringify(currentPayload());
+      dirty = false;
+      setSaveStatus("Новый табель", "neutral");
+    }
+  } catch (e) {
+    setSaveStatus("Ошибка загрузки", "err");
+    setError(e?.message || "Не удалось загрузить табель.");
+  }
+}
 
 function isMobileNow() {
   return window.matchMedia?.("(max-width: 767px)")?.matches ?? (window.innerWidth < 768);
@@ -658,565 +2160,61 @@ function updateDayMarkClasses(index) {
   }
 }
 
-function currentPayload() {
-  return {
-    v: 4,
-    year,
-    month,
-    isHoliday,
-    isShortDay,
-    dayHours,
-    nightHours,
-    leaveType,
-    paySummary: latestPaySummary ? { ...latestPaySummary } : null,
-  };
-}
-
-async function doSaveTimesheet() {
-  setSaveStatus("Сохраняю…", "busy");
-
-  try {
-    const payload = currentPayload();
-
-    if (payload.paySummary) {
-      payload.paySummary.calculatedAt = new Date().toISOString();
-    }
-
-    const json = JSON.stringify(currentPayload());
-    await saveTimesheet(year, month, payload);
-
-    lastSavedJSON = json;
-    dirty = false;
-
-    setSaveStatus(
-      `Сохранено: ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`,
-      "ok"
-    );
-  } catch (e) {
-    setSaveStatus("Ошибка сохранения", "err");
-    setError(e?.message || "Не удалось сохранить табель.");
-  }
-}
-
-function scheduleSave() {
-  markDirty();
-  if (timesheetSaveTimer) clearTimeout(timesheetSaveTimer);
-  timesheetSaveTimer = setTimeout(async () => {
-    const json = JSON.stringify(currentPayload());
-    if (json === lastSavedJSON) { dirty = false; setSaveStatus("Сохранено", "ok"); return; }
-    await doSaveTimesheet();
-  }, 900);
-}
-
-function clearMoneyUI() {
-  latestPaySummary = null;
-
-  for (const el of [netPayEl, hourRateNetEl, nightHourNetEl, holidayExtraGrossEl,
-    baseFactGrossEl, bonusGrossEl, nightExtraGrossEl, grossPayEl, taxPayEl, advancePayEl, remainingPayEl]) {
-    if (el) el.textContent = "—";
-  }
-
-  if (moneySummaryEl) moneySummaryEl.textContent = "";
-}
-
-function recalcAll() {
-  if (monthYearDisplay) monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
-
-  const monthNorm = calendarNormHours();
-  const { otTotal, sickTotal, unpaidTotal, eduTotal, personalNorm } = personalNormHours(monthNorm);
-  const totalDay = sumArr(dayHours);
-  const totalNight = sumArr(nightHours);
-  const workedHours = totalDay + totalNight;
-
-  animateNumber(totalHoursEl, workedHours, (v) => v.toFixed(1), 360);
-  if (dayNightHoursEl) {
-    dayNightHoursEl.textContent = `${totalDay.toFixed(1)} / ${totalNight.toFixed(1)}`;
-    bump(dayNightHoursEl);
-  }
-  animateNumber(normMonthEl, monthNorm, (v) => v.toFixed(1), 360);
-  animateNumber(normEffectiveEl, personalNorm, (v) => v.toFixed(1), 360);
-  animateNumber(overtimeEl, workedHours - personalNorm, (v) => (v >= 0 ? "+" : "") + v.toFixed(1), 360);
-  if (leaveDaysEl) leaveDaysEl.textContent = `ОТ:${otTotal} • Б:${sickTotal} • ОД/ОЗ:${unpaidTotal} • У/УД:${eduTotal}`;
-
-  const { personalHalfNorm, workedFH } = firstHalfStats();
-  if (normFirstHalfEl) normFirstHalfEl.textContent = personalHalfNorm.toFixed(1);
-  if (workedFirstHalfEl) workedFirstHalfEl.textContent = workedFH.toFixed(1);
-
-  const baseOklad = parseNumber(okladInput.value);
-  if (!Number.isFinite(baseOklad) || baseOklad <= 0) {
-    clearMoneyUI();
-    if (normHint) normHint.textContent = monthNorm > 0 ? `Норма месяца: ${monthNorm.toFixed(1)} ч` : "";
-    return;
-  }
-
-  if (!(monthNorm > 0)) {
-    setError("Норма месяца стала ≤ 0. Проверьте праздники/сокращённые дни.");
-    clearMoneyUI();
-    return;
-  }
-
-  setError(null);
-
-  const hazardRate = getHazardRateByPosition(profilePosition);
-  const effectiveOklad = baseOklad * (1 + hazardRate);
-
-  if (normHint) {
-    normHint.textContent = hazardRate > 0
-      ? `Норма месяца: ${monthNorm.toFixed(1)} ч • Оклад с вредностью +${(hazardRate * 100).toFixed(0)}%: ${formatRub(effectiveOklad, 0)}`
-      : `Норма месяца: ${monthNorm.toFixed(1)} ч`;
-  }
-
-  const calc = computeSalary({
-    oklad: effectiveOklad,
-    normHours: monthNorm,
-    workedHours,
-    nightHours: totalNight,
-  });
-
-  if (!calc.ok) {
-    setError(calc.error);
-    clearMoneyUI();
-    return;
-  }
-
-  const r = calc.result;
-  const baseHourRateGross = effectiveOklad / monthNorm;
-  const bonusPerHourGross = (effectiveOklad * BONUS_RATE) / monthNorm;
-  const { hDay, hNight } = holidayWorkedTotals();
-  const holidayTotal = hDay + hNight;
-
-  const holidayExtraGross =
-    (baseHourRateGross + bonusPerHourGross) * holidayTotal +
-    baseHourRateGross * NIGHT_EXTRA_RATE * hNight;
-
-  const holidayTax = holidayExtraGross * TAX_RATE;
-  const holidayNet = holidayExtraGross - holidayTax;
-  const grossTotal = r.gross + holidayExtraGross;
-  const taxTotal = r.tax + holidayTax;
-  const netTotal = r.net + holidayNet;
-
-  animateNumber(hourRateNetEl, r.hourRate, (v) => formatRub(v, 0), 360);
-  animateNumber(
-    nightHourNetEl,
-    r.hourRate + baseHourRateGross * NIGHT_EXTRA_RATE * (1 - TAX_RATE),
-    (v) => formatRub(v, 0),
-    360
-  );
-  animateNumber(baseFactGrossEl, r.baseFact, (v) => formatRub(v, 0), 360);
-  animateNumber(bonusGrossEl, r.bonus, (v) => formatRub(v, 0), 360);
-  animateNumber(nightExtraGrossEl, r.nightExtra, (v) => formatRub(v, 0), 360);
-  animateNumber(holidayExtraGrossEl, holidayExtraGross, (v) => formatRub(v, 0), 360);
-  animateNumber(grossPayEl, grossTotal, (v) => formatRub(v, 0), 360);
-  animateNumber(taxPayEl, taxTotal, (v) => formatRub(v, 0), 360);
-  animateNumber(netPayEl, netTotal, (v) => formatRub(v, 0), 520);
-  bump(netPayEl);
-
-  if (moneySummaryEl) {
-    moneySummaryEl.textContent = hazardRate > 0
-      ? `Брутто: ${formatRub(grossTotal, 0)} • Налог: ${formatRub(taxTotal, 0)} • Праздничные x2 (доплата): ${formatRub(holidayExtraGross, 0)} • Вредность: +${(hazardRate * 100).toFixed(0)}%`
-      : `Брутто: ${formatRub(grossTotal, 0)} • Налог: ${formatRub(taxTotal, 0)} • Праздничные x2 (доплата): ${formatRub(holidayExtraGross, 0)}`;
-  }
-
-  const fhDay = sumRange(dayHours, 0, Math.min(14, daysInMonth - 1));
-  const fhNight = sumRange(nightHours, 0, Math.min(14, daysInMonth - 1));
-  const fhTotal = fhDay + fhNight;
-  const baseNetHourlyNoBonus = (effectiveOklad * (1 - TAX_RATE)) / monthNorm;
-  const nightExtraNetHourly = (effectiveOklad / monthNorm) * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
-  const advanceApprox = baseNetHourlyNoBonus * fhTotal + nightExtraNetHourly * fhNight;
-
-  if (advancePayEl) advancePayEl.textContent = `~ ${formatRub(advanceApprox, 0)}`;
-  if (remainingPayEl) remainingPayEl.textContent = `~ ${formatRub(netTotal - advanceApprox, 0)}`;
-  latestPaySummary = {
-  net: Number(netTotal.toFixed(2)),
-  tax: Number(taxTotal.toFixed(2)),
-  gross: Number(grossTotal.toFixed(2)),
-  advance: Number(advanceApprox.toFixed(2)),
-  remaining: Number((netTotal - advanceApprox).toFixed(2)),
-  okladSnapshot: Number(baseOklad.toFixed(2)),
-  effectiveOkladSnapshot: Number(effectiveOklad.toFixed(2)),
-  hazardRate: Number(hazardRate.toFixed(4)),
-  monthNorm: Number(monthNorm.toFixed(2)),
-  personalNorm: Number(personalNorm.toFixed(2)),
-  workedHours: Number(workedHours.toFixed(2)),
-  workedDayHours: Number(totalDay.toFixed(2)),
-  workedNightHours: Number(totalNight.toFixed(2)),
-};
-}
-
-// =========================
-// Table DOM
-// =========================
-
-function resetTableDom() {
-  headerRow.innerHTML = "";
-  dayRow.innerHTML = "";
-  nightRow.innerHTML = "";
-  headerCells = [];
-  dayInputs = [];
-  nightInputs = [];
-}
-
-function makeLabelCell(text) {
-  const td = document.createElement("td");
-  td.textContent = text;
-  td.classList.add("label-cell");
-  return td;
-}
-
-function attachPrevValueTracking(inputEl) {
-  inputEl.addEventListener("focus", () => { inputEl.dataset.prev = inputEl.value ?? ""; });
-}
-function revertToPrev(inputEl) { inputEl.value = inputEl.dataset.prev ?? ""; }
-
-function lockNightCell(i) {
-  const el = nightInputs?.[i];
-  if (!el) return;
-  el.value = "";
-  el.disabled = true;
-  el.classList.add("opacity-50","cursor-not-allowed");
-}
-
-function unlockNightCell(i) {
-  const el = nightInputs?.[i];
-  if (!el) return;
-  el.disabled = false;
-  el.classList.remove("opacity-50","cursor-not-allowed");
-}
-
-function clearFocusColumn() {
-  for (let i = 0; i < headerCells.length; i++) {
-    headerCells[i]?.classList.remove("focus-col");
-    dayInputs[i]?.closest("td")?.classList.remove("focus-col");
-    nightInputs[i]?.closest("td")?.classList.remove("focus-col");
-  }
-}
-
-function focusDayColumn(dayIdx0) {
-  if (!Number.isInteger(dayIdx0) || dayIdx0 < 0 || dayIdx0 >= daysInMonth) return;
-  clearFocusColumn();
-  headerCells[dayIdx0]?.classList.add("focus-col");
-  dayInputs[dayIdx0]?.closest("td")?.classList.add("focus-col");
-  nightInputs[dayIdx0]?.closest("td")?.classList.add("focus-col");
-}
-
-function buildTableForMonth() {
-  resetTableDom();
-
-  daysInMonth = new Date(year, month + 1, 0).getDate();
-  isHoliday = new Array(daysInMonth).fill(false);
-  isShortDay = new Array(daysInMonth).fill(false);
-  dayHours = new Array(daysInMonth).fill(0);
-  nightHours = new Array(daysInMonth).fill(0);
-  leaveType = new Array(daysInMonth).fill(null);
-
-  // Sticky empty header
-  const emptyTh = document.createElement("th");
-  emptyTh.classList.add("label-cell");
-  headerRow.appendChild(emptyTh);
-
-  for (let i = 1; i <= daysInMonth; i++) {
-    const th = document.createElement("th");
-    th.dataset.dayIndex = String(i - 1);
-
-    const weekend = isWeekendByIndex(year, month, i - 1);
-    if (weekend) th.classList.add("weekend-col");
-
-    // ✅ Date number + day of week abbreviation
-    const dowIdx = new Date(year, month, i).getDay();
-    const numEl = document.createElement("span");
-    numEl.style.display = "block";
-    numEl.textContent = String(i);
-
-    const dowEl = document.createElement("span");
-    dowEl.className = "th-dow";
-    dowEl.textContent = DOW_SHORT[dowIdx];
-    // Make weekends red in DOW too
-    if (weekend) dowEl.style.color = "rgba(252, 165, 165, 0.7)";
-
-    th.appendChild(numEl);
-    th.appendChild(dowEl);
-
-    th.style.cursor = "pointer";
-    th.title = "Клик — праздник. Даблклик — сокращённый день.";
-
-    let clickTimer = null;
-    th.addEventListener("click", (e) => {
-      const idx = Number(e.currentTarget.dataset.dayIndex);
-      if (clickTimer) return;
-      clickTimer = setTimeout(() => {
-        clickTimer = null;
-        isShortDay[idx] = false;
-        isHoliday[idx] = !isHoliday[idx];
-        updateDayMarkClasses(idx);
-        recalcAll();
-        scheduleSave();
-        updateMobileToolbar();
-      }, 240);
-    });
-
-    th.addEventListener("dblclick", (e) => {
-      const idx = Number(e.currentTarget.dataset.dayIndex);
-      if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
-      if (isHoliday[idx]) isHoliday[idx] = false;
-      isShortDay[idx] = !isShortDay[idx];
-      updateDayMarkClasses(idx);
-      recalcAll();
-      scheduleSave();
-      updateMobileToolbar();
-    });
-
-    headerRow.appendChild(th);
-    headerCells.push(th);
-  }
-
-  dayRow.appendChild(makeLabelCell("День"));
-  nightRow.appendChild(makeLabelCell("Ночь"));
-
-  for (let i = 0; i < daysInMonth; i++) {
-    const weekend = isWeekendByIndex(year, month, i);
-
-    const dayTd = document.createElement("td");
-    if (weekend) dayTd.classList.add("weekend-col");
-
-    const dayInput = document.createElement("input");
-    dayInput.type = "text";
-    dayInput.inputMode = "text";
-    dayInput.placeholder = "";
-    dayInput.classList.add("input-hour","input-glass");
-    dayInput.autocapitalize = "characters";
-    dayInput.spellcheck = false;
-
-    attachPrevValueTracking(dayInput);
-    attachArrowNavigation(dayInput, "day", i);
-
-    dayInput.addEventListener("focus", () => {
-      if (isMobileNow()) {
-        mobileSelectedIdx = i;
-        updateMobileToolbar();
-        focusDayColumn(i);
-        scrollTableToColumn(i);
-      }
-    });
-
-    dayInput.addEventListener("blur", () => {
-      const s = String(dayInput.value ?? "").trim();
-      if (s === "0" || s === "0.0" || s === "0,0") { dayInput.value = ""; dayHours[i] = 0; scheduleSave(); recalcAll(); }
-      if (String(dayInput.value ?? "").trim().toUpperCase() === "О") { dayInput.value = "ОТ"; dayInput.dataset.prev = "ОТ"; }
-    });
-
-    dayInput.addEventListener("input", () => {
-      const sanitized = sanitizeDayCellValue(dayInput.value);
-      if (sanitized !== dayInput.value) dayInput.value = sanitized;
-      const raw = dayInput.value;
-
-      if (!raw.trim()) {
-        setError(null);
-        if (leaveType[i]) { leaveType[i] = null; unlockNightCell(i); }
-        dayHours[i] = 0; dayInput.dataset.prev = "";
-        recalcAll(); scheduleSave(); return;
-      }
-
-      const parsed = parseHoursOrLeave(raw);
-
-      if (parsed.kind === "leave") {
-        if (weekend) { setError("Коды отсутствия нельзя ставить на выходные (сб/вс)."); revertToPrev(dayInput); return; }
-        setError(null);
-        leaveType[i] = parsed.leave;
-        dayInput.value = sanitizeLeaveDisplayValue(raw, parsed.leave);
-        dayHours[i] = 0; nightHours[i] = 0;
-        lockNightCell(i);
-        dayInput.dataset.prev = dayInput.value;
-        recalcAll(); scheduleSave(); return;
-      }
-
-      if (parsed.kind === "hours") {
-        setError(null);
-        if (leaveType[i]) { leaveType[i] = null; unlockNightCell(i); }
-        const nextDay = sanitizeHourNumber(parsed.hours);
-        const nextNight = sanitizeHourNumber(nightHours[i] || 0);
-        const ok = clampDayTotalOrRevert({ index: i, nextDay, nextNight, onRevert: () => revertToPrev(dayInput) });
-        if (!ok) return;
-        dayHours[i] = nextDay; dayInput.dataset.prev = dayInput.value;
-        recalcAll(); scheduleSave(); return;
-      }
-
-      setError("Некорректное значение. Допустимы только числа или коды: ОТ, ОД, ОЗ, У, УД, Б.");
-    });
-
-    dayTd.appendChild(dayInput);
-    dayRow.appendChild(dayTd);
-    dayInputs.push(dayInput);
-
-    const nightTd = document.createElement("td");
-    nightTd.classList.add("night-cell");
-    if (weekend) nightTd.classList.add("weekend-col");
-
-    const nightInput = document.createElement("input");
-    nightInput.type = "text";
-    nightInput.inputMode = "decimal";
-    nightInput.placeholder = "";
-    nightInput.classList.add("input-hour","input-glass");
-    nightInput.spellcheck = false;
-
-    attachPrevValueTracking(nightInput);
-    attachArrowNavigation(nightInput, "night", i);
-
-    nightInput.addEventListener("focus", () => {
-      if (isMobileNow()) {
-        mobileSelectedIdx = i;
-        updateMobileToolbar();
-        focusDayColumn(i);
-        scrollTableToColumn(i);
-      }
-    });
-
-    nightInput.addEventListener("blur", () => {
-      const s = String(nightInput.value ?? "").trim();
-      if (s === "0" || s === "0.0" || s === "0,0") { nightInput.value = ""; nightHours[i] = 0; scheduleSave(); recalcAll(); }
-    });
-
-    nightInput.addEventListener("input", () => {
-      if (leaveType[i]) return;
-      const sanitized = sanitizeNumericValue(nightInput.value);
-      if (sanitized !== nightInput.value) nightInput.value = sanitized;
-      const raw = nightInput.value;
-      if (!raw.trim()) { setError(null); nightHours[i] = 0; nightInput.dataset.prev = ""; recalcAll(); scheduleSave(); return; }
-      const n = parseNumber(raw);
-      if (!Number.isFinite(n)) { setError("Ночные: введите число или оставьте пусто."); return; }
-      const nextNight = sanitizeHourNumber(n);
-      const nextDay = sanitizeHourNumber(dayHours[i] || 0);
-      const ok = clampDayTotalOrRevert({ index: i, nextDay, nextNight, onRevert: () => revertToPrev(nightInput) });
-      if (!ok) return;
-      setError(null); nightHours[i] = nextNight; nightInput.dataset.prev = nightInput.value;
-      recalcAll(); scheduleSave();
-    });
-
-    nightTd.appendChild(nightInput);
-    nightRow.appendChild(nightTd);
-    nightInputs.push(nightInput);
-  }
-}
-
-function applyPayload(payload) {
-  if (!payload || typeof payload !== "object") return;
-  if (Array.isArray(payload.isHoliday) && payload.isHoliday.length === daysInMonth) isHoliday = payload.isHoliday;
-  if (Array.isArray(payload.isShortDay) && payload.isShortDay.length === daysInMonth) isShortDay = payload.isShortDay;
-  if (Array.isArray(payload.dayHours) && payload.dayHours.length === daysInMonth) dayHours = payload.dayHours;
-  if (Array.isArray(payload.nightHours) && payload.nightHours.length === daysInMonth) nightHours = payload.nightHours;
-  if (Array.isArray(payload.leaveType) && payload.leaveType.length === daysInMonth)
-    leaveType = payload.leaveType.map((x) => normalizeLeaveTypeLegacy(x));
-
-  for (let i = 0; i < daysInMonth; i++) {
-    updateDayMarkClasses(i);
-    const dt = normalizeLeaveTypeLegacy(leaveType[i]);
-    if (dt) dayInputs[i].value = leaveTypeToCode(dt, "ОТ");
-    else dayInputs[i].value = formatHourForInput(dayHours[i]);
-
-    if (leaveType[i]) lockNightCell(i);
-    else { unlockNightCell(i); nightInputs[i].value = formatHourForInput(nightHours[i]); }
-
-    dayInputs[i].dataset.prev = dayInputs[i].value ?? "";
-    nightInputs[i].dataset.prev = nightInputs[i].value ?? "";
-  }
-  updateMobileToolbar();
-}
-
-function setFromQueryOrNow() {
-  const u = new URL(location.href);
-  const hasYear = u.searchParams.has("year");
-  const hasMonth = u.searchParams.has("month");
-  const qYear = Number(u.searchParams.get("year"));
-  const qMonth = Number(u.searchParams.get("month"));
-  const qDay = Number(u.searchParams.get("day"));
-
-  if (!hasYear && !hasMonth) {
-    const now = new Date(); year = now.getFullYear(); month = now.getMonth();
-  } else {
-    if (Number.isInteger(qYear) && qYear >= 2000 && qYear <= 2100) year = qYear;
-    if (Number.isInteger(qMonth) && qMonth >= 0 && qMonth <= 11) month = qMonth;
-  }
-
-  focusDayIndex = (Number.isInteger(qDay) && qDay >= 1 && qDay <= 31) ? qDay - 1 : null;
-  if (monthSelect) monthSelect.value = String(month);
-}
-
-function fillYearOptions() {
-  const nowY = new Date().getFullYear();
-  yearSelect.innerHTML = "";
-  for (let y = nowY - 2; y <= nowY + 1; y++) {
-    const opt = document.createElement("option");
-    opt.value = String(y);
-    opt.textContent = String(y);
-    yearSelect.appendChild(opt);
-  }
-  yearSelect.value = String(year);
-}
-
-function updateUrlForMonth() {
-  const u = new URL(location.href);
-  u.searchParams.set("year", String(year));
-  u.searchParams.set("month", String(month));
-  u.searchParams.delete("day");
-  focusDayIndex = null;
-  history.replaceState(null, "", u.toString());
-}
-
-async function loadCurrentMonthFromDb() {
-  setSaveStatus("Загружаю…", "busy");
-  try {
-    const payload = await loadTimesheet(year, month);
-    if (payload) {
-      applyPayload(payload);
-      lastSavedJSON = JSON.stringify(currentPayload());
-      dirty = false;
-      setSaveStatus("Сохранено", "ok");
-    } else {
-      lastSavedJSON = JSON.stringify(currentPayload());
-      dirty = false;
-      setSaveStatus("Новый табель", "neutral");
-    }
-  } catch (e) {
-    setSaveStatus("Ошибка загрузки", "err");
-    setError(e?.message || "Не удалось загрузить табель.");
-  }
-}
-
-// =========================
-// Events
-// =========================
-
 logoutBtn?.addEventListener("click", async () => {
   try { await signOut(); } finally { location.href = "login.html?next=table.html"; }
 });
 
 saveBtn?.addEventListener("click", async () => { await doSaveTimesheet(); });
 
-okladInput?.addEventListener("input", () => { recalcAll(); });
+okladInput?.addEventListener("input", () => {
+  const raw = String(okladInput.value ?? "").trim();
+  const parsed = parseNumber(raw);
 
-monthSelect.addEventListener("change", async () => {
+  if (!raw) {
+    currentMoneySnapshot = null;
+  } else if (Number.isFinite(parsed) && parsed > 0) {
+    currentMoneySnapshot = createMoneySnapshot(parsed, "manual");
+  } else {
+    currentMoneySnapshot = null;
+  }
+
+  recalcAll();
+  scheduleSave();
+});
+
+useProfileOkladBtn?.addEventListener("click", () => {
+  const nextOklad = Number(profileOklad);
+  if (!(Number.isFinite(nextOklad) && nextOklad > 0)) {
+    setError("В профиле пока не указан оклад.");
+    return;
+  }
+
+  currentMoneySnapshot = createMoneySnapshot(nextOklad, "profile");
+  if (okladInput) okladInput.value = formatMoneyForInput(nextOklad);
+
+  setError(null);
+  recalcAll();
+  scheduleSave();
+});
+
+monthSelect?.addEventListener("change", async () => {
   month = Number(monthSelect.value);
   updateUrlForMonth();
   buildTableForMonth();
   await loadCurrentMonthFromDb();
-  recalcAll();
   if (isMobileNow()) setMobileDay(mobileSelectedIdx < daysInMonth ? mobileSelectedIdx : 0);
 });
 
-yearSelect.addEventListener("change", async () => {
+yearSelect?.addEventListener("change", async () => {
   year = Number(yearSelect.value);
   updateUrlForMonth();
   buildTableForMonth();
   await loadCurrentMonthFromDb();
-  recalcAll();
   if (isMobileNow()) setMobileDay(mobileSelectedIdx < daysInMonth ? mobileSelectedIdx : 0);
 });
 
 setupTableMoneyControls();
-
-
-// =========================
-// Boot
-// =========================
+setupActualMoneyControls();
 
 (async () => {
   try {
@@ -1262,18 +2260,15 @@ setupTableMoneyControls();
   okladVisible = !moneyProtected;
   payVisible = !moneyProtected;
   syncTableMoneyUi();
+  syncOkladActionState();
 
   if (profile?.gender === "female") BASE_DAY_HOURS = FEMALE_DAY_HOURS;
   else BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
   LEAVE_HOURS_PER_DAY = BASE_DAY_HOURS;
 
   if (profileRole === "admin") adminLink?.classList.remove("hidden");
-  if (profileOklad != null && String(okladInput?.value ?? "").trim() === "") {
-    okladInput.value = String(profileOklad);
-  }
 
   await loadCurrentMonthFromDb();
-  recalcAll();
 
   if (isMobileNow()) {
     const now = new Date();
@@ -1293,3 +2288,5 @@ setupTableMoneyControls();
     if (isMobileNow()) updateMobileToolbar();
   });
 })();
+
+

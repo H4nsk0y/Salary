@@ -358,6 +358,11 @@ function formatMoney(value) {
   })} ₽`;
 }
 
+function normalizeMoneyNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Number(n.toFixed(2)) : null;
+}
+
 function getBaseDayHoursByGender(gender) {
   return gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
 }
@@ -366,6 +371,192 @@ function getHazardRateByPosition(position) {
   const p = String(position ?? "").trim().toLowerCase();
   if (p === "loader" || p === "грузчик") return HAZARD_POSITION_RATE;
   return 0;
+}
+
+function normalizeMoneySnapshot(raw) {
+  if (!raw || typeof raw !== "object") return null;
+
+  const okladSnapshot = Number(raw.okladSnapshot);
+  if (!(Number.isFinite(okladSnapshot) && okladSnapshot > 0)) return null;
+
+  const hazardRateSnapshot = Number.isFinite(Number(raw.hazardRateSnapshot))
+    ? Number(Number(raw.hazardRateSnapshot).toFixed(4))
+    : Number.isFinite(Number(raw.hazardRate))
+      ? Number(Number(raw.hazardRate).toFixed(4))
+      : 0;
+
+  const effectiveRaw = Number(raw.effectiveOkladSnapshot);
+  const effectiveOkladSnapshot =
+    Number.isFinite(effectiveRaw) && effectiveRaw > 0
+      ? Number(effectiveRaw.toFixed(2))
+      : Number((okladSnapshot * (1 + hazardRateSnapshot)).toFixed(2));
+
+  return {
+    okladSnapshot: Number(okladSnapshot.toFixed(2)),
+    hazardRateSnapshot,
+    effectiveOkladSnapshot,
+  };
+}
+
+function resolveMoneySnapshotFromPayload(payload, profile) {
+  const direct = normalizeMoneySnapshot(payload?.moneySnapshot);
+  if (direct) return direct;
+
+  const calc = payload?.paySummary?.calculated;
+  const fromNewCalculated = normalizeMoneySnapshot({
+    okladSnapshot: calc?.okladSnapshot,
+    hazardRateSnapshot: calc?.hazardRate,
+    effectiveOkladSnapshot: calc?.effectiveOkladSnapshot,
+  });
+  if (fromNewCalculated) return fromNewCalculated;
+
+  const legacyFlat = payload?.paySummary;
+  const fromLegacyFlat = normalizeMoneySnapshot({
+    okladSnapshot: legacyFlat?.okladSnapshot,
+    hazardRateSnapshot: legacyFlat?.hazardRate,
+    effectiveOkladSnapshot: legacyFlat?.effectiveOkladSnapshot,
+  });
+  if (fromLegacyFlat) return fromLegacyFlat;
+
+  const profileOklad = Number(profile?.oklad);
+  if (Number.isFinite(profileOklad) && profileOklad > 0) {
+    const hazardRateSnapshot = getHazardRateByPosition(profile?.position);
+    return {
+      okladSnapshot: Number(profileOklad.toFixed(2)),
+      hazardRateSnapshot: Number(hazardRateSnapshot.toFixed(4)),
+      effectiveOkladSnapshot: Number((profileOklad * (1 + hazardRateSnapshot)).toFixed(2)),
+    };
+  }
+
+  return null;
+}
+
+function cloneCalculatedSummary(calculated) {
+  if (!calculated || typeof calculated !== "object") return null;
+  return {
+    net: normalizeMoneyNumber(calculated.net),
+    tax: normalizeMoneyNumber(calculated.tax),
+    gross: normalizeMoneyNumber(calculated.gross),
+    advance: normalizeMoneyNumber(calculated.advance),
+    remaining: normalizeMoneyNumber(calculated.remaining),
+    okladSnapshot: normalizeMoneyNumber(calculated.okladSnapshot),
+    effectiveOkladSnapshot: normalizeMoneyNumber(calculated.effectiveOkladSnapshot),
+    hazardRate: Number.isFinite(Number(calculated.hazardRate)) ? Number(Number(calculated.hazardRate).toFixed(4)) : 0,
+    monthNorm: Number.isFinite(Number(calculated.monthNorm)) ? Number(Number(calculated.monthNorm).toFixed(2)) : null,
+    personalNorm: Number.isFinite(Number(calculated.personalNorm)) ? Number(Number(calculated.personalNorm).toFixed(2)) : null,
+    workedHours: Number.isFinite(Number(calculated.workedHours)) ? Number(Number(calculated.workedHours).toFixed(2)) : null,
+    workedDayHours: Number.isFinite(Number(calculated.workedDayHours)) ? Number(Number(calculated.workedDayHours).toFixed(2)) : null,
+    workedNightHours: Number.isFinite(Number(calculated.workedNightHours)) ? Number(Number(calculated.workedNightHours).toFixed(2)) : null,
+  };
+}
+
+function createEmptyActualSummary() {
+  return {
+    net: null,
+    advance: null,
+    remaining: null,
+    paidLeaveNet: null,
+    paidLeaveTax: null,
+    confirmedAt: null,
+    confirmedCalculatedSignature: null,
+  };
+}
+
+function cloneActualSummary(actual) {
+  const src = actual && typeof actual === "object" ? actual : createEmptyActualSummary();
+  return {
+    net: normalizeMoneyNumber(src.net),
+    advance: normalizeMoneyNumber(src.advance),
+    remaining: normalizeMoneyNumber(src.remaining),
+    paidLeaveNet: normalizeMoneyNumber(src.paidLeaveNet),
+    paidLeaveTax: normalizeMoneyNumber(src.paidLeaveTax),
+    confirmedAt: src.confirmedAt ? String(src.confirmedAt) : null,
+    confirmedCalculatedSignature: src.confirmedCalculatedSignature ? String(src.confirmedCalculatedSignature) : null,
+  };
+}
+
+function normalizeStoredPaySummary(raw) {
+  if (!raw || typeof raw !== "object") {
+    return {
+      calculated: null,
+      actual: createEmptyActualSummary(),
+      status: "draft",
+    };
+  }
+
+  if ("calculated" in raw || "actual" in raw || "status" in raw) {
+    return {
+      calculated: cloneCalculatedSummary(raw.calculated),
+      actual: cloneActualSummary(raw.actual),
+      status: typeof raw.status === "string" ? raw.status : "draft",
+    };
+  }
+
+  return {
+    calculated: cloneCalculatedSummary({
+      net: raw.net,
+      tax: raw.tax,
+      gross: raw.gross,
+      advance: raw.advance,
+      remaining: raw.remaining,
+      okladSnapshot: raw.okladSnapshot,
+      effectiveOkladSnapshot: raw.effectiveOkladSnapshot,
+      hazardRate: raw.hazardRate,
+      monthNorm: raw.monthNorm,
+      personalNorm: raw.personalNorm,
+      workedHours: raw.workedHours,
+      workedDayHours: raw.workedDayHours,
+      workedNightHours: raw.workedNightHours,
+    }),
+    actual: createEmptyActualSummary(),
+    status: "draft",
+  };
+}
+
+function hasAnyActualValues(actual) {
+  if (!actual) return false;
+  return [
+    actual.net,
+    actual.advance,
+    actual.remaining,
+    actual.paidLeaveNet,
+    actual.paidLeaveTax,
+  ].some((x) => Number.isFinite(Number(x)));
+}
+
+function hasConfirmedActual(actual) {
+  return Boolean(actual?.confirmedAt) && hasAnyActualValues(actual);
+}
+
+function getTimesheetMoneyState(payload) {
+  const paySummary = normalizeStoredPaySummary(payload?.paySummary);
+  const actual = paySummary.actual;
+  const calculated = paySummary.calculated;
+  const confirmed = hasConfirmedActual(actual);
+
+  return {
+    paySummary,
+    actual,
+    calculated,
+    confirmed,
+    status:
+      confirmed
+        ? (typeof paySummary.status === "string" ? paySummary.status : "actual_confirmed")
+        : (typeof paySummary.status === "string" ? paySummary.status : "draft"),
+  };
+}
+
+function getTimesheetActualSummaryLabel(payload) {
+  const money = getTimesheetMoneyState(payload);
+
+  if (!hasAnyActualValues(money.actual)) return null;
+  if (!money.confirmed) {
+    return { text: "Черновик факта", tone: "neutral" };
+  }
+  if (money.status === "changed_after_confirm") {
+    return { text: "Факт + изменения", tone: "warn" };
+  }
+  return { text: "Факт подтверждён", tone: "ok" };
 }
 
 function setRequiredLabelState(labelEl, required) {
@@ -503,7 +694,6 @@ function focusFirstMissingRequiredField(profile) {
   });
 }
 
-
 function computeCalendarNormFromPayload(payload, baseDayHours) {
   if (!payload || typeof payload !== "object") return 0;
 
@@ -562,38 +752,72 @@ function resolveMoneySummaryFromPayload(payload, profile) {
     return { net: 0, tax: 0 };
   }
 
-  const storedNet = Number(payload?.paySummary?.net);
-  const storedTax = Number(payload?.paySummary?.tax);
+  const moneyState = getTimesheetMoneyState(payload);
+  const actual = moneyState.actual;
+  const calculated = moneyState.calculated;
 
-  if (Number.isFinite(storedNet) || Number.isFinite(storedTax)) {
+  // FILE: /profile.js
+if (moneyState.confirmed) {
+  const baseNet =
+    Number.isFinite(Number(actual.net))
+      ? Number(actual.net)
+      : Number.isFinite(Number(calculated?.net))
+        ? Number(calculated.net)
+        : 0;
+
+  const paidLeaveNet =
+    Number.isFinite(Number(actual.paidLeaveNet))
+      ? Number(actual.paidLeaveNet)
+      : 0;
+
+  const calculatedTax =
+    Number.isFinite(Number(calculated?.tax))
+      ? Number(calculated.tax)
+      : Number.isFinite(Number(payload?.paySummary?.tax))
+        ? Number(payload.paySummary.tax)
+        : 0;
+
+  const taxOverride =
+    Number.isFinite(Number(actual.paidLeaveTax))
+      ? Number(actual.paidLeaveTax)
+      : null;
+
+  return {
+    net: baseNet + paidLeaveNet,
+    tax: taxOverride !== null ? taxOverride : calculatedTax,
+  };
+}
+
+  if (Number.isFinite(Number(calculated?.net)) || Number.isFinite(Number(calculated?.tax))) {
     return {
-      net: Number.isFinite(storedNet) ? storedNet : 0,
-      tax: Number.isFinite(storedTax) ? storedTax : 0,
+      net: Number.isFinite(Number(calculated?.net)) ? Number(calculated.net) : 0,
+      tax: Number.isFinite(Number(calculated?.tax)) ? Number(calculated.tax) : 0,
     };
   }
 
-  const profileOklad = Number(profile?.oklad);
-  const snapshotOklad = Number(payload?.paySummary?.okladSnapshot);
-  const baseOklad =
-    Number.isFinite(snapshotOklad) && snapshotOklad > 0
-      ? snapshotOklad
-      : Number.isFinite(profileOklad) && profileOklad > 0
-        ? profileOklad
-        : 0;
+  const legacyNet = Number(payload?.paySummary?.net);
+  const legacyTax = Number(payload?.paySummary?.tax);
+  if (Number.isFinite(legacyNet) || Number.isFinite(legacyTax)) {
+    return {
+      net: Number.isFinite(legacyNet) ? legacyNet : 0,
+      tax: Number.isFinite(legacyTax) ? legacyTax : 0,
+    };
+  }
 
-  if (!(baseOklad > 0)) {
+  const moneySnapshot = resolveMoneySnapshotFromPayload(payload, profile);
+  const baseOklad = Number(moneySnapshot?.okladSnapshot);
+
+  if (!(Number.isFinite(baseOklad) && baseOklad > 0)) {
     return { net: 0, tax: 0 };
   }
 
-  const snapshotHazardRate = Number(payload?.paySummary?.hazardRate);
-  const hazardRate = Number.isFinite(snapshotHazardRate)
-    ? snapshotHazardRate
+  const hazardRate = Number.isFinite(Number(moneySnapshot?.hazardRateSnapshot))
+    ? Number(moneySnapshot.hazardRateSnapshot)
     : getHazardRateByPosition(profile?.position);
 
-  const snapshotEffectiveOklad = Number(payload?.paySummary?.effectiveOkladSnapshot);
   const effectiveOklad =
-    Number.isFinite(snapshotEffectiveOklad) && snapshotEffectiveOklad > 0
-      ? snapshotEffectiveOklad
+    Number.isFinite(Number(moneySnapshot?.effectiveOkladSnapshot)) && Number(moneySnapshot.effectiveOkladSnapshot) > 0
+      ? Number(moneySnapshot.effectiveOkladSnapshot)
       : baseOklad * (1 + hazardRate);
 
   const baseDayHours = getBaseDayHoursByGender(profile?.gender);
@@ -766,6 +990,8 @@ function createTimesheetCard(row) {
   const isOver = overtimeSigned > 0.0001;
   const isUnder = overtimeSigned < -0.0001;
 
+  const actualLabel = getTimesheetActualSummaryLabel(row.payload);
+
   const card = document.createElement("div");
   card.className = "glass-card hover-lift rounded-3xl bg-slate-950/25 p-4 ring-1 ring-white/10";
 
@@ -790,15 +1016,32 @@ function createTimesheetCard(row) {
   const valueClass = isUnder ? "text-rose-200" : "text-slate-100";
   const valueText = isOver ? formatHoursSigned(overtimeSigned) : isUnder ? formatHoursSigned(overtimeSigned) : "0.0 ч";
 
+  const badges = document.createElement("div");
+  badges.className = "mt-2 flex flex-wrap items-center gap-2";
+
   const ov = document.createElement("div");
-  ov.className = "mt-2 inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs ring-1 ring-white/10";
+  ov.className = "inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs ring-1 ring-white/10";
   ov.innerHTML = `<span class="h-1.5 w-1.5 rounded-full ${dotClass}"></span>
                   <span class="text-slate-200">${labelText}</span>
                   <span class="font-semibold ${valueClass}">${valueText}</span>`;
 
+  badges.appendChild(ov);
+
+  if (actualLabel) {
+    const badge = document.createElement("div");
+    badge.className =
+      actualLabel.tone === "ok"
+        ? "inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20"
+        : actualLabel.tone === "warn"
+          ? "inline-flex items-center rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200 ring-1 ring-amber-400/20"
+          : "inline-flex items-center rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10";
+    badge.textContent = actualLabel.text;
+    badges.appendChild(badge);
+  }
+
   left.appendChild(title);
   left.appendChild(meta);
-  left.appendChild(ov);
+  left.appendChild(badges);
 
   const right = document.createElement("div");
   right.className = "flex flex-col gap-2";
@@ -967,48 +1210,47 @@ async function refreshProfile() {
   setStatus("Загружаю профиль…", "busy");
   setError(null);
 
- const profile = await getMyProfile();
-currentProfile = profile ?? null;
+  const profile = await getMyProfile();
+  currentProfile = profile ?? null;
 
-const effectiveProfile = profile ?? {
-  display_name: "",
-  position: "",
-  gender: "",
-  oklad: null,
-  role: "user",
-  avatar_url: null,
-  hide_money: false,
-};
+  const effectiveProfile = profile ?? {
+    display_name: "",
+    position: "",
+    gender: "",
+    oklad: null,
+    role: "user",
+    avatar_url: null,
+    hide_money: false,
+  };
 
-const name = effectiveProfile.display_name || "Пользователь";
-const oklad = effectiveProfile.oklad;
+  const name = effectiveProfile.display_name || "Пользователь";
+  const oklad = effectiveProfile.oklad;
 
   if (!requireDom(displayNameEl, "displayName")) return;
   if (!requireDom(displayNameInput, "displayNameInput")) return;
   if (!requireDom(okladInput, "okladInput")) return;
   if (!requireDom(positionSelect, "positionSelect")) return;
 
-const hideMoney = isMoneyProtectionEnabled(effectiveProfile);
+  const hideMoney = isMoneyProtectionEnabled(effectiveProfile);
 
-displayNameEl.textContent = name;
-displayNameInput.value = effectiveProfile.display_name ?? "";
-okladInput.value = oklad != null ? String(oklad) : "";
+  displayNameEl.textContent = name;
+  displayNameInput.value = effectiveProfile.display_name ?? "";
+  okladInput.value = oklad != null ? String(oklad) : "";
 
-ensureProfileMoneyAccess = createMoneyAccessGuard(effectiveProfile, {
-  title: "Показать скрытые суммы",
-  description: "Введите 4-значный PIN-код, чтобы показать оклад и годовые итоги.",
-  confirmText: "Показать",
-});
+  ensureProfileMoneyAccess = createMoneyAccessGuard(effectiveProfile, {
+    title: "Показать скрытые суммы",
+    description: "Введите 4-значный PIN-код, чтобы показать оклад и годовые итоги.",
+    confirmText: "Показать",
+  });
 
-okladVisible = !hideMoney;
-yearMoneyVisible = !hideMoney;
-syncProfileMoneyUi();
+  okladVisible = !hideMoney;
+  yearMoneyVisible = !hideMoney;
+  syncProfileMoneyUi();
 
+  if (positionSelect) positionSelect.value = effectiveProfile.position ?? "";
+  if (genderSelect) genderSelect.value = effectiveProfile.gender ?? "";
 
-if (positionSelect) positionSelect.value = effectiveProfile.position ?? "";
-if (genderSelect) genderSelect.value = effectiveProfile.gender ?? "";
-
-BASE_DAY_HOURS = effectiveProfile.gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
+  BASE_DAY_HOURS = effectiveProfile.gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
 
   let avatarUrl = null;
   try {
@@ -1017,7 +1259,7 @@ BASE_DAY_HOURS = effectiveProfile.gender === "female" ? FEMALE_DAY_HOURS : DEFAU
     console.warn("Не удалось получить свежую ссылку на аватар:", e);
   }
 
-    setAvatarUI(avatarUrl, name);
+  setAvatarUI(avatarUrl, name);
 
   if (effectiveProfile.role === "admin") adminLink?.classList.remove("hidden");
   else adminLink?.classList.add("hidden");
@@ -1305,7 +1547,6 @@ async function refreshTimesheets() {
   yearTaxPaidText = formatMoney(yearTaxPaid);
   applyProfileYearVisibility();
 
-
   if (overtimeAdjustmentEl) {
     overtimeAdjustmentEl.textContent = `Коррекция отсутствиями (Б/ОД/ОЗ/У/УД): −${yearAdjustmentHours.toFixed(1)} ч`;
     overtimeAdjustmentEl.classList.toggle("hidden", !(yearAdjustmentHours > 0.0001));
@@ -1377,7 +1618,7 @@ async function saveProfile() {
     await refreshProfile();
     await refreshTimesheets();
 
-       if (mustCompleteProfile) {
+    if (mustCompleteProfile) {
       if (isProfileCompleteForTimesheet(currentProfile)) {
         setStatus("Профиль заполнен", "ok");
         location.href = nextAfterProfile;
@@ -1394,8 +1635,7 @@ async function saveProfile() {
     }
 
     setStatus("Сохранено", "ok");
-  }
-   catch (e) {
+  } catch (e) {
     setStatus("Ошибка сохранения", "err");
     setError(e?.message || "Не удалось сохранить профиль.");
   }
@@ -1558,4 +1798,3 @@ if (tourProfileBtn) {
     window.location.href = "profile.html?tour=profile";
   });
 }
-
