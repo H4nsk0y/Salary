@@ -1,6 +1,3 @@
-// =========================
-// FILE: /db.js
-// =========================
 import { supabase } from "./supabaseClient.js";
 
 const PROFILE_SELECT =
@@ -122,6 +119,27 @@ export async function updateMyProfile({
 export async function updateMyProfileFields(fields) {
   const userId = await requireUserId();
   const patch = { user_id: userId, ...(fields || {}) };
+
+  const { error } = await supabase
+    .from("profiles")
+    .upsert(patch, { onConflict: "user_id" });
+
+  if (error) throw error;
+}
+
+export async function updateMyMoneyPin({
+  hideMoney = true,
+  moneyPinHash,
+  moneyPinSalt,
+}) {
+  const userId = await requireUserId();
+
+  const patch = {
+    user_id: userId,
+    hide_money: Boolean(hideMoney),
+    money_pin_hash: moneyPinHash ?? null,
+    money_pin_salt: moneyPinSalt ?? null,
+  };
 
   const { error } = await supabase
     .from("profiles")

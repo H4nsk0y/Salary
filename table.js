@@ -105,6 +105,7 @@ const mPrevDayBtn = document.getElementById("mPrevDay");
 const mNextDayBtn = document.getElementById("mNextDay");
 const mTodayBtn = document.getElementById("mToday");
 const mHolidayBtn = document.getElementById("mHolidayBtn");
+const mTransferredBtn = document.getElementById("mTransferredBtn");
 const mShortBtn = document.getElementById("mShortBtn");
 const mDayLabel = document.getElementById("mDayLabel");
 
@@ -551,6 +552,7 @@ let year = new Date().getFullYear();
 let month = new Date().getMonth();
 
 let isHoliday = [];
+let isTransferredOff = [];
 let isShortDay = [];
 let dayHours = [];
 let nightHours = [];
@@ -779,6 +781,7 @@ function buildCurrentMonthSignature() {
     year,
     month,
     isHoliday: isHoliday.map((x) => Boolean(x)),
+    isTransferredOff: isTransferredOff.map((x) => Boolean(x)),
     isShortDay: isShortDay.map((x) => Boolean(x)),
     dayHours: dayHours.map((x) => Number.isFinite(Number(x)) ? Number(Number(x).toFixed(2)) : 0),
     nightHours: nightHours.map((x) => Number.isFinite(Number(x)) ? Number(Number(x).toFixed(2)) : 0),
@@ -1072,14 +1075,26 @@ function sumRange(arr, startIdx, endIdxInclusive) {
 }
 
 function calendarNormHours() {
-  let weekdays = 0, holidayWeekdays = 0, shortWeekdays = 0;
+  let weekdays = 0;
+  let holidayWeekdays = 0;
+  let transferredWeekdays = 0;
+  let shortWeekdays = 0;
+
   for (let i = 0; i < daysInMonth; i++) {
     if (isWeekendByIndex(year, month, i)) continue;
     weekdays++;
+
     if (isHoliday[i]) holidayWeekdays++;
+    else if (isTransferredOff[i]) transferredWeekdays++;
     else if (isShortDay[i]) shortWeekdays++;
   }
-  return weekdays * BASE_DAY_HOURS - holidayWeekdays * BASE_DAY_HOURS - shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
+
+  return (
+    weekdays * BASE_DAY_HOURS -
+    holidayWeekdays * BASE_DAY_HOURS -
+    transferredWeekdays * BASE_DAY_HOURS -
+    shortWeekdays * SHORT_DAY_REDUCTION_HOURS
+  );
 }
 
 function personalNormHours(monthNorm) {
@@ -1091,7 +1106,7 @@ function personalNormHours(monthNorm) {
     else if (lt === "sick") sickTotal++;
     else if (lt === "vac_unpaid" || lt === "vac_unpaid_required") unpaidTotal++;
     else if (lt === "edu_paid" || lt === "edu_unpaid") eduTotal++;
-    if (!isHoliday[i]) effectiveLeaveDays++;
+    if (!isHoliday[i] && !isTransferredOff[i]) effectiveLeaveDays++;
   }
   const personalNorm = monthNorm - effectiveLeaveDays * LEAVE_HOURS_PER_DAY;
   return { otTotal, sickTotal, unpaidTotal, eduTotal, personalNorm };
@@ -1109,20 +1124,33 @@ function holidayWorkedTotals() {
 
 function firstHalfStats() {
   const endIdx = Math.min(14, daysInMonth - 1);
-  let weekdays = 0, holidayWD = 0, shortWD = 0, leaveEffective = 0;
+  let weekdays = 0;
+  let holidayWD = 0;
+  let transferredWD = 0;
+  let shortWD = 0;
+  let leaveEffective = 0;
+
   for (let i = 0; i <= endIdx; i++) {
     if (isWeekendByIndex(year, month, i)) continue;
     weekdays++;
+
     if (isHoliday[i]) holidayWD++;
+    else if (isTransferredOff[i]) transferredWD++;
     else if (isShortDay[i]) shortWD++;
+
     const lt = normalizeLeaveTypeLegacy(leaveType[i]);
-    if (lt && !isHoliday[i]) leaveEffective++;
+    if (lt && !isHoliday[i] && !isTransferredOff[i]) leaveEffective++;
   }
-  const monthHalfNorm = weekdays * BASE_DAY_HOURS
-    - holidayWD * BASE_DAY_HOURS
-    - shortWD * SHORT_DAY_REDUCTION_HOURS;
+
+  const monthHalfNorm =
+    weekdays * BASE_DAY_HOURS -
+    holidayWD * BASE_DAY_HOURS -
+    transferredWD * BASE_DAY_HOURS -
+    shortWD * SHORT_DAY_REDUCTION_HOURS;
+
   const personalHalfNorm = monthHalfNorm - leaveEffective * LEAVE_HOURS_PER_DAY;
   const workedFH = sumRange(dayHours, 0, endIdx) + sumRange(nightHours, 0, endIdx);
+
   return { personalHalfNorm, workedFH };
 }
 
@@ -1603,6 +1631,7 @@ function currentPayload() {
     year,
     month,
     isHoliday,
+    isTransferredOff,
     isShortDay,
     dayHours,
     nightHours,
@@ -1711,6 +1740,7 @@ function buildTableForMonth() {
 
   daysInMonth = new Date(year, month + 1, 0).getDate();
   isHoliday = new Array(daysInMonth).fill(false);
+  isTransferredOff = new Array(daysInMonth).fill(false);
   isShortDay = new Array(daysInMonth).fill(false);
   dayHours = new Array(daysInMonth).fill(0);
   nightHours = new Array(daysInMonth).fill(0);
@@ -1747,29 +1777,49 @@ function buildTableForMonth() {
     th.appendChild(numEl);
     th.appendChild(dowEl);
 
-    th.style.cursor = "pointer";
-    th.title = "Клик — праздник. Даблклик — сокращённый день.";
+     th.style.cursor = "pointer";
+    th.title = "1 клик — праздник. 2 клика — перенесённый выходной. 3 клика — сокращённый день.";
 
+    let clickCount = 0;
     let clickTimer = null;
+
     th.addEventListener("click", (e) => {
       const idx = Number(e.currentTarget.dataset.dayIndex);
-      if (clickTimer) return;
+      clickCount += 1;
+
+      if (clickTimer) clearTimeout(clickTimer);
+
       clickTimer = setTimeout(() => {
+        if (clickCount === 1) {
+          isHoliday[idx] = true;
+          isTransferredOff[idx] = false;
+          isShortDay[idx] = false;
+        } else if (clickCount === 2) {
+          isHoliday[idx] = false;
+          isTransferredOff[idx] = true;
+          isShortDay[idx] = false;
+        } else if (clickCount >= 3) {
+          isHoliday[idx] = false;
+          isTransferredOff[idx] = false;
+          isShortDay[idx] = true;
+        }
+
+        clickCount = 0;
         clickTimer = null;
-        isShortDay[idx] = false;
-        isHoliday[idx] = !isHoliday[idx];
+
         updateDayMarkClasses(idx);
         recalcAll();
         scheduleSave();
         updateMobileToolbar();
-      }, 240);
+      }, 320);
     });
 
-    th.addEventListener("dblclick", (e) => {
+    th.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
       const idx = Number(e.currentTarget.dataset.dayIndex);
-      if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
-      if (isHoliday[idx]) isHoliday[idx] = false;
-      isShortDay[idx] = !isShortDay[idx];
+      isHoliday[idx] = false;
+      isTransferredOff[idx] = false;
+      isShortDay[idx] = false;
       updateDayMarkClasses(idx);
       recalcAll();
       scheduleSave();
@@ -1977,8 +2027,15 @@ function applyPayload(payload) {
     return;
   }
 
-  if (Array.isArray(payload.isHoliday) && payload.isHoliday.length === daysInMonth) isHoliday = payload.isHoliday;
-  if (Array.isArray(payload.isShortDay) && payload.isShortDay.length === daysInMonth) isShortDay = payload.isShortDay;
+  if (Array.isArray(payload.isHoliday) && payload.isHoliday.length === daysInMonth) {
+    isHoliday = payload.isHoliday;
+  }
+  if (Array.isArray(payload.isTransferredOff) && payload.isTransferredOff.length === daysInMonth) {
+    isTransferredOff = payload.isTransferredOff;
+  }
+  if (Array.isArray(payload.isShortDay) && payload.isShortDay.length === daysInMonth) {
+    isShortDay = payload.isShortDay;
+  }
   if (Array.isArray(payload.dayHours) && payload.dayHours.length === daysInMonth) dayHours = payload.dayHours;
   if (Array.isArray(payload.nightHours) && payload.nightHours.length === daysInMonth) nightHours = payload.nightHours;
   if (Array.isArray(payload.leaveType) && payload.leaveType.length === daysInMonth) {
@@ -2105,9 +2162,11 @@ function updateMobileToolbar() {
   if (!isMobileNow()) return;
   const idx = mobileSelectedIdx;
   if (!Number.isInteger(idx) || idx < 0 || idx >= daysInMonth) return;
+
   const d = new Date(year, month, idx + 1);
   if (mDayLabel) mDayLabel.textContent = `${idx + 1} · ${DOW_SHORT[d.getDay()]}`;
   if (mHolidayBtn) mHolidayBtn.classList.toggle("is-active", Boolean(isHoliday[idx]));
+  if (mTransferredBtn) mTransferredBtn.classList.toggle("is-active", Boolean(isTransferredOff[idx]));
   if (mShortBtn) mShortBtn.classList.toggle("is-active", Boolean(isShortDay[idx]));
 }
 
@@ -2129,18 +2188,54 @@ mTodayBtn?.addEventListener("click", () => {
 mHolidayBtn?.addEventListener("click", () => {
   const idx = mobileSelectedIdx;
   if (!Number.isInteger(idx)) return;
+
+  const next = !isHoliday[idx];
+  isHoliday[idx] = next;
+  isTransferredOff[idx] = false;
   isShortDay[idx] = false;
-  isHoliday[idx] = !isHoliday[idx];
+
+  if (!next) {
+    isHoliday[idx] = false;
+  }
+
   updateDayMarkClasses(idx);
   recalcAll();
   scheduleSave();
   updateMobileToolbar();
 });
+
+mTransferredBtn?.addEventListener("click", () => {
+  const idx = mobileSelectedIdx;
+  if (!Number.isInteger(idx)) return;
+
+  const next = !isTransferredOff[idx];
+  isHoliday[idx] = false;
+  isTransferredOff[idx] = next;
+  isShortDay[idx] = false;
+
+  if (!next) {
+    isTransferredOff[idx] = false;
+  }
+
+  updateDayMarkClasses(idx);
+  recalcAll();
+  scheduleSave();
+  updateMobileToolbar();
+});
+
 mShortBtn?.addEventListener("click", () => {
   const idx = mobileSelectedIdx;
   if (!Number.isInteger(idx)) return;
-  if (isHoliday[idx]) isHoliday[idx] = false;
-  isShortDay[idx] = !isShortDay[idx];
+
+  const next = !isShortDay[idx];
+  isHoliday[idx] = false;
+  isTransferredOff[idx] = false;
+  isShortDay[idx] = next;
+
+  if (!next) {
+    isShortDay[idx] = false;
+  }
+
   updateDayMarkClasses(idx);
   recalcAll();
   scheduleSave();
@@ -2153,9 +2248,12 @@ function updateDayMarkClasses(index) {
     dayInputs[index]?.closest("td"),
     nightInputs[index]?.closest("td"),
   ].filter(Boolean);
+
   for (const el of col) {
-    el.classList.remove("holiday-col", "short-col");
+    el.classList.remove("holiday-col", "transferred-col", "short-col");
+
     if (isHoliday[index]) el.classList.add("holiday-col");
+    else if (isTransferredOff[index]) el.classList.add("transferred-col");
     else if (isShortDay[index]) el.classList.add("short-col");
   }
 }

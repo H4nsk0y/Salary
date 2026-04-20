@@ -1,3 +1,9 @@
+// =========================
+// FILE: /moneyPrivacy.js
+// =========================
+import { verifyCurrentPassword } from "./auth.js";
+import { updateMyMoneyPin } from "./db.js";
+
 export const EYE_ICON = `
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -19,6 +25,7 @@ export const EYE_OFF_ICON = `
 
 const PIN_REGEX = /^\d{4}$/;
 const MODAL_STYLE_ID = "moneyPinModalStyles";
+const FORGOT_PIN_ACTION = "__forgot_pin__";
 
 export function validateMoneyPin(pin) {
   return PIN_REGEX.test(String(pin ?? ""));
@@ -140,10 +147,13 @@ function ensureModalStyles() {
       border: 1px solid rgba(255, 255, 255, 0.10);
       color: rgb(248 250 252);
       font-size: 1.05rem;
-      letter-spacing: 0.18em;
-      text-align: center;
       outline: none;
       transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .money-pin-modal .money-pin-input.money-pin-input-center {
+      letter-spacing: 0.18em;
+      text-align: center;
     }
 
     .money-pin-modal .money-pin-input:focus {
@@ -157,6 +167,30 @@ function ensureModalStyles() {
       margin-top: 12px;
       font-size: 0.82rem;
       color: rgb(254 202 202);
+    }
+
+    .money-pin-modal .money-pin-helper {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .money-pin-modal .money-pin-link {
+      appearance: none;
+      border: none;
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: rgb(165 180 252);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .money-pin-modal .money-pin-link:hover {
+      color: rgb(199 210 254);
     }
 
     .money-pin-modal .money-pin-actions {
@@ -219,6 +253,18 @@ export function setRevealButtonState({
   if (iconEl) iconEl.innerHTML = hidden ? EYE_ICON : EYE_OFF_ICON;
 }
 
+function installOverlayEscapeHandler(cleanup) {
+  window.addEventListener(
+    "keydown",
+    function onEscape(e) {
+      if (e.key !== "Escape") return;
+      window.removeEventListener("keydown", onEscape);
+      cleanup(null);
+    },
+    { once: true }
+  );
+}
+
 export function requestMoneyPin({
   mode = "verify",
   title = "Введите PIN-код",
@@ -226,6 +272,8 @@ export function requestMoneyPin({
   confirmText = "Подтвердить",
   cancelText = "Отмена",
   initialError = "",
+  allowForgotPin = false,
+  forgotText = "Забыли PIN-код?",
 } = {}) {
   ensureModalStyles();
 
@@ -240,7 +288,15 @@ export function requestMoneyPin({
       ? `
         <div>
           <label class="money-pin-label" for="moneyPinConfirmInput">Повторите PIN</label>
-          <input id="moneyPinConfirmInput" class="money-pin-input" type="password" inputmode="numeric" maxlength="4" autocomplete="off" />
+          <input id="moneyPinConfirmInput" class="money-pin-input money-pin-input-center" type="password" inputmode="numeric" maxlength="4" autocomplete="off" />
+        </div>
+      `
+      : "";
+
+    const forgotBlock = mode === "verify" && allowForgotPin
+      ? `
+        <div class="money-pin-helper">
+          <button type="button" id="moneyPinForgotBtn" class="money-pin-link">${forgotText}</button>
         </div>
       `
       : "";
@@ -253,12 +309,13 @@ export function requestMoneyPin({
         <div class="money-pin-fields">
           <div>
             <label class="money-pin-label" for="moneyPinInput">${mode === "create" ? "Новый PIN" : "PIN-код"}</label>
-            <input id="moneyPinInput" class="money-pin-input" type="password" inputmode="numeric" maxlength="4" autocomplete="off" />
+            <input id="moneyPinInput" class="money-pin-input money-pin-input-center" type="password" inputmode="numeric" maxlength="4" autocomplete="off" />
           </div>
           ${confirmField}
         </div>
 
         <div id="moneyPinError" class="money-pin-error">${initialError}</div>
+        ${forgotBlock}
 
         <div class="money-pin-actions">
           <button type="button" id="moneyPinCancelBtn" class="money-pin-btn money-pin-btn-secondary">${cancelText}</button>
@@ -272,6 +329,7 @@ export function requestMoneyPin({
     const errorEl = overlay.querySelector("#moneyPinError");
     const cancelBtn = overlay.querySelector("#moneyPinCancelBtn");
     const confirmBtn = overlay.querySelector("#moneyPinConfirmBtn");
+    const forgotBtn = overlay.querySelector("#moneyPinForgotBtn");
 
     function cleanup(result) {
       document.body.style.overflow = previousOverflow;
@@ -338,20 +396,13 @@ export function requestMoneyPin({
 
     cancelBtn?.addEventListener("click", () => cleanup(null));
     confirmBtn?.addEventListener("click", handleSubmit);
+    forgotBtn?.addEventListener("click", () => cleanup(FORGOT_PIN_ACTION));
 
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) cleanup(null);
     });
 
-    window.addEventListener(
-      "keydown",
-      function onEscape(e) {
-        if (e.key !== "Escape") return;
-        window.removeEventListener("keydown", onEscape);
-        cleanup(null);
-      },
-      { once: true }
-    );
+    installOverlayEscapeHandler(cleanup);
 
     document.body.appendChild(overlay);
     requestAnimationFrame(() => {
@@ -361,13 +412,148 @@ export function requestMoneyPin({
   });
 }
 
+function requestAccountPassword({
+  title = "Подтвердите вход",
+  description = "Введите пароль от аккаунта, чтобы сбросить PIN-код.",
+  confirmText = "Продолжить",
+  cancelText = "Отмена",
+  initialError = "",
+} = {}) {
+  ensureModalStyles();
+
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "money-pin-modal-overlay";
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    overlay.innerHTML = `
+      <div class="money-pin-modal" role="dialog" aria-modal="true" aria-labelledby="moneyPasswordModalTitle">
+        <h3 id="moneyPasswordModalTitle">${title}</h3>
+        <p>${description}</p>
+
+        <div class="money-pin-fields">
+          <div>
+            <label class="money-pin-label" for="moneyPasswordInput">Пароль аккаунта</label>
+            <input id="moneyPasswordInput" class="money-pin-input" type="password" autocomplete="current-password" />
+          </div>
+        </div>
+
+        <div id="moneyPasswordError" class="money-pin-error">${initialError}</div>
+
+        <div class="money-pin-actions">
+          <button type="button" id="moneyPasswordCancelBtn" class="money-pin-btn money-pin-btn-secondary">${cancelText}</button>
+          <button type="button" id="moneyPasswordConfirmBtn" class="money-pin-btn money-pin-btn-primary">${confirmText}</button>
+        </div>
+      </div>
+    `;
+
+    const input = overlay.querySelector("#moneyPasswordInput");
+    const errorEl = overlay.querySelector("#moneyPasswordError");
+    const cancelBtn = overlay.querySelector("#moneyPasswordCancelBtn");
+    const confirmBtn = overlay.querySelector("#moneyPasswordConfirmBtn");
+
+    function cleanup(result) {
+      document.body.style.overflow = previousOverflow;
+      overlay.remove();
+      resolve(result);
+    }
+
+    function showError(message) {
+      if (!errorEl) return;
+      errorEl.textContent = message || "";
+    }
+
+    function handleSubmit() {
+      const password = String(input?.value ?? "");
+      if (!password.trim()) {
+        showError("Введите пароль от аккаунта.");
+        input?.focus();
+        return;
+      }
+      cleanup(password);
+    }
+
+    input?.addEventListener("input", () => showError(""));
+    input?.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      handleSubmit();
+    });
+
+    cancelBtn?.addEventListener("click", () => cleanup(null));
+    confirmBtn?.addEventListener("click", handleSubmit);
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) cleanup(null);
+    });
+
+    installOverlayEscapeHandler(cleanup);
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => {
+      input?.focus();
+      input?.select?.();
+    });
+  });
+}
+
+async function runForgotPinResetFlow(profile) {
+  let passwordError = "";
+  while (true) {
+    const password = await requestAccountPassword({
+      title: "Сброс PIN-кода",
+      description: "Введите пароль от аккаунта. После этого вы сможете задать новый PIN-код.",
+      confirmText: "Проверить пароль",
+      cancelText: "Отмена",
+      initialError: passwordError,
+    });
+
+    if (password == null) return false;
+
+    const passwordOk = await verifyCurrentPassword(password);
+    if (!passwordOk) {
+      passwordError = "Неверный пароль аккаунта. Попробуйте ещё раз.";
+      continue;
+    }
+    break;
+  }
+
+  const pin = await requestMoneyPin({
+    mode: "create",
+    title: "Новый PIN-код",
+    description: "Старый PIN будет заменён. Введите новый 4-значный PIN-код.",
+    confirmText: "Сохранить PIN",
+    cancelText: "Отмена",
+  });
+
+  if (pin == null || pin === FORGOT_PIN_ACTION) return false;
+
+  const secret = await createMoneyPinSecret(pin);
+
+  await updateMyMoneyPin({
+    hideMoney: true,
+    moneyPinHash: secret.money_pin_hash,
+    moneyPinSalt: secret.money_pin_salt,
+  });
+
+  if (profile && typeof profile === "object") {
+    profile.hide_money = true;
+    profile.money_pin_hash = secret.money_pin_hash;
+    profile.money_pin_salt = secret.money_pin_salt;
+  }
+
+  return true;
+}
+
 export async function requestVerifiedMoneyPin(profile, options = {}) {
   if (!isMoneyProtectionEnabled(profile)) return true;
 
   let errorMessage = "";
 
   while (true) {
-    const pin = await requestMoneyPin({
+    const result = await requestMoneyPin({
       mode: "verify",
       title: options.title || "Введите PIN-код",
       description:
@@ -376,11 +562,20 @@ export async function requestVerifiedMoneyPin(profile, options = {}) {
       confirmText: options.confirmText || "Показать",
       cancelText: options.cancelText || "Отмена",
       initialError: errorMessage,
+      allowForgotPin: true,
+      forgotText: options.forgotText || "Забыли PIN-код?",
     });
 
-    if (pin == null) return false;
+    if (result == null) return false;
 
-    const ok = await verifyMoneyPin(pin, profile);
+    if (result === FORGOT_PIN_ACTION) {
+      const resetOk = await runForgotPinResetFlow(profile);
+      if (resetOk) return true;
+      errorMessage = "";
+      continue;
+    }
+
+    const ok = await verifyMoneyPin(result, profile);
     if (ok) return true;
 
     errorMessage = "Неверный PIN-код. Попробуйте ещё раз.";

@@ -198,9 +198,129 @@
       </div>
     </section>
 
+        <!-- Секция: Часто задаваемые вопросы -->
+    <section class="mt-6 glass-card rounded-3xl p-6 md:p-8">
+      <h2 class="text-xl font-semibold">Часто задаваемые вопросы</h2>
+
+      <div class="mt-4 space-y-3" id="faqContainer">
+        <!-- Вопрос 1 -->
+        <div class="faq-item rounded-xl bg-slate-950/30 ring-1 ring-white/10">
+          <button class="faq-question w-full flex items-center justify-between px-5 py-4 text-left text-base font-medium text-slate-100 hover:text-indigo-200 transition-colors">
+            <span>Как добавить код отсутствия в конкретный день?</span>
+            <svg class="faq-icon w-5 h-5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+          </button>
+          <div class="faq-answer hidden px-5 pb-5 text-sm text-slate-300/90 leading-6">
+            На странице <a href="table.html" class="text-indigo-300 underline">«Табель»</a> кликните на ячейку нужного дня — появится поле для ввода кода. Введите, например, <code class="bg-black/30 px-1 rounded">ОТ</code> или <code class="bg-black/30 px-1 rounded">Б</code>. Если день выходной (суббота/воскресенье), код поставить не получится — система автоматически блокирует ввод.
+          </div>
+        </div>
+
+        <!-- Вопрос 2 -->
+        <div class="faq-item rounded-xl bg-slate-950/30 ring-1 ring-white/10">
+          <button class="faq-question w-full flex items-center justify-between px-5 py-4 text-left text-base font-medium text-slate-100 hover:text-indigo-200 transition-colors">
+            <span>Почему переработка считается по «личной норме», а не по производственному календарю?</span>
+            <svg class="faq-icon w-5 h-5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+          </button>
+          <div class="faq-answer hidden px-5 pb-5 text-sm text-slate-300/90 leading-6">
+            Если вы были в отпуске или на больничном, ваша личная обязанность отработать «норму календаря» снижается. Иначе в таком месяце автоматически образовалась бы «недоработка». Личная норма = норма месяца минус часы по кодам отсутствий. Переработка считается только относительно этой скорректированной нормы.
+          </div>
+        </div>
+
+        <!-- Вопрос 3 -->
+        <div class="faq-item rounded-xl bg-slate-950/30 ring-1 ring-white/10">
+          <button class="faq-question w-full flex items-center justify-between px-5 py-4 text-left text-base font-medium text-slate-100 hover:text-indigo-200 transition-colors">
+            <span>Можно ли изменить норму рабочих часов вручную?</span>
+            <svg class="faq-icon w-5 h-5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+          </button>
+          <div class="faq-answer hidden px-5 pb-5 text-sm text-slate-300/90 leading-6">
+            Базовая норма загружается из производственного календаря (40‑часовая неделя). Прямо в табеле её изменить нельзя. Если у вас сменный график или неполный день — настройте график в разделе <a href="profile.html" class="text-indigo-300 underline">«Профиль»</a>. После этого табель будет пересчитан под ваш индивидуальный график.
+          </div>
+        </div>
+
+        <!-- Вопрос 4 -->
+        <div class="faq-item rounded-xl bg-slate-950/30 ring-1 ring-white/10">
+          <button class="faq-question w-full flex items-center justify-between px-5 py-4 text-left text-base font-medium text-slate-100 hover:text-indigo-200 transition-colors">
+            <span>Что значит «годовая переработка ограничена 120 часами»?</span>
+            <svg class="faq-icon w-5 h-5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+          </button>
+          <div class="faq-answer hidden px-5 pb-5 text-sm text-slate-300/90 leading-6">
+            По Трудовому кодексу (ст. 99) сверхурочная работа не должна превышать 120 часов в год. Наш табель контролирует это ограничение. Если вы превысите лимит, появится предупреждение. Однако учтите: часы отсутствий (больничный, отпуск без содержания и т.д.) сначала «вычитаются» из годового баланса, поэтому реальная переработка может быть меньше, чем кажется на первый взгляд.
+          </div>
+        </div>
+
+        <!-- Вопрос 5 -->
+        <div class="faq-item rounded-xl bg-slate-950/30 ring-1 ring-white/10">
+          <button class="faq-question w-full flex items-center justify-between px-5 py-4 text-left text-base font-medium text-slate-100 hover:text-indigo-200 transition-colors">
+            <span>Считает ли программа, сколько мне придет отпускных?</span>
+            <svg class="faq-icon w-5 h-5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+          </button>
+          <div class="faq-answer hidden px-5 pb-5 text-sm text-slate-300/90 leading-6">
+            На текущем этапе разработки программа не рассчитывает отпускные. Это связано с тем, что для точного расчёта необходимо учитывать множество факторов, таких как средний заработок за определённый период, наличие дополнительных выплат и т.д. Однако я планирую добавить эту функцию в будущих обновлениях, чтобы сделать наш калькулятор ещё более полезным для вас.
+          </div>
+        </div>
+
+        <!-- Вопрос 6 -->
+        <div class="faq-item rounded-xl bg-slate-950/30 ring-1 ring-white/10">
+          <button class="faq-question w-full flex items-center justify-between px-5 py-4 text-left text-base font-medium text-slate-100 hover:text-indigo-200 transition-colors">
+            <span>У меня налог меньше 13% (или другое), учитываются ли эти особенности?</span>
+            <svg class="faq-icon w-5 h-5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+          </button>
+          <div class="faq-answer hidden px-5 pb-5 text-sm text-slate-300/90 leading-6">
+            На текущем этапе разработки программа не учитывает индивидуальные налоговые ставки и удержания. Я понимаю, что в реальной жизни могут быть различные ситуации, влияющие на итоговую сумму заработной платы, такие как налоговые вычеты, дополнительные удержания и т.д. В будущем я планирую добавить возможность вводить эти данные, чтобы расчёты были максимально точными и соответствовали вашей конкретной ситуации.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
     <footer class="mt-10 text-center text-xs text-slate-400/60 border-t border-white/10 pt-6">
       По вопросам и предложениям просьба обращаться в ЕГАИС. 
     </footer>
+
+    <script>
+  (function() {
+    const faqItems = document.querySelectorAll('.faq-item');
+
+    faqItems.forEach(item => {
+      const button = item.querySelector('.faq-question');
+      const answer = item.querySelector('.faq-answer');
+      const icon = button.querySelector('.faq-icon');
+
+      button.addEventListener('click', () => {
+        const isOpen = !answer.classList.contains('hidden');
+        // Закрыть все остальные (опционально — чтобы открытым оставался только один)
+        faqItems.forEach(otherItem => {
+          const otherAnswer = otherItem.querySelector('.faq-answer');
+          const otherIcon = otherItem.querySelector('.faq-icon');
+          if (otherAnswer !== answer) {
+            otherAnswer.classList.add('hidden');
+            otherIcon.style.transform = 'rotate(0deg)';
+          }
+        });
+        // Переключить текущий
+        if (isOpen) {
+          answer.classList.add('hidden');
+          icon.style.transform = 'rotate(0deg)';
+        } else {
+          answer.classList.remove('hidden');
+          icon.style.transform = 'rotate(45deg)';
+        }
+      });
+    });
+  })();
+</script>
+
   </main>
 </body>
 </html>

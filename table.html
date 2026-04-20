@@ -283,8 +283,10 @@
 
     .weekend-col { background-color: rgba(239, 68, 68, 0.15) !important; }
     .holiday-col { background-color: rgba(245, 158, 11, 0.2) !important; }
+    .transferred-col { background-color: rgba(59, 130, 246, 0.18) !important; }
     .timesheet-table th.weekend-col { background-color: rgba(239, 68, 68, 0.2) !important; }
     .timesheet-table th.holiday-col { background-color: rgba(245, 158, 11, 0.25) !important; }
+    .timesheet-table th.transferred-col { background-color: rgba(59, 130, 246, 0.24) !important; color: rgba(191, 219, 254, 0.98) !important; }
 
     .input-hour {
       width: 54px;
@@ -365,6 +367,11 @@
       background: rgba(245, 158, 11, 0.22) !important;
       color: rgba(253, 186, 64, 1) !important;
       border-color: rgba(245, 158, 11, 0.45) !important;
+    }
+    #mTransferredBtn.is-active {
+      background: rgba(59, 130, 246, 0.22) !important;
+      color: rgba(147, 197, 253, 1) !important;
+      border-color: rgba(59, 130, 246, 0.45) !important;
     }
     #mShortBtn.is-active {
       background: rgba(16, 185, 129, 0.2) !important;
@@ -563,10 +570,14 @@
         </button>
       </div>
 
-      <div class="mbar-row">
+     <div class="mbar-row">
         <button id="mHolidayBtn" type="button"
           class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">
           🎉 Праздник
+        </button>
+        <button id="mTransferredBtn" type="button"
+          class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">
+          🔁 Выходной 
         </button>
         <button id="mShortBtn" type="button"
           class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">
@@ -646,7 +657,7 @@
           <div class="mt-4 grid gap-2 text-sm text-slate-300/90 leading-6 text-justify">
             <div>• <strong><span class="font-bold text-red-400">Дневная смена</span></strong> — количество отработанных часов в день проставляются в ячейках строки «День». Смена с 8 до 5 - у мужчин проставляется 8 часов, у женщин - 7,2 часа. Смена с 8 до 8 у мужчин проставляется 11 часов, у женщин - 10,2 часа.</div>
             <div>• <strong><span class="font-bold text-blue-400">Ночная смена</span></strong> — вводится раздельно в «День» и «Ночь»: напр. если вы вышли в ночную смену с <strong>10</strong> по <strong>11</strong>, то в день 10-ого числа вы проставляете <strong>2</strong>, ночь <strong>2</strong>, а уже в 11 число в день вы проставляете <strong>2</strong>, а в ночь <strong>5</strong>. У женщин смены проставляются <strong>2/2</strong>, но уже <strong>1/5 в переходящей дате</strong>.</div>
-            <div>• <strong>Праздник / сокращённый:</strong> на ПК — кликните по числу, чтобы отметить его <span class="font-bold text-yellow-400">праздничным выходным / выходным днем</span>. Чтобы отметить день <span class="font-bold text-green-400">сокращенным</span> кликните по числу дважды. На телефоне — стрелками <span class="font-semibold text-indigo-300">‹ ›</span> выберите нужный день, затем нажмите на соответсвующую кнопку.</div>
+            <div>• <strong>Особые дни:</strong> на ПК — <span class="font-bold text-yellow-400">1 клик</span> по числу делает день праздничным выходным, <span class="font-bold text-blue-400">2 клика</span> — перенесённым выходным или просто выходным, <span class="font-bold text-green-400">3 клика</span> — сокращённым днём. На телефоне — стрелками <span class="font-semibold text-indigo-300">‹ ›</span> выберите нужный день, затем нажмите нужную кнопку. <span class="text-slate-300/80">ПК: правый клик по дате снимает отметку.</span></div>
             <div>• <strong>Отпуск/Больничные и т.д.</strong> — не забывайте проставлять коды в ячейках, если находитесь в отпусках, больничных и так далее.</div>
           </div>
         </details>

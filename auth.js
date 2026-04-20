@@ -28,3 +28,22 @@ export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
+
+export async function verifyCurrentPassword(password) {
+  const session = await requireSession();
+  const email = String(session?.user?.email ?? "").trim();
+
+  if (!email) {
+    throw new Error("Не удалось определить email текущего пользователя.");
+  }
+
+  const pwd = String(password ?? "");
+  if (!pwd) return false;
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password: pwd,
+  });
+
+  return !error;
+}
