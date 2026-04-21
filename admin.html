@@ -127,26 +127,28 @@
       }
 
       .scrollable {
-        overflow-x: auto;
-        border-radius: 1rem;
-        -webkit-overflow-scrolling: touch;
-      }
+  overflow-x: auto;
+  overflow-y: visible;
+  border-radius: 1rem;
+  -webkit-overflow-scrolling: touch;
+}
 
       .admin-matrix {
-        border-collapse: collapse;
-        width: 100%;
-        min-width: 1320px;
-        background: rgba(30, 41, 59, 0.52);
-        border-radius: 1rem;
-        overflow: hidden;
-      }
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 1320px;
+  background: rgba(30, 41, 59, 0.52);
+  border-radius: 1rem;
+  overflow: hidden;
+}
 
       .admin-matrix th,
-      .admin-matrix td {
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        text-align: center;
-      }
+.admin-matrix td {
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+  min-width: 58px;
+}
 
       .admin-matrix th {
         background: rgba(15, 23, 42, 0.86);
@@ -170,18 +172,18 @@
       }
 
       .label-cell {
-        position: sticky;
-        left: 0;
-        z-index: 4;
-        min-width: 190px;
-        background: rgba(12, 20, 44, 0.98);
-        backdrop-filter: blur(12px);
-        color: #e2e8f0;
-        text-align: left !important;
-        padding: 10px 12px !important;
-        white-space: nowrap;
-        border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
-      }
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  min-width: 190px;
+  width: 190px;
+  background: rgba(12, 20, 44, 0.98);
+  color: #e2e8f0;
+  text-align: left !important;
+  padding: 10px 12px !important;
+  white-space: nowrap;
+  border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
 
       .label-main {
         display: block;
@@ -202,23 +204,25 @@
       }
 
       .summary-head {
-        position: sticky;
-        right: 0;
-        z-index: 5;
-        min-width: 220px;
-        background: rgba(12, 20, 44, 0.98) !important;
-        border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
-      }
+  position: sticky;
+  right: 0;
+  z-index: 5;
+  min-width: 220px;
+  width: 220px;
+  background: rgba(12, 20, 44, 0.98) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
 
       .summary-cell {
-        position: sticky;
-        right: 0;
-        z-index: 3;
-        min-width: 220px;
-        background: rgba(8, 15, 34, 0.98);
-        border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
-        padding: 10px !important;
-      }
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  min-width: 220px;
+  width: 220px;
+  background: rgba(8, 15, 34, 0.98);
+  border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 10px !important;
+}
 
       .summary-box {
         text-align: left;
@@ -267,6 +271,14 @@
         background-color: rgba(245, 158, 11, 0.2) !important;
       }
 
+      .transferred-col {
+        background-color: rgba(59, 130, 246, 0.16) !important;
+      }
+
+      .admin-matrix th.transferred-col {
+        background-color: rgba(59, 130, 246, 0.2) !important;
+      }
+
       .short-col {
         background-color: rgba(16, 185, 129, 0.16) !important;
       }
@@ -292,11 +304,9 @@
       }
 
       .person-divider td {
-        border-bottom: 2px solid rgba(129, 140, 248, 0.34) !important;
-        box-shadow:
-          inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-          inset 0 -10px 18px -16px rgba(99, 102, 241, 0.55);
-      }
+          border-bottom: 2px solid rgba(129, 140, 248, 0.22) !important;
+          box-shadow: none;
+        }
 
       .person-divider .summary-cell,
       .person-divider .label-cell {
@@ -304,8 +314,8 @@
       }
 
       .overtime-row td {
-  background-color: rgba(244, 63, 94, 0.08);
-}
+        background-color: rgba(244, 63, 94, 0.05);
+      }
 
       .overtime-row .label-cell,
       .overtime-row .summary-cell {
@@ -313,16 +323,16 @@
       }
 
       .overtime-row .input-hour {
-        border-color: rgba(251, 113, 133, 0.38);
-        box-shadow: 0 0 0 1px rgba(251, 113, 133, 0.10);
-      }
+          border-color: rgba(251, 113, 133, 0.28);
+          box-shadow: none;
+        }
 
       .overtime-row-top td {
-        box-shadow: inset 0 2px 0 rgba(251, 113, 133, 0.55);
+        box-shadow: none;
       }
 
       .overtime-row-bottom td {
-        box-shadow: inset 0 -2px 0 rgba(251, 113, 133, 0.55);
+        box-shadow: none;
       }
 
       .overtime-row .label-main {
@@ -353,24 +363,24 @@
       }
 
       .input-hour {
-        width: 54px;
-        padding: 8px 4px;
-        background: rgba(0, 0, 0, 0.38);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        color: white;
-        text-align: center;
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        transition: all 0.2s;
-        backdrop-filter: blur(4px);
-      }
+  width: 54px;
+  min-width: 54px;
+  padding: 8px 4px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: white;
+  text-align: center;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
 
       .input-hour:focus {
         outline: none;
         border-color: rgba(99, 102, 241, 0.8);
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
-        background: rgba(0, 0, 0, 0.56);
+        box-shadow: none;
+        background: rgba(0, 0, 0, 0.48);
       }
 
       td.night-cell .input-hour {
@@ -430,21 +440,24 @@
       }
 
       @media (max-width: 768px) {
-        .input-hour {
-          width: 50px;
-          min-height: 44px;
-          font-size: 16px;
-        }
+  .input-hour {
+    width: 50px;
+    min-width: 50px;
+    min-height: 44px;
+    font-size: 16px;
+  }
 
-        .label-cell {
-          min-width: 150px;
-        }
+  .label-cell {
+    min-width: 150px;
+    width: 150px;
+  }
 
-        .summary-head,
-        .summary-cell {
-          min-width: 180px;
-        }
-      }
+  .summary-head,
+  .summary-cell {
+    min-width: 180px;
+    width: 180px;
+  }
+}
 
       /* ========= Мобильная панель (аналог table.html) ========= */
 #mobileBar {
@@ -477,6 +490,13 @@
       color: rgba(253, 186, 64, 1) !important;
       border-color: rgba(245, 158, 11, 0.45) !important;
     }
+
+    #mTransferredBtn.is-active {
+      background: rgba(59, 130, 246, 0.2) !important;
+      color: rgba(147, 197, 253, 1) !important;
+      border-color: rgba(59, 130, 246, 0.45) !important;
+    }
+
     #mShortBtn.is-active {
       background: rgba(16, 185, 129, 0.2) !important;
       color: rgba(52, 211, 153, 1) !important;
@@ -484,13 +504,16 @@
     }
     /* Подсветка выбранной колонки */
     .focus-col {
-      box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.6) !important;
-      position: relative;
-      z-index: 2;
-    }
+  outline: 2px solid rgba(56, 189, 248, 0.55);
+  outline-offset: -2px;
+  box-shadow: none !important;
+}
+
     .admin-matrix th.focus-col,
     .admin-matrix td.focus-col {
-      box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.6) !important;
+      outline: 2px solid rgba(56, 189, 248, 0.55);
+      outline-offset: -2px;
+      box-shadow: none !important;
     }
 
     </style>
@@ -506,7 +529,7 @@
               <div>
                 <h1 class="text-2xl md:text-3xl font-bold tracking-tight">
                   <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
-                    Общий админ-табель
+                    Табель команды
                   </span>
                 </h1>
                 <p id="monthYearDisplay" class="mt-1 text-sm text-slate-300/80">—</p>
@@ -578,7 +601,7 @@
 
       <section class="mb-6 grid gap-4 md:grid-cols-3">
         <div class="glass-card rounded-3xl p-5">
-          <div class="text-sm text-slate-400">Операторов в табеле</div>
+          <div class="text-sm text-slate-400">Сотрудников в табеле</div>
           <div id="teamCount" class="mt-2 text-3xl font-bold text-slate-100">4</div>
          
         </div>
@@ -620,11 +643,13 @@
               class="rounded-xl bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 whitespace-nowrap">Сегодня</button>
           </div>
           <div class="mbar-row">
-            <button id="mHolidayBtn" type="button"
-              class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">🎉 Праздник</button>
-            <button id="mShortBtn" type="button"
-              class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">✂️ Сокращ.</button>
-          </div>
+          <button id="mHolidayBtn" type="button"
+            class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">🎉 Праздник</button>
+          <button id="mTransferredBtn" type="button"
+            class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">🔁 Перенос</button>
+          <button id="mShortBtn" type="button"
+            class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">✂️ Сокращ.</button>
+        </div>
         </div>
 
         <div class="scrollable" id="tableScrollable">

@@ -35,27 +35,7 @@ async function requireUserId() {
   if (sessionError) throw sessionError;
 
   const userId = sessionData.session?.user?.id;
-  if (!userId) {
-    throw new Error("NO_SESSION");
-  }
-
-  return userId;
-}
-
-async function requireAdmin() {
-  const userId = await requireUserId();
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (error) throw error;
-
-  if (!data || data.role !== "admin") {
-    throw new Error("Доступ запрещён. Нужна роль admin.");
-  }
+  if (!userId) throw new Error("NO_SESSION");
 
   return userId;
 }
@@ -264,55 +244,89 @@ export async function getTimesheetMeta(year, month) {
 }
 
 /** =========================
- *  ADMIN
+ *  DEPARTMENT ACCESS
  *  ========================= */
 
-export async function adminListProfiles(limit = 100) {
-  await requireAdmin();
+export async function getMyManagedDepartment() {
+  const userId = await requireUserId();
 
-  const { data, error } = await supabase
+  const { data: editorRow, error: editorError } = await supabase
+    .from("department_editors")
+    .select("department_key")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (editorError) {
+    if (isNotFoundError(editorError)) return null;
+    throw editorError;
+  }
+
+  if (!editorRow?.department_key) return null;
+
+  const { data: departmentRow, error: departmentError } = await supabase
+    .from("departments")
+    .select("key, name")
+    .eq("key", editorRow.department_key)
+    .maybeSingle();
+
+  if (departmentError) {
+    if (isNotFoundError(departmentError)) {
+      return { key: editorRow.department_key, name: editorRow.department_key };
+    }
+    throw departmentError;
+  }
+
+  return departmentRow ?? { key: editorRow.department_key, name: editorRow.department_key };
+}
+
+export async function listManagedDepartmentMembers(departmentKey) {
+  const key = String(departmentKey ?? "").trim();
+  if (!key) throw new Error("Не указан отдел.");
+
+  const { data: memberRows, error: membersError } = await supabase
+    .from("department_members")
+    .select("user_id")
+    .eq("department_key", key)
+    .order("created_at", { ascending: true });
+
+  if (membersError) throw membersError;
+
+  const userIds = (memberRows ?? [])
+    .map((row) => String(row.user_id || "").trim())
+    .filter(Boolean);
+
+  if (!userIds.length) return [];
+
+  const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
     .select(ADMIN_PROFILE_SELECT)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .in("user_id", userIds);
 
-  if (error) throw error;
-  return data ?? [];
+  if (profilesError) throw profilesError;
+
+  const profileMap = new Map((profiles ?? []).map((row) => [row.user_id, row]));
+
+  return userIds.map((userId) => {
+    const profile = profileMap.get(userId) ?? null;
+    return {
+      user_id: userId,
+      display_name:
+        profile?.display_name ||
+        profile?.position ||
+        `Сотрудник ${userId.slice(0, 8)}`,
+      role: profile?.role ?? "user",
+      oklad: profile?.oklad ?? null,
+      gender: profile?.gender ?? null,
+      position: profile?.position ?? "",
+      avatar_url: profile?.avatar_url ?? null,
+      hide_money: profile?.hide_money ?? false,
+      created_at: profile?.created_at ?? null,
+    };
+  });
 }
 
-export async function adminListTimesheets(limit = 100) {
-  await requireAdmin();
-
-  const { data, error } = await supabase
-    .from("timesheets")
-    .select("user_id, year, month, updated_at")
-    .order("updated_at", { ascending: false })
-    .limit(limit);
-
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function adminGetProfilesByIds(userIds) {
-  await requireAdmin();
-
-  const ids = Array.isArray(userIds)
-    ? userIds.map((value) => String(value)).filter(Boolean)
-    : [];
-
-  if (!ids.length) return [];
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(ADMIN_PROFILE_SELECT)
-    .in("user_id", ids);
-
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function adminLoadTimesheet(userId, year, month) {
-  await requireAdmin();
+export async function managedLoadTimesheet(userId, year, month) {
   const normalized = assertValidYearMonth(year, month);
 
   const { data, error } = await supabase
@@ -331,27 +345,7 @@ export async function adminLoadTimesheet(userId, year, month) {
   return data?.payload ?? null;
 }
 
-export async function adminSaveTimesheet(userId, year, month, payload) {
-  await requireAdmin();
-  const normalized = assertValidYearMonth(year, month);
-
-  const row = {
-    user_id: userId,
-    year: normalized.year,
-    month: normalized.month,
-    payload: payload ?? null,
-  };
-
-  const { error } = await supabase
-    .from("timesheets")
-    .upsert(row, { onConflict: "user_id,year,month" });
-
-  if (error) throw error;
-}
-
-export async function adminSaveManyTimesheets(items) {
-  await requireAdmin();
-
+export async function managedSaveManyTimesheets(items) {
   const rows = Array.isArray(items) ? items : [];
   if (!rows.length) return;
 

@@ -4,6 +4,7 @@
 import { requireSession, signOut } from "./auth.js";
 import {
   getMyProfile,
+  getMyManagedDepartment,
   updateMyProfile,
   listMyTimesheetsByYear,
   deleteMyTimesheet,
@@ -1271,8 +1272,18 @@ async function refreshProfile() {
 
   setAvatarUI(avatarUrl, name);
 
-  if (effectiveProfile.role === "admin") adminLink?.classList.remove("hidden");
-  else adminLink?.classList.add("hidden");
+  const managedDepartment = await getMyManagedDepartment().catch(() => null);
+if (managedDepartment) {
+  adminLink?.classList.remove("hidden");
+  if (adminLink) {
+    adminLink.href = "admin.html";
+    adminLink.textContent = managedDepartment.name
+      ? `Табель: ${managedDepartment.name}`
+      : "Админка";
+  }
+} else {
+  adminLink?.classList.add("hidden");
+}
 
   const missingLabels = renderProfileRequiredNotice(effectiveProfile);
   applyRequiredFieldHighlights(effectiveProfile);

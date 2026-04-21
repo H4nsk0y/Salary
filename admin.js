@@ -3,33 +3,13 @@
 // =========================
 import { requireSession, signOut } from "./auth.js";
 import {
-  getMyProfile,
-  adminGetProfilesByIds,
-  adminLoadTimesheet,
-  adminSaveManyTimesheets,
+  getMyManagedDepartment,
+  listManagedDepartmentMembers,
+  managedLoadTimesheet,
+  managedSaveManyTimesheets,
 } from "./db.js";
 
 document.body.classList.add("is-loaded");
-
-const TEAM = [
-  {
-    userId: "4cadc9e5-8b98-4ef1-b7b0-bb39e5f034c4",
-    name: "Мирзоев Ханахмед",
-    isOwner: true,
-  },
-  {
-    userId: "34c68288-ba6e-49a0-aaed-075ddfa5059f",
-    name: "Гасанов Камиль",
-  },
-  {
-    userId: "97da2f37-61d9-40e1-9521-4cac3def2671",
-    name: "Герейханов Пирбала",
-  },
-  {
-    userId: "5adab14c-3262-43a4-9ef5-6294f5d29e6e",
-    name: "Гусейнов Вели",
-  },
-];
 
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
@@ -64,11 +44,14 @@ let year = new Date().getFullYear();
 let month = new Date().getMonth();
 let daysInMonth = 31;
 
+let managedDepartment = null;
 let teamStates = [];
 let sharedHoliday = [];
+let sharedTransferredOff = [];
 let sharedShortDay = [];
 let headerCells = [];
 let columnCells = [];
+let focusedDayIndex = null;
 
 // Mobile toolbar
 let mobileSelectedIdx = 0;
@@ -76,6 +59,7 @@ const mPrevDay = document.getElementById("mPrevDay");
 const mNextDay = document.getElementById("mNextDay");
 const mToday = document.getElementById("mToday");
 const mHolidayBtn = document.getElementById("mHolidayBtn");
+const mTransferredBtn = document.getElementById("mTransferredBtn");
 const mShortBtn = document.getElementById("mShortBtn");
 const mDayLabel = document.getElementById("mDayLabel");
 
@@ -105,41 +89,58 @@ function scrollTableToColumn(dayIdx0) {
   if (!tableScrollable) return;
   const cells = columnCells[dayIdx0];
   if (!cells || cells.length === 0) return;
+
   const firstCell = cells[0];
   const containerWidth = tableScrollable.clientWidth;
   const cellLeft = firstCell.offsetLeft;
   const cellWidth = firstCell.offsetWidth;
   const labelWidth = 190;
-  const targetScrollLeft = cellLeft - labelWidth - (containerWidth - labelWidth) / 2 + cellWidth / 2;
+  const targetScrollLeft =
+    cellLeft - labelWidth - (containerWidth - labelWidth) / 2 + cellWidth / 2;
+
   tableScrollable.scrollTo({
     left: Math.max(0, targetScrollLeft),
-    behavior: "smooth"
+    behavior: "smooth",
   });
 }
 
-function clearFocusColumn() {
-  document.querySelectorAll(".focus-col").forEach(el => el.classList.remove("focus-col"));
+function clearFocusColumn(dayIdx = focusedDayIndex) {
+  if (!Number.isInteger(dayIdx) || dayIdx < 0 || dayIdx >= daysInMonth) return;
+  const cells = columnCells[dayIdx] ?? [];
+  for (const el of cells) {
+    el.classList.remove("focus-col");
+  }
+  if (focusedDayIndex === dayIdx) focusedDayIndex = null;
 }
 
 function focusDayColumn(dayIdx0) {
+  if (!Number.isInteger(dayIdx0) || dayIdx0 < 0 || dayIdx0 >= daysInMonth) return;
+  if (focusedDayIndex === dayIdx0) return;
+
   clearFocusColumn();
-  const cells = columnCells[dayIdx0];
-  if (cells) cells.forEach(cell => cell.classList.add("focus-col"));
+  const cells = columnCells[dayIdx0] ?? [];
+  for (const cell of cells) {
+    cell.classList.add("focus-col");
+  }
+  focusedDayIndex = dayIdx0;
 }
 
 function updateMobileToolbar() {
   if (!isMobileNow()) return;
   const idx = mobileSelectedIdx;
   if (idx < 0 || idx >= daysInMonth) return;
+
   const d = new Date(year, month, idx + 1);
   mDayLabel.textContent = `${idx + 1} · ${DOW_SHORT[d.getDay()]}`;
-  mHolidayBtn.classList.toggle("is-active", Boolean(sharedHoliday[idx]));
-  mShortBtn.classList.toggle("is-active", Boolean(sharedShortDay[idx]));
+  mHolidayBtn?.classList.toggle("is-active", Boolean(sharedHoliday[idx]));
+  mTransferredBtn?.classList.toggle("is-active", Boolean(sharedTransferredOff[idx]));
+  mShortBtn?.classList.toggle("is-active", Boolean(sharedShortDay[idx]));
 }
 
 function setMobileDay(dayIdx0) {
   if (dayIdx0 < 0) dayIdx0 = 0;
   if (dayIdx0 >= daysInMonth) dayIdx0 = daysInMonth - 1;
+
   mobileSelectedIdx = dayIdx0;
   focusDayColumn(dayIdx0);
   scrollTableToColumn(dayIdx0);
@@ -149,7 +150,7 @@ function setMobileDay(dayIdx0) {
 function setSaveStatus(text, tone = "neutral") {
   saveStatus.textContent = text;
   saveStatus.className =
-    "inline-flex items-center rounded-full px-4 py-1.5 text-xs ring-1 backdrop-blur-sm";
+    "inline-flex items-center rounded-full px-4 py-1.5 text-xs ring-1";
 
   if (tone === "ok") {
     saveStatus.classList.add("bg-emerald-500/10", "text-emerald-200", "ring-emerald-400/20");
@@ -168,10 +169,7 @@ function setSaveStatus(text, tone = "neutral") {
 }
 
 function parseNumberValue(raw) {
-  const s = String(raw ?? "")
-    .trim()
-    .replace(/\s+/g, "")
-    .replace(",", ".");
+  const s = String(raw ?? "").trim().replace(/\s+/g, "").replace(",", ".");
   if (!s) return NaN;
   const n = Number(s);
   return Number.isFinite(n) ? n : NaN;
@@ -251,11 +249,7 @@ function sanitizeDayCellValue(raw) {
 }
 
 function sanitizeNumericValue(raw) {
-  let s = String(raw ?? "")
-    .trim()
-    .replace(/\s+/g, "")
-    .replace(/[^0-9.,]/g, "");
-
+  let s = String(raw ?? "").trim().replace(/\s+/g, "").replace(/[^0-9.,]/g, "");
   if (!s) return "";
 
   if (s.includes(".") && s.includes(",")) s = s.replace(/,/g, ".");
@@ -352,11 +346,19 @@ function attachPrevValueTracking(inputEl) {
   });
 }
 
-function createState(member, profile) {
+function buildMemberLabel(member) {
+  return (
+    String(member?.display_name ?? "").trim() ||
+    String(member?.position ?? "").trim() ||
+    `Сотрудник ${String(member?.user_id ?? "").slice(0, 8)}`
+  );
+}
+
+function createState(member) {
   return {
-    userId: member.userId,
-    name: member.name,
-    gender: profile?.gender ?? null,
+    userId: member.user_id,
+    name: buildMemberLabel(member),
+    gender: member?.gender ?? null,
     dayHours: new Array(daysInMonth).fill(0),
     nightHours: new Array(daysInMonth).fill(0),
     leaveType: new Array(daysInMonth).fill(null),
@@ -366,10 +368,6 @@ function createState(member, profile) {
     dayRowEl: null,
     nightRowEl: null,
   };
-}
-
-function getStateByUserId(userId) {
-  return teamStates.find((x) => x.userId === userId) ?? null;
 }
 
 function setFromQueryOrNow() {
@@ -410,39 +408,29 @@ function updateUrlForMonth() {
   history.replaceState(null, "", u.toString());
 }
 
-function resetMonthArrays(profileMap) {
+function resetMonthArrays(members) {
   daysInMonth = new Date(year, month + 1, 0).getDate();
   sharedHoliday = new Array(daysInMonth).fill(false);
+  sharedTransferredOff = new Array(daysInMonth).fill(false);
   sharedShortDay = new Array(daysInMonth).fill(false);
   headerCells = [];
   columnCells = Array.from({ length: daysInMonth }, () => []);
-  teamStates = TEAM.map((member) => createState(member, profileMap.get(member.userId)));
+  focusedDayIndex = null;
+  teamStates = (members ?? []).map((member) => createState(member));
 }
 
-function getOwnerUserId() {
-  return TEAM.find((x) => x.isOwner)?.userId ?? TEAM[0].userId;
+function hasSharedMarks(payload) {
+  return Boolean(
+    payload &&
+    Array.isArray(payload.isHoliday) &&
+    payload.isHoliday.length === daysInMonth
+  );
 }
 
 function chooseSharedMarkSource(payloadsByUserId) {
-  const ownerPayload = payloadsByUserId.get(getOwnerUserId());
-  if (
-    ownerPayload &&
-    Array.isArray(ownerPayload.isHoliday) &&
-    ownerPayload.isHoliday.length === daysInMonth
-  ) {
-    return ownerPayload;
-  }
-
   for (const payload of payloadsByUserId.values()) {
-    if (
-      payload &&
-      Array.isArray(payload.isHoliday) &&
-      payload.isHoliday.length === daysInMonth
-    ) {
-      return payload;
-    }
+    if (hasSharedMarks(payload)) return payload;
   }
-
   return null;
 }
 
@@ -451,6 +439,9 @@ function applyLoadedPayloads(payloadsByUserId) {
 
   if (sharedSource?.isHoliday?.length === daysInMonth) {
     sharedHoliday = sharedSource.isHoliday.map(Boolean);
+  }
+  if (sharedSource?.isTransferredOff?.length === daysInMonth) {
+    sharedTransferredOff = sharedSource.isTransferredOff.map(Boolean);
   }
   if (sharedSource?.isShortDay?.length === daysInMonth) {
     sharedShortDay = sharedSource.isShortDay.map(Boolean);
@@ -484,12 +475,34 @@ function makeLabelCell(name) {
   sub.className = "label-sub";
   sub.textContent = "День / Ночь";
 
-  const meta = document.createElement("span");
-  meta.className = "label-meta";
-  
-
-  td.append(main, sub, meta);
+  td.append(main, sub);
   return td;
+}
+
+function setSharedDayMarkByCycle(dayIndex, clickCount) {
+  if (clickCount === 1) {
+    sharedHoliday[dayIndex] = true;
+    sharedTransferredOff[dayIndex] = false;
+    sharedShortDay[dayIndex] = false;
+    return;
+  }
+
+  if (clickCount === 2) {
+    sharedHoliday[dayIndex] = false;
+    sharedTransferredOff[dayIndex] = true;
+    sharedShortDay[dayIndex] = false;
+    return;
+  }
+
+  sharedHoliday[dayIndex] = false;
+  sharedTransferredOff[dayIndex] = false;
+  sharedShortDay[dayIndex] = true;
+}
+
+function clearSharedDayMark(dayIndex) {
+  sharedHoliday[dayIndex] = false;
+  sharedTransferredOff[dayIndex] = false;
+  sharedShortDay[dayIndex] = false;
 }
 
 function createHeaderCell(dayIndex) {
@@ -510,34 +523,45 @@ function createHeaderCell(dayIndex) {
 
   th.append(numEl, dowEl);
   th.style.cursor = "pointer";
-  th.title = "Клик — праздник. Двойной клик — сокращённый день.";
+  th.title = "1 клик — праздник. 2 клика — перенесённый выходной. 3 клика — сокращённый день. ПКМ — очистить.";
 
+  let clickCount = 0;
   let clickTimer = null;
 
   th.addEventListener("click", () => {
-    if (clickTimer) return;
     if (isMobileNow()) setMobileDay(dayIndex);
+
+    clickCount += 1;
+    if (clickTimer) clearTimeout(clickTimer);
+
     clickTimer = setTimeout(() => {
+      setSharedDayMarkByCycle(dayIndex, clickCount >= 3 ? 3 : clickCount);
+      clickCount = 0;
       clickTimer = null;
-      sharedShortDay[dayIndex] = false;
-      sharedHoliday[dayIndex] = !sharedHoliday[dayIndex];
+
       updateDayMarkClasses(dayIndex);
-      recalcAll();
+      renderSharedSummary();
+      recalcAllPeople();
       scheduleSave();
       updateMobileToolbar();
-    }, 240);
+    }, 320);
   });
 
-  th.addEventListener("dblclick", () => {
+  th.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+
     if (clickTimer) {
       clearTimeout(clickTimer);
       clickTimer = null;
     }
+    clickCount = 0;
+
     if (isMobileNow()) setMobileDay(dayIndex);
-    if (sharedHoliday[dayIndex]) sharedHoliday[dayIndex] = false;
-    sharedShortDay[dayIndex] = !sharedShortDay[dayIndex];
+
+    clearSharedDayMark(dayIndex);
     updateDayMarkClasses(dayIndex);
-    recalcAll();
+    renderSharedSummary();
+    recalcAllPeople();
     scheduleSave();
     updateMobileToolbar();
   });
@@ -547,10 +571,11 @@ function createHeaderCell(dayIndex) {
 
 function currentPayloadForState(state) {
   return {
-    v: 4,
+    v: 5,
     year,
     month,
     isHoliday: [...sharedHoliday],
+    isTransferredOff: [...sharedTransferredOff],
     isShortDay: [...sharedShortDay],
     dayHours: [...state.dayHours],
     nightHours: [...state.nightHours],
@@ -618,6 +643,7 @@ function focusHorizontal(state, rowType, startIdx, step) {
 function attachArrowNavigation(inputEl, state, rowType, index) {
   inputEl.dataset.row = rowType;
   inputEl.dataset.idx = String(index);
+
   inputEl.addEventListener("keydown", (e) => {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     const key = e.key;
@@ -636,9 +662,14 @@ function attachArrowNavigation(inputEl, state, rowType, index) {
 
     if (key === "ArrowLeft") focusHorizontal(state, rowType, index - 1, -1);
     else if (key === "ArrowRight") focusHorizontal(state, rowType, index + 1, 1);
-    else if (key === "ArrowUp") focusCell(state, rowType === "day" ? "night" : "day", index);
-    else if (key === "ArrowDown") focusCell(state, rowType === "day" ? "night" : "day", index);
+    else focusCell(state, rowType === "day" ? "night" : "day", index);
   });
+}
+
+function onPersonDataChanged(state) {
+  setError(null);
+  recalcPerson(state);
+  scheduleSave();
 }
 
 function createDayInput(state, i) {
@@ -656,13 +687,21 @@ function createDayInput(state, i) {
   attachPrevValueTracking(input);
   attachArrowNavigation(input, state, "day", i);
 
+  input.addEventListener("focus", () => {
+    if (isMobileNow()) {
+      mobileSelectedIdx = i;
+      updateMobileToolbar();
+      focusDayColumn(i);
+      scrollTableToColumn(i);
+    }
+  });
+
   input.addEventListener("blur", () => {
     const s = String(input.value ?? "").trim();
     if (s === "0" || s === "0.0" || s === "0,0") {
       input.value = "";
       state.dayHours[i] = 0;
-      recalcAll();
-      scheduleSave();
+      onPersonDataChanged(state);
       return;
     }
     if (String(input.value ?? "").trim().toUpperCase() === "О") {
@@ -678,15 +717,13 @@ function createDayInput(state, i) {
     const raw = input.value;
 
     if (!raw.trim()) {
-      setError(null);
       if (state.leaveType[i]) {
         state.leaveType[i] = null;
         unlockNightCell(state, i);
       }
       state.dayHours[i] = 0;
       input.dataset.prev = "";
-      recalcAll();
-      scheduleSave();
+      onPersonDataChanged(state);
       return;
     }
 
@@ -699,20 +736,17 @@ function createDayInput(state, i) {
         return;
       }
 
-      setError(null);
       state.leaveType[i] = parsed.leave;
       input.value = sanitizeLeaveDisplayValue(raw, parsed.leave);
       state.dayHours[i] = 0;
       state.nightHours[i] = 0;
       lockNightCell(state, i);
       input.dataset.prev = input.value;
-      recalcAll();
-      scheduleSave();
+      onPersonDataChanged(state);
       return;
     }
 
     if (parsed.kind === "hours") {
-      setError(null);
       if (state.leaveType[i]) {
         state.leaveType[i] = null;
         unlockNightCell(state, i);
@@ -731,8 +765,7 @@ function createDayInput(state, i) {
 
       state.dayHours[i] = nextDay;
       input.dataset.prev = input.value;
-      recalcAll();
-      scheduleSave();
+      onPersonDataChanged(state);
       return;
     }
 
@@ -760,13 +793,21 @@ function createNightInput(state, i) {
   attachPrevValueTracking(input);
   attachArrowNavigation(input, state, "night", i);
 
+  input.addEventListener("focus", () => {
+    if (isMobileNow()) {
+      mobileSelectedIdx = i;
+      updateMobileToolbar();
+      focusDayColumn(i);
+      scrollTableToColumn(i);
+    }
+  });
+
   input.addEventListener("blur", () => {
     const s = String(input.value ?? "").trim();
     if (s === "0" || s === "0.0" || s === "0,0") {
       input.value = "";
       state.nightHours[i] = 0;
-      recalcAll();
-      scheduleSave();
+      onPersonDataChanged(state);
     }
   });
 
@@ -778,11 +819,9 @@ function createNightInput(state, i) {
 
     const raw = input.value;
     if (!raw.trim()) {
-      setError(null);
       state.nightHours[i] = 0;
       input.dataset.prev = "";
-      recalcAll();
-      scheduleSave();
+      onPersonDataChanged(state);
       return;
     }
 
@@ -803,11 +842,9 @@ function createNightInput(state, i) {
     });
     if (!ok) return;
 
-    setError(null);
     state.nightHours[i] = nextNight;
     input.dataset.prev = input.value;
-    recalcAll();
-    scheduleSave();
+    onPersonDataChanged(state);
   });
 
   td.appendChild(input);
@@ -822,10 +859,11 @@ function buildTable() {
   matrixBody.innerHTML = "";
   headerCells = [];
   columnCells = Array.from({ length: daysInMonth }, () => []);
+  focusedDayIndex = null;
 
   const labelTh = document.createElement("th");
   labelTh.className = "label-cell";
-  labelTh.textContent = "Оператор";
+  labelTh.textContent = "Сотрудник";
   headerRow.appendChild(labelTh);
 
   for (let i = 0; i < daysInMonth; i++) {
@@ -840,6 +878,8 @@ function buildTable() {
   summaryTh.className = "summary-head";
   summaryTh.innerHTML = 'Итоги<br><span class="th-dow">1-я пол. / месяц</span>';
   headerRow.appendChild(summaryTh);
+
+  const fragment = document.createDocumentFragment();
 
   for (let idx = 0; idx < teamStates.length; idx++) {
     const state = teamStates[idx];
@@ -877,9 +917,10 @@ function buildTable() {
       nightTr.appendChild(createNightInput(state, i));
     }
 
-    matrixBody.append(dayTr, nightTr);
+    fragment.append(dayTr, nightTr);
   }
 
+  matrixBody.appendChild(fragment);
   applyStateToDom();
 }
 
@@ -908,15 +949,18 @@ function applyStateToDom() {
     updateDayMarkClasses(i);
   }
 
-  recalcAll();
+  renderSharedSummary();
+  recalcAllPeople();
 }
 
 function updateDayMarkClasses(index) {
   const cells = columnCells[index] ?? [];
   for (const el of cells) {
-    el.classList.remove("holiday-col", "short-col", "weekend-col");
+    el.classList.remove("holiday-col", "transferred-col", "short-col", "weekend-col");
     if (isWeekendByIndex(year, month, index)) el.classList.add("weekend-col");
+
     if (sharedHoliday[index]) el.classList.add("holiday-col");
+    else if (sharedTransferredOff[index]) el.classList.add("transferred-col");
     else if (sharedShortDay[index]) el.classList.add("short-col");
   }
 }
@@ -941,36 +985,48 @@ function countLeaves(state) {
 function calendarNormHoursForBase(baseDayHours) {
   let weekdays = 0;
   let holidayWeekdays = 0;
+  let transferredWeekdays = 0;
   let shortWeekdays = 0;
 
   for (let i = 0; i < daysInMonth; i++) {
     if (isWeekendByIndex(year, month, i)) continue;
     weekdays++;
+
     if (sharedHoliday[i]) holidayWeekdays++;
+    else if (sharedTransferredOff[i]) transferredWeekdays++;
     else if (sharedShortDay[i]) shortWeekdays++;
   }
 
-  return weekdays * baseDayHours
-    - holidayWeekdays * baseDayHours
-    - shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
+  return (
+    weekdays * baseDayHours -
+    holidayWeekdays * baseDayHours -
+    transferredWeekdays * baseDayHours -
+    shortWeekdays * SHORT_DAY_REDUCTION_HOURS
+  );
 }
 
 function calendarFirstHalfNormForBase(baseDayHours) {
   const endIdx = Math.min(14, daysInMonth - 1);
   let weekdays = 0;
   let holidayWeekdays = 0;
+  let transferredWeekdays = 0;
   let shortWeekdays = 0;
 
   for (let i = 0; i <= endIdx; i++) {
     if (isWeekendByIndex(year, month, i)) continue;
     weekdays++;
+
     if (sharedHoliday[i]) holidayWeekdays++;
+    else if (sharedTransferredOff[i]) transferredWeekdays++;
     else if (sharedShortDay[i]) shortWeekdays++;
   }
 
-  return weekdays * baseDayHours
-    - holidayWeekdays * baseDayHours
-    - shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
+  return (
+    weekdays * baseDayHours -
+    holidayWeekdays * baseDayHours -
+    transferredWeekdays * baseDayHours -
+    shortWeekdays * SHORT_DAY_REDUCTION_HOURS
+  );
 }
 
 function personalNormHours(state) {
@@ -981,7 +1037,7 @@ function personalNormHours(state) {
   for (let i = 0; i < daysInMonth; i++) {
     const lt = normalizeLeaveTypeLegacy(state.leaveType[i]);
     if (!lt) continue;
-    if (!sharedHoliday[i]) effectiveLeaveDays++;
+    if (!sharedHoliday[i] && !sharedTransferredOff[i]) effectiveLeaveDays++;
   }
 
   const personalNorm = monthNorm - effectiveLeaveDays * baseDayHours;
@@ -994,28 +1050,30 @@ function firstHalfStats(state) {
 
   let weekdays = 0;
   let holidayWeekdays = 0;
+  let transferredWeekdays = 0;
   let shortWeekdays = 0;
   let leaveEffectiveDays = 0;
 
   for (let i = 0; i <= endIdx; i++) {
     if (isWeekendByIndex(year, month, i)) continue;
     weekdays++;
+
     if (sharedHoliday[i]) holidayWeekdays++;
+    else if (sharedTransferredOff[i]) transferredWeekdays++;
     else if (sharedShortDay[i]) shortWeekdays++;
 
     const lt = normalizeLeaveTypeLegacy(state.leaveType[i]);
-    if (lt && !sharedHoliday[i]) leaveEffectiveDays++;
+    if (lt && !sharedHoliday[i] && !sharedTransferredOff[i]) leaveEffectiveDays++;
   }
 
   const monthHalfNorm =
-    weekdays * baseDayHours
-    - holidayWeekdays * baseDayHours
-    - shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
+    weekdays * baseDayHours -
+    holidayWeekdays * baseDayHours -
+    transferredWeekdays * baseDayHours -
+    shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
 
   const personalHalfNorm = monthHalfNorm - leaveEffectiveDays * baseDayHours;
-  const workedFH =
-    sumRange(state.dayHours, 0, endIdx) +
-    sumRange(state.nightHours, 0, endIdx);
+  const workedFH = sumRange(state.dayHours, 0, endIdx) + sumRange(state.nightHours, 0, endIdx);
 
   return { personalHalfNorm, workedFH };
 }
@@ -1037,6 +1095,8 @@ function updatePersonSummary(state) {
 
   state.nightRowEl?.classList.toggle("overtime-row", hasOvertime);
   state.nightRowEl?.classList.toggle("overtime-row-bottom", hasOvertime);
+
+  if (!state.summaryEl) return;
 
   state.summaryEl.innerHTML = `
     <div class="summary-box">
@@ -1061,23 +1121,33 @@ function updatePersonSummary(state) {
 }
 
 function getReferenceBaseHours() {
-  const ownerState = getStateByUserId(getOwnerUserId());
-  return getBaseDayHours(ownerState?.gender ?? null);
+  return DEFAULT_DAY_HOURS;
 }
 
-function recalcAll() {
-  setError(null);
-
-  monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
-  teamCountEl.textContent = String(TEAM.length);
+function renderSharedSummary() {
+  const deptName = managedDepartment?.name ? ` • ${managedDepartment.name}` : "";
+  monthYearDisplay.textContent = `${monthNames[month]} ${year}${deptName}`;
+  teamCountEl.textContent = String(teamStates.length);
 
   const baseHours = getReferenceBaseHours();
   normMonthEl.textContent = fmtHours(calendarNormHoursForBase(baseHours));
   normFirstHalfEl.textContent = fmtHours(calendarFirstHalfNormForBase(baseHours));
+}
 
+function recalcPerson(state) {
+  updatePersonSummary(state);
+}
+
+function recalcAllPeople() {
   for (const state of teamStates) {
     updatePersonSummary(state);
   }
+}
+
+function recalcAll() {
+  setError(null);
+  renderSharedSummary();
+  recalcAllPeople();
 }
 
 function initCurrentDaySelection() {
@@ -1085,7 +1155,6 @@ function initCurrentDaySelection() {
   if (now.getFullYear() === year && now.getMonth() === month) {
     const dayIdx = Math.min(now.getDate() - 1, daysInMonth - 1);
     if (dayIdx >= 0) {
-      // Ждём следующего кадра, чтобы гарантировать, что таблица отрисована
       requestAnimationFrame(() => {
         focusDayColumn(dayIdx);
         if (isMobileNow()) {
@@ -1096,7 +1165,6 @@ function initCurrentDaySelection() {
       });
     }
   } else if (isMobileNow()) {
-    // Если выбран не текущий месяц, на мобильных показываем первый день
     requestAnimationFrame(() => setMobileDay(0));
   }
 }
@@ -1106,7 +1174,7 @@ async function doSaveAll() {
 
   try {
     const items = currentSaveItems();
-    await adminSaveManyTimesheets(items);
+    await managedSaveManyTimesheets(items);
     lastSavedSignature = currentSignature();
     dirty = false;
     setSaveStatus(
@@ -1134,7 +1202,7 @@ function scheduleSave() {
   }, 900);
 }
 
-async function guardAdmin() {
+async function guardManagedDepartment() {
   try {
     await requireSession();
   } catch {
@@ -1142,9 +1210,9 @@ async function guardAdmin() {
     return false;
   }
 
-  const profile = await getMyProfile();
-  if (!profile || profile.role !== "admin") {
-    setError("Доступ запрещён. Запросите разрешение у администратора");
+  managedDepartment = await getMyManagedDepartment();
+  if (!managedDepartment) {
+    setError("Доступ запрещён. У вас нет прав на общий табель отдела.");
     return false;
   }
 
@@ -1155,18 +1223,23 @@ async function loadCurrentMonth() {
   setSaveStatus("Загружаю…", "busy");
 
   try {
-    const ids = TEAM.map((x) => x.userId);
-    const [profileRows, payloads] = await Promise.all([
-      adminGetProfilesByIds(ids),
-      Promise.all(ids.map((id) => adminLoadTimesheet(id, year, month))),
-    ]);
+    if (!managedDepartment?.key) {
+      managedDepartment = await getMyManagedDepartment();
+    }
+    if (!managedDepartment?.key) {
+      throw new Error("Не найден доступный отдел.");
+    }
 
-    const profileMap = new Map(profileRows.map((x) => [x.user_id, x]));
-    resetMonthArrays(profileMap);
+    const members = await listManagedDepartmentMembers(managedDepartment.key);
+    resetMonthArrays(members);
+
+    const payloads = await Promise.all(
+      teamStates.map((state) => managedLoadTimesheet(state.userId, year, month))
+    );
 
     const payloadsByUserId = new Map();
-    for (let i = 0; i < ids.length; i++) {
-      payloadsByUserId.set(ids[i], payloads[i]);
+    for (let i = 0; i < teamStates.length; i++) {
+      payloadsByUserId.set(teamStates[i].userId, payloads[i]);
     }
 
     applyLoadedPayloads(payloadsByUserId);
@@ -1176,7 +1249,6 @@ async function loadCurrentMonth() {
     dirty = false;
     setSaveStatus("Сохранено", "ok");
 
-    // Выделяем текущий день после загрузки
     initCurrentDaySelection();
   } catch (e) {
     setSaveStatus("Ошибка загрузки", "err");
@@ -1185,46 +1257,71 @@ async function loadCurrentMonth() {
 }
 
 // === Mobile toolbar events ===
-if (mPrevDay) {
-  mPrevDay.addEventListener("click", () => setMobileDay(mobileSelectedIdx - 1));
-}
-if (mNextDay) {
-  mNextDay.addEventListener("click", () => setMobileDay(mobileSelectedIdx + 1));
-}
-if (mToday) {
-  mToday.addEventListener("click", () => {
-    const now = new Date();
-    if (now.getFullYear() === year && now.getMonth() === month) {
-      setMobileDay(now.getDate() - 1);
-    }
-  });
-}
-if (mHolidayBtn) {
-  mHolidayBtn.addEventListener("click", () => {
-    const idx = mobileSelectedIdx;
-    if (idx < 0 || idx >= daysInMonth) return;
-    sharedShortDay[idx] = false;
-    sharedHoliday[idx] = !sharedHoliday[idx];
-    updateDayMarkClasses(idx);
-    recalcAll();
-    scheduleSave();
-    updateMobileToolbar();
-  });
-}
-if (mShortBtn) {
-  mShortBtn.addEventListener("click", () => {
-    const idx = mobileSelectedIdx;
-    if (idx < 0 || idx >= daysInMonth) return;
-    if (sharedHoliday[idx]) sharedHoliday[idx] = false;
-    sharedShortDay[idx] = !sharedShortDay[idx];
-    updateDayMarkClasses(idx);
-    recalcAll();
-    scheduleSave();
-    updateMobileToolbar();
-  });
-}
+mPrevDay?.addEventListener("click", () => setMobileDay(mobileSelectedIdx - 1));
+mNextDay?.addEventListener("click", () => setMobileDay(mobileSelectedIdx + 1));
 
-logoutBtn.addEventListener("click", async () => {
+mToday?.addEventListener("click", () => {
+  const now = new Date();
+  if (now.getFullYear() === year && now.getMonth() === month) {
+    setMobileDay(now.getDate() - 1);
+  }
+});
+
+mHolidayBtn?.addEventListener("click", () => {
+  const idx = mobileSelectedIdx;
+  if (idx < 0 || idx >= daysInMonth) return;
+
+  const next = !sharedHoliday[idx];
+  sharedHoliday[idx] = next;
+  sharedTransferredOff[idx] = false;
+  sharedShortDay[idx] = false;
+
+  if (!next) sharedHoliday[idx] = false;
+
+  updateDayMarkClasses(idx);
+  renderSharedSummary();
+  recalcAllPeople();
+  scheduleSave();
+  updateMobileToolbar();
+});
+
+mTransferredBtn?.addEventListener("click", () => {
+  const idx = mobileSelectedIdx;
+  if (idx < 0 || idx >= daysInMonth) return;
+
+  const next = !sharedTransferredOff[idx];
+  sharedHoliday[idx] = false;
+  sharedTransferredOff[idx] = next;
+  sharedShortDay[idx] = false;
+
+  if (!next) sharedTransferredOff[idx] = false;
+
+  updateDayMarkClasses(idx);
+  renderSharedSummary();
+  recalcAllPeople();
+  scheduleSave();
+  updateMobileToolbar();
+});
+
+mShortBtn?.addEventListener("click", () => {
+  const idx = mobileSelectedIdx;
+  if (idx < 0 || idx >= daysInMonth) return;
+
+  const next = !sharedShortDay[idx];
+  sharedHoliday[idx] = false;
+  sharedTransferredOff[idx] = false;
+  sharedShortDay[idx] = next;
+
+  if (!next) sharedShortDay[idx] = false;
+
+  updateDayMarkClasses(idx);
+  renderSharedSummary();
+  recalcAllPeople();
+  scheduleSave();
+  updateMobileToolbar();
+});
+
+logoutBtn?.addEventListener("click", async () => {
   try {
     await signOut();
   } finally {
@@ -1232,22 +1329,22 @@ logoutBtn.addEventListener("click", async () => {
   }
 });
 
-saveBtn.addEventListener("click", async () => {
+saveBtn?.addEventListener("click", async () => {
   await doSaveAll();
 });
 
-reloadBtn.addEventListener("click", async () => {
+reloadBtn?.addEventListener("click", async () => {
   await loadCurrentMonth();
 });
 
-monthSelect.addEventListener("change", async () => {
+monthSelect?.addEventListener("change", async () => {
   month = Number(monthSelect.value);
   updateUrlForMonth();
   await loadCurrentMonth();
   initCurrentDaySelection();
 });
 
-yearSelect.addEventListener("change", async () => {
+yearSelect?.addEventListener("change", async () => {
   year = Number(yearSelect.value);
   updateUrlForMonth();
   await loadCurrentMonth();
@@ -1271,15 +1368,17 @@ window.addEventListener("beforeunload", (e) => {
 (async () => {
   try {
     setError(null);
-    const ok = await guardAdmin();
+    const ok = await guardManagedDepartment();
     if (!ok) return;
+
     setFromQueryOrNow();
     fillYearOptions();
     updateUrlForMonth();
     await loadCurrentMonth();
-    initCurrentDaySelection();  // <-- добавить эту строку
+    initCurrentDaySelection();
   } catch (e) {
     setError(e?.message || "Ошибка админки.");
     setSaveStatus("Ошибка", "err");
   }
 })();
+
