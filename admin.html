@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=3" />
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png?v=3" />
     <link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png?v=3" />
-    <link rel="shortcut icon" href="/favicon.ico?v=3" />
+    <link rel="shortcut icon" href="images/favicon-64.png" />
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -126,20 +126,21 @@
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
       }
 
-      .scrollable {
+  .scrollable {
+  position: relative;
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: auto;
   border-radius: 1rem;
   -webkit-overflow-scrolling: touch;
 }
 
-      .admin-matrix {
-  border-collapse: collapse;
+   .admin-matrix {
+  border-collapse: separate;
+  border-spacing: 0;
   width: max-content;
   min-width: 1320px;
   background: rgba(30, 41, 59, 0.52);
   border-radius: 1rem;
-  overflow: hidden;
 }
 
       .admin-matrix th,
@@ -171,52 +172,76 @@
         margin-top: 2px;
       }
 
-      .label-cell {
+.label-cell {
   position: sticky;
   left: 0;
-  z-index: 4;
+  z-index: 20;
   min-width: 190px;
   width: 190px;
-  background: rgba(12, 20, 44, 0.98);
+  background: #0c142c !important;
   color: #e2e8f0;
   text-align: left !important;
   padding: 10px 12px !important;
   white-space: nowrap;
   border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 10px 0 18px -14px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  transition:
+    width 0.18s ease,
+    min-width 0.18s ease,
+    padding 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
-      .label-main {
-        display: block;
-        font-size: 0.92rem;
-        font-weight: 700;
-        color: rgba(241, 245, 249, 0.98);
-      }
+.label-main {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: rgba(241, 245, 249, 0.98);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-      .label-sub {
-        display: block;
-        margin-top: 2px;
-        font-size: 0.72rem;
-        color: rgba(148, 163, 184, 0.92);
-      }
+.label-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  color: rgba(148, 163, 184, 0.92);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-      .label-cell.night .label-sub {
-        color: rgba(254, 202, 202, 0.92);
-      }
+.scrollable.is-scrolled-x .label-cell {
+  min-width: 148px;
+  width: 148px;
+  padding: 10px 8px !important;
+  box-shadow: 6px 0 14px -12px rgba(0, 0, 0, 0.75);
+}
 
-      .summary-head {
-  position: sticky;
-  right: 0;
-  z-index: 5;
+.scrollable.is-scrolled-x .label-main {
+  font-size: 0.84rem;
+}
+
+.scrollable.is-scrolled-x .label-sub {
+  font-size: 0.66rem;
+}
+
+.summary-head {
+  position: static;
+  right: auto;
+  z-index: auto;
   min-width: 220px;
   width: 220px;
   background: rgba(12, 20, 44, 0.98) !important;
   border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 
-      .summary-cell {
-  position: sticky;
-  right: 0;
-  z-index: 3;
+.summary-cell {
+  position: static;
+  right: auto;
+  z-index: auto;
   min-width: 220px;
   width: 220px;
   background: rgba(8, 15, 34, 0.98);
@@ -296,71 +321,115 @@
       }
 
       .employee-day-row td {
-  background-color: rgba(255, 255, 255, 0.012);
-}
+        background-color: rgba(255, 255, 255, 0.012);
+      }
 
       .employee-night-row td {
         background-color: rgba(255, 255, 255, 0.028);
       }
 
       .person-divider td {
-          border-bottom: 2px solid rgba(129, 140, 248, 0.22) !important;
-          box-shadow: none;
-        }
+      border-bottom: 1px solid rgba(129, 140, 248, 0.22) !important;
+      box-shadow: inset 0 -10px 12px -12px rgba(129, 140, 248, 0.9);
+    }
 
-      .person-divider .summary-cell,
-      .person-divider .label-cell {
-        border-bottom: 2px solid rgba(129, 140, 248, 0.34) !important;
-      }
-
-      .overtime-row td {
-        background-color: rgba(244, 63, 94, 0.05);
-      }
+    .person-divider .summary-cell,
+    .person-divider .label-cell {
+      border-bottom: 1px solid rgba(129, 140, 248, 0.3) !important;
+      box-shadow: inset 0 -10px 12px -12px rgba(129, 140, 248, 0.95);
+    }
 
       .overtime-row .label-cell,
-      .overtime-row .summary-cell {
+      .overtime-row .summary-cell,
+      .overtime-row-top .label-cell,
+      .overtime-row-top .summary-cell,
+      .overtime-row-bottom .label-cell,
+      .overtime-row-bottom .summary-cell {
         background-color: rgba(76, 5, 25, 0.96) !important;
       }
 
-      .overtime-row .input-hour {
-          border-color: rgba(251, 113, 133, 0.28);
-          box-shadow: none;
-        }
-
-      .overtime-row-top td {
-        box-shadow: none;
-      }
-
-      .overtime-row-bottom td {
-        box-shadow: none;
-      }
-
-      .overtime-row .label-main {
+      .overtime-row .label-main,
+      .overtime-row-top .label-main,
+      .overtime-row-bottom .label-main {
         color: rgba(255, 228, 230, 0.98);
       }
 
-      .overtime-row .label-sub {
+      .overtime-row .label-sub,
+      .overtime-row-top .label-sub,
+      .overtime-row-bottom .label-sub {
         color: rgba(253, 164, 175, 0.92);
       }
 
-      /* чтобы праздничные / сокращенные дни не теряли свою логику, но переработка была видна */
-      .overtime-row .holiday-col,
-      .overtime-row.holiday-col,
-      .overtime-row-top .holiday-col,
-      .overtime-row-bottom .holiday-col {
-        box-shadow:
-          inset 0 2px 0 rgba(251, 113, 133, 0.55),
-          inset 0 -2px 0 rgba(251, 113, 133, 0.55);
+      .overtime-row .summary-main strong,
+      .overtime-row-top .summary-main strong,
+      .overtime-row-bottom .summary-main strong,
+      .overtime-row .summary-line strong,
+      .overtime-row-top .summary-line strong,
+      .overtime-row-bottom .summary-line strong {
+        color: rgba(255, 228, 230, 0.98);
       }
 
-      .overtime-row .short-col,
-      .overtime-row.short-col,
-      .overtime-row-top .short-col,
-      .overtime-row-bottom .short-col {
-        box-shadow:
-          inset 0 2px 0 rgba(251, 113, 133, 0.55),
-          inset 0 -2px 0 rgba(251, 113, 133, 0.55);
+      .employee-day-row.overtime-row td:not(.label-cell):not(.summary-cell),
+      .employee-day-row.overtime-row-top td:not(.label-cell):not(.summary-cell),
+      .employee-day-row.overtime-row-bottom td:not(.label-cell):not(.summary-cell) {
+        background-color: rgba(255, 255, 255, 0.012) !important;
       }
+
+      .employee-night-row.overtime-row td:not(.label-cell):not(.summary-cell),
+      .employee-night-row.overtime-row-top td:not(.label-cell):not(.summary-cell),
+      .employee-night-row.overtime-row-bottom td:not(.label-cell):not(.summary-cell) {
+        background-color: rgba(255, 255, 255, 0.028) !important;
+      }
+
+
+      .employee-day-row.overtime-row td.weekend-col:not(.label-cell):not(.summary-cell),
+      .employee-day-row.overtime-row-top td.weekend-col:not(.label-cell):not(.summary-cell),
+      .employee-day-row.overtime-row-bottom td.weekend-col:not(.label-cell):not(.summary-cell) {
+        background-color: rgba(239, 68, 68, 0.15) !important;
+      }
+
+      .employee-night-row.overtime-row td.weekend-col:not(.label-cell):not(.summary-cell),
+      .employee-night-row.overtime-row-top td.weekend-col:not(.label-cell):not(.summary-cell),
+      .employee-night-row.overtime-row-bottom td.weekend-col:not(.label-cell):not(.summary-cell) {
+        background-color: rgba(239, 68, 68, 0.15) !important;
+      }
+
+      .employee-day-row.overtime-row td.holiday-col:not(.label-cell):not(.summary-cell),
+      .employee-day-row.overtime-row-top td.holiday-col:not(.label-cell):not(.summary-cell),
+      .employee-day-row.overtime-row-bottom td.holiday-col:not(.label-cell):not(.summary-cell) {
+        background-color: rgba(245, 158, 11, 0.2) !important;
+      }
+
+      .employee-night-row.overtime-row td.holiday-col:not(.label-cell):not(.summary-cell),
+      .employee-night-row.overtime-row-top td.holiday-col:not(.label-cell):not(.summary-cell),
+      .employee-night-row.overtime-row-bottom td.holiday-col:not(.label-cell):not(.summary-cell) {
+        background-color: rgba(245, 158, 11, 0.2) !important;
+      }
+
+      .employee-day-row.overtime-row td.transferred-col:not(.label-cell):not(.summary-cell),
+      .employee-day-row.overtime-row-top td.transferred-col:not(.label-cell):not(.summary-cell),
+      .employee-day-row.overtime-row-bottom td.transferred-col:not(.label-cell):not(.summary-cell) {
+        background-color: rgba(59, 130, 246, 0.16) !important;
+      }
+
+      .employee-night-row.overtime-row td.transferred-col:not(.label-cell):not(.summary-cell),
+      .employee-night-row.overtime-row-top td.transferred-col:not(.label-cell):not(.summary-cell),
+      .employee-night-row.overtime-row-bottom td.transferred-col:not(.label-cell):not(.summary-cell) {
+        background-color: rgba(59, 130, 246, 0.16) !important;
+      }
+
+      .employee-day-row.overtime-row td.short-col:not(.label-cell):not(.summary-cell),
+      .employee-day-row.overtime-row-top td.short-col:not(.label-cell):not(.summary-cell),
+      .employee-day-row.overtime-row-bottom td.short-col:not(.label-cell):not(.summary-cell) {
+        background-color: rgba(16, 185, 129, 0.16) !important;
+      }
+
+      .employee-night-row.overtime-row td.short-col:not(.label-cell):not(.summary-cell),
+      .employee-night-row.overtime-row-top td.short-col:not(.label-cell):not(.summary-cell),
+      .employee-night-row.overtime-row-bottom td.short-col:not(.label-cell):not(.summary-cell) {
+        background-color: rgba(16, 185, 129, 0.16) !important;
+      }
+     
 
       .input-hour {
   width: 54px;

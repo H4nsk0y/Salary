@@ -88,6 +88,11 @@ function isMobileNow() {
   return window.matchMedia?.("(max-width: 767px)")?.matches ?? (window.innerWidth < 768);
 }
 
+function syncHorizontalScrollState() {
+  if (!tableScrollable) return;
+  tableScrollable.classList.toggle("is-scrolled-x", tableScrollable.scrollLeft > 12);
+}
+
 function scrollTableToColumn(dayIdx0) {
   if (!tableScrollable) return;
   const cells = columnCells[dayIdx0];
@@ -106,6 +111,7 @@ function scrollTableToColumn(dayIdx0) {
     behavior: "smooth",
   });
 }
+
 
 function clearFocusColumn(dayIdx = focusedDayIndex) {
   if (!Number.isInteger(dayIdx) || dayIdx < 0 || dayIdx >= daysInMonth) return;
@@ -1157,20 +1163,23 @@ function recalcAll() {
 
 function initCurrentDaySelection() {
   const now = new Date();
+
   if (now.getFullYear() === year && now.getMonth() === month) {
     const dayIdx = Math.min(now.getDate() - 1, daysInMonth - 1);
     if (dayIdx >= 0) {
       requestAnimationFrame(() => {
-        focusDayColumn(dayIdx);
         if (isMobileNow()) {
           setMobileDay(dayIdx);
         } else {
+          clearFocusColumn();
           scrollTableToColumn(dayIdx);
         }
       });
     }
   } else if (isMobileNow()) {
     requestAnimationFrame(() => setMobileDay(0));
+  } else {
+    clearFocusColumn();
   }
 }
 
@@ -1273,6 +1282,7 @@ async function loadCurrentMonth() {
 
     applyLoadedPayloads(payloadsByUserId);
     buildTable();
+    syncHorizontalScrollState();
 
     lastSavedSignature = currentSignature();
     dirty = false;
@@ -1371,6 +1381,10 @@ reloadBtn?.addEventListener("click", async () => {
   await loadCurrentMonth();
 });
 
+tableScrollable?.addEventListener("scroll", () => {
+  syncHorizontalScrollState();
+});
+
 monthSelect?.addEventListener("change", async () => {
   month = Number(monthSelect.value);
   updateUrlForMonth();
@@ -1384,6 +1398,7 @@ yearSelect?.addEventListener("change", async () => {
   await loadCurrentMonth();
   initCurrentDaySelection();
 });
+
 
 window.addEventListener("resize", () => {
   if (isMobileNow()) {

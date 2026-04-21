@@ -1,6 +1,4 @@
-// =========================
-// FILE: /table.js
-// =========================
+
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
 import { getMyProfile, loadTimesheet, saveTimesheet } from "./db.js";
