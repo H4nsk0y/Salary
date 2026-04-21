@@ -47,3 +47,36 @@ export async function verifyCurrentPassword(password) {
 
   return !error;
 }
+
+export async function requestPasswordReset(email, redirectTo) {
+  const normalizedEmail = String(email ?? "").trim().toLowerCase();
+  if (!normalizedEmail) {
+    throw new Error("Введите email.");
+  }
+
+  const options = {};
+  if (redirectTo) {
+    options.redirectTo = redirectTo;
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    normalizedEmail,
+    options
+  );
+
+  if (error) throw error;
+}
+
+export async function updateMyPassword(newPassword) {
+  const password = String(newPassword ?? "");
+  if (!password) {
+    throw new Error("Введите новый пароль.");
+  }
+
+  const { data, error } = await supabase.auth.updateUser({
+    password,
+  });
+
+  if (error) throw error;
+  return data;
+}

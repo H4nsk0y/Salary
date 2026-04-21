@@ -9,6 +9,8 @@ import {
   managedSaveManyTimesheets,
 } from "./db.js";
 
+import { exportDepartmentTimesheetXlsx } from "./excelExport.js";
+
 document.body.classList.add("is-loaded");
 
 const DEFAULT_DAY_HOURS = 8;
@@ -39,6 +41,7 @@ const teamCountEl = document.getElementById("teamCount");
 const headerRow = document.getElementById("headerRow");
 const matrixBody = document.getElementById("matrixBody");
 const tableScrollable = document.getElementById("tableScrollable");
+const exportExcelBtn = document.getElementById("exportExcelBtn");
 
 let year = new Date().getFullYear();
 let month = new Date().getMonth();
@@ -359,6 +362,8 @@ function createState(member) {
     userId: member.user_id,
     name: buildMemberLabel(member),
     gender: member?.gender ?? null,
+    position: member?.position ?? "",
+    tabNumber: member?.tab_number ?? "",
     dayHours: new Array(daysInMonth).fill(0),
     nightHours: new Array(daysInMonth).fill(0),
     leaveType: new Array(daysInMonth).fill(null),
@@ -1169,6 +1174,30 @@ function initCurrentDaySelection() {
   }
 }
 
+async function exportCurrentMonthToExcel() {
+  setSaveStatus("Готовлю Excel…", "busy");
+  setError(null);
+
+  try {
+    await exportDepartmentTimesheetXlsx({
+      year,
+      month,
+      department: managedDepartment,
+      states: teamStates,
+      sharedHoliday,
+      sharedTransferredOff,
+      sharedShortDay,
+      templateUrl: "/templates/tabel-template.xlsx",
+    });
+
+    setSaveStatus("Excel выгружен", "ok");
+  } catch (e) {
+    setSaveStatus("Ошибка выгрузки", "err");
+    setError(e?.message || "Не удалось выгрузить Excel.");
+  }
+}
+
+
 async function doSaveAll() {
   setSaveStatus("Сохраняю…", "busy");
 
@@ -1332,6 +1361,11 @@ logoutBtn?.addEventListener("click", async () => {
 saveBtn?.addEventListener("click", async () => {
   await doSaveAll();
 });
+
+exportExcelBtn?.addEventListener("click", async () => {
+  await exportCurrentMonthToExcel();
+});
+
 
 reloadBtn?.addEventListener("click", async () => {
   await loadCurrentMonth();
