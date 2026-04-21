@@ -817,11 +817,39 @@ function setMoneyInputValue(inputEl, value) {
   inputEl.value = formatMoneyForInput(value);
 }
 
+function computeActualNetFromParts(advance, remaining) {
+  const hasAdvance = normalizeEnteredMoneyNumber(advance) !== null;
+  const hasRemaining = normalizeEnteredMoneyNumber(remaining) !== null;
+
+  if (!hasAdvance && !hasRemaining) return null;
+
+  const safeAdvance = hasAdvance ? Number(advance) : 0;
+  const safeRemaining = hasRemaining ? Number(remaining) : 0;
+
+  return Number((safeAdvance + safeRemaining).toFixed(2));
+}
+
+function syncActualNetInputUi() {
+  if (!actualNetInput) return;
+
+  const advance = parseMoneyInputValue(actualAdvanceInput);
+  const remaining = parseMoneyInputValue(actualRemainingInput);
+  const derivedNet = computeActualNetFromParts(advance, remaining);
+
+  suppressActualInputSync = true;
+  setMoneyInputValue(actualNetInput, derivedNet);
+  suppressActualInputSync = false;
+}
+
 function getActualDraftFromInputs() {
+  const advance = parseMoneyInputValue(actualAdvanceInput);
+  const remaining = parseMoneyInputValue(actualRemainingInput);
+  const derivedNet = computeActualNetFromParts(advance, remaining);
+
   return {
-    net: parseMoneyInputValue(actualNetInput),
-    advance: parseMoneyInputValue(actualAdvanceInput),
-    remaining: parseMoneyInputValue(actualRemainingInput),
+    net: derivedNet,
+    advance,
+    remaining,
     paidLeaveNet: parseMoneyInputValue(actualPaidLeaveNetInput),
     paidLeaveTax: parseMoneyInputValue(actualPaidLeaveTaxInput),
     confirmedAt: currentPaySummary.actual?.confirmedAt ?? null,
@@ -831,11 +859,17 @@ function getActualDraftFromInputs() {
 
 function fillActualInputsFromState() {
   suppressActualInputSync = true;
-  setMoneyInputValue(actualNetInput, currentPaySummary.actual?.net);
-  setMoneyInputValue(actualAdvanceInput, currentPaySummary.actual?.advance);
-  setMoneyInputValue(actualRemainingInput, currentPaySummary.actual?.remaining);
+
+  const advance = currentPaySummary.actual?.advance ?? null;
+  const remaining = currentPaySummary.actual?.remaining ?? null;
+  const derivedNet = computeActualNetFromParts(advance, remaining);
+
+  setMoneyInputValue(actualNetInput, derivedNet);
+  setMoneyInputValue(actualAdvanceInput, advance);
+  setMoneyInputValue(actualRemainingInput, remaining);
   setMoneyInputValue(actualPaidLeaveNetInput, currentPaySummary.actual?.paidLeaveNet);
   setMoneyInputValue(actualPaidLeaveTaxInput, currentPaySummary.actual?.paidLeaveTax);
+
   suppressActualInputSync = false;
 }
 
@@ -859,7 +893,9 @@ function syncActualStateFromInputs() {
     confirmedAt: null,
     confirmedCalculatedSignature: null,
   };
+
   currentPaySummary.status = computeCurrentPaySummaryStatus();
+  syncActualNetInputUi();
   return true;
 }
 
@@ -987,7 +1023,6 @@ function setupTableMoneyControls() {
 
 function setupActualMoneyControls() {
   const actualInputs = [
-    actualNetInput,
     actualAdvanceInput,
     actualRemainingInput,
     actualPaidLeaveNetInput,
@@ -998,6 +1033,8 @@ function setupActualMoneyControls() {
     input.addEventListener("input", () => {
       const sanitized = sanitizeNumericValue(input.value);
       if (sanitized !== input.value) input.value = sanitized;
+
+      syncActualNetInputUi();
 
       const changed = syncActualStateFromInputs();
       if (!changed) return;
@@ -1015,11 +1052,13 @@ function setupActualMoneyControls() {
     }
 
     suppressActualInputSync = true;
-    setMoneyInputValue(actualNetInput, calc.net);
     setMoneyInputValue(actualAdvanceInput, calc.advance);
     setMoneyInputValue(actualRemainingInput, calc.remaining);
+    setMoneyInputValue(actualPaidLeaveNetInput, currentPaySummary.actual?.paidLeaveNet);
+    setMoneyInputValue(actualPaidLeaveTaxInput, currentPaySummary.actual?.paidLeaveTax);
     suppressActualInputSync = false;
 
+    syncActualNetInputUi();
     syncActualStateFromInputs();
     setError(null);
     recalcAll();
@@ -1050,6 +1089,7 @@ function setupActualMoneyControls() {
     currentPaySummary.actual = createEmptyActualSummary();
     currentPaySummary.status = computeCurrentPaySummaryStatus();
     fillActualInputsFromState();
+    syncActualNetInputUi();
     setError(null);
     recalcAll();
     scheduleSave();
@@ -1748,6 +1788,7 @@ function buildTableForMonth() {
   currentPaySummary = createEmptyPaySummary();
   currentMoneySnapshot = null;
   fillActualInputsFromState();
+  syncActualNetInputUi();
   renderMonthStatusUi();
   renderActualHintUi();
 
@@ -2060,8 +2101,10 @@ function applyPayload(payload) {
   }
 
   fillActualInputsFromState();
+  syncActualNetInputUi();
   syncPaidLeaveControls();
   updateMobileToolbar();
+
 }
 
 function setFromQueryOrNow() {
