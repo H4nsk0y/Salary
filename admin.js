@@ -1188,16 +1188,16 @@ async function exportCurrentMonthToExcel() {
   setError(null);
 
   try {
-    await exportDepartmentTimesheetXlsx({
-      year,
-      month,
-      department: managedDepartment,
-      states: teamStates,
-      sharedHoliday,
-      sharedTransferredOff,
-      sharedShortDay,
-      templateUrl: "/templates/tabel-template.xlsx",
-    });
+   await exportDepartmentTimesheetXlsx({
+    year,
+    month,
+    department: managedDepartment,
+    states: teamStates,
+    sharedHoliday,
+    sharedTransferredOff,
+    sharedShortDay,
+    templateUrl: new URL("./templates/tabel-template.xlsx", import.meta.url).href,
+  });
 
     setSaveStatus("Excel выгружен", "ok");
   } catch (e) {
