@@ -198,21 +198,34 @@
     .nav-link.active::after,
     .nav-link:hover::after { opacity: 1; transform: scaleX(1); }
 
-    @media (max-width: 640px) {
-      header nav {
-        flex-wrap: nowrap !important;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-        max-width: calc(100vw - 90px);
-      }
-      header nav::-webkit-scrollbar { display: none; }
-      header nav a {
-        font-size: 0.72rem !important;
-        padding: 5px 7px !important;
-      }
-    }
+   .mobile-top-nav {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .mobile-top-nav {
+    flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    max-width: 100%;
+    white-space: nowrap;
+    touch-action: pan-x;
+  }
+
+  .mobile-top-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-top-nav a {
+    flex: 0 0 auto;
+    font-size: 0.72rem !important;
+    padding: 5px 7px !important;
+  }
+}
 
     .scrollable {
       overflow-x: auto;
@@ -487,13 +500,13 @@
   <script>document.body.classList.add("is-loaded");</script>
 
   <header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-    <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex items-center justify-between gap-2">
+    <div class="mx-auto flex min-w-0 max-w-7xl items-center justify-between gap-2 px-4 py-3 md:py-4">
       <a href="index.html" class="group shrink-0">
         <span class="text-base md:text-lg font-semibold bg-gradient-to-r from-indigo-200 to-slate-100 bg-clip-text text-transparent transition-colors group-hover:from-indigo-300 group-hover:to-white">
           Alvisa
         </span>
       </a>
-      <nav class="flex items-center gap-0.5 text-sm font-medium overflow-hidden">
+      <nav class="mobile-top-nav flex min-w-0 flex-1 items-center gap-0.5 text-sm font-medium">
         <a href="index.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Калькулятор</a>
         <a href="table.html" class="nav-link active rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">Табель</a>
         <a href="profile.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Профиль</a>
