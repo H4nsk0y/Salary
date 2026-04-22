@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient.js";
 
 const PROFILE_SELECT =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt";
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels";
 
 const ADMIN_PROFILE_SELECT =
   "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at";
@@ -39,10 +39,6 @@ async function requireUserId() {
 
   return userId;
 }
-
-/** =========================
- *  PROFILE (me)
- *  ========================= */
 
 export async function getMyProfile() {
   const userId = await requireUserId();
@@ -127,10 +123,6 @@ export async function updateMyMoneyPin({
 
   if (error) throw error;
 }
-
-/** =========================
- *  TIMESHEETS (me)
- *  ========================= */
 
 export async function loadTimesheet(year, month) {
   const userId = await requireUserId();
@@ -242,10 +234,6 @@ export async function getTimesheetMeta(year, month) {
 
   return data ?? null;
 }
-
-/** =========================
- *  DEPARTMENT ACCESS
- *  ========================= */
 
 export async function getMyManagedDepartment() {
   const userId = await requireUserId();

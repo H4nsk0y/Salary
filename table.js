@@ -107,10 +107,17 @@ const mTransferredBtn = document.getElementById("mTransferredBtn");
 const mShortBtn = document.getElementById("mShortBtn");
 const mDayLabel = document.getElementById("mDayLabel");
 
-const leavePayoutInput = document.getElementById("leavePayoutInput");
-const leavePayoutHint = document.getElementById("leavePayoutHint");
+const okladPanel = document.getElementById("okladPanel");
+const helpPanel = document.getElementById("helpPanel");
 
 let profileCompletionGateEl = null;
+
+function applyAutoCollapsedPanels(profile) {
+  if (profile?.auto_collapse_table_panels !== true) return;
+
+  okladPanel?.removeAttribute("open");
+  helpPanel?.removeAttribute("open");
+}
 
 function renderProfileCompletionGate(profile) {
   if (profileCompletionGateEl) return;
@@ -2381,15 +2388,16 @@ setupActualMoneyControls();
   }
 
   const missingProfileFields = getMissingRequiredProfileFields(profile);
-  if (missingProfileFields.length) {
-    renderProfileCompletionGate(profile);
-    return;
-  }
+if (missingProfileFields.length) {
+  renderProfileCompletionGate(profile);
+  return;
+}
 
-  setFromQueryOrNow();
-  fillYearOptions();
-  updateUrlForMonth();
-  buildTableForMonth();
+setFromQueryOrNow();
+fillYearOptions();
+updateUrlForMonth();
+buildTableForMonth();
+applyAutoCollapsedPanels(profile);
 
   profileRole = profile?.role ?? "user";
   profileOklad = profile?.oklad ?? null;

@@ -214,8 +214,15 @@
     .nav-link.active::after,
     .nav-link:hover::after { opacity: 1; transform: scaleX(1); }
 
-    .mobile-top-nav {
-  min-width: 0;
+  .mobile-top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.125rem;
+}
+
+.mobile-top-nav a {
+  white-space: nowrap;
 }
 
 @media (max-width: 640px) {
@@ -227,7 +234,7 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    max-width: 100%;
+    max-width: calc(100vw - 92px);
     white-space: nowrap;
     touch-action: pan-x;
   }
@@ -460,13 +467,13 @@
   <script>document.body.classList.add("is-loaded");</script>
 
 <header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-  <div class="mx-auto flex min-w-0 max-w-7xl items-center justify-between gap-2 px-4 py-3 md:py-4">
+  <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex items-center justify-between gap-2">
     <a href="index.html" class="group shrink-0">
       <span class="text-base md:text-lg font-semibold bg-gradient-to-r from-indigo-200 to-slate-100 bg-clip-text text-transparent transition-colors group-hover:from-indigo-300 group-hover:to-white">
         Alvisa
       </span>
     </a>
-    <nav class="mobile-top-nav flex min-w-0 flex-1 items-center gap-0.5 text-sm font-medium">
+    <nav class="mobile-top-nav flex items-center justify-end gap-0.5 text-sm font-medium">
       <a href="index.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Калькулятор</a>
       <a href="table.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Табель</a>
       <a href="profile.html" class="nav-link active rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">Профиль</a>
@@ -556,7 +563,7 @@
       </div>
     </div>
 
-    <main class="grid gap-6 lg:grid-cols-3 reveal">
+    <main class="grid items-start gap-6 lg:grid-cols-3 reveal">
       <section class="glass-card hover-lift rounded-3xl p-6 md:p-7">
         <div class="flex items-center gap-4">
           <div class="relative h-16 w-16 overflow-hidden rounded-2xl ring-1 ring-white/10 bg-white/5">

@@ -1,6 +1,4 @@
-/* =========================
-   FILE: /settings.js
-   ========================= */
+// FILE: /settings.js
 
 import { requireSession } from "./auth.js";
 import { getMyProfile, updateMyProfileFields } from "./db.js";
@@ -15,18 +13,21 @@ import {
 const statusPill = document.getElementById("statusPill");
 const errorBox = document.getElementById("errorBox");
 const hideMoneyToggle = document.getElementById("hideMoneyToggle");
+const autoCollapseTablePanelsToggle = document.getElementById("autoCollapseTablePanelsToggle");
 const saveSettingsBtn = document.getElementById("saveSettingsBtn");
 
 let currentSettings = {
   hide_money: false,
   money_pin_hash: null,
   money_pin_salt: null,
+  auto_collapse_table_panels: false,
 };
 
 let pendingSettings = {
   hide_money: false,
   money_pin_hash: null,
   money_pin_salt: null,
+  auto_collapse_table_panels: false,
 };
 
 function cloneSettings(settings) {
@@ -34,12 +35,19 @@ function cloneSettings(settings) {
     hide_money: settings?.hide_money === true,
     money_pin_hash: settings?.money_pin_hash ?? null,
     money_pin_salt: settings?.money_pin_salt ?? null,
+    auto_collapse_table_panels: settings?.auto_collapse_table_panels === true,
   };
 }
 
 function syncToggle() {
-  if (!hideMoneyToggle) return;
-  hideMoneyToggle.checked = pendingSettings.hide_money === true;
+  if (hideMoneyToggle) {
+    hideMoneyToggle.checked = pendingSettings.hide_money === true;
+  }
+
+  if (autoCollapseTablePanelsToggle) {
+    autoCollapseTablePanelsToggle.checked =
+      pendingSettings.auto_collapse_table_panels === true;
+  }
 }
 
 function markDirty(text = "Есть несохранённые изменения") {
@@ -97,6 +105,7 @@ async function loadSettings() {
     hide_money: isMoneyProtectionEnabled(profile),
     money_pin_hash: profile?.money_pin_hash ?? null,
     money_pin_salt: profile?.money_pin_salt ?? null,
+    auto_collapse_table_panels: profile?.auto_collapse_table_panels === true,
   };
 
   pendingSettings = cloneSettings(currentSettings);
@@ -104,7 +113,6 @@ async function loadSettings() {
 
   if (profile?.hide_money === true && !hasMoneyPin(profile)) {
     setStatus("Нужно задать PIN", "err");
-    //setError("Раньше скрытие было включено без PIN-кода. Включите его заново и задайте новый PIN.");
     return;
   }
 
@@ -177,6 +185,15 @@ async function handleHideMoneyToggleChange() {
   markDirty("Защита будет отключена после сохранения");
 }
 
+function handleAutoCollapseTablePanelsToggleChange() {
+  if (!autoCollapseTablePanelsToggle) return;
+
+  pendingSettings.auto_collapse_table_panels =
+    autoCollapseTablePanelsToggle.checked === true;
+
+  markDirty("Есть несохранённые изменения");
+}
+
 async function saveSettings() {
   if (!hideMoneyToggle) return;
 
@@ -197,6 +214,8 @@ async function saveSettings() {
       hide_money: pendingSettings.hide_money === true,
       money_pin_hash: pendingSettings.money_pin_hash,
       money_pin_salt: pendingSettings.money_pin_salt,
+      auto_collapse_table_panels:
+        pendingSettings.auto_collapse_table_panels === true,
     });
 
     currentSettings = cloneSettings(pendingSettings);
@@ -211,6 +230,10 @@ async function saveSettings() {
 
 hideMoneyToggle?.addEventListener("change", () => {
   void handleHideMoneyToggleChange();
+});
+
+autoCollapseTablePanelsToggle?.addEventListener("change", () => {
+  handleAutoCollapseTablePanelsToggleChange();
 });
 
 saveSettingsBtn?.addEventListener("click", () => void saveSettings());
