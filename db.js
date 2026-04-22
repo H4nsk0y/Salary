@@ -366,3 +366,142 @@ export async function managedSaveManyTimesheets(items) {
 
   if (error) throw error;
 }
+
+export async function getMyChatDepartment() {
+  const userId = await requireUserId();
+
+  const { data: memberRow, error: memberError } = await supabase
+    .from("department_members")
+    .select("department_key")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (memberError && !isNotFoundError(memberError)) throw memberError;
+  if (memberRow?.department_key) {
+    return memberRow.department_key;
+  }
+
+  const { data: editorRow, error: editorError } = await supabase
+    .from("department_editors")
+    .select("department_key")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (editorError && !isNotFoundError(editorError)) throw editorError;
+  return editorRow?.department_key ?? null;
+}
+
+export async function listMyDepartmentMessages(limit = 100) {
+  const departmentKey = await getMyChatDepartment();
+  if (!departmentKey) return [];
+
+  const { data, error } = await supabase
+    .from("department_messages")
+    .select("id, department_key, user_id, text, created_at, updated_at, deleted_at")
+    .eq("department_key", departmentKey)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function sendDepartmentMessage(text) {
+  const userId = await requireUserId();
+  const departmentKey = await getMyChatDepartment();
+
+  const messageText = String(text ?? "").trim();
+  if (!departmentKey) throw new Error("Отдел для чата не найден.");
+  if (!messageText) throw new Error("Сообщение пустое.");
+  if (messageText.length > 2000) throw new Error("Сообщение слишком длинное.");
+
+  const { data, error } = await supabase
+    .from("department_messages")
+    .insert({
+      department_key: departmentKey,
+      user_id: userId,
+      text: messageText,
+    })
+    .select("id, department_key, user_id, text, created_at, updated_at, deleted_at")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateDepartmentMessage(messageId, text) {
+  const userId = await requireUserId();
+  const messageText = String(text ?? "").trim();
+
+  if (!messageId) throw new Error("Не указан id сообщения.");
+  if (!messageText) throw new Error("Сообщение пустое.");
+  if (messageText.length > 2000) throw new Error("Сообщение слишком длинное.");
+
+  const { data, error } = await supabase
+    .from("department_messages")
+    .update({
+      text: messageText,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", messageId)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .select("id, department_key, user_id, text, created_at, updated_at, deleted_at")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function softDeleteDepartmentMessage(messageId) {
+  const userId = await requireUserId();
+
+  if (!messageId) throw new Error("Не указан id сообщения.");
+
+  const { error } = await supabase
+    .from("department_messages")
+    .update({
+      deleted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", messageId)
+    .eq("user_id", userId)
+    .is("deleted_at", null);
+
+  if (error) throw error;
+}
+
+export function subscribeToMyDepartmentMessages(onChange) {
+  let channel = null;
+
+  return (async () => {
+    const departmentKey = await getMyChatDepartment();
+    if (!departmentKey) return () => {};
+
+    channel = supabase
+      .channel(`department-messages:${departmentKey}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "department_messages",
+          filter: `department_key=eq.${departmentKey}`,
+        },
+        (payload) => {
+          onChange?.(payload);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+        channel = null;
+      }
+    };
+  })();
+}

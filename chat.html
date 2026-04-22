@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Чат отдела — Alvisa</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=3" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png?v=3" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png?v=3" />
+  <link rel="shortcut icon" href="/favicon.ico?v=3" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    html, body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    body {
+      position: relative;
+      overflow-x: hidden;
+      background: #020617;
+      background-image:
+        radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.18), transparent 60%),
+        radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.15), transparent 60%),
+        radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.12), transparent 60%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -25%;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.4), transparent 45%),
+        radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.3), transparent 45%),
+        radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.2), transparent 45%);
+      filter: blur(70px);
+      opacity: 0.6;
+      animation: bgFloat 18s ease-in-out infinite alternate;
+    }
+
+    @keyframes bgFloat {
+      0% { transform: translate3d(-2%, -2%, 0) scale(1); }
+      100% { transform: translate3d(3%, 3%, 0) scale(1.08); }
+    }
+
+    .glass-card {
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      background: rgba(15, 23, 42, 0.64);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow:
+        0 25px 50px -20px rgba(0, 0, 0, 0.7),
+        0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    .input-glass {
+      background: rgba(2, 6, 23, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+
+    .input-glass:hover {
+      background: rgba(2, 6, 23, 0.78);
+      border-color: rgba(99, 102, 241, 0.28);
+    }
+
+    .input-glass:focus {
+      outline: none;
+      border-color: rgba(99, 102, 241, 0.8);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+    }
+
+    .messages-scroll::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .messages-scroll::-webkit-scrollbar-track {
+      background: rgba(30, 41, 59, 0.55);
+      border-radius: 999px;
+    }
+
+    .messages-scroll::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.55);
+      border-radius: 999px;
+    }
+
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(99, 102, 241, 0.55) rgba(30, 41, 59, 0.55);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+  <div class="relative z-10 mx-auto max-w-6xl px-4 py-8 md:py-10">
+    <header class="mb-6">
+      <div class="flex flex-col gap-4 rounded-3xl border border-white/10 bg-slate-950/55 p-4 backdrop-blur-xl md:p-5">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex items-center gap-3">
+            <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 text-lg font-bold text-slate-100">A</span>
+            <div>
+              <h1 class="text-2xl md:text-3xl font-bold tracking-tight">
+                <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
+                  Чат отдела
+                </span>
+              </h1>
+              <p id="chatSubtitle" class="mt-1 text-sm text-slate-300/80">—</p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <a href="table.html"
+              class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10">
+              Табель
+            </a>
+
+            <a href="profile.html"
+              class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10">
+              Профиль
+            </a>
+
+            <button id="reloadBtn"
+              class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10">
+              Обновить
+            </button>
+
+            <button id="logoutBtn"
+              class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10">
+              Выйти
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span id="statusPill" class="inline-flex items-center rounded-full bg-white/5 px-4 py-1.5 text-xs text-slate-300 ring-1 ring-white/10">—</span>
+        </div>
+      </div>
+    </header>
+
+    <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
+
+    <section class="glass-card rounded-3xl p-4 md:p-5">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-100">Сообщения</h2>
+          <p class="mt-1 text-sm text-slate-400">Виден только вашему отделу.</p>
+        </div>
+        <div id="memberHint" class="text-xs text-slate-400">—</div>
+      </div>
+
+      <div id="messagesList"
+        class="messages-scroll h-[56vh] overflow-y-auto rounded-2xl bg-slate-950/30 p-3 ring-1 ring-white/10 md:p-4">
+      </div>
+
+      <form id="messageForm" class="mt-4">
+        <div class="flex flex-col gap-3 md:flex-row">
+          <textarea id="messageInput"
+            rows="3"
+            maxlength="2000"
+            class="input-glass min-h-[56px] w-full rounded-2xl px-4 py-3 text-slate-100 placeholder:text-slate-500/80"
+            placeholder="Напишите сообщение отделу..."></textarea>
+
+          <button id="sendBtn" type="submit"
+            class="rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-5 py-3 text-sm font-semibold text-slate-100 ring-1 ring-white/10 transition hover:shadow-[0_0_20px_rgba(99,102,241,0.45)] md:self-end">
+            Отправить
+          </button>
+        </div>
+
+        <div class="mt-2 flex items-center justify-between gap-3">
+          <p class="text-xs text-slate-400">Enter — отправить, Shift+Enter — новая строка</p>
+          <p id="charCounter" class="text-xs text-slate-400">0 / 2000</p>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script type="module" src="./chat.js"></script>
+</body>
+</html>
