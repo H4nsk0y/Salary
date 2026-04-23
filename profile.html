@@ -513,12 +513,20 @@
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
+       <div class="flex flex-wrap items-center gap-2">
           <a
             href="settings.html"
             class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30"
           >
             Настройки
+          </a>
+
+          <a
+            id="ownerLink"
+            href="owner.html"
+            class="hidden rounded-2xl bg-indigo-500/15 px-5 py-2.5 text-sm font-semibold text-indigo-200 ring-1 ring-indigo-400/30 backdrop-blur-sm transition-all hover:bg-indigo-500/20 hover:ring-indigo-300/50"
+          >
+            Отделы
           </a>
 
           <a id="adminLink" href="admin.html"
@@ -652,6 +660,18 @@
               </select>
             </span>
             <p class="mt-1.5 text-xs text-slate-400/80">Нужен для вычислений нормы.</p>
+          </div>
+
+           <div>
+            <label class="mb-1.5 block text-sm font-medium text-slate-200" for="tabNumberInput">Табельный номер</label>
+            <input
+              id="tabNumberInput"
+              class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+              inputmode="text"
+              autocomplete="off"
+              placeholder="Напр. ТДЗК-01758"
+            />
+            <p class="mt-1.5 text-xs text-slate-400/80">Необязательное поле, но желательно к заполнению</p>
           </div>
 
           <div>

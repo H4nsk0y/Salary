@@ -1,10 +1,10 @@
 import { supabase } from "./supabaseClient.js";
 
 const PROFILE_SELECT =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels";
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number";
 
 const ADMIN_PROFILE_SELECT =
-  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at";
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number";
 
 function isNotFoundError(error) {
   return (
@@ -74,6 +74,7 @@ export async function updateMyProfile({
   gender,
   position,
   avatarUrl,
+  tabNumber,
 }) {
   const userId = await requireUserId();
 
@@ -84,6 +85,7 @@ export async function updateMyProfile({
   if (gender !== undefined) patch.gender = gender;
   if (position !== undefined) patch.position = position;
   if (avatarUrl !== undefined) patch.avatar_url = avatarUrl;
+  if (tabNumber !== undefined) patch.tab_number = tabNumber;
 
   const { error } = await supabase
     .from("profiles")
@@ -268,6 +270,35 @@ export async function getMyManagedDepartment() {
   return departmentRow ?? { key: editorRow.department_key, name: editorRow.department_key };
 }
 
+export async function getDepartmentByKey(departmentKey) {
+  const key = String(departmentKey ?? "").trim();
+  if (!key) throw new Error("Не указан отдел.");
+
+  const { data, error } = await supabase
+    .from("departments")
+    .select("key, name")
+    .eq("key", key)
+    .maybeSingle();
+
+  if (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
+
+  return data ?? null;
+}
+
+export async function listAllDepartments() {
+  const { data, error } = await supabase
+    .from("departments")
+    .select("key, name, created_at")
+    .order("name", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+
 export async function listManagedDepartmentMembers(departmentKey) {
   const key = String(departmentKey ?? "").trim();
   if (!key) throw new Error("Не указан отдел.");
@@ -295,7 +326,7 @@ export async function listManagedDepartmentMembers(departmentKey) {
 
   const profileMap = new Map((profiles ?? []).map((row) => [row.user_id, row]));
 
-  return userIds.map((userId) => {
+ return userIds.map((userId) => {
     const profile = profileMap.get(userId) ?? null;
     return {
       user_id: userId,
@@ -307,6 +338,7 @@ export async function listManagedDepartmentMembers(departmentKey) {
       oklad: profile?.oklad ?? null,
       gender: profile?.gender ?? null,
       position: profile?.position ?? "",
+      tab_number: profile?.tab_number ?? "",
       avatar_url: profile?.avatar_url ?? null,
       hide_money: profile?.hide_money ?? false,
       created_at: profile?.created_at ?? null,

@@ -1,7 +1,7 @@
 
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
-import { getMyProfile, loadTimesheet, saveTimesheet } from "./db.js";
+import { getMyProfile, getMyManagedDepartment, loadTimesheet, saveTimesheet } from "./db.js";
 import {
   buildProfileCompletionUrl,
   getMissingRequiredProfileFields,
@@ -2403,6 +2403,20 @@ applyAutoCollapsedPanels(profile);
   profileOklad = profile?.oklad ?? null;
   profilePosition = profile?.position ?? "";
 
+  const managedDepartment = await getMyManagedDepartment().catch(() => null);
+
+  if (managedDepartment) {
+  adminLink?.classList.remove("hidden");
+  if (adminLink) {
+    adminLink.href = "admin.html";
+    adminLink.textContent = managedDepartment.name
+      ? `Табель: ${managedDepartment.name}`
+      : "Табель отдела";
+  }
+} else {
+  adminLink?.classList.add("hidden");
+}
+
   const moneyProtected = isMoneyProtectionEnabled(profile);
   okladVisible = !moneyProtected;
   payVisible = !moneyProtected;
@@ -2413,7 +2427,6 @@ applyAutoCollapsedPanels(profile);
   else BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
   LEAVE_HOURS_PER_DAY = BASE_DAY_HOURS;
 
-  if (profileRole === "admin") adminLink?.classList.remove("hidden");
 
   await loadCurrentMonthFromDb();
 

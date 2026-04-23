@@ -4,6 +4,8 @@
 import { requireSession, signOut } from "./auth.js";
 import {
   getMyManagedDepartment,
+  getMyProfile,
+  getDepartmentByKey,
   listManagedDepartmentMembers,
   managedLoadTimesheet,
   managedSaveManyTimesheets,
@@ -42,6 +44,12 @@ const headerRow = document.getElementById("headerRow");
 const matrixBody = document.getElementById("matrixBody");
 const tableScrollable = document.getElementById("tableScrollable");
 const exportExcelBtn = document.getElementById("exportExcelBtn");
+
+const backToTableLink = document.getElementById("backToTableLink");
+const pageParams = new URLSearchParams(window.location.search);
+const requestedDepartmentKey = String(pageParams.get("department") || "").trim();
+
+let currentProfile = null;
 
 let year = new Date().getFullYear();
 let month = new Date().getMonth();
@@ -1240,17 +1248,54 @@ function scheduleSave() {
   }, 900);
 }
 
+async function resolveManagedDepartment() {
+  currentProfile = await getMyProfile();
+  const isOwner = currentProfile?.role === "owner";
+
+  if (isOwner) {
+    if (!requestedDepartmentKey) {
+      location.href = "owner.html";
+      return null;
+    }
+
+    const ownerDepartment = await getDepartmentByKey(requestedDepartmentKey);
+    if (!ownerDepartment) {
+      throw new Error("Указанный отдел не найден.");
+    }
+
+    if (backToTableLink) {
+      backToTableLink.href = "owner.html";
+      backToTableLink.textContent = "Все отделы";
+    }
+
+    return ownerDepartment;
+  }
+
+  const managedDepartment = await getMyManagedDepartment();
+
+  if (backToTableLink) {
+    backToTableLink.href = "table.html";
+    backToTableLink.textContent = "Личный табель";
+  }
+
+  return managedDepartment;
+}
+
+
 async function guardManagedDepartment() {
   try {
     await requireSession();
   } catch {
-    location.href = "login.html?next=admin.html";
+    const next = requestedDepartmentKey
+      ? `admin.html?department=${encodeURIComponent(requestedDepartmentKey)}`
+      : "admin.html";
+    location.href = `login.html?next=${encodeURIComponent(next)}`;
     return false;
   }
 
-  managedDepartment = await getMyManagedDepartment();
+  managedDepartment = await resolveManagedDepartment();
   if (!managedDepartment) {
-    setError("Доступ запрещён. У вас нет прав на общий табель отдела.");
+    setError("Доступ запрещён. У вас нет прав на этот общий табель.");
     return false;
   }
 
@@ -1262,7 +1307,7 @@ async function loadCurrentMonth() {
 
   try {
     if (!managedDepartment?.key) {
-      managedDepartment = await getMyManagedDepartment();
+      managedDepartment = await resolveManagedDepartment();
     }
     if (!managedDepartment?.key) {
       throw new Error("Не найден доступный отдел.");

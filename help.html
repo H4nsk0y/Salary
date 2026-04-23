@@ -16,12 +16,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <style>
-    html, body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; scroll-behavior: smooth; }
+    html, body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      scroll-behavior: smooth;
+    }
+
     :root {
       --glass-border: rgba(255, 255, 255, 0.08);
       --glass-bg: rgba(15, 23, 42, 0.6);
       --card-shadow: 0 25px 50px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      --card-shadow-hover: 0 35px 70px -30px rgba(99, 102, 241, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
     }
+
     body {
       position: relative;
       overflow-x: hidden;
@@ -31,14 +37,77 @@
         radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.15), transparent 60%),
         radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.12), transparent 60%);
     }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -25%;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.4), transparent 45%),
+        radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.3), transparent 45%),
+        radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.2), transparent 45%);
+      filter: blur(70px);
+      opacity: 0.6;
+      animation: bgFloat 18s ease-in-out infinite alternate;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image: radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.2;
+      mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 80%);
+    }
+
+    @keyframes bgFloat {
+      0% { transform: translate3d(-2%, -2%, 0) scale(1); }
+      100% { transform: translate3d(3%, 3%, 0) scale(1.08); }
+    }
+
     .glass-card {
+      position: relative;
+      overflow: hidden;
       backdrop-filter: blur(16px) saturate(180%);
       -webkit-backdrop-filter: blur(16px) saturate(180%);
       background: var(--glass-bg);
       border: 1px solid var(--glass-border);
       box-shadow: var(--card-shadow);
+      transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
     }
-    .nav-link { position: relative; transition: color 0.2s; }
+
+    .glass-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      background:
+        radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.3), transparent 60%),
+        radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
+      transition: opacity 0.5s ease;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+      box-shadow: var(--card-shadow-hover);
+    }
+
+    .glass-card:hover::before {
+      opacity: 1;
+    }
+
+    .nav-link {
+      position: relative;
+      transition: color 0.2s;
+      white-space: nowrap;
+    }
+
     .nav-link::after {
       content: '';
       position: absolute;
@@ -52,37 +121,81 @@
       transform: scaleX(0.7);
       transition: opacity 0.2s, transform 0.2s;
     }
+
     .nav-link.active::after,
-    .nav-link:hover::after { opacity: 1; transform: scaleX(1); }
+    .nav-link:hover::after {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+
+    .mobile-top-nav {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.125rem;
+    }
+
+    .mobile-top-nav a {
+      white-space: nowrap;
+    }
+
+    .pt-safe {
+      padding-top: 7rem;
+    }
+
+    @media (min-width: 768px) {
+      .pt-safe {
+        padding-top: 6rem;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .mobile-top-nav {
+        flex-wrap: nowrap !important;
+        justify-content: flex-start !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        max-width: calc(100vw - 92px);
+        white-space: nowrap;
+        touch-action: pan-x;
+      }
+
+      .mobile-top-nav::-webkit-scrollbar {
+        display: none;
+      }
+
+      .mobile-top-nav a {
+        flex: 0 0 auto;
+        font-size: 0.72rem !important;
+        padding: 5px 7px !important;
+      }
+    }
   </style>
 </head>
 
-<body class="min-h-screen text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
   <header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-    <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex flex-wrap items-center justify-between gap-3">
-      <a href="index.html" class="group">
+    <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex items-center justify-between gap-2">
+      <a href="index.html" class="group shrink-0">
         <span class="text-base md:text-lg font-semibold bg-gradient-to-r from-indigo-200 to-slate-100 bg-clip-text text-transparent transition-colors group-hover:from-indigo-300 group-hover:to-white">
           Alvisa
         </span>
       </a>
-      <nav class="flex flex-wrap items-center justify-end gap-1 text-sm font-medium">
-        <a href="index.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
-          Калькулятор
-        </a>
-        <a href="table.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
-          Табель
-        </a>
-        <a href="profile.html" class="nav-link relative rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">
-          Профиль
-        </a>
-        <a href="help.html" class="nav-link active relative rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">
-          Справка
-        </a>
+
+      <nav class="mobile-top-nav flex items-center justify-end gap-0.5 text-sm font-medium">
+        <a href="index.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Калькулятор</a>
+        <a href="table.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Табель</a>
+        <a href="profile.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Профиль</a>
+        <a href="help.html" class="nav-link active rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">Справка</a>
+        <a href="chat.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Чат</a>
       </nav>
     </div>
   </header>
 
-  <main class="relative z-10 mx-auto max-w-5xl px-4 pt-28 pb-14">
+   <div class="relative z-10 mx-auto max-w-7xl px-4 pt-safe pb-12 md:pb-16">
     <section class="glass-card rounded-3xl p-6 md:p-8">
       <h1 class="text-2xl md:text-3xl font-bold tracking-tight">
         <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">

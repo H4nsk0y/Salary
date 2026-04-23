@@ -47,6 +47,7 @@ let currentProfile = null;
 
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
+const ownerLink = document.getElementById("ownerLink");
 
 const statusPill = document.getElementById("statusPill");
 const errorBox = document.getElementById("errorBox");
@@ -60,6 +61,7 @@ const displayNameInput = document.getElementById("displayNameInput");
 const positionSelect = document.getElementById("positionSelect");
 const okladInput = document.getElementById("okladInput");
 const genderSelect = document.getElementById("genderSelect");
+const tabNumberInput = document.getElementById("tabNumberInput");
 const okladPeekBtnInitial = document.getElementById("okladInputPeekBtn");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const refreshBtn = document.getElementById("refreshBtn");
@@ -92,6 +94,7 @@ const avatarHint = document.getElementById("avatarHint");
 const displayNameLabel = document.querySelector('label[for="displayNameInput"]');
 const positionLabel = document.querySelector('label[for="positionSelect"]');
 const genderLabel = document.querySelector('label[for="genderSelect"]');
+const tabNumberLabel = document.querySelector('label[for="tabNumberInput"]');
 const okladLabel = document.querySelector('label[for="okladInput"]');
 
 const profileRequiredNotice = document.getElementById("profileRequiredNotice");
@@ -1224,21 +1227,29 @@ async function refreshProfile() {
   const profile = await getMyProfile();
   currentProfile = profile ?? null;
 
-  const effectiveProfile = profile ?? {
+    const effectiveProfile = profile ?? {
     display_name: "",
     position: "",
     gender: "",
+    tab_number: "",
     oklad: null,
     role: "user",
     avatar_url: null,
     hide_money: false,
   };
 
+    if (effectiveProfile.role === "owner") {
+    ownerLink?.classList.remove("hidden");
+  } else {
+    ownerLink?.classList.add("hidden");
+  }
+
   const name = effectiveProfile.display_name || "Пользователь";
   const oklad = effectiveProfile.oklad;
 
   if (!requireDom(displayNameEl, "displayName")) return;
   if (!requireDom(displayNameInput, "displayNameInput")) return;
+  if (!requireDom(tabNumberInput, "tabNumberInput")) return;
   if (!requireDom(okladInput, "okladInput")) return;
   if (!requireDom(positionSelect, "positionSelect")) return;
 
@@ -1247,6 +1258,7 @@ async function refreshProfile() {
   displayNameEl.textContent = name;
   displayNameInput.value = effectiveProfile.display_name ?? "";
   okladInput.value = oklad != null ? String(oklad) : "";
+  if (tabNumberInput) tabNumberInput.value = effectiveProfile.tab_number ?? "";
 
   ensureProfileMoneyAccess = createMoneyAccessGuard(effectiveProfile, {
     title: "Показать скрытые суммы",
@@ -1273,17 +1285,18 @@ async function refreshProfile() {
   setAvatarUI(avatarUrl, name);
 
   const managedDepartment = await getMyManagedDepartment().catch(() => null);
-if (managedDepartment) {
-  adminLink?.classList.remove("hidden");
-  if (adminLink) {
-    adminLink.href = "admin.html";
-    adminLink.textContent = managedDepartment.name
-      ? `Табель: ${managedDepartment.name}`
-      : "Админка";
+  if (managedDepartment) {
+    adminLink?.classList.remove("hidden");
+    if (adminLink) {
+      adminLink.href = `admin.html?department=${encodeURIComponent(managedDepartment.key)}`;
+      adminLink.textContent = managedDepartment.name
+        ? `Табель: ${managedDepartment.name}`
+        : "Табель отдела";
+    }
+  } else {
+    adminLink?.classList.add("hidden");
   }
-} else {
-  adminLink?.classList.add("hidden");
-}
+
 
   const missingLabels = renderProfileRequiredNotice(effectiveProfile);
   applyRequiredFieldHighlights(effectiveProfile);
@@ -1602,9 +1615,11 @@ async function refreshTimesheets() {
 
 async function saveProfile() {
   if (!requireDom(displayNameInput, "displayNameInput")) return;
+  if (!requireDom(tabNumberInput, "tabNumberInput")) return;
   if (!requireDom(okladInput, "okladInput")) return;
 
   const displayName = displayNameInput.value.trim();
+  const tabNumber = String(tabNumberInput.value || "").trim();
   const oklad = parseNumber(okladInput.value);
   const position = positionSelect ? String(positionSelect.value || "") : "";
   const gender = genderSelect ? String(genderSelect.value || "") : "";
@@ -1626,12 +1641,18 @@ async function saveProfile() {
     return;
   }
 
+  if (tabNumber.length > 64) {
+    setError("Табельный номер слишком длинный.");
+    return;
+  }
+
   setStatus("Сохраняю…", "busy");
   setError(null);
 
   try {
     await updateMyProfile({
       displayName: displayName || null,
+      tabNumber: tabNumber || null,
       oklad: okladInput.value.trim() ? oklad : null,
       position: position || null,
       gender: gender || null,
