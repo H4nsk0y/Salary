@@ -525,3 +525,99 @@ export function subscribeToMyDepartmentMessages(onChange) {
     };
   })();
 }
+
+export async function ownerListDepartmentMembers(departmentKey) {
+  const key = String(departmentKey ?? "").trim();
+  if (!key) throw new Error("Не указан отдел.");
+
+  const { data, error } = await supabase.rpc("owner_list_department_members", {
+    p_department_key: key,
+  });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function ownerListAvailableProfiles(departmentKey) {
+  const key = String(departmentKey ?? "").trim();
+  if (!key) throw new Error("Не указан отдел.");
+
+  const { data, error } = await supabase.rpc("owner_list_available_profiles", {
+    p_department_key: key,
+  });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function ownerAddDepartmentMember(departmentKey, userId) {
+  const key = String(departmentKey ?? "").trim();
+  const uid = String(userId ?? "").trim();
+
+  if (!key) throw new Error("Не указан отдел.");
+  if (!uid) throw new Error("Не указан сотрудник.");
+
+  const { error } = await supabase.rpc("owner_add_department_member", {
+    p_department_key: key,
+    p_user_id: uid,
+  });
+
+  if (error) throw error;
+}
+
+export async function ownerRemoveDepartmentMember(departmentKey, userId) {
+  const key = String(departmentKey ?? "").trim();
+  const uid = String(userId ?? "").trim();
+
+  if (!key) throw new Error("Не указан отдел.");
+  if (!uid) throw new Error("Не указан сотрудник.");
+
+  const { error } = await supabase.rpc("owner_remove_department_member", {
+    p_department_key: key,
+    p_user_id: uid,
+  });
+
+  if (error) throw error;
+}
+
+export async function ownerListDepartmentEditors(departmentKey) {
+  const key = String(departmentKey ?? "").trim();
+  if (!key) throw new Error("Не указан отдел.");
+
+  const { data, error } = await supabase.rpc("owner_list_department_editors", {
+    p_department_key: key,
+  });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function ownerAddDepartmentEditor(departmentKey, userId) {
+  const key = String(departmentKey ?? "").trim();
+  const uid = String(userId ?? "").trim();
+
+  if (!key) throw new Error("Не указан отдел.");
+  if (!uid) throw new Error("Не указан сотрудник.");
+
+  const { error } = await supabase.rpc("owner_add_department_editor", {
+    p_department_key: key,
+    p_user_id: uid,
+  });
+
+  if (error) throw error;
+}
+
+export async function ownerRemoveDepartmentEditor(departmentKey, userId) {
+  const key = String(departmentKey ?? "").trim();
+  const uid = String(userId ?? "").trim();
+
+  if (!key) throw new Error("Не указан отдел.");
+  if (!uid) throw new Error("Не указан сотрудник.");
+
+  const { error } = await supabase.rpc("owner_remove_department_editor", {
+    p_department_key: key,
+    p_user_id: uid,
+  });
+
+  if (error) throw error;
+}
