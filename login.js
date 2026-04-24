@@ -1,6 +1,3 @@
-// =========================
-// FILE: /login.js
-// =========================
 import { supabase } from "./supabaseClient.js";
 import {
   getSession,
@@ -10,15 +7,21 @@ import {
   updateMyPassword,
 } from "./auth.js";
 
-const MIN_PASSWORD_LENGTH = 10;
 const PASSWORD_REGEX =
   /^(?=.*[a-zа-яё])(?=.*[A-ZА-ЯЁ])(?=.*\d)(?=.*[^A-Za-zА-Яа-яЁё0-9]).{10,}$/;
+
+const REMEMBER_ME_KEY = "alvisa_remember_me";
+const REMEMBERED_EMAIL_KEY = "alvisa_remembered_email";
 
 const authForm = document.getElementById("authForm");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirmPassword");
+
+const emailFieldWrap = document.getElementById("emailFieldWrap");
+const passwordFieldWrap = document.getElementById("passwordFieldWrap");
 const confirmWrap = document.getElementById("confirmWrap");
+const rememberMeWrap = document.getElementById("rememberMeWrap");
 
 const tabSignIn = document.getElementById("tabSignIn");
 const tabSignUp = document.getElementById("tabSignUp");
@@ -26,16 +29,18 @@ const submitBtn = document.getElementById("submitBtn");
 const togglePw = document.getElementById("togglePw");
 const forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
 const backToLoginBtn = document.getElementById("backToLoginBtn");
+const rememberMeCheckbox = document.getElementById("rememberMe");
 
 const formTitle = document.getElementById("formTitle");
 const formSubtitle = document.getElementById("formSubtitle");
+const formFootnote = document.getElementById("formFootnote");
 const pwHint = document.getElementById("pwHint");
+const authPageMarker = document.getElementById("authPageMarker");
 const errorBox = document.getElementById("errorBox");
 const infoBox = document.getElementById("infoBox");
 
 let mode = "signin";
 let isSubmitting = false;
-let recoverySessionSeen = false;
 
 function setError(message) {
   const text = String(message ?? "").trim();
@@ -82,42 +87,110 @@ function validatePassword(password) {
   return PASSWORD_REGEX.test(String(password ?? ""));
 }
 
+function getNextUrl() {
+  const url = new URL(window.location.href);
+  const next = String(url.searchParams.get("next") ?? "").trim();
+  return next || "table.html";
+}
+
+function getResetRedirectUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("mode");
+  url.hash = "";
+  return url.toString();
+}
+
 function setBusy(nextBusy) {
   isSubmitting = Boolean(nextBusy);
 
-  submitBtn.disabled = isSubmitting;
-  emailInput.disabled = isSubmitting;
-  passwordInput.disabled = isSubmitting;
-  confirmPasswordInput.disabled = isSubmitting;
-  tabSignIn.disabled = isSubmitting;
-  tabSignUp.disabled = isSubmitting;
-  forgotPasswordBtn.disabled = isSubmitting;
-  backToLoginBtn.disabled = isSubmitting;
-  togglePw.disabled = isSubmitting;
+  const disabled = isSubmitting;
+  submitBtn.disabled = disabled;
+  emailInput.disabled = disabled || mode === "reset";
+  passwordInput.disabled = disabled || mode === "forgot";
+  confirmPasswordInput.disabled = disabled || !(mode === "signup" || mode === "reset");
+  tabSignIn.disabled = disabled;
+  tabSignUp.disabled = disabled;
+  forgotPasswordBtn.disabled = disabled || !(mode === "signin" || mode === "forgot");
+  backToLoginBtn.disabled = disabled || !(mode === "forgot" || mode === "reset");
+  togglePw.disabled = disabled || mode === "forgot";
+  rememberMeCheckbox.disabled = disabled || mode !== "signin";
 }
 
 function setTabStyles(activeTab) {
-  const activeClasses = ["tab-active"];
-  const inactiveClasses = ["bg-white/5", "text-slate-200"];
+  const buttons = [
+    { el: tabSignIn, active: activeTab === "signin" },
+    { el: tabSignUp, active: activeTab === "signup" },
+  ];
 
-  tabSignIn.classList.remove(...activeClasses, ...inactiveClasses);
-  tabSignUp.classList.remove(...activeClasses, ...inactiveClasses);
+  for (const { el, active } of buttons) {
+    el.classList.remove("tab-active", "bg-white/5", "text-slate-200");
+    el.setAttribute("aria-selected", active ? "true" : "false");
 
-  if (activeTab === "signin") {
-    tabSignIn.classList.add("tab-active");
-    tabSignUp.classList.add("bg-white/5", "text-slate-200");
-  } else if (activeTab === "signup") {
-    tabSignUp.classList.add("tab-active");
-    tabSignIn.classList.add("bg-white/5", "text-slate-200");
-  } else {
-    tabSignIn.classList.add("bg-white/5", "text-slate-200");
-    tabSignUp.classList.add("bg-white/5", "text-slate-200");
+    if (active) {
+      el.classList.add("tab-active");
+    } else {
+      el.classList.add("bg-white/5", "text-slate-200");
+    }
   }
+}
+
+function syncPasswordVisibility(forceHidden = true) {
+  const visible = !forceHidden && passwordInput.type === "text";
+  const nextType = visible ? "text" : "password";
+
+  passwordInput.type = nextType;
+  if (!confirmWrap.classList.contains("hidden") && !confirmPasswordInput.disabled) {
+    confirmPasswordInput.type = nextType;
+  } else {
+    confirmPasswordInput.type = "password";
+  }
+
+  const isVisible = nextType === "text";
+  togglePw.textContent = isVisible ? "Скрыть" : "Показать";
+  togglePw.setAttribute("aria-pressed", isVisible ? "true" : "false");
+  togglePw.setAttribute("aria-label", isVisible ? "Скрыть пароль" : "Показать пароль");
 }
 
 function resetPasswordInputs() {
   passwordInput.value = "";
   confirmPasswordInput.value = "";
+  syncPasswordVisibility(true);
+}
+
+function setConfirmVisible(visible) {
+  confirmWrap.classList.toggle("hidden", !visible);
+  confirmPasswordInput.disabled = !visible;
+
+  if (!visible) {
+    confirmPasswordInput.value = "";
+    confirmPasswordInput.type = "password";
+  }
+}
+
+function applyRememberedEmail() {
+  const rememberMe = localStorage.getItem(REMEMBER_ME_KEY) === "1";
+  const rememberedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY) || "";
+
+  rememberMeCheckbox.checked = rememberMe;
+  if (rememberedEmail) {
+    emailInput.value = rememberedEmail;
+  }
+}
+
+function persistRememberMe() {
+  if (rememberMeCheckbox.checked) {
+    localStorage.setItem(REMEMBER_ME_KEY, "1");
+    localStorage.setItem(REMEMBERED_EMAIL_KEY, normalizeEmail(emailInput.value));
+    return;
+  }
+
+  localStorage.removeItem(REMEMBER_ME_KEY);
+  localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+}
+
+function updateRememberMeVisibility() {
+  const visible = mode === "signin";
+  rememberMeWrap.classList.toggle("hidden", !visible);
 }
 
 function setMode(nextMode) {
@@ -131,80 +204,53 @@ function setMode(nextMode) {
 
   setTabStyles(isSignIn ? "signin" : isSignUp ? "signup" : null);
 
-  emailInput.parentElement.classList.toggle("hidden", isReset);
-  passwordInput.closest("div").parentElement.classList.toggle("hidden", isForgot);
-  confirmWrap.classList.toggle("hidden", !(isSignUp || isReset));
+  emailFieldWrap.classList.toggle("hidden", isReset);
+  passwordFieldWrap.classList.toggle("hidden", isForgot);
 
-  forgotPasswordBtn.classList.toggle("hidden", !(isSignIn || isForgot));
+  setConfirmVisible(isSignUp || isReset);
+
+  forgotPasswordBtn.classList.toggle("hidden", !isSignIn);
   backToLoginBtn.classList.toggle("hidden", !(isForgot || isReset));
+  updateRememberMeVisibility();
 
-  togglePw.textContent = "Показать";
-  passwordInput.type = "password";
-  confirmPasswordInput.type = "password";
+  pwHint.classList.toggle("hidden", !(isSignUp || isReset));
+
+  syncPasswordVisibility(true);
 
   if (isSignIn) {
     formTitle.textContent = "Вход";
     formSubtitle.textContent = "Введите email и пароль.";
+    formFootnote.textContent = "После входа табель будет сохраняться в аккаунте.";
     submitBtn.textContent = "Войти";
-    pwHint.classList.remove("hidden");
+    authPageMarker.textContent = "Вход";
     passwordInput.autocomplete = "current-password";
     confirmPasswordInput.autocomplete = "new-password";
-    return;
-  }
-
-  if (isSignUp) {
+  } else if (isSignUp) {
     formTitle.textContent = "Регистрация";
     formSubtitle.textContent = "Создайте аккаунт для сохранения табеля.";
+    formFootnote.textContent = "После регистрации вы сможете сохранять табель и использовать профиль.";
     submitBtn.textContent = "Зарегистрироваться";
-    pwHint.classList.remove("hidden");
+    authPageMarker.textContent = "Регистрация";
     passwordInput.autocomplete = "new-password";
     confirmPasswordInput.autocomplete = "new-password";
-    return;
-  }
-
-  if (isForgot) {
+  } else if (isForgot) {
     formTitle.textContent = "Сброс пароля";
     formSubtitle.textContent = "Введите email, и мы отправим ссылку для смены пароля.";
+    formFootnote.textContent = "Письмо может прийти не сразу. Проверьте также папку «Спам».";
     submitBtn.textContent = "Отправить письмо";
-    pwHint.classList.add("hidden");
+    authPageMarker.textContent = "Сброс пароля";
     resetPasswordInputs();
-    return;
+  } else {
+    formTitle.textContent = "Новый пароль";
+    formSubtitle.textContent = "Введите новый пароль для аккаунта.";
+    formFootnote.textContent = "После смены пароля вы сможете войти с новыми данными.";
+    submitBtn.textContent = "Сменить пароль";
+    authPageMarker.textContent = "Новый пароль";
+    passwordInput.autocomplete = "new-password";
+    confirmPasswordInput.autocomplete = "new-password";
   }
 
-  formTitle.textContent = "Новый пароль";
-  formSubtitle.textContent = "Введите новый пароль для аккаунта.";
-  submitBtn.textContent = "Сменить пароль";
-  pwHint.classList.remove("hidden");
-  passwordInput.autocomplete = "new-password";
-  confirmPasswordInput.autocomplete = "new-password";
-}
-
-function getResetRedirectUrl() {
-  const url = new URL(window.location.href);
-  url.searchParams.delete("mode");
-  url.hash = "";
-  return url.toString();
-}
-
-function getNextUrl() {
-  const url = new URL(window.location.href);
-  const next = String(url.searchParams.get("next") ?? "").trim();
-  return next || "table.html";
-}
-
-async function redirectIfAlreadyLoggedIn() {
-  const url = new URL(window.location.href);
-  const explicitMode = url.searchParams.get("mode");
-
-  if (explicitMode === "reset") {
-    setMode("reset");
-    return;
-  }
-
-  const session = await getSession();
-  if (session) {
-    window.location.href = getNextUrl();
-  }
+  setBusy(false);
 }
 
 function mapAuthError(error) {
@@ -225,6 +271,9 @@ function mapAuthError(error) {
   if (/same password/i.test(message)) {
     return "Новый пароль должен отличаться от старого.";
   }
+  if (/signup is disabled/i.test(message)) {
+    return "Регистрация сейчас отключена.";
+  }
 
   return message || "Произошла ошибка.";
 }
@@ -240,6 +289,7 @@ async function handleSignIn() {
     throw new Error("Введите пароль.");
   }
 
+  persistRememberMe();
   await signIn(email, password);
   window.location.href = getNextUrl();
 }
@@ -261,9 +311,9 @@ async function handleSignUp() {
 
   await signUp(email, password);
   setInfo("Аккаунт создан. Если у вас включено подтверждение email, подтвердите почту и затем войдите.");
-  setMode("signin");
   passwordInput.value = "";
   confirmPasswordInput.value = "";
+  setMode("signin");
 }
 
 async function handleForgotPassword() {
@@ -290,7 +340,6 @@ async function handleResetPassword() {
 
   await updateMyPassword(password);
   setInfo("Пароль успешно изменён. Теперь можно войти с новым паролем.");
-  recoverySessionSeen = false;
   resetPasswordInputs();
   setMode("signin");
 }
@@ -319,6 +368,21 @@ async function handleSubmit(event) {
   }
 }
 
+async function redirectIfAlreadyLoggedIn() {
+  const url = new URL(window.location.href);
+  const explicitMode = url.searchParams.get("mode");
+
+  if (explicitMode === "reset") {
+    setMode("reset");
+    return;
+  }
+
+  const session = await getSession();
+  if (session) {
+    window.location.href = getNextUrl();
+  }
+}
+
 function bindEvents() {
   tabSignIn.addEventListener("click", () => {
     resetPasswordInputs();
@@ -341,19 +405,39 @@ function bindEvents() {
   });
 
   togglePw.addEventListener("click", () => {
-    const nextType = passwordInput.type === "password" ? "text" : "password";
-    passwordInput.type = nextType;
-    if (!confirmWrap.classList.contains("hidden")) {
-      confirmPasswordInput.type = nextType;
+    const makeVisible = passwordInput.type === "password";
+    passwordInput.type = makeVisible ? "text" : "password";
+
+    if (!confirmWrap.classList.contains("hidden") && !confirmPasswordInput.disabled) {
+      confirmPasswordInput.type = makeVisible ? "text" : "password";
     }
-    togglePw.textContent = nextType === "password" ? "Показать" : "Скрыть";
+
+    togglePw.textContent = makeVisible ? "Скрыть" : "Показать";
+    togglePw.setAttribute("aria-pressed", makeVisible ? "true" : "false");
+    togglePw.setAttribute("aria-label", makeVisible ? "Скрыть пароль" : "Показать пароль");
+  });
+
+  rememberMeCheckbox.addEventListener("change", () => {
+    if (!rememberMeCheckbox.checked) {
+      localStorage.removeItem(REMEMBER_ME_KEY);
+      localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+      return;
+    }
+
+    localStorage.setItem(REMEMBER_ME_KEY, "1");
+    localStorage.setItem(REMEMBERED_EMAIL_KEY, normalizeEmail(emailInput.value));
+  });
+
+  emailInput.addEventListener("input", () => {
+    if (rememberMeCheckbox.checked && mode === "signin") {
+      localStorage.setItem(REMEMBERED_EMAIL_KEY, normalizeEmail(emailInput.value));
+    }
   });
 
   authForm.addEventListener("submit", handleSubmit);
 
   supabase.auth.onAuthStateChange((event) => {
     if (event === "PASSWORD_RECOVERY") {
-      recoverySessionSeen = true;
       setMode("reset");
       setInfo("Ссылка подтверждена. Теперь задайте новый пароль.");
     }
@@ -363,6 +447,7 @@ function bindEvents() {
 (async () => {
   try {
     bindEvents();
+    applyRememberedEmail();
     await redirectIfAlreadyLoggedIn();
 
     const url = new URL(window.location.href);

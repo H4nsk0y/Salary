@@ -358,7 +358,7 @@ logoutBtn?.addEventListener("click", async () => {
   try {
     await signOut();
   } finally {
-    location.href = "login.html?next=index.html";
+    location.href = "login.html?next=calculator.html";
   }
 });
 
