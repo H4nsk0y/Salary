@@ -1146,12 +1146,46 @@ function extractAvatarPath(storedValue) {
 
   try {
     const url = new URL(value);
-    const marker = `/storage/v1/object/sign/${AVATAR_BUCKET}/`;
-    const idx = url.pathname.indexOf(marker);
-    if (idx === -1) return null;
-    return decodeURIComponent(url.pathname.slice(idx + marker.length));
+
+    const signedMarker = `/storage/v1/object/sign/${AVATAR_BUCKET}/`;
+    const publicMarker = `/storage/v1/object/public/${AVATAR_BUCKET}/`;
+
+    const signedIdx = url.pathname.indexOf(signedMarker);
+    if (signedIdx !== -1) {
+      return decodeURIComponent(url.pathname.slice(signedIdx + signedMarker.length));
+    }
+
+    const publicIdx = url.pathname.indexOf(publicMarker);
+    if (publicIdx !== -1) {
+      return decodeURIComponent(url.pathname.slice(publicIdx + publicMarker.length));
+    }
+
+    return null;
   } catch {
     return null;
+  }
+}
+
+function isAvatarObjectMissingError(error) {
+  const message = String(error?.message || "").toLowerCase();
+  const status = Number(error?.status);
+
+  return (
+    status === 400 ||
+    status === 404 ||
+    message.includes("object not found") ||
+    message.includes("not found")
+  );
+}
+
+async function cleanupBrokenAvatarReference(storedValue) {
+  const path = extractAvatarPath(storedValue);
+  if (!path) return;
+
+  try {
+    await updateMyProfile({ avatarUrl: null });
+  } catch (e) {
+    console.warn("Не удалось очистить битую ссылку на аватар:", e);
   }
 }
 
@@ -1163,7 +1197,13 @@ async function createFreshAvatarUrl(storedValue) {
     .from(AVATAR_BUCKET)
     .createSignedUrl(path, 60 * 60);
 
-  if (error) throw error;
+  if (error) {
+    if (isAvatarObjectMissingError(error)) {
+      return null;
+    }
+    throw error;
+  }
+
   return data?.signedUrl ?? null;
 }
 
@@ -1176,12 +1216,27 @@ async function uploadAvatar(file) {
   const ext = guessExt(file);
   const path = `${uid}/avatar.${ext}`;
 
+  const { data: existingFiles, error: listErr } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .list(uid, { limit: 100 });
+
+  if (listErr) throw listErr;
+
+  const filesToRemove = (existingFiles || []).map((f) => `${uid}/${f.name}`);
+  if (filesToRemove.length) {
+    const { error: rmErr } = await supabase.storage
+      .from(AVATAR_BUCKET)
+      .remove(filesToRemove);
+
+    if (rmErr) throw rmErr;
+  }
+
   const { error: upErr } = await supabase.storage
     .from(AVATAR_BUCKET)
     .upload(path, file, {
       upsert: true,
       contentType: file.type,
-      cacheControl: "3600"
+      cacheControl: "3600",
     });
 
   if (upErr) throw upErr;
@@ -1278,9 +1333,17 @@ async function refreshProfile() {
   let avatarUrl = null;
   try {
     avatarUrl = await createFreshAvatarUrl(effectiveProfile.avatar_url || null);
+
+    if (!avatarUrl && effectiveProfile.avatar_url) {
+      await cleanupBrokenAvatarReference(effectiveProfile.avatar_url);
+      effectiveProfile.avatar_url = null;
+      if (currentProfile) currentProfile.avatar_url = null;
+    }
   } catch (e) {
     console.warn("Не удалось получить свежую ссылку на аватар:", e);
   }
+
+  setAvatarUI(avatarUrl, name);
 
   setAvatarUI(avatarUrl, name);
 

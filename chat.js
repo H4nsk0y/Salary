@@ -100,6 +100,58 @@ function resolveDisplayName(profile, fallback = "Сотрудник") {
   );
 }
 
+function extractAvatarPath(storedValue) {
+  const value = String(storedValue || "").trim();
+  if (!value) return null;
+
+  if (!/^https?:\/\//i.test(value)) return value;
+
+  try {
+    const url = new URL(value);
+
+    const signedMarker = "/storage/v1/object/sign/avatars/";
+    const publicMarker = "/storage/v1/object/public/avatars/";
+
+    const signedIdx = url.pathname.indexOf(signedMarker);
+    if (signedIdx !== -1) {
+      return decodeURIComponent(url.pathname.slice(signedIdx + signedMarker.length));
+    }
+
+    const publicIdx = url.pathname.indexOf(publicMarker);
+    if (publicIdx !== -1) {
+      return decodeURIComponent(url.pathname.slice(publicIdx + publicMarker.length));
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function createAvatarSignedUrl(storedValue) {
+  const path = extractAvatarPath(storedValue);
+  if (!path) return null;
+
+  const { data, error } = await supabase.storage
+    .from("avatars")
+    .createSignedUrl(path, 60 * 60);
+
+  if (error) return null;
+  return data?.signedUrl ?? null;
+}
+
+function getInitials(name) {
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length) return "A";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+
+  return `${parts[0].slice(0, 1)}${parts[1].slice(0, 1)}`.toUpperCase();
+}
+
 async function enrichMessages(messages) {
   const rows = Array.isArray(messages) ? messages : [];
   const userIds = [...new Set(rows.map((message) => message.user_id).filter(Boolean))];
@@ -110,33 +162,62 @@ async function enrichMessages(messages) {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("user_id, display_name, position")
+    .select("user_id, display_name, position, avatar_url")
     .in("user_id", userIds);
 
   if (error) {
-    return rows.map((message) => ({
-      ...message,
-      profile_name: message.user_id === myUserId
+    return rows.map((message) => {
+      const profileName = message.user_id === myUserId
         ? resolveDisplayName(myProfile, "Вы")
-        : "Сотрудник",
-    }));
+        : "Сотрудник";
+
+      return {
+        ...message,
+        profile_name: profileName,
+        profile_avatar_url: null,
+        profile_initials: getInitials(profileName),
+      };
+    });
   }
 
-  const namesMap = new Map(
-    (data ?? []).map((row) => [
-      row.user_id,
-      String(row.display_name ?? "").trim() ||
-      String(row.position ?? "").trim() ||
-      "Сотрудник",
-    ])
+  const profileRows = data ?? [];
+
+  const avatarEntries = await Promise.all(
+    profileRows.map(async (row) => {
+      const profileName =
+        String(row.display_name ?? "").trim() ||
+        String(row.position ?? "").trim() ||
+        "Сотрудник";
+
+      const signedUrl = await createAvatarSignedUrl(row.avatar_url);
+
+      return [
+        row.user_id,
+        {
+          name: profileName,
+          avatarUrl: signedUrl,
+          initials: getInitials(profileName),
+        },
+      ];
+    })
   );
 
-  return rows.map((message) => ({
-    ...message,
-    profile_name:
-      namesMap.get(message.user_id) ||
-      (message.user_id === myUserId ? resolveDisplayName(myProfile, "Вы") : "Сотрудник"),
-  }));
+  const profileMap = new Map(avatarEntries);
+
+  return rows.map((message) => {
+    const fallbackName = message.user_id === myUserId
+      ? resolveDisplayName(myProfile, "Вы")
+      : "Сотрудник";
+
+    const meta = profileMap.get(message.user_id);
+
+    return {
+      ...message,
+      profile_name: meta?.name || fallbackName,
+      profile_avatar_url: meta?.avatarUrl || null,
+      profile_initials: meta?.initials || getInitials(fallbackName),
+    };
+  });
 }
 
 function renderMessages(messages) {
@@ -156,19 +237,29 @@ function renderMessages(messages) {
     const name = escapeHtml(message.profile_name || "Сотрудник");
     const text = escapeHtml(message.text).replace(/\n/g, "<br>");
     const time = formatDateTime(message.created_at);
+    const avatarUrl = String(message.profile_avatar_url || "").trim();
+    const initials = escapeHtml(message.profile_initials || "A");
+
+    const avatarHtml = avatarUrl
+      ? `<img src="${escapeHtml(avatarUrl)}" alt="${name}" class="h-10 w-10 rounded-full object-cover ring-1 ring-white/10 shrink-0" />`
+      : `<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/5 text-xs font-bold text-slate-200 ring-1 ring-white/10">${initials}</div>`;
 
     return `
       <div class="mb-3 flex ${own ? "justify-end" : "justify-start"}">
-        <div class="max-w-[88%] rounded-2xl px-4 py-3 ring-1 ${
-          own
-            ? "bg-indigo-500/15 text-slate-100 ring-indigo-400/20"
-            : "bg-white/5 text-slate-100 ring-white/10"
-        }">
-          <div class="mb-1 flex items-center gap-2 text-xs">
-            <span class="font-semibold ${own ? "text-indigo-200" : "text-sky-200"}">${name}</span>
-            <span class="text-slate-400">${time}</span>
+        <div class="flex max-w-[92%] items-end gap-3 ${own ? "flex-row-reverse" : ""}">
+          ${avatarHtml}
+
+          <div class="max-w-[88%] rounded-2xl px-4 py-3 ring-1 ${
+            own
+              ? "bg-indigo-500/15 text-slate-100 ring-indigo-400/20"
+              : "bg-white/5 text-slate-100 ring-white/10"
+          }">
+            <div class="mb-1 flex items-center gap-2 text-xs ${own ? "justify-end" : ""}">
+              <span class="font-semibold ${own ? "text-indigo-200" : "text-sky-200"}">${name}</span>
+              <span class="text-slate-400">${time}</span>
+            </div>
+            <div class="text-sm leading-6 break-words">${text}</div>
           </div>
-          <div class="text-sm leading-6 break-words">${text}</div>
         </div>
       </div>
     `;
