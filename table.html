@@ -504,22 +504,7 @@
 <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
   <script>document.body.classList.add("is-loaded");</script>
 
-  <header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-    <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex items-center justify-between gap-2">
-      <a href="index.html" class="group shrink-0">
-        <span class="text-base md:text-lg font-semibold bg-gradient-to-r from-indigo-200 to-slate-100 bg-clip-text text-transparent transition-colors group-hover:from-indigo-300 group-hover:to-white">
-          Главная
-        </span>
-      </a>
-      <nav class="mobile-top-nav flex items-center justify-end gap-0.5 text-sm font-medium">
-        <a href="calculator.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Калькулятор</a>
-        <a href="table.html" class="nav-link active rounded-lg px-3 py-2 md:px-4 text-indigo-300 transition-all hover:bg-white/5">Табель</a>
-        <a href="profile.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Профиль</a>
-        <a href="help.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Справка</a>
-        <a href="chat.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Чат</a>
-      </nav>
-    </div>
-  </header>
+  <div data-app-header data-active="table"></div>
 
   <div class="relative z-10 mx-auto max-w-7xl px-4 pt-safe pb-12 md:pb-16">
     <header class="mb-6 reveal">
@@ -780,11 +765,11 @@
           <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Часовая (нетто с премией)</div><div class="mt-1 text-lg font-semibold" id="hourRateNet">—</div></div>
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Ночной час (нетто)</div><div class="mt-1 text-lg font-semibold text-rose-200" id="nightHourNet">—</div></div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Праздничные x2 (брутто, доплата)</div><div class="mt-1 text-lg font-semibold" id="holidayExtraGross">—</div></div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Оклад за факт (брутто)</div><div class="mt-1 text-lg font-semibold" id="baseFactGross">—</div></div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Премия 35% (брутто)</div><div class="mt-1 text-lg font-semibold" id="bonusGross">—</div></div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Ночные (брутто)</div><div class="mt-1 text-lg font-semibold text-rose-200" id="nightExtraGross">—</div></div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Брутто</div><div class="mt-1 text-lg font-semibold" id="grossPay">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Праздничные x2 (на руки, доплата)</div><div class="mt-1 text-lg font-semibold" id="holidayExtraGross">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Оклад за факт (на руки)</div><div class="mt-1 text-lg font-semibold" id="baseFactGross">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Премия 35% (на руки)</div><div class="mt-1 text-lg font-semibold" id="bonusGross">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Ночные (на руки)</div><div class="mt-1 text-lg font-semibold text-rose-200" id="nightExtraGross">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Авторасчёт на руки</div><div class="mt-1 text-lg font-semibold" id="grossPay">—</div></div>
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Налог 13%</div><div class="mt-1 text-lg font-semibold" id="taxPay">—</div></div>
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Аванс</div><div class="mt-1 text-lg font-semibold" id="advancePay">—</div></div>
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Остаток</div><div class="mt-1 text-lg font-semibold" id="remainingPay">—</div></div>
@@ -875,6 +860,7 @@
     </footer>
   </div>
 
+  <script type="module" src="./nav.js"></script>
   <script type="module" src="./table.js"></script>
 
   <script type="module">

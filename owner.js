@@ -10,6 +10,7 @@ import {
   ownerAddDepartmentEditor,
   ownerRemoveDepartmentEditor,
 } from "./db.js";
+import { startPresenceHeartbeat } from "./presence.js";
 
 
 document.body.classList.add("is-loaded");
@@ -492,6 +493,8 @@ addEditorBtn?.addEventListener("click", async () => {
       setError("Эта страница доступна только овнеру.");
       return;
     }
+
+    startPresenceHeartbeat("Owner: отделы");
 
     setStatus("Загружаю отделы…", "busy");
     const departments = await listAllDepartments();

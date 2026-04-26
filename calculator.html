@@ -206,16 +206,6 @@
     }
     .btn-reset:active { transform: scale(0.98); }
 
-    @media (max-width: 640px) {
-      .glass-card { backdrop-filter: blur(20px); }
-      .input-glass { font-size: 16px; padding-top: 14px; padding-bottom: 14px; }
-      .btn-reset { height: 56px; }
-      .pt-safe { padding-top: 7rem; }
-    }
-    @media (min-width: 768px) {
-      .pt-safe { padding-top: 6rem; }
-    }
-
     .nav-link { position: relative; transition: color 0.2s; }
     .nav-link::after {
       content: '';
@@ -232,6 +222,50 @@
     }
     .nav-link.active::after,
     .nav-link:hover::after { opacity: 1; transform: scaleX(1); }
+
+    .mobile-top-nav {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.125rem;
+    }
+
+    .mobile-top-nav a {
+      white-space: nowrap;
+    }
+
+    @media (max-width: 640px) {
+      .glass-card { backdrop-filter: blur(20px); }
+      .input-glass { font-size: 16px; padding-top: 14px; padding-bottom: 14px; }
+      .btn-reset { height: 56px; }
+      .pt-safe { padding-top: 7rem; }
+
+      .mobile-top-nav {
+        flex-wrap: nowrap !important;
+        justify-content: flex-start !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        max-width: calc(100vw - 92px);
+        white-space: nowrap;
+        touch-action: pan-x;
+      }
+
+      .mobile-top-nav::-webkit-scrollbar {
+        display: none;
+      }
+
+      .mobile-top-nav a {
+        flex: 0 0 auto;
+        font-size: 0.72rem !important;
+        padding: 5px 7px !important;
+      }
+    }
+    @media (min-width: 768px) {
+      .pt-safe { padding-top: 6rem; }
+    }
 
     #errorBox:not(.hidden) { animation: shake 0.3s ease-in-out; }
     @keyframes shake {
@@ -437,22 +471,7 @@
   document.body.classList.add("is-loaded");
 </script>
 
-<header class="fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-  <div class="mx-auto max-w-7xl px-4 py-3 md:py-4 flex flex-wrap items-center justify-between gap-3">
-    <a href="index.html" class="group">
-      <span class="text-base md:text-lg font-semibold bg-gradient-to-r from-indigo-200 to-slate-100 bg-clip-text text-transparent transition-colors group-hover:from-indigo-300 group-hover:to-white">
-        Главная
-      </span>
-    </a>
-    <nav class="mobile-top-nav flex items-center justify-end gap-0.5 text-sm font-medium">
-      <a href="calculator.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Калькулятор</a>
-      <a href="table.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Табель</a>
-      <a href="profile.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Профиль</a>
-      <a href="help.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Справка</a>
-      <a href="chat.html" class="nav-link rounded-lg px-3 py-2 md:px-4 text-slate-300 transition-all hover:bg-white/5 hover:text-indigo-200">Чат</a>
-    </nav>
-  </div>
-</header>
+<div data-app-header data-active="calculator"></div>
 
 <div class="relative z-10 mx-auto max-w-5xl px-4 pt-safe pb-12 md:pb-16">
   <header class="mb-8 reveal">
@@ -828,6 +847,7 @@
   })("resultsWrap", "resultsPeekBtn", "resultsPeekText", "resultsPeekIcon");
 </script>
 
+<script type="module" src="./nav.js"></script>
 <script type="module" src="./app.js"></script>
 
 <script type="module">

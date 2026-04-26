@@ -1,6 +1,7 @@
 import { computeSalary, parseNumber, TAX_RATE, NIGHT_EXTRA_RATE, BONUS_RATE } from "./calc.js";
 import { getSession, signOut } from "./auth.js";
 import { getMyProfile } from "./db.js";
+import { startPresenceHeartbeat } from "./presence.js";
 
 document.body.classList.add("is-loaded");
 
@@ -336,6 +337,7 @@ async function initAuthUI() {
 
   loginLink?.classList.add("hidden");
   logoutBtn?.classList.remove("hidden");
+  startPresenceHeartbeat("Калькулятор");
 
   try {
     const profile = await getMyProfile();

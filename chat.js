@@ -7,6 +7,7 @@ import {
   sendDepartmentMessage,
   subscribeToMyDepartmentMessages,
 } from "./db.js";
+import { startPresenceHeartbeat } from "./presence.js";
 
 document.body.classList.add("is-loaded");
 
@@ -363,6 +364,8 @@ async function init() {
     location.href = "login.html?next=chat.html";
     return;
   }
+
+  startPresenceHeartbeat("Чат");
 
   try {
     myProfile = await getMyProfile();

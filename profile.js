@@ -9,6 +9,7 @@ import {
   listMyTimesheetsByYear,
   deleteMyTimesheet,
 } from "./db.js";
+import { startPresenceHeartbeat } from "./presence.js";
 import {
   parseNumber,
   BONUS_RATE,
@@ -1870,6 +1871,8 @@ setupProfileMoneyControls();
     location.href = "login.html?next=profile.html";
     return;
   }
+
+  startPresenceHeartbeat("Профиль");
 
   const now = new Date();
   calYear = now.getFullYear();

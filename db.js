@@ -526,6 +526,77 @@ export function subscribeToMyDepartmentMessages(onChange) {
   })();
 }
 
+export async function upsertMyPresence(pageName = "") {
+  const userId = await requireUserId();
+  const now = new Date().toISOString();
+  const page = String(pageName ?? "").trim().slice(0, 80) || null;
+
+  const { error } = await supabase
+    .from("user_presence")
+    .upsert(
+      {
+        user_id: userId,
+        last_seen: now,
+        page,
+        updated_at: now,
+      },
+      { onConflict: "user_id" }
+    );
+
+  if (error) throw error;
+}
+
+export async function ownerListUsers() {
+  const { data, error } = await supabase.rpc("owner_list_users");
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function ownerListPayrollAnalytics({ year = null, departmentKey = null } = {}) {
+  const y = Number(year);
+  const normalizedYear = Number.isInteger(y) && y >= 2000 && y <= 2100 ? y : null;
+  const key = String(departmentKey ?? "").trim();
+
+  const { data, error } = await supabase.rpc("owner_list_payroll_analytics", {
+    p_year: normalizedYear,
+    p_department_key: key || null,
+  });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function ownerSetUserDepartment(userId, departmentKey = null) {
+  const uid = String(userId ?? "").trim();
+  const key = String(departmentKey ?? "").trim();
+
+  if (!uid) throw new Error("Не указан сотрудник.");
+
+  const { error } = await supabase.rpc("owner_set_user_department", {
+    p_user_id: uid,
+    p_department_key: key || null,
+  });
+
+  if (error) throw error;
+}
+
+export async function ownerSetDepartmentEditor(departmentKey, userId, isEditor) {
+  const key = String(departmentKey ?? "").trim();
+  const uid = String(userId ?? "").trim();
+
+  if (!key) throw new Error("Не указан отдел.");
+  if (!uid) throw new Error("Не указан сотрудник.");
+
+  const { error } = await supabase.rpc("owner_set_department_editor", {
+    p_department_key: key,
+    p_user_id: uid,
+    p_is_editor: Boolean(isEditor),
+  });
+
+  if (error) throw error;
+}
+
 export async function ownerListDepartmentMembers(departmentKey) {
   const key = String(departmentKey ?? "").trim();
   if (!key) throw new Error("Не указан отдел.");

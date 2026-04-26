@@ -10,6 +10,7 @@ import {
   managedLoadTimesheet,
   managedSaveManyTimesheets,
 } from "./db.js";
+import { startPresenceHeartbeat } from "./presence.js";
 
 import { exportDepartmentTimesheetXlsx } from "./excelExport.js";
 
@@ -1464,6 +1465,8 @@ window.addEventListener("beforeunload", (e) => {
     setError(null);
     const ok = await guardManagedDepartment();
     if (!ok) return;
+
+    startPresenceHeartbeat("Общий табель");
 
     setFromQueryOrNow();
     fillYearOptions();

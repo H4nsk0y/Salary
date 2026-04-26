@@ -2,6 +2,7 @@
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
 import { getMyProfile, getMyManagedDepartment, loadTimesheet, saveTimesheet } from "./db.js";
+import { startPresenceHeartbeat } from "./presence.js";
 import {
   buildProfileCompletionUrl,
   getMissingRequiredProfileFields,
@@ -1354,6 +1355,12 @@ function setTextValue(el, value) {
   el.textContent = value;
 }
 
+function grossToNet(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return n * (1 - TAX_RATE);
+}
+
 function clearCalculatedMoneyUi() {
   for (const el of [
     hourRateNetEl,
@@ -1453,32 +1460,37 @@ const displayTax =
     setTextValue(nightHourNetEl, "—");
   }
 
-  if (Number.isFinite(calculated?.baseFactGross)) {
-    animateNumber(baseFactGrossEl, calculated.baseFactGross, (v) => formatRub(v, 0), 360);
+  const baseFactNet = grossToNet(calculated?.baseFactGross);
+  const bonusNet = grossToNet(calculated?.bonusGross);
+  const nightExtraNet = grossToNet(calculated?.nightExtraGross);
+  const holidayExtraNet = grossToNet(calculated?.holidayExtraGross);
+
+  if (Number.isFinite(baseFactNet)) {
+    animateNumber(baseFactGrossEl, baseFactNet, (v) => formatRub(v, 0), 360);
   } else {
     setTextValue(baseFactGrossEl, "—");
   }
 
-  if (Number.isFinite(calculated?.bonusGross)) {
-    animateNumber(bonusGrossEl, calculated.bonusGross, (v) => formatRub(v, 0), 360);
+  if (Number.isFinite(bonusNet)) {
+    animateNumber(bonusGrossEl, bonusNet, (v) => formatRub(v, 0), 360);
   } else {
     setTextValue(bonusGrossEl, "—");
   }
 
-  if (Number.isFinite(calculated?.nightExtraGross)) {
-    animateNumber(nightExtraGrossEl, calculated.nightExtraGross, (v) => formatRub(v, 0), 360);
+  if (Number.isFinite(nightExtraNet)) {
+    animateNumber(nightExtraGrossEl, nightExtraNet, (v) => formatRub(v, 0), 360);
   } else {
     setTextValue(nightExtraGrossEl, "—");
   }
 
-  if (Number.isFinite(calculated?.holidayExtraGross)) {
-    animateNumber(holidayExtraGrossEl, calculated.holidayExtraGross, (v) => formatRub(v, 0), 360);
+  if (Number.isFinite(holidayExtraNet)) {
+    animateNumber(holidayExtraGrossEl, holidayExtraNet, (v) => formatRub(v, 0), 360);
   } else {
     setTextValue(holidayExtraGrossEl, "—");
   }
 
-  if (Number.isFinite(calculated?.gross)) {
-    animateNumber(grossPayEl, calculated.gross, (v) => formatRub(v, 0), 360);
+  if (Number.isFinite(calculated?.net)) {
+    animateNumber(grossPayEl, calculated.net, (v) => formatRub(v, 0), 360);
   } else {
     clearCalculatedMoneyUi();
     setTextValue(grossPayEl, "—");
@@ -1503,7 +1515,7 @@ const displayTax =
         : "";
 
     parts.push(
-      `Брутто: ${formatRub(calculated.gross, 0)} • Налог: ${formatRub(calculated.tax, 0)} • Праздничные x2: ${formatRub(calculated.holidayExtraGross, 0)}${hazardText}`
+      `Авторасчёт на руки: ${formatRub(calculated.net, 0)} • Налог: ${formatRub(calculated.tax, 0)} • Праздничные x2 на руки: ${formatRub(holidayExtraNet, 0)}${hazardText}`
     );
   }
 
@@ -2369,6 +2381,8 @@ setupActualMoneyControls();
     location.href = "login.html?next=table.html";
     return;
   }
+
+  startPresenceHeartbeat("Личный табель");
 
   let profile = null;
 

@@ -2,6 +2,7 @@
 
 import { requireSession } from "./auth.js";
 import { getMyProfile, updateMyProfileFields } from "./db.js";
+import { startPresenceHeartbeat } from "./presence.js";
 import {
   createMoneyPinSecret,
   hasMoneyPin,
@@ -245,6 +246,8 @@ saveSettingsBtn?.addEventListener("click", () => void saveSettings());
     location.href = "login.html?next=settings.html";
     return;
   }
+
+  startPresenceHeartbeat("Настройки");
 
   try {
     await loadSettings();
