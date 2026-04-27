@@ -10,6 +10,7 @@ import {
   ownerSetUserDepartment,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
+import { confirmDialog } from "./modal.js";
 
 document.body.classList.add("is-loaded");
 
@@ -429,7 +430,13 @@ function createInviteCard(invite) {
     revokeBtn.className = "rounded-2xl bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-400/20 transition-all hover:bg-rose-500/15";
     revokeBtn.textContent = "Отозвать";
     revokeBtn.addEventListener("click", async () => {
-      const ok = confirm(`Отозвать приглашение в отдел "${invite.department_name || invite.department_key}"?`);
+      const ok = await confirmDialog({
+        title: "Отозвать приглашение?",
+        message: `Ссылка для отдела "${invite.department_name || invite.department_key}" перестанет работать.`,
+        confirmText: "Отозвать",
+        cancelText: "Оставить",
+        tone: "danger",
+      });
       if (!ok) return;
 
       try {
@@ -490,7 +497,13 @@ function createDepartmentSelect(row, isBusy) {
 
     const displayName = getDisplayName(row);
     const nextLabel = next ? getDepartmentName(next) : "без отдела";
-    const ok = confirm(`Перевести "${displayName}" в "${nextLabel}"?`);
+    const ok = await confirmDialog({
+      title: "Перевести сотрудника?",
+      message: `"${displayName}" будет переведён в "${nextLabel}".`,
+      confirmText: "Перевести",
+      cancelText: "Оставить как было",
+      tone: "warning",
+    });
     if (!ok) {
       select.value = previous;
       return;
@@ -614,11 +627,15 @@ function createUserCard(row) {
     if (!row.department_key) return;
 
     const next = !primaryEditor;
-    const ok = confirm(
-      next
-        ? `Назначить "${displayName}" редактором отдела "${row.department_name || row.department_key}"?`
-        : `Снять права редактора у "${displayName}"?`
-    );
+    const ok = await confirmDialog({
+      title: next ? "Назначить редактора?" : "Снять права редактора?",
+      message: next
+        ? `"${displayName}" сможет редактировать табель отдела "${row.department_name || row.department_key}".`
+        : `"${displayName}" больше не сможет редактировать табель этого отдела.`,
+      confirmText: next ? "Назначить" : "Снять права",
+      cancelText: "Отмена",
+      tone: next ? "info" : "warning",
+    });
     if (!ok) return;
 
     await runUserAction(row.user_id, async () => {

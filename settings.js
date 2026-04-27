@@ -1,6 +1,7 @@
 // FILE: /settings.js
 
 import { requireSession } from "./auth.js";
+import "./scrollbar.js";
 import { getMyProfile, updateMyProfileFields } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import {

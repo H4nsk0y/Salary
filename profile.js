@@ -32,6 +32,7 @@ import {
   isMoneyProtectionEnabled,
   setRevealButtonState,
 } from "./moneyPrivacy.js";
+import { confirmDialog } from "./modal.js";
 
 document.body.classList.add("is-loaded");
 
@@ -102,6 +103,16 @@ const profileRequiredNoticeTitle = document.getElementById("profileRequiredNotic
 const profileRequiredNoticeText = document.getElementById("profileRequiredNoticeText");
 const profileRequiredNoticeBackLink = document.getElementById("profileRequiredNoticeBackLink");
 
+const PROFILE_AUTOFILL_ATTRS = {
+  autocomplete: "off",
+  autocorrect: "off",
+  autocapitalize: "off",
+  spellcheck: "false",
+  "data-lpignore": "true",
+  "data-1p-ignore": "true",
+  "data-form-type": "other",
+};
+
 const pageParams = new URLSearchParams(window.location.search);
 const mustCompleteProfile = pageParams.get("completeProfile") === "1";
 const nextAfterProfile = normalizeInternalNextUrl(pageParams.get("next"), "table.html");
@@ -159,6 +170,72 @@ let yearNetIncomeText = "—";
 let yearTaxPaidText = "—";
 let okladPeekBtn = null;
 let profileYearPeekBtn = null;
+let profileFieldsTouched = false;
+
+function getProfileAutofillFields() {
+  return [
+    displayNameInput,
+    positionSelect,
+    genderSelect,
+    tabNumberInput,
+    branchSelect,
+    okladInput,
+  ].filter(Boolean);
+}
+
+function hardenProfileAutofill() {
+  for (const field of getProfileAutofillFields()) {
+    for (const [key, value] of Object.entries(PROFILE_AUTOFILL_ATTRS)) {
+      field.setAttribute(key, value);
+    }
+  }
+
+  if (okladInput) {
+    okladInput.type = "text";
+  }
+}
+
+function getExpectedProfileFieldValues(profile) {
+  return {
+    displayName: profile?.display_name ?? "",
+    position: profile?.position ?? "",
+    gender: profile?.gender ?? "",
+    tabNumber: profile?.tab_number ?? "",
+    branch: profile?.branch ?? "",
+    oklad: profile?.oklad != null ? String(profile.oklad) : "",
+  };
+}
+
+function applyExpectedProfileFieldValues(values) {
+  if (displayNameInput) displayNameInput.value = values.displayName;
+  if (positionSelect) positionSelect.value = values.position;
+  if (genderSelect) genderSelect.value = values.gender;
+  if (tabNumberInput) tabNumberInput.value = values.tabNumber;
+  if (branchSelect) branchSelect.value = values.branch;
+  if (okladInput) okladInput.value = values.oklad;
+}
+
+function guardProfileFieldsAgainstLateAutofill(profile) {
+  const expected = getExpectedProfileFieldValues(profile);
+  const restore = () => {
+    if (profileFieldsTouched) return;
+    applyExpectedProfileFieldValues(expected);
+  };
+
+  requestAnimationFrame(restore);
+  window.setTimeout(restore, 80);
+  window.setTimeout(restore, 300);
+  window.setTimeout(restore, 900);
+}
+
+function markProfileFieldsTouched() {
+  profileFieldsTouched = true;
+}
+
+function markProfileTextInputTouched(event) {
+  if (event?.inputType === "insertReplacementText") return;
+  markProfileFieldsTouched();
+}
 
 function replaceElementWithClone(el) {
   if (!el) return null;
@@ -189,7 +266,8 @@ function ensureProfileYearPeekButton() {
 
 function applyProfileOkladVisibility() {
   if (!okladInput) return;
-  okladInput.type = okladVisible ? "text" : "password";
+  okladInput.type = "text";
+  okladInput.classList.toggle("profile-money-masked", !okladVisible);
 
   if (!okladPeekBtn) return;
   okladPeekBtn.innerHTML = okladVisible ? EYE_OFF_ICON : EYE_ICON;
@@ -1082,7 +1160,14 @@ function createTimesheetCard(row) {
   delBtn.textContent = "Удалить";
 
   delBtn.addEventListener("click", async () => {
-    const ok = confirm(`Удалить табель за ${monthNamesShort[m]} ${y}? Это действие нельзя отменить.`);
+    const ok = await confirmDialog({
+      title: "Удалить табель?",
+      message: `Табель за ${monthNamesShort[m]} ${y} будет удалён из профиля.`,
+      note: "Это действие нельзя отменить.",
+      confirmText: "Удалить",
+      cancelText: "Оставить",
+      tone: "danger",
+    });
     if (!ok) return;
 
     setStatus("Удаляю…", "busy");
@@ -1310,7 +1395,6 @@ async function refreshProfile() {
   }
 
   const name = effectiveProfile.display_name || "Пользователь";
-  const oklad = effectiveProfile.oklad;
 
   if (!requireDom(displayNameEl, "displayName")) return;
   if (!requireDom(displayNameInput, "displayNameInput")) return;
@@ -1322,10 +1406,8 @@ async function refreshProfile() {
   const hideMoney = isMoneyProtectionEnabled(effectiveProfile);
 
   displayNameEl.textContent = name;
-  displayNameInput.value = effectiveProfile.display_name ?? "";
-  okladInput.value = oklad != null ? String(oklad) : "";
-  if (tabNumberInput) tabNumberInput.value = effectiveProfile.tab_number ?? "";
-  if (branchSelect) branchSelect.value = effectiveProfile.branch ?? "";
+  profileFieldsTouched = false;
+  applyExpectedProfileFieldValues(getExpectedProfileFieldValues(effectiveProfile));
 
   ensureProfileMoneyAccess = createMoneyAccessGuard(effectiveProfile, {
     title: "Показать скрытые суммы",
@@ -1336,9 +1418,7 @@ async function refreshProfile() {
   okladVisible = !hideMoney;
   yearMoneyVisible = !hideMoney;
   syncProfileMoneyUi();
-
-  if (positionSelect) positionSelect.value = effectiveProfile.position ?? "";
-  if (genderSelect) genderSelect.value = effectiveProfile.gender ?? "";
+  guardProfileFieldsAgainstLateAutofill(effectiveProfile);
 
   BASE_DAY_HOURS = effectiveProfile.gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
 
@@ -1839,7 +1919,13 @@ avatarFileInput?.addEventListener("change", async () => {
 });
 
 avatarRemoveBtn?.addEventListener("click", async () => {
-  const ok = confirm("Удалить аватар?");
+  const ok = await confirmDialog({
+    title: "Удалить аватар?",
+    message: "Фото профиля будет удалено из личного кабинета.",
+    confirmText: "Удалить",
+    cancelText: "Оставить",
+    tone: "danger",
+  });
   if (!ok) return;
 
   try {
@@ -1863,6 +1949,20 @@ avatarRemoveBtn?.addEventListener("click", async () => {
     } catch {}
   }
 });
+
+hardenProfileAutofill();
+for (const field of [displayNameInput, tabNumberInput, okladInput].filter(Boolean)) {
+  field.addEventListener("beforeinput", markProfileTextInputTouched);
+  field.addEventListener("keydown", markProfileFieldsTouched);
+  field.addEventListener("paste", markProfileFieldsTouched);
+  field.addEventListener("drop", markProfileFieldsTouched);
+  field.addEventListener("compositionstart", markProfileFieldsTouched);
+}
+for (const field of [positionSelect, genderSelect, branchSelect].filter(Boolean)) {
+  field.addEventListener("pointerdown", markProfileFieldsTouched);
+  field.addEventListener("keydown", markProfileFieldsTouched);
+  field.addEventListener("change", markProfileFieldsTouched);
+}
 
 setupProfileMoneyControls();
 

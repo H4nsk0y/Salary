@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import "./scrollbar.js";
 import {
   getSession,
   signIn,

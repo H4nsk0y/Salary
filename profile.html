@@ -412,6 +412,14 @@
       color: rgb(209 250 229) !important;
     }
 
+    .profile-money-masked {
+      -webkit-text-security: disc;
+    }
+
+    .profile-money-masked::placeholder {
+      -webkit-text-security: none;
+    }
+
     #driver-page-overlay { background: rgba(2, 6, 23, 0.58) !important; backdrop-filter: blur(4px) !important; }
     #driver-highlighted-element-stage { background: transparent !important; box-shadow: none !important; }
     .driver-highlighted-element {
@@ -591,13 +599,25 @@
         <div class="mt-5 grid gap-4">
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="displayNameInput">ФИО</label>
-            <input id="displayNameInput" class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none" placeholder="Напр. Магомед Раджабов" />
+            <input
+              id="displayNameInput"
+              type="text"
+              class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              data-form-type="other"
+              placeholder="Напр. Магомед Раджабов"
+            />
           </div>
 
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="positionSelect">Должность</label>
             <span class="select-wrap w-full">
-              <select id="positionSelect" class="ui-select text-sm w-full">
+              <select id="positionSelect" class="ui-select text-sm w-full" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other">
                 <option value="">Не выбрана</option>
 
                 <optgroup label="Отдел ЕГАИС">
@@ -639,7 +659,7 @@
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="genderSelect">Пол</label>
             <span class="select-wrap w-full">
-              <select id="genderSelect" class="ui-select text-sm w-full">
+              <select id="genderSelect" class="ui-select text-sm w-full" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other">
                 <option value="">Не выбран</option>
                 <option value="male">Мужской</option>
                 <option value="female">Женский</option>
@@ -652,9 +672,16 @@
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="tabNumberInput">Табельный номер</label>
             <input
               id="tabNumberInput"
+              type="text"
               class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
               inputmode="text"
               autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              data-form-type="other"
               placeholder="Напр. ТДЗК-01758"
             />
             <p class="mt-1.5 text-xs text-slate-400/80">Необязательное поле, но нужно для выгрузки данных.</p>
@@ -663,7 +690,7 @@
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="branchSelect">Филиал</label>
             <span class="select-wrap w-full">
-              <select id="branchSelect" class="ui-select text-sm w-full">
+              <select id="branchSelect" class="ui-select text-sm w-full" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other">
                 <option value="">Не выбран</option>
                 <option value="chateau_alvisa">CHATEAU ALVISA</option>
                 <option value="alvisa_whisky">ALVISA WHISKY</option>
@@ -678,7 +705,9 @@
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="okladInput">Оклад (₽)</label>
             <div class="relative">
-              <input id="okladInput" type="password" inputmode="decimal" autocomplete="off"
+              <input id="okladInput" type="text" inputmode="decimal" autocomplete="off"
+                autocorrect="off" autocapitalize="off" spellcheck="false"
+                data-lpignore="true" data-1p-ignore="true" data-form-type="other"
                 class="input-glass w-full rounded-2xl px-4 py-3.5 pr-12 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
                 placeholder="Напр. 50000" />
               <button id="okladInputPeekBtn" type="button"
@@ -812,43 +841,6 @@
       observer.observe(bar, { attributes: true, attributeFilter: ['style'] });
       updateColor();
     })();
-  </script>
-
-  <script>
-    (function attachPeek(inputId, btnId) {
-      const input = document.getElementById(inputId);
-      const btn = document.getElementById(btnId);
-      if (!input || !btn) return;
-
-      if (!input.dataset.defaultHidden) {
-        input.dataset.defaultHidden = "true";
-      }
-
-      const show = () => { input.type = "text"; };
-      const restore = () => {
-        const shouldHideByDefault = input.dataset.defaultHidden !== "false";
-        input.type = shouldHideByDefault ? "password" : "text";
-      };
-
-      btn.addEventListener("mousedown", (e) => { e.preventDefault(); show(); });
-      btn.addEventListener("mouseup", restore);
-      btn.addEventListener("mouseleave", restore);
-      btn.addEventListener("touchstart", (e) => { e.preventDefault(); show(); }, { passive: false });
-      btn.addEventListener("touchend", restore);
-      btn.addEventListener("touchcancel", restore);
-      btn.addEventListener("keydown", (e) => {
-        if (e.key === " " || e.key === "Enter") {
-          e.preventDefault();
-          show();
-        }
-      });
-      btn.addEventListener("keyup", (e) => {
-        if (e.key === " " || e.key === "Enter") {
-          e.preventDefault();
-          restore();
-        }
-      });
-    })("okladInput", "okladInputPeekBtn");
   </script>
 
   <script type="module" src="./nav.js"></script>

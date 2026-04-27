@@ -11,6 +11,7 @@ import {
   ownerRemoveDepartmentEditor,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
+import { confirmDialog } from "./modal.js";
 
 
 document.body.classList.add("is-loaded");
@@ -198,7 +199,13 @@ function renderDepartmentMembers(rows) {
     removeBtn.addEventListener("click", async () => {
       if (!selectedDepartment?.key) return;
 
-      const ok = confirm(`Убрать "${label.main}" из отдела "${selectedDepartment.name || selectedDepartment.key}"?`);
+      const ok = await confirmDialog({
+        title: "Убрать из отдела?",
+        message: `"${label.main}" будет убран из отдела "${selectedDepartment.name || selectedDepartment.key}".`,
+        confirmText: "Убрать",
+        cancelText: "Оставить",
+        tone: "danger",
+      });
       if (!ok) return;
 
       try {
@@ -327,7 +334,13 @@ function renderDepartmentEditors(rows) {
     removeBtn.addEventListener("click", async () => {
       if (!selectedDepartment?.key) return;
 
-      const ok = confirm(`Снять права редактора у "${label.main}"?`);
+      const ok = await confirmDialog({
+        title: "Снять права редактора?",
+        message: `"${label.main}" больше не сможет редактировать табель этого отдела.`,
+        confirmText: "Снять права",
+        cancelText: "Оставить",
+        tone: "warning",
+      });
       if (!ok) return;
 
       try {

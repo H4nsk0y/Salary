@@ -1,4 +1,5 @@
 import { getMyProfile } from "./db.js";
+import "./scrollbar.js";
 
 const NAV_STYLE_ID = "alvisa-common-nav-style";
 
@@ -8,7 +9,6 @@ const MAIN_LINKS = [
   { key: "schedule", href: "schedule.html", label: "Смены" },
   { key: "profile", href: "profile.html", label: "Профиль" },
   { key: "help", href: "help.html", label: "Справка" },
-  { key: "chat", href: "chat.html", label: "Чат" },
   { key: "updates", href: "updates.html", label: "Новости" },
 ];
 
