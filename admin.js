@@ -44,6 +44,8 @@ const teamCountEl = document.getElementById("teamCount");
 const headerRow = document.getElementById("headerRow");
 const matrixBody = document.getElementById("matrixBody");
 const tableScrollable = document.getElementById("tableScrollable");
+const topTableScroll = document.getElementById("topTableScroll");
+const topTableScrollSpacer = document.getElementById("topTableScrollSpacer");
 const exportExcelBtn = document.getElementById("exportExcelBtn");
 
 const backToTableLink = document.getElementById("backToTableLink");
@@ -64,6 +66,11 @@ let sharedShortDay = [];
 let headerCells = [];
 let columnCells = [];
 let focusedDayIndex = null;
+let isScrolledX = false;
+let horizontalScrollRaf = 0;
+let resizeRaf = 0;
+let isSyncingHorizontalScroll = false;
+let tableDragState = null;
 
 // Mobile toolbar
 let mobileSelectedIdx = 0;
@@ -99,7 +106,46 @@ function isMobileNow() {
 
 function syncHorizontalScrollState() {
   if (!tableScrollable) return;
-  tableScrollable.classList.toggle("is-scrolled-x", tableScrollable.scrollLeft > 12);
+  const next = tableScrollable.scrollLeft > 12;
+  if (next === isScrolledX) return;
+  isScrolledX = next;
+  tableScrollable.classList.toggle("is-scrolled-x", next);
+}
+
+function syncTopTableScrollWidth() {
+  if (!tableScrollable || !topTableScroll || !topTableScrollSpacer) return;
+
+  const scrollWidth = tableScrollable.scrollWidth;
+  topTableScrollSpacer.style.width = `${scrollWidth}px`;
+  topTableScroll.classList.toggle("is-hidden", scrollWidth <= tableScrollable.clientWidth + 2);
+  topTableScroll.scrollLeft = tableScrollable.scrollLeft;
+}
+
+function syncTopScrollFromTable() {
+  if (!topTableScroll || !tableScrollable || isSyncingHorizontalScroll) return;
+
+  isSyncingHorizontalScroll = true;
+  topTableScroll.scrollLeft = tableScrollable.scrollLeft;
+  isSyncingHorizontalScroll = false;
+}
+
+function syncTableScrollFromTop() {
+  if (!topTableScroll || !tableScrollable || isSyncingHorizontalScroll) return;
+
+  isSyncingHorizontalScroll = true;
+  tableScrollable.scrollLeft = topTableScroll.scrollLeft;
+  syncHorizontalScrollState();
+  isSyncingHorizontalScroll = false;
+}
+
+function requestHorizontalScrollStateSync() {
+  if (horizontalScrollRaf) return;
+
+  horizontalScrollRaf = requestAnimationFrame(() => {
+    horizontalScrollRaf = 0;
+    syncHorizontalScrollState();
+    syncTopScrollFromTable();
+  });
 }
 
 function scrollTableToColumn(dayIdx0) {
@@ -119,6 +165,8 @@ function scrollTableToColumn(dayIdx0) {
     left: Math.max(0, targetScrollLeft),
     behavior: "smooth",
   });
+
+  requestHorizontalScrollStateSync();
 }
 
 
@@ -356,12 +404,6 @@ function markDirty() {
 
 function revertToPrev(inputEl) {
   inputEl.value = inputEl.dataset.prev ?? "";
-}
-
-function attachPrevValueTracking(inputEl) {
-  inputEl.addEventListener("focus", () => {
-    inputEl.dataset.prev = inputEl.value ?? "";
-  });
 }
 
 function buildMemberLabel(member) {
@@ -660,30 +702,105 @@ function focusHorizontal(state, rowType, startIdx, step) {
   }
 }
 
-function attachArrowNavigation(inputEl, state, rowType, index) {
+function setupMatrixInput(inputEl, memberIndex, rowType, index) {
+  inputEl.dataset.memberIndex = String(memberIndex);
   inputEl.dataset.row = rowType;
   inputEl.dataset.idx = String(index);
+}
 
-  inputEl.addEventListener("keydown", (e) => {
-    if (e.altKey || e.ctrlKey || e.metaKey) return;
-    const key = e.key;
-    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) return;
+function getMatrixInput(target) {
+  if (!(target instanceof HTMLInputElement)) return null;
+  if (!target.classList.contains("input-hour")) return null;
+  return target;
+}
 
-    if ((key === "ArrowLeft" || key === "ArrowRight") && typeof inputEl.selectionStart === "number") {
-      const start = inputEl.selectionStart ?? 0;
-      const end = inputEl.selectionEnd ?? 0;
-      const len = String(inputEl.value ?? "").length;
+function getInputContext(inputEl) {
+  const memberIndex = Number(inputEl.dataset.memberIndex);
+  const index = Number(inputEl.dataset.idx);
+  const rowType = inputEl.dataset.row;
+  const state = teamStates[memberIndex];
 
-      if (key === "ArrowLeft" && !(start === 0 && end === 0)) return;
-      if (key === "ArrowRight" && !(start === len && end === len)) return;
+  if (!state || !Number.isInteger(index) || index < 0 || index >= daysInMonth) {
+    return null;
+  }
+  if (rowType !== "day" && rowType !== "night") return null;
+
+  return { state, rowType, index };
+}
+
+function handleMatrixFocusIn(e) {
+  const inputEl = getMatrixInput(e.target);
+  if (!inputEl) return;
+
+  const ctx = getInputContext(inputEl);
+  if (!ctx) return;
+
+  inputEl.dataset.prev = inputEl.value ?? "";
+
+  if (isMobileNow()) {
+    mobileSelectedIdx = ctx.index;
+    updateMobileToolbar();
+    focusDayColumn(ctx.index);
+    scrollTableToColumn(ctx.index);
+  }
+}
+
+function handleMatrixFocusOut(e) {
+  const inputEl = getMatrixInput(e.target);
+  if (!inputEl) return;
+
+  const ctx = getInputContext(inputEl);
+  if (!ctx) return;
+
+  const s = String(inputEl.value ?? "").trim();
+
+  if (ctx.rowType === "day") {
+    if (s === "0" || s === "0.0" || s === "0,0") {
+      inputEl.value = "";
+      ctx.state.dayHours[ctx.index] = 0;
+      onPersonDataChanged(ctx.state);
+      return;
     }
 
-    e.preventDefault();
+    if (s.toUpperCase() === "О") {
+      inputEl.value = "ОТ";
+      inputEl.dataset.prev = "ОТ";
+    }
+    return;
+  }
 
-    if (key === "ArrowLeft") focusHorizontal(state, rowType, index - 1, -1);
-    else if (key === "ArrowRight") focusHorizontal(state, rowType, index + 1, 1);
-    else focusCell(state, rowType === "day" ? "night" : "day", index);
-  });
+  if (s === "0" || s === "0.0" || s === "0,0") {
+    inputEl.value = "";
+    ctx.state.nightHours[ctx.index] = 0;
+    onPersonDataChanged(ctx.state);
+  }
+}
+
+function handleMatrixKeyDown(e) {
+  const inputEl = getMatrixInput(e.target);
+  if (!inputEl) return;
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+
+  const key = e.key;
+  if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) return;
+
+  const ctx = getInputContext(inputEl);
+  if (!ctx) return;
+
+  if ((key === "ArrowLeft" || key === "ArrowRight") && typeof inputEl.selectionStart === "number") {
+    const start = inputEl.selectionStart ?? 0;
+    const end = inputEl.selectionEnd ?? 0;
+    const len = String(inputEl.value ?? "").length;
+
+    if (key === "ArrowLeft" && !(start === 0 && end === 0)) return;
+    if (key === "ArrowRight" && !(start === len && end === len)) return;
+  }
+
+  e.preventDefault();
+
+  if (key === "ArrowLeft") focusHorizontal(ctx.state, ctx.rowType, ctx.index - 1, -1);
+  else if (key === "ArrowRight") focusHorizontal(ctx.state, ctx.rowType, ctx.index + 1, 1);
+  else focusCell(ctx.state, ctx.rowType === "day" ? "night" : "day", ctx.index);
 }
 
 function onPersonDataChanged(state) {
@@ -692,167 +809,52 @@ function onPersonDataChanged(state) {
   scheduleSave();
 }
 
-function createDayInput(state, i) {
+function handleDayInput(input, state, i) {
   const weekend = isWeekendByIndex(year, month, i);
-  const td = document.createElement("td");
-  td.dataset.dayIndex = String(i);
 
-  const input = document.createElement("input");
-  input.type = "text";
-  input.inputMode = "text";
-  input.className = "input-hour";
-  input.autocapitalize = "characters";
-  input.spellcheck = false;
+  const sanitized = sanitizeDayCellValue(input.value);
+  if (sanitized !== input.value) input.value = sanitized;
 
-  attachPrevValueTracking(input);
-  attachArrowNavigation(input, state, "day", i);
+  const raw = input.value;
 
-  input.addEventListener("focus", () => {
-    if (isMobileNow()) {
-      mobileSelectedIdx = i;
-      updateMobileToolbar();
-      focusDayColumn(i);
-      scrollTableToColumn(i);
+  if (!raw.trim()) {
+    if (state.leaveType[i]) {
+      state.leaveType[i] = null;
+      unlockNightCell(state, i);
     }
-  });
+    state.dayHours[i] = 0;
+    input.dataset.prev = "";
+    onPersonDataChanged(state);
+    return;
+  }
 
-  input.addEventListener("blur", () => {
-    const s = String(input.value ?? "").trim();
-    if (s === "0" || s === "0.0" || s === "0,0") {
-      input.value = "";
-      state.dayHours[i] = 0;
-      onPersonDataChanged(state);
-      return;
-    }
-    if (String(input.value ?? "").trim().toUpperCase() === "О") {
-      input.value = "ОТ";
-      input.dataset.prev = "ОТ";
-    }
-  });
+  const parsed = parseHoursOrLeave(raw);
 
-  input.addEventListener("input", () => {
-    const sanitized = sanitizeDayCellValue(input.value);
-    if (sanitized !== input.value) input.value = sanitized;
-
-    const raw = input.value;
-
-    if (!raw.trim()) {
-      if (state.leaveType[i]) {
-        state.leaveType[i] = null;
-        unlockNightCell(state, i);
-      }
-      state.dayHours[i] = 0;
-      input.dataset.prev = "";
-      onPersonDataChanged(state);
+  if (parsed.kind === "leave") {
+    if (weekend) {
+      setError("Коды отсутствия нельзя ставить на выходные (сб/вс).");
+      revertToPrev(input);
       return;
     }
 
-    const parsed = parseHoursOrLeave(raw);
+    state.leaveType[i] = parsed.leave;
+    input.value = sanitizeLeaveDisplayValue(raw, parsed.leave);
+    state.dayHours[i] = 0;
+    state.nightHours[i] = 0;
+    lockNightCell(state, i);
+    input.dataset.prev = input.value;
+    onPersonDataChanged(state);
+    return;
+  }
 
-    if (parsed.kind === "leave") {
-      if (weekend) {
-        setError("Коды отсутствия нельзя ставить на выходные (сб/вс).");
-        revertToPrev(input);
-        return;
-      }
-
-      state.leaveType[i] = parsed.leave;
-      input.value = sanitizeLeaveDisplayValue(raw, parsed.leave);
-      state.dayHours[i] = 0;
-      state.nightHours[i] = 0;
-      lockNightCell(state, i);
-      input.dataset.prev = input.value;
-      onPersonDataChanged(state);
-      return;
+  if (parsed.kind === "hours") {
+    if (state.leaveType[i]) {
+      state.leaveType[i] = null;
+      unlockNightCell(state, i);
     }
 
-    if (parsed.kind === "hours") {
-      if (state.leaveType[i]) {
-        state.leaveType[i] = null;
-        unlockNightCell(state, i);
-      }
-
-      const nextDay = sanitizeHourNumber(parsed.hours);
-      const nextNight = sanitizeHourNumber(state.nightHours[i] || 0);
-      const ok = clampDayTotalOrRevert({
-        state,
-        index: i,
-        nextDay,
-        nextNight,
-        onRevert: () => revertToPrev(input),
-      });
-      if (!ok) return;
-
-      state.dayHours[i] = nextDay;
-      input.dataset.prev = input.value;
-      onPersonDataChanged(state);
-      return;
-    }
-
-    setError(`Некорректное значение у ${state.name}, день ${i + 1}. Допустимы числа или коды: ОТ, ОД, ОЗ, У, УД, Б.`);
-  });
-
-  td.appendChild(input);
-  state.dayInputs.push(input);
-  columnCells[i].push(td);
-
-  return td;
-}
-
-function createNightInput(state, i) {
-  const td = document.createElement("td");
-  td.className = "night-cell";
-  td.dataset.dayIndex = String(i);
-
-  const input = document.createElement("input");
-  input.type = "text";
-  input.inputMode = "decimal";
-  input.className = "input-hour";
-  input.spellcheck = false;
-
-  attachPrevValueTracking(input);
-  attachArrowNavigation(input, state, "night", i);
-
-  input.addEventListener("focus", () => {
-    if (isMobileNow()) {
-      mobileSelectedIdx = i;
-      updateMobileToolbar();
-      focusDayColumn(i);
-      scrollTableToColumn(i);
-    }
-  });
-
-  input.addEventListener("blur", () => {
-    const s = String(input.value ?? "").trim();
-    if (s === "0" || s === "0.0" || s === "0,0") {
-      input.value = "";
-      state.nightHours[i] = 0;
-      onPersonDataChanged(state);
-    }
-  });
-
-  input.addEventListener("input", () => {
-    if (state.leaveType[i]) return;
-
-    const sanitized = sanitizeNumericValue(input.value);
-    if (sanitized !== input.value) input.value = sanitized;
-
-    const raw = input.value;
-    if (!raw.trim()) {
-      state.nightHours[i] = 0;
-      input.dataset.prev = "";
-      onPersonDataChanged(state);
-      return;
-    }
-
-    const n = parseNumberValue(raw);
-    if (!Number.isFinite(n)) {
-      setError(`Ночные часы у ${state.name}, день ${i + 1}: введите число или оставьте пусто.`);
-      return;
-    }
-
-    const nextNight = sanitizeHourNumber(n);
-    const nextDay = sanitizeHourNumber(state.dayHours[i] || 0);
+    const nextDay = sanitizeHourNumber(parsed.hours);
+    const nextNight = sanitizeHourNumber(state.nightHours[i] || 0);
     const ok = clampDayTotalOrRevert({
       state,
       index: i,
@@ -862,10 +864,130 @@ function createNightInput(state, i) {
     });
     if (!ok) return;
 
-    state.nightHours[i] = nextNight;
+    state.dayHours[i] = nextDay;
     input.dataset.prev = input.value;
     onPersonDataChanged(state);
+    return;
+  }
+
+  setError(`Некорректное значение у ${state.name}, день ${i + 1}. Допустимы числа или коды: ОТ, ОД, ОЗ, У, УД, Б.`);
+}
+
+function handleNightInput(input, state, i) {
+  if (state.leaveType[i]) return;
+
+  const sanitized = sanitizeNumericValue(input.value);
+  if (sanitized !== input.value) input.value = sanitized;
+
+  const raw = input.value;
+  if (!raw.trim()) {
+    state.nightHours[i] = 0;
+    input.dataset.prev = "";
+    onPersonDataChanged(state);
+    return;
+  }
+
+  const n = parseNumberValue(raw);
+  if (!Number.isFinite(n)) {
+    setError(`Ночные часы у ${state.name}, день ${i + 1}: введите число или оставьте пусто.`);
+    return;
+  }
+
+  const nextNight = sanitizeHourNumber(n);
+  const nextDay = sanitizeHourNumber(state.dayHours[i] || 0);
+  const ok = clampDayTotalOrRevert({
+    state,
+    index: i,
+    nextDay,
+    nextNight,
+    onRevert: () => revertToPrev(input),
   });
+  if (!ok) return;
+
+  state.nightHours[i] = nextNight;
+  input.dataset.prev = input.value;
+  onPersonDataChanged(state);
+}
+
+function handleMatrixInput(e) {
+  const input = getMatrixInput(e.target);
+  if (!input) return;
+
+  const ctx = getInputContext(input);
+  if (!ctx) return;
+
+  if (ctx.rowType === "day") handleDayInput(input, ctx.state, ctx.index);
+  else handleNightInput(input, ctx.state, ctx.index);
+}
+
+function isTableDragIgnoredTarget(target) {
+  if (!(target instanceof Element)) return true;
+  return Boolean(target.closest("input, textarea, select, button, a, label"));
+}
+
+function startTableDrag(e) {
+  if (!tableScrollable) return;
+  if (e.button !== 0 || e.pointerType === "touch") return;
+  if (isTableDragIgnoredTarget(e.target)) return;
+
+  tableDragState = {
+    pointerId: e.pointerId,
+    startX: e.clientX,
+    startScrollLeft: tableScrollable.scrollLeft,
+  };
+
+  tableScrollable.classList.add("is-dragging");
+  tableScrollable.setPointerCapture?.(e.pointerId);
+  e.preventDefault();
+}
+
+function moveTableDrag(e) {
+  if (!tableScrollable || !tableDragState || tableDragState.pointerId !== e.pointerId) return;
+
+  const dx = e.clientX - tableDragState.startX;
+  tableScrollable.scrollLeft = tableDragState.startScrollLeft - dx;
+  requestHorizontalScrollStateSync();
+}
+
+function endTableDrag(e) {
+  if (!tableScrollable || !tableDragState) return;
+  if (e?.pointerId !== undefined && tableDragState.pointerId !== e.pointerId) return;
+
+  tableScrollable.releasePointerCapture?.(tableDragState.pointerId);
+  tableScrollable.classList.remove("is-dragging");
+  tableDragState = null;
+}
+
+function createDayInput(state, i, memberIndex) {
+  const td = document.createElement("td");
+  td.dataset.dayIndex = String(i);
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.inputMode = "text";
+  input.className = "input-hour";
+  input.autocapitalize = "characters";
+  input.spellcheck = false;
+  setupMatrixInput(input, memberIndex, "day", i);
+
+  td.appendChild(input);
+  state.dayInputs.push(input);
+  columnCells[i].push(td);
+
+  return td;
+}
+
+function createNightInput(state, i, memberIndex) {
+  const td = document.createElement("td");
+  td.className = "night-cell";
+  td.dataset.dayIndex = String(i);
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.inputMode = "decimal";
+  input.className = "input-hour";
+  input.spellcheck = false;
+  setupMatrixInput(input, memberIndex, "night", i);
 
   td.appendChild(input);
   state.nightInputs.push(input);
@@ -924,7 +1046,7 @@ function buildTable() {
     dayTr.appendChild(makeLabelCell(state.name));
 
     for (let i = 0; i < daysInMonth; i++) {
-      dayTr.appendChild(createDayInput(state, i));
+      dayTr.appendChild(createDayInput(state, i, idx));
     }
 
     const summaryTd = document.createElement("td");
@@ -934,7 +1056,7 @@ function buildTable() {
     dayTr.appendChild(summaryTd);
 
     for (let i = 0; i < daysInMonth; i++) {
-      nightTr.appendChild(createNightInput(state, i));
+      nightTr.appendChild(createNightInput(state, i, idx));
     }
 
     fragment.append(dayTr, nightTr);
@@ -1328,6 +1450,7 @@ async function loadCurrentMonth() {
 
     applyLoadedPayloads(payloadsByUserId);
     buildTable();
+    syncTopTableScrollWidth();
     syncHorizontalScrollState();
 
     lastSavedSignature = currentSignature();
@@ -1428,8 +1551,23 @@ reloadBtn?.addEventListener("click", async () => {
 });
 
 tableScrollable?.addEventListener("scroll", () => {
-  syncHorizontalScrollState();
-});
+  requestHorizontalScrollStateSync();
+}, { passive: true });
+
+topTableScroll?.addEventListener("scroll", () => {
+  syncTableScrollFromTop();
+}, { passive: true });
+
+tableScrollable?.addEventListener("pointerdown", startTableDrag);
+tableScrollable?.addEventListener("pointermove", moveTableDrag);
+tableScrollable?.addEventListener("pointerup", endTableDrag);
+tableScrollable?.addEventListener("pointercancel", endTableDrag);
+tableScrollable?.addEventListener("lostpointercapture", endTableDrag);
+
+matrixBody?.addEventListener("focusin", handleMatrixFocusIn);
+matrixBody?.addEventListener("focusout", handleMatrixFocusOut);
+matrixBody?.addEventListener("input", handleMatrixInput);
+matrixBody?.addEventListener("keydown", handleMatrixKeyDown);
 
 monthSelect?.addEventListener("change", async () => {
   month = Number(monthSelect.value);
@@ -1447,11 +1585,18 @@ yearSelect?.addEventListener("change", async () => {
 
 
 window.addEventListener("resize", () => {
-  if (isMobileNow()) {
-    setMobileDay(mobileSelectedIdx);
-  } else {
-    clearFocusColumn();
-  }
+  if (resizeRaf) return;
+
+  resizeRaf = requestAnimationFrame(() => {
+    resizeRaf = 0;
+
+    if (isMobileNow()) {
+      setMobileDay(mobileSelectedIdx);
+    } else {
+      clearFocusColumn();
+    }
+    syncTopTableScrollWidth();
+  });
 });
 
 window.addEventListener("beforeunload", (e) => {
