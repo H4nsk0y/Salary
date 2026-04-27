@@ -50,39 +50,117 @@ function injectNavStyles() {
       transform: scaleX(1);
     }
 
-    .app-top-header .mobile-top-nav {
+    .app-top-header .desktop-top-nav {
       display: flex;
       align-items: center;
       justify-content: flex-end;
       gap: 0.125rem;
     }
 
-    .app-top-header .mobile-top-nav a {
+    .app-top-header .desktop-top-nav a {
       white-space: nowrap;
     }
 
-    @media (max-width: 640px) {
-      .app-top-header .mobile-top-nav {
-        flex-wrap: nowrap !important;
-        justify-content: flex-start !important;
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-        max-width: calc(100vw - 92px);
-        white-space: nowrap;
-        touch-action: pan-x;
-      }
+    .app-top-header .app-menu-button {
+      display: none;
+    }
 
-      .app-top-header .mobile-top-nav::-webkit-scrollbar {
+    .app-top-header .app-mobile-menu {
+      display: none;
+    }
+
+    .app-top-header .mobile-menu-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 44px;
+      border-radius: 18px;
+      padding: 11px 14px;
+      color: rgb(203 213 225);
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+    }
+
+    .app-top-header .mobile-menu-link:hover,
+    .app-top-header .mobile-menu-link.active {
+      color: rgb(224 231 255);
+      background: rgba(99, 102, 241, 0.14);
+      border-color: rgba(129, 140, 248, 0.24);
+    }
+
+    .app-top-header .mobile-menu-link.active::after {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgb(129 140 248);
+      box-shadow: 0 0 18px rgba(129, 140, 248, 0.7);
+    }
+
+    @media (max-width: 768px) {
+      .app-top-header .desktop-top-nav {
         display: none;
       }
 
-      .app-top-header .mobile-top-nav a {
-        flex: 0 0 auto;
-        font-size: 0.72rem !important;
-        padding: 5px 7px !important;
+      .app-top-header .app-menu-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        border-radius: 18px;
+        padding: 9px 12px;
+        color: rgb(226 232 240);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        font-size: 0.86rem;
+        font-weight: 700;
+        transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+      }
+
+      .app-top-header .app-menu-button:hover {
+        background: rgba(255, 255, 255, 0.10);
+        border-color: rgba(129, 140, 248, 0.32);
+      }
+
+      .app-top-header .app-menu-button:active {
+        transform: scale(0.98);
+      }
+
+      .app-top-header .app-mobile-menu.is-open {
+        display: block;
+      }
+
+      .app-top-header .app-mobile-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 12px;
+        right: 12px;
+        max-height: calc(100vh - 88px);
+        overflow-y: auto;
+        border-radius: 26px;
+        padding: 12px;
+        background:
+          linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.98));
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 26px 70px rgba(0, 0, 0, 0.48);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+
+      .app-top-header .app-mobile-menu-inner {
+        display: grid;
+        gap: 8px;
+      }
+
+      .app-top-header .app-mobile-menu-caption {
+        padding: 2px 4px 8px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: rgba(148, 163, 184, 0.92);
+        text-transform: uppercase;
+        letter-spacing: 0;
       }
     }
   `;
@@ -98,21 +176,89 @@ function detectActiveKey() {
   return fileName;
 }
 
-function linkClass(isActive) {
-  const base =
-    "nav-link rounded-lg px-3 py-2 md:px-4 transition-all hover:bg-white/5";
+function linkClass(isActive, variant = "desktop") {
+  if (variant === "mobile") {
+    return isActive ? "mobile-menu-link active" : "mobile-menu-link";
+  }
+
+  const base = "nav-link rounded-lg px-3 py-2 md:px-4 transition-all hover:bg-white/5";
 
   return isActive
     ? `${base} active text-indigo-300`
     : `${base} text-slate-300 hover:text-indigo-200`;
 }
 
-function renderLink(link, activeKey) {
+function renderLink(link, activeKey, variant = "desktop") {
   const a = document.createElement("a");
   a.href = link.href;
-  a.className = linkClass(link.key === activeKey);
+  a.className = linkClass(link.key === activeKey, variant);
   a.textContent = link.label;
   return a;
+}
+
+function createMenuIcon() {
+  const span = document.createElement("span");
+  span.setAttribute("aria-hidden", "true");
+  span.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 7h16"></path>
+      <path d="M4 12h16"></path>
+      <path d="M4 17h16"></path>
+    </svg>
+  `;
+  return span;
+}
+
+function createMobileMenu(activeKey, links) {
+  const menu = document.createElement("div");
+  menu.className = "app-mobile-menu";
+  menu.id = "appMobileMenu";
+
+  const inner = document.createElement("nav");
+  inner.className = "app-mobile-menu-inner";
+  inner.dataset.navSlot = "mobile";
+  inner.setAttribute("aria-label", "Мобильная навигация");
+
+  const caption = document.createElement("div");
+  caption.className = "app-mobile-menu-caption";
+  caption.textContent = "Разделы";
+
+  inner.append(caption, ...links.map((link) => renderLink(link, activeKey, "mobile")));
+  menu.appendChild(inner);
+  return menu;
+}
+
+function setupMobileMenu(header, button, menu) {
+  const setOpen = (nextOpen) => {
+    menu.classList.toggle("is-open", nextOpen);
+    button.setAttribute("aria-expanded", String(nextOpen));
+  };
+
+  button.addEventListener("click", () => {
+    setOpen(!menu.classList.contains("is-open"));
+  });
+
+  menu.addEventListener("click", (event) => {
+    if (event.target.closest("a")) setOpen(false);
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!menu.classList.contains("is-open")) return;
+    if (header.contains(event.target)) return;
+    setOpen(false);
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (!menu.classList.contains("is-open")) return;
+    setOpen(false);
+    button.focus();
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 768) setOpen(false);
+  });
 }
 
 function renderHeader(mount) {
@@ -143,12 +289,25 @@ function renderHeader(mount) {
   home.appendChild(homeText);
 
   const nav = document.createElement("nav");
-  nav.className = "mobile-top-nav flex items-center justify-end gap-0.5 text-sm font-medium";
-  nav.append(...links.map((link) => renderLink(link, activeKey)));
+  nav.className = "desktop-top-nav text-sm font-medium";
+  nav.dataset.navSlot = "desktop";
+  nav.setAttribute("aria-label", "Основная навигация");
+  nav.append(...links.map((link) => renderLink(link, activeKey, "desktop")));
 
-  inner.append(home, nav);
+  const menuButton = document.createElement("button");
+  menuButton.type = "button";
+  menuButton.className = "app-menu-button";
+  menuButton.setAttribute("aria-controls", "appMobileMenu");
+  menuButton.setAttribute("aria-expanded", "false");
+  menuButton.append(createMenuIcon(), document.createTextNode("Меню"));
+
+  const mobileMenu = createMobileMenu(activeKey, links);
+
+  inner.append(home, nav, menuButton);
   header.appendChild(inner);
+  header.appendChild(mobileMenu);
   mount.replaceWith(header);
+  setupMobileMenu(header, menuButton, mobileMenu);
   return header;
 }
 
@@ -160,11 +319,12 @@ async function enhanceOwnerNavIfNeeded(header) {
     const profile = await getMyProfile();
     if (profile?.role !== "owner") return;
 
-    const nav = header.querySelector("nav");
-    if (!nav) return;
-
     const activeKey = header.dataset.activeKey || detectActiveKey();
-    nav.append(...OWNER_LINKS.map((link) => renderLink(link, activeKey)));
+    const desktopNav = header.querySelector('[data-nav-slot="desktop"]');
+    const mobileNav = header.querySelector('[data-nav-slot="mobile"]');
+
+    desktopNav?.append(...OWNER_LINKS.map((link) => renderLink(link, activeKey, "desktop")));
+    mobileNav?.append(...OWNER_LINKS.map((link) => renderLink(link, activeKey, "mobile")));
     header.dataset.ownerNavEnhanced = "true";
   } catch {
     // Public or expired sessions keep the regular navigation.
