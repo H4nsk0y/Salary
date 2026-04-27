@@ -160,7 +160,7 @@ function getShiftInfo(row) {
 
 function createBadge(info) {
   const badge = document.createElement("span");
-  badge.className = "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1";
+  badge.className = "inline-flex w-fit max-w-full items-center rounded-full px-3 py-1 text-xs font-semibold ring-1";
   badge.textContent = info.label;
 
   if (info.tone === "ok") {
@@ -183,9 +183,9 @@ function createPersonRow(row) {
   const name = getDisplayName(row);
 
   const item = document.createElement("div");
-  item.className = "flex items-center gap-3 rounded-2xl bg-slate-950/25 p-3 ring-1 ring-white/10";
+  item.className = "flex min-w-0 items-center gap-3 rounded-2xl bg-slate-950/25 p-3 ring-1 ring-white/10";
   if (info.kind === "rest") {
-    item.className = "flex items-center gap-3 rounded-2xl bg-rose-500/10 p-3 ring-1 ring-rose-400/20";
+    item.className = "flex min-w-0 items-center gap-3 rounded-2xl bg-rose-500/10 p-3 ring-1 ring-rose-400/20";
   }
 
   const avatar = document.createElement("div");
@@ -208,22 +208,24 @@ function createPersonRow(row) {
   }
 
   const body = document.createElement("div");
-  body.className = "min-w-0 flex-1";
+  body.className = "min-w-0 flex-1 overflow-hidden";
 
   const top = document.createElement("div");
-  top.className = "flex flex-wrap items-center gap-2";
+  top.className = "grid min-w-0 gap-2";
 
   const title = document.createElement("div");
-  title.className = "min-w-0 truncate text-sm font-semibold text-slate-100";
+  title.className = "block min-w-0 max-w-full truncate text-sm font-semibold text-slate-100";
   title.textContent = name;
+  title.title = name;
 
   top.append(title, createBadge(info));
 
   const meta = document.createElement("div");
-  meta.className = "mt-1 truncate text-xs text-slate-400";
+  meta.className = "mt-1 min-w-0 max-w-full truncate text-xs text-slate-400";
   meta.textContent = [row?.position_name, row?.tab_number ? `Таб. № ${row.tab_number}` : ""]
     .filter(Boolean)
     .join(" • ") || "Сотрудник отдела";
+  meta.title = meta.textContent;
 
   body.append(top, meta);
   item.append(avatar, body);
