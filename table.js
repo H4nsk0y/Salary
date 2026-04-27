@@ -2422,7 +2422,7 @@ applyAutoCollapsedPanels(profile);
   if (managedDepartment) {
   adminLink?.classList.remove("hidden");
   if (adminLink) {
-    adminLink.href = "admin.html";
+    adminLink.href = `admin.html?department=${encodeURIComponent(managedDepartment.key)}`;
     adminLink.textContent = managedDepartment.name
       ? `Табель: ${managedDepartment.name}`
       : "Табель отдела";

@@ -9,6 +9,7 @@ import {
   listManagedDepartmentMembers,
   managedLoadTimesheet,
   managedSaveManyTimesheets,
+  ownerCreateDepartmentInvite,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 
@@ -47,6 +48,10 @@ const tableScrollable = document.getElementById("tableScrollable");
 const topTableScroll = document.getElementById("topTableScroll");
 const topTableScrollSpacer = document.getElementById("topTableScrollSpacer");
 const exportExcelBtn = document.getElementById("exportExcelBtn");
+const createInviteBtn = document.getElementById("createInviteBtn");
+const inviteBox = document.getElementById("inviteBox");
+const inviteLinkInput = document.getElementById("inviteLinkInput");
+const copyInviteBtn = document.getElementById("copyInviteBtn");
 
 const backToTableLink = document.getElementById("backToTableLink");
 const pageParams = new URLSearchParams(window.location.search);
@@ -1337,6 +1342,78 @@ async function exportCurrentMonthToExcel() {
   }
 }
 
+function buildInviteUrl(token) {
+  const url = new URL("login.html", window.location.href);
+  url.searchParams.set("mode", "signup");
+  url.searchParams.set("invite", String(token ?? "").trim());
+  url.searchParams.set("next", "profile.html");
+  return url.toString();
+}
+
+async function copyText(value) {
+  const textValue = String(value ?? "");
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(textValue);
+    return;
+  }
+
+  const input = document.createElement("input");
+  input.value = textValue;
+  input.style.position = "fixed";
+  input.style.opacity = "0";
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand("copy");
+  input.remove();
+}
+
+function mapInviteError(error) {
+  const message = String(error?.message || "");
+
+  if (message.includes("ACCESS_DENIED")) return "Недостаточно прав для создания приглашения в этот отдел.";
+  if (message.includes("DEPARTMENT_NOT_FOUND")) return "Отдел не найден.";
+  if (message.includes("owner_create_department_invite") || message.includes("department_invites") || message.includes("gen_random_bytes")) {
+    return "В базе нужно запустить supabase-sql/006_fix_invite_permissions_and_pgcrypto.sql.";
+  }
+
+  return message || "Не удалось создать приглашение.";
+}
+
+async function createCurrentDepartmentInvite() {
+  if (!managedDepartment?.key) {
+    setError("Не найден текущий отдел для приглашения.");
+    return;
+  }
+
+  try {
+    setSaveStatus("Создаю приглашение…", "busy");
+    setError(null);
+    if (createInviteBtn) createInviteBtn.disabled = true;
+
+    const invite = await ownerCreateDepartmentInvite({
+      departmentKey: managedDepartment.key,
+      expiresInDays: 14,
+      maxUses: 20,
+    });
+
+    if (!invite?.token) {
+      throw new Error("Не удалось получить токен приглашения.");
+    }
+
+    const link = buildInviteUrl(invite.token);
+    if (inviteLinkInput) inviteLinkInput.value = link;
+    inviteBox?.classList.remove("hidden");
+    await copyText(link).catch(() => {});
+    setSaveStatus("Ссылка приглашения создана", "ok");
+  } catch (error) {
+    setSaveStatus("Ошибка приглашения", "err");
+    setError(mapInviteError(error));
+  } finally {
+    if (createInviteBtn) createInviteBtn.disabled = false;
+  }
+}
+
 
 async function doSaveAll() {
   setSaveStatus("Сохраняю…", "busy");
@@ -1545,6 +1622,22 @@ exportExcelBtn?.addEventListener("click", async () => {
   await exportCurrentMonthToExcel();
 });
 
+createInviteBtn?.addEventListener("click", async () => {
+  await createCurrentDepartmentInvite();
+});
+
+copyInviteBtn?.addEventListener("click", async () => {
+  const value = String(inviteLinkInput?.value || "").trim();
+  if (!value) return;
+
+  try {
+    await copyText(value);
+    setSaveStatus("Ссылка скопирована", "ok");
+  } catch (error) {
+    setSaveStatus("Ошибка копирования", "err");
+    setError(error?.message || "Не удалось скопировать ссылку.");
+  }
+});
 
 reloadBtn?.addEventListener("click", async () => {
   await loadCurrentMonth();

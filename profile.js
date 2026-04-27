@@ -4,7 +4,6 @@
 import { requireSession, signOut } from "./auth.js";
 import {
   getMyProfile,
-  getMyManagedDepartment,
   updateMyProfile,
   listMyTimesheetsByYear,
   deleteMyTimesheet,
@@ -47,7 +46,6 @@ let BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
 let currentProfile = null;
 
 const logoutBtn = document.getElementById("logoutBtn");
-const adminLink = document.getElementById("adminLink");
 const ownerLink = document.getElementById("ownerLink");
 
 const statusPill = document.getElementById("statusPill");
@@ -63,6 +61,7 @@ const positionSelect = document.getElementById("positionSelect");
 const okladInput = document.getElementById("okladInput");
 const genderSelect = document.getElementById("genderSelect");
 const tabNumberInput = document.getElementById("tabNumberInput");
+const branchSelect = document.getElementById("branchSelect");
 const okladPeekBtnInitial = document.getElementById("okladInputPeekBtn");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const refreshBtn = document.getElementById("refreshBtn");
@@ -136,6 +135,15 @@ const POSITION_VALUES = new Set([
   "quality_control_engineer",
   "chemist",
   "microbiologist",
+]);
+
+const BRANCH_VALUES = new Set([
+  "",
+  "chateau_alvisa",
+  "alvisa_whisky",
+  "alvisa_beverage",
+  "alvisa_whisky_distillery",
+  "kin_wine_cognac_factory",
 ]);
 
 let loadedYear = new Date().getFullYear();
@@ -1288,6 +1296,7 @@ async function refreshProfile() {
     position: "",
     gender: "",
     tab_number: "",
+    branch: "",
     oklad: null,
     role: "user",
     avatar_url: null,
@@ -1306,6 +1315,7 @@ async function refreshProfile() {
   if (!requireDom(displayNameEl, "displayName")) return;
   if (!requireDom(displayNameInput, "displayNameInput")) return;
   if (!requireDom(tabNumberInput, "tabNumberInput")) return;
+  if (!requireDom(branchSelect, "branchSelect")) return;
   if (!requireDom(okladInput, "okladInput")) return;
   if (!requireDom(positionSelect, "positionSelect")) return;
 
@@ -1315,6 +1325,7 @@ async function refreshProfile() {
   displayNameInput.value = effectiveProfile.display_name ?? "";
   okladInput.value = oklad != null ? String(oklad) : "";
   if (tabNumberInput) tabNumberInput.value = effectiveProfile.tab_number ?? "";
+  if (branchSelect) branchSelect.value = effectiveProfile.branch ?? "";
 
   ensureProfileMoneyAccess = createMoneyAccessGuard(effectiveProfile, {
     title: "Показать скрытые суммы",
@@ -1347,20 +1358,6 @@ async function refreshProfile() {
   setAvatarUI(avatarUrl, name);
 
   setAvatarUI(avatarUrl, name);
-
-  const managedDepartment = await getMyManagedDepartment().catch(() => null);
-  if (managedDepartment) {
-    adminLink?.classList.remove("hidden");
-    if (adminLink) {
-      adminLink.href = `admin.html?department=${encodeURIComponent(managedDepartment.key)}`;
-      adminLink.textContent = managedDepartment.name
-        ? `Табель: ${managedDepartment.name}`
-        : "Табель отдела";
-    }
-  } else {
-    adminLink?.classList.add("hidden");
-  }
-
 
   const missingLabels = renderProfileRequiredNotice(effectiveProfile);
   applyRequiredFieldHighlights(effectiveProfile);
@@ -1680,10 +1677,12 @@ async function refreshTimesheets() {
 async function saveProfile() {
   if (!requireDom(displayNameInput, "displayNameInput")) return;
   if (!requireDom(tabNumberInput, "tabNumberInput")) return;
+  if (!requireDom(branchSelect, "branchSelect")) return;
   if (!requireDom(okladInput, "okladInput")) return;
 
   const displayName = displayNameInput.value.trim();
   const tabNumber = String(tabNumberInput.value || "").trim();
+  const branch = branchSelect ? String(branchSelect.value || "") : "";
   const oklad = parseNumber(okladInput.value);
   const position = positionSelect ? String(positionSelect.value || "") : "";
   const gender = genderSelect ? String(genderSelect.value || "") : "";
@@ -1704,6 +1703,10 @@ async function saveProfile() {
     setError("Пол должен быть: мужской или женский.");
     return;
   }
+  if (!BRANCH_VALUES.has(branch)) {
+    setError("Некорректный филиал.");
+    return;
+  }
 
   if (tabNumber.length > 64) {
     setError("Табельный номер слишком длинный.");
@@ -1717,6 +1720,7 @@ async function saveProfile() {
     await updateMyProfile({
       displayName: displayName || null,
       tabNumber: tabNumber || null,
+      branch: branch || null,
       oklad: okladInput.value.trim() ? oklad : null,
       position: position || null,
       gender: gender || null,

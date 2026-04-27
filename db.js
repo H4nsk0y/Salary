@@ -1,6 +1,9 @@
 import { supabase } from "./supabaseClient.js";
 
 const PROFILE_SELECT =
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch";
+
+const PROFILE_SELECT_LEGACY =
   "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number";
 
 const ADMIN_PROFILE_SELECT =
@@ -12,6 +15,20 @@ function isNotFoundError(error) {
     (error.code === "PGRST116" ||
       error.status === 406 ||
       /0 rows/i.test(error.message ?? ""))
+  );
+}
+
+function isMissingBranchColumnError(error) {
+  const text = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].filter(Boolean).join(" ");
+
+  return (
+    /branch/i.test(text) &&
+    /(column|schema cache|does not exist|could not find|42703|PGRST204)/i.test(text)
   );
 }
 
@@ -51,6 +68,21 @@ export async function getMyProfile() {
 
   if (error) {
     if (isNotFoundError(error)) return null;
+    if (isMissingBranchColumnError(error)) {
+      const { data: legacyData, error: legacyError } = await supabase
+        .from("profiles")
+        .select(PROFILE_SELECT_LEGACY)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (legacyError) {
+        if (isNotFoundError(legacyError)) return null;
+        throw legacyError;
+      }
+
+      return legacyData ? { ...legacyData, branch: null } : null;
+    }
+
     throw error;
   }
 
@@ -75,6 +107,7 @@ export async function updateMyProfile({
   position,
   avatarUrl,
   tabNumber,
+  branch,
 }) {
   const userId = await requireUserId();
 
@@ -86,12 +119,19 @@ export async function updateMyProfile({
   if (position !== undefined) patch.position = position;
   if (avatarUrl !== undefined) patch.avatar_url = avatarUrl;
   if (tabNumber !== undefined) patch.tab_number = tabNumber;
+  if (branch !== undefined) patch.branch = branch;
 
   const { error } = await supabase
     .from("profiles")
     .upsert(patch, { onConflict: "user_id" });
 
-  if (error) throw error;
+  if (error) {
+    if (branch !== undefined && isMissingBranchColumnError(error)) {
+      throw new Error("В базе пока нет поля филиала. Запусти supabase-sql/004_profile_branch.sql в Supabase SQL Editor.");
+    }
+
+    throw error;
+  }
 }
 
 export async function updateMyProfileFields(fields) {
@@ -526,6 +566,25 @@ export function subscribeToMyDepartmentMessages(onChange) {
   })();
 }
 
+export async function listDepartmentShiftOverview({
+  departmentKey = null,
+  startDate = null,
+  days = 2,
+} = {}) {
+  const key = String(departmentKey ?? "").trim();
+  const date = String(startDate ?? "").trim();
+  const normalizedDays = Number(days);
+
+  const { data, error } = await supabase.rpc("list_department_shift_overview", {
+    p_department_key: key || null,
+    p_start_date: date || null,
+    p_days: Number.isInteger(normalizedDays) ? normalizedDays : 2,
+  });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function upsertMyPresence(pageName = "") {
   const userId = await requireUserId();
   const now = new Date().toISOString();
@@ -595,6 +654,57 @@ export async function ownerSetDepartmentEditor(departmentKey, userId, isEditor) 
   });
 
   if (error) throw error;
+}
+
+export async function ownerCreateDepartmentInvite({
+  departmentKey,
+  expiresInDays = 14,
+  maxUses = null,
+} = {}) {
+  const key = String(departmentKey ?? "").trim();
+  const days = Number(expiresInDays);
+  const uses = Number(maxUses);
+
+  if (!key) throw new Error("Не указан отдел.");
+
+  const { data, error } = await supabase.rpc("owner_create_department_invite", {
+    p_department_key: key,
+    p_expires_in_days: Number.isInteger(days) ? days : 14,
+    p_max_uses: Number.isInteger(uses) && uses > 0 ? uses : null,
+  });
+
+  if (error) throw error;
+  return Array.isArray(data) ? data[0] ?? null : data ?? null;
+}
+
+export async function ownerListDepartmentInvites() {
+  const { data, error } = await supabase.rpc("owner_list_department_invites");
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function ownerRevokeDepartmentInvite(token) {
+  const value = String(token ?? "").trim();
+  if (!value) throw new Error("Не указан токен приглашения.");
+
+  const { error } = await supabase.rpc("owner_revoke_department_invite", {
+    p_token: value,
+  });
+
+  if (error) throw error;
+}
+
+export async function acceptDepartmentInvite(token) {
+  const value = String(token ?? "").trim();
+  if (!value) throw new Error("Не указан токен приглашения.");
+
+  const { data, error } = await supabase.rpc("accept_department_invite", {
+    p_token: value,
+  });
+
+  if (error) throw error;
+  return Array.isArray(data) ? data[0] ?? null : data ?? null;
 }
 
 export async function ownerListDepartmentMembers(departmentKey) {

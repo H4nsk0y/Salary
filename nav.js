@@ -1,11 +1,15 @@
+import { getMyProfile } from "./db.js";
+
 const NAV_STYLE_ID = "alvisa-common-nav-style";
 
 const MAIN_LINKS = [
   { key: "calculator", href: "calculator.html", label: "Калькулятор" },
   { key: "table", href: "table.html", label: "Табель" },
+  { key: "schedule", href: "schedule.html", label: "Смены" },
   { key: "profile", href: "profile.html", label: "Профиль" },
   { key: "help", href: "help.html", label: "Справка" },
   { key: "chat", href: "chat.html", label: "Чат" },
+  { key: "updates", href: "updates.html", label: "Новости" },
 ];
 
 const OWNER_LINKS = [
@@ -113,12 +117,16 @@ function renderLink(link, activeKey) {
 
 function renderHeader(mount) {
   const activeKey = mount.dataset.active || detectActiveKey();
-  const showOwnerNav = mount.dataset.ownerNav === "true";
+  const ownerNavMode = mount.dataset.ownerNav || "auto";
+  const showOwnerNav = ownerNavMode === "true";
   const links = showOwnerNav ? [...MAIN_LINKS, ...OWNER_LINKS] : MAIN_LINKS;
 
   const header = document.createElement("header");
   header.className =
     "app-top-header fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl";
+  header.dataset.ownerNavMode = ownerNavMode;
+  header.dataset.ownerNavEnhanced = showOwnerNav ? "true" : "false";
+  header.dataset.activeKey = activeKey;
 
   const inner = document.createElement("div");
   inner.className =
@@ -141,6 +149,26 @@ function renderHeader(mount) {
   inner.append(home, nav);
   header.appendChild(inner);
   mount.replaceWith(header);
+  return header;
+}
+
+async function enhanceOwnerNavIfNeeded(header) {
+  if (!header || header.dataset.ownerNavMode === "false") return;
+  if (header.dataset.ownerNavEnhanced === "true") return;
+
+  try {
+    const profile = await getMyProfile();
+    if (profile?.role !== "owner") return;
+
+    const nav = header.querySelector("nav");
+    if (!nav) return;
+
+    const activeKey = header.dataset.activeKey || detectActiveKey();
+    nav.append(...OWNER_LINKS.map((link) => renderLink(link, activeKey)));
+    header.dataset.ownerNavEnhanced = "true";
+  } catch {
+    // Public or expired sessions keep the regular navigation.
+  }
 }
 
 function initCommonNav() {
@@ -148,7 +176,8 @@ function initCommonNav() {
   if (!mount) return;
 
   injectNavStyles();
-  renderHeader(mount);
+  const header = renderHeader(mount);
+  void enhanceOwnerNavIfNeeded(header);
 }
 
 initCommonNav();

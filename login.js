@@ -6,12 +6,14 @@ import {
   requestPasswordReset,
   updateMyPassword,
 } from "./auth.js";
+import { acceptDepartmentInvite } from "./db.js";
 
 const PASSWORD_REGEX =
   /^(?=.*[a-zа-яё])(?=.*[A-ZА-ЯЁ])(?=.*\d)(?=.*[^A-Za-zА-Яа-яЁё0-9]).{10,}$/;
 
 const REMEMBER_ME_KEY = "alvisa_remember_me";
 const REMEMBERED_EMAIL_KEY = "alvisa_remembered_email";
+const PENDING_INVITE_KEY = "alvisa_pending_department_invite";
 
 const authForm = document.getElementById("authForm");
 const emailInput = document.getElementById("email");
@@ -91,6 +93,39 @@ function getNextUrl() {
   const url = new URL(window.location.href);
   const next = String(url.searchParams.get("next") ?? "").trim();
   return next || "table.html";
+}
+
+function getInviteToken() {
+  const url = new URL(window.location.href);
+  const fromUrl = String(url.searchParams.get("invite") ?? "").trim();
+
+  if (fromUrl) {
+    localStorage.setItem(PENDING_INVITE_KEY, fromUrl);
+    return fromUrl;
+  }
+
+  return String(localStorage.getItem(PENDING_INVITE_KEY) ?? "").trim();
+}
+
+function clearInviteToken() {
+  localStorage.removeItem(PENDING_INVITE_KEY);
+}
+
+async function acceptPendingInvite({ allowNoSession = false } = {}) {
+  const token = getInviteToken();
+  if (!token) return null;
+
+  try {
+    const result = await acceptDepartmentInvite(token);
+    clearInviteToken();
+    return result;
+  } catch (error) {
+    if (allowNoSession && String(error?.message || "").includes("NO_SESSION")) {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 function getResetRedirectUrl() {
@@ -274,6 +309,24 @@ function mapAuthError(error) {
   if (/signup is disabled/i.test(message)) {
     return "Регистрация сейчас отключена.";
   }
+  if (message.includes("INVITE_NOT_FOUND")) {
+    return "Приглашение не найдено. Попросите новую ссылку.";
+  }
+  if (message.includes("INVITE_REVOKED")) {
+    return "Приглашение отозвано. Попросите новую ссылку.";
+  }
+  if (message.includes("INVITE_EXPIRED")) {
+    return "Срок приглашения истек. Попросите новую ссылку.";
+  }
+  if (message.includes("INVITE_USED_UP")) {
+    return "Лимит приглашения исчерпан. Попросите новую ссылку.";
+  }
+  if (message.includes("USER_ALREADY_IN_ANOTHER_DEPARTMENT")) {
+    return "Ваш аккаунт уже состоит в другом отделе.";
+  }
+  if (message.includes("accept_department_invite") || message.includes("department_invites")) {
+    return "В базе пока нет функции приглашений. Нужно запустить SQL из supabase-sql/006_fix_invite_permissions_and_pgcrypto.sql.";
+  }
 
   return message || "Произошла ошибка.";
 }
@@ -291,6 +344,10 @@ async function handleSignIn() {
 
   persistRememberMe();
   await signIn(email, password);
+  const inviteResult = await acceptPendingInvite();
+  if (inviteResult?.department_name) {
+    setInfo(`Приглашение принято: ${inviteResult.department_name}.`);
+  }
   window.location.href = getNextUrl();
 }
 
@@ -309,11 +366,19 @@ async function handleSignUp() {
     throw new Error("Пароли не совпадают.");
   }
 
+  const hadInvite = Boolean(getInviteToken());
   await signUp(email, password);
-  setInfo("Аккаунт создан. Если у вас включено подтверждение email, подтвердите почту и затем войдите.");
+  const inviteResult = await acceptPendingInvite({ allowNoSession: true });
   passwordInput.value = "";
   confirmPasswordInput.value = "";
   setMode("signin");
+  setInfo(
+    inviteResult?.department_name
+      ? `Аккаунт создан, приглашение принято: ${inviteResult.department_name}. Теперь можно войти.`
+      : hadInvite
+        ? "Аккаунт создан. Если включено подтверждение email, подтвердите почту и затем войдите. Приглашение применится после входа."
+        : "Аккаунт создан. Если включено подтверждение email, подтвердите почту и затем войдите."
+  );
 }
 
 async function handleForgotPassword() {
@@ -374,13 +439,17 @@ async function redirectIfAlreadyLoggedIn() {
 
   if (explicitMode === "reset") {
     setMode("reset");
-    return;
+    return true;
   }
 
   const session = await getSession();
   if (session) {
+    await acceptPendingInvite();
     window.location.href = getNextUrl();
+    return true;
   }
+
+  return false;
 }
 
 function bindEvents() {
@@ -448,16 +517,23 @@ function bindEvents() {
   try {
     bindEvents();
     applyRememberedEmail();
-    await redirectIfAlreadyLoggedIn();
+    const redirected = await redirectIfAlreadyLoggedIn();
+    if (redirected) return;
 
     const url = new URL(window.location.href);
     if (url.searchParams.get("mode") === "reset") {
       setMode("reset");
       setInfo("Введите новый пароль.");
+    } else if (url.searchParams.get("mode") === "signup" || getInviteToken()) {
+      setMode("signup");
+      if (getInviteToken()) {
+        setInfo("Вы открыли регистрацию по приглашению. После регистрации или входа аккаунт будет добавлен в нужный отдел.");
+      }
     } else {
       setMode("signin");
     }
   } catch (error) {
+    setMode("signin");
     setError(mapAuthError(error));
   }
 })();

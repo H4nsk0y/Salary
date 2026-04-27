@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-  <title>Что нового — Alvisa Salary</title>
+  <title>Что нового — Alvisa</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=3" />
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png?v=3" />
   <link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png?v=3" />
@@ -23,7 +23,7 @@
 
     :root {
       --glass-border: rgba(255, 255, 255, 0.08);
-      --glass-bg: rgba(15, 23, 42, 0.6);
+      --glass-bg: rgba(15, 23, 42, 0.62);
       --card-shadow: 0 25px 50px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
       --card-shadow-hover: 0 35px 70px -30px rgba(99, 102, 241, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1);
     }
@@ -34,23 +34,8 @@
       background: #020617;
       background-image:
         radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.18), transparent 60%),
-        radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.15), transparent 60%),
-        radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.12), transparent 60%);
-    }
-
-    body::before {
-      content: "";
-      position: fixed;
-      inset: -25%;
-      pointer-events: none;
-      z-index: 0;
-      background:
-        radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.4), transparent 45%),
-        radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.3), transparent 45%),
-        radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.2), transparent 45%);
-      filter: blur(70px);
-      opacity: 0.6;
-      animation: bgFloat 18s ease-in-out infinite alternate;
+        radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.14), transparent 60%),
+        radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.10), transparent 60%);
     }
 
     body::after {
@@ -59,15 +44,10 @@
       inset: 0;
       pointer-events: none;
       z-index: 0;
-      background-image: radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+      background-image: radial-gradient(rgba(148, 163, 184, 0.11) 1px, transparent 1px);
       background-size: 28px 28px;
-      opacity: 0.2;
+      opacity: 0.18;
       mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 80%);
-    }
-
-    @keyframes bgFloat {
-      0% { transform: translate3d(-2%, -2%, 0) scale(1); }
-      100% { transform: translate3d(3%, 3%, 0) scale(1.08); }
     }
 
     .glass-card {
@@ -78,183 +58,145 @@
       background: var(--glass-bg);
       border: 1px solid var(--glass-border);
       box-shadow: var(--card-shadow);
-      transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
-    }
-
-    .glass-card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      opacity: 0;
-      background:
-        radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.3), transparent 60%),
-        radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
-      transition: opacity 0.5s ease;
+      transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
     }
 
     .glass-card:hover {
-      border-color: rgba(99, 102, 241, 0.3);
+      border-color: rgba(99, 102, 241, 0.28);
       box-shadow: var(--card-shadow-hover);
     }
 
-    .glass-card:hover::before {
-      opacity: 1;
+    .pt-safe {
+      padding-top: 7rem;
     }
 
-    .hover-lift {
-      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.4, 1), box-shadow 0.3s ease;
+    .timeline-dot {
+      box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.12);
     }
 
-    .hover-lift:hover {
-      transform: translateY(-6px);
-    }
-
-    .reveal {
-      opacity: 0;
-      transform: translateY(24px);
-      filter: blur(8px);
-      transition:
-        opacity 800ms cubic-bezier(0.2, 0.9, 0.3, 1),
-        transform 800ms cubic-bezier(0.2, 0.9, 0.3, 1),
-        filter 800ms cubic-bezier(0.2, 0.9, 0.3, 1);
-    }
-
-    body.is-loaded .reveal {
-      opacity: 1;
-      transform: translateY(0);
-      filter: blur(0);
-    }
-
-    .reveal:nth-child(1) { transition-delay: 0.05s; }
-    .reveal:nth-child(2) { transition-delay: 0.15s; }
-    .reveal:nth-child(3) { transition-delay: 0.25s; }
-
-    ::-webkit-scrollbar { width: 10px; height: 10px; }
-    ::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.55); border-radius: 999px; }
-    ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.55); border-radius: 999px; border: 2px solid rgba(30,41,59,0.55); }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.8); }
-    * { scrollbar-width: thin; scrollbar-color: rgba(99,102,241,0.55) rgba(30,41,59,0.55); }
-
-    @media (prefers-reduced-motion: reduce) {
-      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    @media (min-width: 768px) {
+      .pt-safe {
+        padding-top: 6rem;
+      }
     }
   </style>
 </head>
 
 <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
-  <script>document.body.classList.add("is-loaded");</script>
+  <div data-app-header data-active="updates"></div>
 
-  <div class="relative z-10 mx-auto max-w-6xl px-4 py-6 md:py-8">
-    <div class="mb-6 reveal">
-      <a
-        href="table.html"
-        class="inline-flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30"
-      >
-        ← Назад к табелю
-      </a>
-    </div>
-
-    <section class="glass-card rounded-3xl p-6 md:p-8 reveal">
-      <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div class="max-w-3xl">
-          <div class="inline-flex items-center rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-500/20">
+  <main class="relative z-10 mx-auto max-w-6xl px-4 pt-safe pb-12 md:pb-16">
+    <header class="mb-6 glass-card rounded-3xl p-6 md:p-8">
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div class="inline-flex items-center rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400/20">
             Журнал обновлений
           </div>
-
-          <h1 class="mt-4 text-3xl md:text-4xl font-bold tracking-tight">
+          <h1 class="mt-4 text-3xl font-bold tracking-tight md:text-4xl">
             <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
-              Что нового в Alvisa Salary
+              Что нового в Alvisa
             </span>
           </h1>
-
-          <p class="mt-3 text-sm md:text-base text-slate-300/85 leading-7">
-            На этой странице вы сможете ознакомится с последними изменениями, новыми функциями и планами на будущее. Я регулярно обновляю эту страницу, чтобы держать вас в курсе всех улучшений и нововведений. Ваше мнение очень важно для меня, поэтому не стесняйтесь делиться своими идеями и предложениями!
+          <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-300/85">
+            Здесь собраны изменения, которые реально влияют на работу сотрудников и руководителей: табель, профиль, график смен, безопасность и удобство.
           </p>
         </div>
 
-        <div class="glass-card rounded-3xl p-4 ring-1 ring-white/10 bg-slate-950/25 w-full max-w-xs">
-          <div class="text-sm font-semibold text-slate-100">Идеи и предложения</div>
-          <p class="mt-2 text-xs text-slate-400/85 leading-5">
-            Можно написать в Telegram. Отсканируйте QR-код или нажмите на ссылку ниже.
-          </p>
+        <a
+          href="https://t.me/Hanskoy"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center justify-center rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition-all hover:bg-white/10"
+        >
+          Предложить идею
+        </a>
+      </div>
+    </header>
 
-          <div class="mt-4 overflow-hidden rounded-2xl bg-white p-3">
-            <img
-                src="https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=https%3A%2F%2Ft.me%2FHanskoy"
-                alt="QR-код на Telegram"
-                class="mx-auto h-auto w-full max-w-[220px]"
-                />
+    <section class="grid gap-4 md:grid-cols-3">
+      <article class="glass-card rounded-3xl p-5">
+        <div class="text-xs font-semibold uppercase text-slate-400">Сотрудникам</div>
+        <p class="mt-2 text-sm leading-6 text-slate-300">Быстрее смотреть свои смены, табель, выплаты и обновления проекта.</p>
+      </article>
+      <article class="glass-card rounded-3xl p-5">
+        <div class="text-xs font-semibold uppercase text-slate-400">Руководителям</div>
+        <p class="mt-2 text-sm leading-6 text-slate-300">Проще подключать людей, вести отдел и проверять состояние табелей.</p>
+      </article>
+      <article class="glass-card rounded-3xl p-5">
+        <div class="text-xs font-semibold uppercase text-slate-400">Безопасность</div>
+        <p class="mt-2 text-sm leading-6 text-slate-300">Денежные данные, роли и доступы развиваются без лишнего раскрытия информации.</p>
+      </article>
+    </section>
+
+    <section class="mt-6 grid gap-5">
+      <article class="glass-card rounded-3xl p-6 md:p-7">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20">
+            Обновление 17.0
+          </span>
+          <span class="text-xs text-slate-400">27.04.2026</span>
+        </div>
+
+        <div class="mt-6 grid gap-5">
+          <div class="relative pl-7">
+            <span class="timeline-dot absolute left-0 top-1.5 h-3 w-3 rounded-full bg-emerald-300"></span>
+            <h2 class="text-lg font-semibold text-slate-100">Появилась страница смен отдела</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-300/90">
+              Теперь можно открыть раздел «Смены» и сразу увидеть, кто сегодня и завтра работает в вашем отделе. Данные берутся из общего табеля отдела.
+            </p>
           </div>
 
-          <a
-                href="https://t.me/Hanskoy"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/10 transition-all hover:bg-white/10"
-                >
-                Открыть Telegram
-                </a>
-        </div>
-      </div>
-    </section>
+          <div class="relative pl-7">
+            <span class="timeline-dot absolute left-0 top-1.5 h-3 w-3 rounded-full bg-sky-300"></span>
+            <h2 class="text-lg font-semibold text-slate-100">Добавлены приглашения сотрудников</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-300/90">
+              Owner может создать ссылку для регистрации в конкретный отдел. После регистрации или входа сотрудник автоматически добавляется в нужный отдел.
+            </p>
+          </div>
 
-    <section class="mt-6 grid gap-6 reveal">
-      <article class="glass-card hover-lift rounded-3xl p-6 md:p-7">
-        <div class="flex flex-wrap items-center gap-3">
-          <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-500/20">
-            Обновление 16.0 (от 20.04.2026)
-          </span>
-          <span class="text-xs text-slate-400">Последние изменения</span>
-        </div>
-
-        <h2 class="mt-4 text-xl font-semibold text-slate-100">Что уже добавлено</h2>
-
-        <div class="mt-4 grid gap-3 text-sm text-slate-300/90 leading-6">
-          <div>• При автоматическом сокрытии оклада и общего заработка в настройках у пользователя появляется возможность установить 4-ех значный код для разблокировки.</div>
-          <div>• Для отключения этой функции необходимо будет так же ввести этот код. В случае, если пользователь забудет код, он сможет сбросить его через специальный раздел. Для этого пользователю необходимо будет ввести пароль от учетной записи.</div>
-          <div>• Теперь у пользователя есть возможность вносить фактические данные по заработной плате, налогам и прочим поступлениям. Информация по ним влияет на общий итог, а так же служит полезной информацией для анализа и последующих улучшений.</div>
-          <div>• Добавлена функция обозначения дня перенесенным выходным или просто выходным днем, который влияет на общую норму часов, но не оплачивается по двойному тарифу. Как оперировать этой и другими функциями, вы можете ознакомиться в разделе с табелем (Как ставить смены)</div>
-          <div>• В разделе "Справка" добавлен новый подраздел с часто задаваемыми вопросами.</div>
+          <div class="relative pl-7">
+            <span class="timeline-dot absolute left-0 top-1.5 h-3 w-3 rounded-full bg-indigo-300"></span>
+            <h2 class="text-lg font-semibold text-slate-100">В профиле добавлен филиал</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-300/90">
+              В личном кабинете появилась заготовка для выбора филиала. В будущем это позволит точнее учитывать правила нормы для разных площадок.
+            </p>
+          </div>
         </div>
       </article>
 
-      <!-- <article class="glass-card hover-lift rounded-3xl p-6 md:p-7">
+      <article class="glass-card rounded-3xl p-6 md:p-7">
         <div class="flex flex-wrap items-center gap-3">
-          <span class="inline-flex items-center rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-200 ring-1 ring-sky-500/20">
-            Планы
+          <span class="inline-flex items-center rounded-full bg-slate-500/10 px-3 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+            Обновление 16.0
           </span>
-          <span class="text-xs text-slate-400">Ближайшие идеи</span>
+          <span class="text-xs text-slate-400">20.04.2026</span>
         </div>
 
-        <h2 class="mt-4 text-xl font-semibold text-slate-100">Что планируется добавить дальше?</h2>
-
-        <div class="mt-4 grid gap-3 text-sm text-slate-300/90 leading-6">
-          <div>• Более гибкие правила расчётов по должностям.</div>
-          <div>• Индивидуальные особенности для должностей и отдельных пользователей.</div>
-          <div>• История изменений табеля.</div>
-          <div>• Дополнительные подсказки и обучающие экраны.</div>
-          <div>• Экспорт табеля в .xml формат.</div>
-          <div>• Переход на новую версию приложения, включабщее переход на другой ЯП и переключение на другую базу данных.</div>
+        <div class="mt-5 grid gap-3 text-sm leading-6 text-slate-300/90">
+          <div>• В настройках появилась PIN-защита оклада и общего заработка.</div>
+          <div>• PIN можно отключить или сбросить через подтверждение пароля от учетной записи.</div>
+          <div>• В табеле появились фактические суммы зарплаты, налогов и поступлений, чтобы сравнивать расчет сайта с расчетным листком.</div>
+          <div>• Добавлены отметки перенесенного выходного и сокращенного дня, влияющие на норму часов.</div>
+          <div>• В разделе «Справка» появился блок с частыми вопросами.</div>
         </div>
-      </article> -->
+      </article>
 
-      <article class="glass-card hover-lift rounded-3xl p-6 md:p-7">
+      <article class="glass-card rounded-3xl p-6 md:p-7">
         <div class="flex flex-wrap items-center gap-3">
-          <span class="inline-flex items-center rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200 ring-1 ring-amber-500/20">
-            Для пользователей
+          <span class="inline-flex items-center rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200 ring-1 ring-amber-400/20">
+            Как читать обновления
           </span>
         </div>
 
-        <h2 class="mt-4 text-xl font-semibold text-slate-100">Как использовать эту страницу</h2>
-
-        <div class="mt-4 grid gap-3 text-sm text-slate-300/90 leading-6">
-          <div>• Следить за тем, какие функции появились в новых версиях.</div>
-          <div>• Смотреть, что уже работает, а что ещё находится в разработке.</div>
-          <div>• Отправлять идеи и предложения через Telegram.</div>
+        <div class="mt-4 grid gap-3 text-sm leading-6 text-slate-300/90">
+          <div>• Здесь появляются только изменения, которые заметны пользователям.</div>
+          <div>• Внутренние технические правки не добавляются, если они не меняют поведение сайта.</div>
+          <div>• Если после обновления что-то стало неудобно, лучше сразу написать идею или замечание.</div>
         </div>
       </article>
     </section>
-  </div>
+  </main>
+
+  <script type="module" src="./nav.js"></script>
 </body>
 </html>

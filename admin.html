@@ -62,6 +62,24 @@
         overflow: visible;
       }
 
+      .admin-action-panel {
+        position: sticky;
+        top: 72px;
+        z-index: 43;
+        background: rgba(2, 6, 23, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 18px 40px -28px rgba(0, 0, 0, 0.85);
+      }
+
+      .admin-action-panel::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        border-radius: inherit;
+        background: linear-gradient(90deg, rgba(99, 102, 241, 0.12), transparent 45%, rgba(56, 189, 248, 0.1));
+      }
+
       .input-glass {
         background: rgba(2, 6, 23, 0.65);
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -130,7 +148,7 @@
 
 .top-table-scroll {
   position: sticky;
-  top: 8px;
+  top: 148px;
   z-index: 35;
   height: 16px;
   margin-bottom: 10px;
@@ -531,6 +549,14 @@
       }
 
    @media (max-width: 767px) {
+  .admin-action-panel {
+    top: 58px;
+  }
+
+  .top-table-scroll {
+    display: none;
+  }
+
   .input-hour {
     width: 50px;
     min-width: 50px;
@@ -645,9 +671,11 @@
   </head>
 
   <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
-    <div class="relative z-10 mx-auto max-w-[1600px] px-4 py-8 md:py-10">
+    <div data-app-header data-active="table"></div>
+
+    <div class="relative z-10 mx-auto max-w-[1600px] px-4 pt-24 pb-8 md:pt-28 md:pb-10">
       <header class="mb-6">
-        <div class="flex flex-col gap-4 rounded-3xl border border-white/10 bg-slate-950/55 p-4 backdrop-blur-xl md:p-5">
+        <div class="flex flex-col gap-4 rounded-3xl border border-white/10 bg-slate-950/70 p-4 md:p-5">
           <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex items-center gap-3">
               <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 text-lg font-bold text-slate-100">A</span>
@@ -669,65 +697,86 @@
               >Личный табель</a>
 
               <button
-                id="reloadBtn"
-                class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition hover:bg-white/10"
-              >Обновить</button>
-
-              <button
-                id="saveBtn"
-                class="rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-5 py-2.5 text-sm font-semibold text-slate-100 ring-1 ring-white/10 transition hover:shadow-[0_0_20px_rgba(99,102,241,0.45)]"
-              >Сохранить всем</button>
-
-              <button
-                id="exportExcelBtn"
-                class="rounded-2xl bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 ring-1 ring-emerald-400/20 transition hover:bg-emerald-500/15"
-              >Выгрузить Excel</button>
-
-              <button
                 id="logoutBtn"
                 class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10"
               >Выйти</button>
             </div>
           </div>
-
-          <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div class="flex flex-wrap items-center gap-2">
-              <div class="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
-                <label class="text-xs text-slate-300" for="monthSelect">Месяц</label>
-                <span class="select-wrap">
-                  <select id="monthSelect" class="ui-select">
-                    <option value="0">Янв</option>
-                    <option value="1">Фев</option>
-                    <option value="2">Мар</option>
-                    <option value="3">Апр</option>
-                    <option value="4">Май</option>
-                    <option value="5">Июн</option>
-                    <option value="6">Июл</option>
-                    <option value="7">Авг</option>
-                    <option value="8">Сен</option>
-                    <option value="9">Окт</option>
-                    <option value="10">Ноя</option>
-                    <option value="11">Дек</option>
-                  </select>
-                </span>
-
-                <label class="ml-2 text-xs text-slate-300" for="yearSelect">Год</label>
-                <span class="select-wrap">
-                  <select id="yearSelect" class="ui-select"></select>
-                </span>
-              </div>
-
-              <span id="saveStatus" class="inline-flex items-center rounded-full bg-white/5 px-4 py-1.5 text-xs text-slate-300 ring-1 ring-white/10">—</span>
-            </div>
-
-            <!-- <div class="text-xs text-slate-400">
-              Клик по дню — <span class="text-amber-300">праздник</span>, двойной клик — <span class="text-emerald-300">сокращённый</span>. Метка применяется сразу ко всем.
-            </div> -->
-          </div>
         </div>
       </header>
 
+      <section class="admin-action-panel mb-6 rounded-3xl p-3 md:p-4">
+        <div class="relative flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
+              <label class="text-xs text-slate-300" for="monthSelect">Месяц</label>
+              <span class="select-wrap">
+                <select id="monthSelect" class="ui-select">
+                  <option value="0">Янв</option>
+                  <option value="1">Фев</option>
+                  <option value="2">Мар</option>
+                  <option value="3">Апр</option>
+                  <option value="4">Май</option>
+                  <option value="5">Июн</option>
+                  <option value="6">Июл</option>
+                  <option value="7">Авг</option>
+                  <option value="8">Сен</option>
+                  <option value="9">Окт</option>
+                  <option value="10">Ноя</option>
+                  <option value="11">Дек</option>
+                </select>
+              </span>
+
+              <label class="ml-2 text-xs text-slate-300" for="yearSelect">Год</label>
+              <span class="select-wrap">
+                <select id="yearSelect" class="ui-select"></select>
+              </span>
+            </div>
+
+            <span id="saveStatus" class="inline-flex items-center rounded-full bg-white/5 px-4 py-1.5 text-xs text-slate-300 ring-1 ring-white/10">—</span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              id="reloadBtn"
+              class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10"
+            >Обновить</button>
+
+            <button
+              id="saveBtn"
+              class="rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-5 py-2.5 text-sm font-semibold text-slate-100 ring-1 ring-white/10 transition hover:shadow-[0_0_20px_rgba(99,102,241,0.45)]"
+            >Сохранить всем</button>
+
+            <button
+              id="exportExcelBtn"
+              class="rounded-2xl bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 ring-1 ring-emerald-400/20 transition hover:bg-emerald-500/15"
+            >Выгрузить Excel</button>
+
+            <button
+              id="createInviteBtn"
+              type="button"
+              class="rounded-2xl bg-sky-500/10 px-5 py-2.5 text-sm font-semibold text-sky-200 ring-1 ring-sky-400/20 transition hover:bg-sky-500/15"
+            >Пригласить</button>
+          </div>
+        </div>
+      </section>
+
       <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
+
+      <section id="inviteBox" class="hidden mb-6 rounded-3xl border border-white/10 bg-slate-950/65 p-4 backdrop-blur-sm">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div class="text-sm font-semibold text-slate-100">Ссылка приглашения в отдел</div>
+            <p class="mt-1 text-xs text-slate-400">Отправьте ссылку сотруднику. После регистрации он автоматически попадет в этот отдел.</p>
+          </div>
+          <button
+            id="copyInviteBtn"
+            type="button"
+            class="rounded-2xl bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20 transition hover:bg-emerald-500/15"
+          >Скопировать</button>
+        </div>
+        <input id="inviteLinkInput" class="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-200 outline-none" readonly />
+      </section>
 
       <section class="mb-6 grid gap-4 md:grid-cols-3">
         <div class="glass-card rounded-3xl p-5">
@@ -797,6 +846,7 @@
       </section>
     </div>
 
+    <script type="module" src="./nav.js"></script>
     <script type="module" src="./admin.js"></script>
   </body>
 </html>

@@ -501,9 +501,15 @@
        <div class="flex flex-wrap items-center gap-2">
           <a
             href="settings.html"
-            class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30"
+            class="group inline-flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:bg-white/10 hover:text-white hover:ring-sky-400/35 active:translate-y-0"
           >
-            Настройки
+            <span class="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-sky-400/10 text-sky-200 ring-1 ring-sky-300/15 transition-all group-hover:bg-sky-400/15 group-hover:ring-sky-300/30">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"></path>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.4 1v.17a2 2 0 1 1-4 0V21a1.65 1.65 0 0 0-.4-1 1.65 1.65 0 0 0-1-.6 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1-.4h-.17a2 2 0 1 1 0-4H3a1.65 1.65 0 0 0 1-.4 1.65 1.65 0 0 0 .6-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6c.38-.14.73-.35 1-.6.26-.26.4-.62.4-1v-.17a2 2 0 1 1 4 0V3c0 .38.14.74.4 1 .27.25.62.46 1 .6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.38.35.73.6 1 .26.26.62.4 1 .4h.17a2 2 0 1 1 0 4H21c-.38 0-.74.14-1 .4-.25.27-.46.62-.6 1Z"></path>
+              </svg>
+            </span>
+            <span>Настройки</span>
           </a>
 
           <a
@@ -511,12 +517,7 @@
             href="owner.html"
             class="hidden rounded-2xl bg-indigo-500/15 px-5 py-2.5 text-sm font-semibold text-indigo-200 ring-1 ring-indigo-400/30 backdrop-blur-sm transition-all hover:bg-indigo-500/20 hover:ring-indigo-300/50"
           >
-            Отделы
-          </a>
-
-          <a id="adminLink" href="admin.html"
-            class="hidden rounded-2xl bg-purple-600/20 px-5 py-2.5 text-sm font-semibold text-purple-200 ring-1 ring-purple-400/50 backdrop-blur-sm transition-all hover:bg-purple-600/30 hover:ring-purple-300/70">
-            Админка
+            Управление
           </a>
 
           <button id="logoutBtn" class="rounded-2xl bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 ring-1 ring-red-500/30 backdrop-blur-sm transition-all hover:bg-red-500/20 hover:ring-red-400/50">
@@ -647,7 +648,7 @@
             <p class="mt-1.5 text-xs text-slate-400/80">Нужен для вычислений нормы.</p>
           </div>
 
-           <div>
+          <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="tabNumberInput">Табельный номер</label>
             <input
               id="tabNumberInput"
@@ -657,6 +658,21 @@
               placeholder="Напр. ТДЗК-01758"
             />
             <p class="mt-1.5 text-xs text-slate-400/80">Необязательное поле, но нужно для выгрузки данных.</p>
+          </div>
+
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-slate-200" for="branchSelect">Филиал</label>
+            <span class="select-wrap w-full">
+              <select id="branchSelect" class="ui-select text-sm w-full">
+                <option value="">Не выбран</option>
+                <option value="chateau_alvisa">CHATEAU ALVISA</option>
+                <option value="alvisa_whisky">ALVISA WHISKY</option>
+                <option value="alvisa_beverage">ALVISA BEVERAGE</option>
+                <option value="alvisa_whisky_distillery">ALVISA WHISKY DISTILLERY</option>
+                <option value="kin_wine_cognac_factory">Винно-коньячный завод «КиН»</option>
+              </select>
+            </span>
+            <p class="mt-1.5 text-xs text-slate-400/80">Заготовка для будущих правил нормы по филиалам.</p>
           </div>
 
           <div>

@@ -2,7 +2,10 @@ import { requireSession, signOut } from "./auth.js";
 import {
   getMyProfile,
   listAllDepartments,
+  ownerCreateDepartmentInvite,
+  ownerListDepartmentInvites,
   ownerListUsers,
+  ownerRevokeDepartmentInvite,
   ownerSetDepartmentEditor,
   ownerSetUserDepartment,
 } from "./db.js";
@@ -23,6 +26,16 @@ const sortSelect = document.getElementById("sortSelect");
 const filterHint = document.getElementById("filterHint");
 const usersList = document.getElementById("usersList");
 const emptyState = document.getElementById("emptyState");
+const refreshInvitesBtn = document.getElementById("refreshInvitesBtn");
+const inviteDepartmentSelect = document.getElementById("inviteDepartmentSelect");
+const inviteDaysInput = document.getElementById("inviteDaysInput");
+const inviteMaxUsesInput = document.getElementById("inviteMaxUsesInput");
+const createInviteBtn = document.getElementById("createInviteBtn");
+const inviteResultBox = document.getElementById("inviteResultBox");
+const inviteLinkInput = document.getElementById("inviteLinkInput");
+const copyInviteBtn = document.getElementById("copyInviteBtn");
+const invitesList = document.getElementById("invitesList");
+const invitesEmptyState = document.getElementById("invitesEmptyState");
 
 const totalCount = document.getElementById("totalCount");
 const onlineCount = document.getElementById("onlineCount");
@@ -33,7 +46,9 @@ const editorsCount = document.getElementById("editorsCount");
 let departments = [];
 let users = [];
 let filteredUsers = [];
+let invites = [];
 let isLoading = false;
+let isInvitesLoading = false;
 const busyUserIds = new Set();
 
 function setStatus(text, tone = "neutral") {
@@ -328,6 +343,127 @@ function renderDepartmentFilter() {
   departmentFilter.value = selected;
 }
 
+function renderInviteDepartmentSelect() {
+  if (!inviteDepartmentSelect) return;
+
+  const selected = inviteDepartmentSelect.value;
+  inviteDepartmentSelect.innerHTML = "";
+
+  for (const department of departments) {
+    const option = document.createElement("option");
+    option.value = department.key;
+    option.textContent = department.name || department.key;
+    inviteDepartmentSelect.appendChild(option);
+  }
+
+  if (selected && departments.some((department) => department.key === selected)) {
+    inviteDepartmentSelect.value = selected;
+  }
+}
+
+function buildInviteUrl(token) {
+  const url = new URL("login.html", window.location.href);
+  url.searchParams.set("mode", "signup");
+  url.searchParams.set("invite", String(token ?? "").trim());
+  url.searchParams.set("next", "profile.html");
+  return url.toString();
+}
+
+function formatInviteDate(value) {
+  if (!value) return "без срока";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "без срока";
+
+  return date.toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getInviteStatus(invite) {
+  if (invite?.revoked_at) return { label: "отозвано", tone: "danger" };
+  if (invite?.is_active === true) return { label: "активно", tone: "ok" };
+  return { label: "истекло", tone: "neutral" };
+}
+
+function createInviteCard(invite) {
+  const card = document.createElement("div");
+  card.className = "rounded-3xl bg-slate-950/25 p-4 ring-1 ring-white/10";
+
+  const top = document.createElement("div");
+  top.className = "flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between";
+
+  const main = document.createElement("div");
+  const title = document.createElement("div");
+  title.className = "font-semibold text-slate-100";
+  title.textContent = invite.department_name || invite.department_key || "Отдел";
+
+  const meta = document.createElement("div");
+  meta.className = "mt-1 text-xs text-slate-400";
+  const maxUses = invite.max_uses ? String(invite.max_uses) : "без лимита";
+  meta.textContent = `Создано: ${formatInviteDate(invite.created_at)} • До: ${formatInviteDate(invite.expires_at)} • Использовано: ${invite.used_count || 0}/${maxUses}`;
+
+  const status = getInviteStatus(invite);
+  main.append(title, meta);
+
+  const actions = document.createElement("div");
+  actions.className = "flex flex-wrap items-center gap-2";
+  actions.appendChild(createBadge(status.label, status.tone));
+
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "rounded-2xl bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 transition-all hover:bg-white/10";
+  copyBtn.textContent = "Копировать";
+  copyBtn.addEventListener("click", async () => {
+    await copyText(buildInviteUrl(invite.token));
+    setStatus("Ссылка скопирована", "ok");
+  });
+  actions.appendChild(copyBtn);
+
+  if (invite.is_active === true) {
+    const revokeBtn = document.createElement("button");
+    revokeBtn.type = "button";
+    revokeBtn.className = "rounded-2xl bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-400/20 transition-all hover:bg-rose-500/15";
+    revokeBtn.textContent = "Отозвать";
+    revokeBtn.addEventListener("click", async () => {
+      const ok = confirm(`Отозвать приглашение в отдел "${invite.department_name || invite.department_key}"?`);
+      if (!ok) return;
+
+      try {
+        setStatus("Отзываю приглашение…", "busy");
+        await ownerRevokeDepartmentInvite(invite.token);
+        await loadInvites({ silent: true });
+        setStatus("Приглашение отозвано", "ok");
+      } catch (error) {
+        setStatus("Ошибка", "err");
+        setError(mapError(error));
+      }
+    });
+    actions.appendChild(revokeBtn);
+  }
+
+  top.append(main, actions);
+  card.appendChild(top);
+  return card;
+}
+
+function renderInvites() {
+  if (invitesList) invitesList.innerHTML = "";
+
+  if (!invites.length) {
+    invitesEmptyState?.classList.remove("hidden");
+    return;
+  }
+
+  invitesEmptyState?.classList.add("hidden");
+  const fragment = document.createDocumentFragment();
+  invites.forEach((invite) => fragment.appendChild(createInviteCard(invite)));
+  invitesList?.appendChild(fragment);
+}
+
 function createDepartmentSelect(row, isBusy) {
   const select = document.createElement("select");
   select.className = "ui-select text-sm";
@@ -526,6 +662,24 @@ function renderUsers() {
   usersList?.appendChild(fragment);
 }
 
+async function copyText(value) {
+  const textValue = String(value ?? "");
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(textValue);
+    return;
+  }
+
+  const input = document.createElement("input");
+  input.value = textValue;
+  input.style.position = "fixed";
+  input.style.opacity = "0";
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand("copy");
+  input.remove();
+}
+
 function mapError(error) {
   const message = String(error?.message || "");
 
@@ -534,6 +688,13 @@ function mapError(error) {
   if (message.includes("USER_NOT_FOUND")) return "Пользователь не найден.";
   if (message.includes("DEPARTMENT_NOT_FOUND")) return "Отдел не найден.";
   if (message.includes("USER_NOT_IN_DEPARTMENT")) return "Сначала добавьте сотрудника в этот отдел.";
+  if (message.includes("INVITE_NOT_FOUND")) return "Приглашение не найдено.";
+  if (message.includes("INVITE_REVOKED")) return "Приглашение уже отозвано.";
+  if (message.includes("INVITE_EXPIRED")) return "Срок приглашения истек.";
+  if (message.includes("INVITE_USED_UP")) return "Лимит приглашения исчерпан.";
+  if (message.includes("department_invites") || message.includes("owner_create_department_invite") || message.includes("gen_random_bytes")) {
+    return "Для приглашений нужно запустить supabase-sql/006_fix_invite_permissions_and_pgcrypto.sql в Supabase SQL Editor.";
+  }
 
   return message || "Не удалось выполнить действие.";
 }
@@ -590,6 +751,71 @@ async function loadUsers(options = {}) {
   }
 }
 
+async function loadInvites(options = {}) {
+  if (isInvitesLoading) return;
+
+  isInvitesLoading = true;
+  if (refreshInvitesBtn) refreshInvitesBtn.disabled = true;
+
+  try {
+    if (!options.silent) {
+      setStatus("Загружаю приглашения…", "busy");
+      setError(null);
+    }
+
+    invites = await ownerListDepartmentInvites();
+    renderInvites();
+
+    if (!options.silent) setStatus("Приглашения загружены", "ok");
+  } catch (error) {
+    setStatus("Ошибка приглашений", "err");
+    setError(mapError(error));
+  } finally {
+    isInvitesLoading = false;
+    if (refreshInvitesBtn) refreshInvitesBtn.disabled = false;
+  }
+}
+
+async function createInvite() {
+  const departmentKey = String(inviteDepartmentSelect?.value || "").trim();
+  const expiresInDays = Number(inviteDaysInput?.value || 14);
+  const maxUses = Number(inviteMaxUsesInput?.value || 0);
+
+  if (!departmentKey) {
+    setError("Выберите отдел для приглашения.");
+    return;
+  }
+
+  try {
+    setStatus("Создаю приглашение…", "busy");
+    setError(null);
+    if (createInviteBtn) createInviteBtn.disabled = true;
+
+    const invite = await ownerCreateDepartmentInvite({
+      departmentKey,
+      expiresInDays: Number.isInteger(expiresInDays) ? expiresInDays : 14,
+      maxUses: Number.isInteger(maxUses) && maxUses > 0 ? maxUses : null,
+    });
+
+    if (!invite?.token) {
+      throw new Error("Не удалось получить токен приглашения.");
+    }
+
+    const url = buildInviteUrl(invite?.token);
+    if (inviteLinkInput) inviteLinkInput.value = url;
+    inviteResultBox?.classList.remove("hidden");
+
+    await copyText(url).catch(() => {});
+    await loadInvites({ silent: true });
+    setStatus("Ссылка создана и скопирована", "ok");
+  } catch (error) {
+    setStatus("Ошибка", "err");
+    setError(mapError(error));
+  } finally {
+    if (createInviteBtn) createInviteBtn.disabled = false;
+  }
+}
+
 function bindEvents() {
   logoutBtn?.addEventListener("click", async () => {
     try {
@@ -599,7 +825,24 @@ function bindEvents() {
     }
   });
 
-  refreshBtn?.addEventListener("click", () => void loadUsers());
+  refreshBtn?.addEventListener("click", () => {
+    void loadUsers();
+    void loadInvites({ silent: true });
+  });
+  refreshInvitesBtn?.addEventListener("click", () => void loadInvites());
+  createInviteBtn?.addEventListener("click", () => void createInvite());
+  copyInviteBtn?.addEventListener("click", async () => {
+    const value = String(inviteLinkInput?.value || "").trim();
+    if (!value) return;
+
+    try {
+      await copyText(value);
+      setStatus("Ссылка скопирована", "ok");
+    } catch (error) {
+      setStatus("Ошибка копирования", "err");
+      setError(error?.message || "Не удалось скопировать ссылку.");
+    }
+  });
 
   resetFiltersBtn?.addEventListener("click", () => {
     if (searchInput) searchInput.value = "";
@@ -640,8 +883,12 @@ function bindEvents() {
     setStatus("Загружаю отделы…", "busy");
     departments = await listAllDepartments();
     renderDepartmentFilter();
+    renderInviteDepartmentSelect();
 
-    await loadUsers();
+    await Promise.all([
+      loadUsers(),
+      loadInvites({ silent: true }),
+    ]);
   } catch (error) {
     setStatus("Ошибка загрузки", "err");
     setError(mapError(error));
