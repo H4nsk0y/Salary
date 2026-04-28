@@ -39,6 +39,7 @@ document.body.classList.add("is-loaded");
 const OVERTIME_LIMIT_YEAR = 120;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const HAZARD_POSITION_RATE = 0.04;
+const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
@@ -454,8 +455,10 @@ function normalizeMoneyNumber(value) {
   return Number.isFinite(n) ? Number(n.toFixed(2)) : null;
 }
 
-function getBaseDayHoursByGender(gender) {
-  return gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
+function getBaseDayHoursByProfile(profile) {
+  return profile?.gender === "female" && profile?.branch === CHATEAU_ALVISA_BRANCH
+    ? FEMALE_DAY_HOURS
+    : DEFAULT_DAY_HOURS;
 }
 
 function getHazardRateByPosition(position) {
@@ -915,7 +918,7 @@ function resolveMoneySummaryFromPayload(payload, profile) {
       ? Number(moneySnapshot.effectiveOkladSnapshot)
       : baseOklad * (1 + hazardRate);
 
-  const baseDayHours = getBaseDayHoursByGender(profile?.gender);
+  const baseDayHours = getBaseDayHoursByProfile(profile);
   const monthNorm = computeCalendarNormFromPayload(payload, baseDayHours);
 
   if (!(monthNorm > 0)) {
@@ -1420,7 +1423,7 @@ async function refreshProfile() {
   syncProfileMoneyUi();
   guardProfileFieldsAgainstLateAutofill(effectiveProfile);
 
-  BASE_DAY_HOURS = effectiveProfile.gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
+  BASE_DAY_HOURS = getBaseDayHoursByProfile(effectiveProfile);
 
   let avatarUrl = null;
   try {
@@ -1806,7 +1809,7 @@ async function saveProfile() {
       gender: gender || null,
     });
 
-    BASE_DAY_HOURS = gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
+    BASE_DAY_HOURS = getBaseDayHoursByProfile({ gender, branch });
 
     await refreshProfile();
     await refreshTimesheets();

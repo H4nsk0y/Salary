@@ -167,7 +167,7 @@ const steps = {
       element: '#genderSelect',
       popover: {
         title: 'Пол',
-        description: 'Нужен для расчёта нормы рабочего времени (женщинам – 7.2 часа в день).',
+        description: 'Нужен для расчёта нормы рабочего времени. Пониженная женская норма применяется только для филиала CHATEAU ALVISA.',
         side: 'right'
       }
     },

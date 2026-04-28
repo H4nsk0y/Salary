@@ -16,6 +16,7 @@ const MONTH_NAMES = [
 const DOW_SHORT_UPPER = ["ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ"];
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
+const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const SHORT_DAY_REDUCTION_HOURS = 1;
 
 const POSITION_LABELS = {
@@ -236,8 +237,10 @@ function getGenderLabel(gender) {
   return "";
 }
 
-function getBaseDayHours(gender) {
-  return gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
+function getBaseDayHours(gender, branch) {
+  return gender === "female" && branch === CHATEAU_ALVISA_BRANCH
+    ? FEMALE_DAY_HOURS
+    : DEFAULT_DAY_HOURS;
 }
 
 function isWeekendByIndex(year, month, dayIndex0) {
@@ -307,7 +310,7 @@ function buildExportStats({
 }) {
   const endMonthIdx = daysInMonth - 1;
   const endHalfIdx = Math.min(FIRST_HALF_END_DAY - 1, endMonthIdx);
-  const baseDayHours = getBaseDayHours(state.gender);
+  const baseDayHours = getBaseDayHours(state.gender, state.branch);
 
   const monthNormCalendar = calendarNormForRange({
     year,

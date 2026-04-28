@@ -24,6 +24,7 @@ const prefersReducedMotion =
 
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
+const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const HAZARD_POSITION_RATE = 0.04;
 
 let BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
@@ -269,6 +270,12 @@ function getHazardRateByPosition(position) {
   const p = String(position ?? "").trim().toLowerCase();
   if (p === "loader" || p === "грузчик") return HAZARD_POSITION_RATE;
   return 0;
+}
+
+function getBaseDayHoursByProfile(profile) {
+  return profile?.gender === "female" && profile?.branch === CHATEAU_ALVISA_BRANCH
+    ? FEMALE_DAY_HOURS
+    : DEFAULT_DAY_HOURS;
 }
 
 function setError(msg) {
@@ -2437,8 +2444,7 @@ applyAutoCollapsedPanels(profile);
   syncTableMoneyUi();
   syncOkladActionState();
 
-  if (profile?.gender === "female") BASE_DAY_HOURS = FEMALE_DAY_HOURS;
-  else BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
+  BASE_DAY_HOURS = getBaseDayHoursByProfile(profile);
   LEAVE_HOURS_PER_DAY = BASE_DAY_HOURS;
 
 

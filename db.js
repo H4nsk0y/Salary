@@ -7,7 +7,7 @@ const PROFILE_SELECT_LEGACY =
   "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number";
 
 const ADMIN_PROFILE_SELECT =
-  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number";
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number, branch";
 
 function isNotFoundError(error) {
   return (
@@ -377,6 +377,7 @@ export async function listManagedDepartmentMembers(departmentKey) {
       role: profile?.role ?? "user",
       oklad: profile?.oklad ?? null,
       gender: profile?.gender ?? null,
+      branch: profile?.branch ?? null,
       position: profile?.position ?? "",
       tab_number: profile?.tab_number ?? "",
       avatar_url: profile?.avatar_url ?? null,

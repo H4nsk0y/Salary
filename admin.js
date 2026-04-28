@@ -19,6 +19,7 @@ document.body.classList.add("is-loaded");
 
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
+const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const MAX_HOURS_PER_DAY = 24;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 
@@ -86,6 +87,7 @@ const mHolidayBtn = document.getElementById("mHolidayBtn");
 const mTransferredBtn = document.getElementById("mTransferredBtn");
 const mShortBtn = document.getElementById("mShortBtn");
 const mDayLabel = document.getElementById("mDayLabel");
+const mEmployeeName = document.getElementById("mEmployeeName");
 
 let dirty = false;
 let lastSavedSignature = "";
@@ -162,7 +164,7 @@ function scrollTableToColumn(dayIdx0) {
   const containerWidth = tableScrollable.clientWidth;
   const cellLeft = firstCell.offsetLeft;
   const cellWidth = firstCell.offsetWidth;
-  const labelWidth = 190;
+  const labelWidth = isMobileNow() ? 56 : 190;
   const targetScrollLeft =
     cellLeft - labelWidth - (containerWidth - labelWidth) / 2 + cellWidth / 2;
 
@@ -208,14 +210,25 @@ function updateMobileToolbar() {
   mShortBtn?.classList.toggle("is-active", Boolean(sharedShortDay[idx]));
 }
 
-function setMobileDay(dayIdx0) {
+function setMobileDay(dayIdx0, options = {}) {
+  const shouldScroll = options.scroll !== false;
+
   if (dayIdx0 < 0) dayIdx0 = 0;
   if (dayIdx0 >= daysInMonth) dayIdx0 = daysInMonth - 1;
 
   mobileSelectedIdx = dayIdx0;
   focusDayColumn(dayIdx0);
-  scrollTableToColumn(dayIdx0);
+  if (shouldScroll) scrollTableToColumn(dayIdx0);
   updateMobileToolbar();
+}
+
+function setMobileEmployee(activeState) {
+  if (!mEmployeeName) return;
+  mEmployeeName.textContent = activeState?.name || "—";
+
+  for (const state of teamStates) {
+    state.labelCell?.classList.toggle("is-mobile-active", state === activeState);
+  }
 }
 
 function setSaveStatus(text, tone = "neutral") {
@@ -269,8 +282,10 @@ function isWeekendByIndex(y, m, dayIndex0) {
   return d === 0 || d === 6;
 }
 
-function getBaseDayHours(gender) {
-  return gender === "female" ? FEMALE_DAY_HOURS : DEFAULT_DAY_HOURS;
+function getBaseDayHours(gender, branch) {
+  return gender === "female" && branch === CHATEAU_ALVISA_BRANCH
+    ? FEMALE_DAY_HOURS
+    : DEFAULT_DAY_HOURS;
 }
 
 function sanitizeDayCellValue(raw) {
@@ -424,6 +439,7 @@ function createState(member) {
     userId: member.user_id,
     name: buildMemberLabel(member),
     gender: member?.gender ?? null,
+    branch: member?.branch ?? null,
     position: member?.position ?? "",
     tabNumber: member?.tab_number ?? "",
     dayHours: new Array(daysInMonth).fill(0),
@@ -432,6 +448,7 @@ function createState(member) {
     dayInputs: [],
     nightInputs: [],
     summaryEl: null,
+    labelCell: null,
     dayRowEl: null,
     nightRowEl: null,
   };
@@ -529,20 +546,42 @@ function applyLoadedPayloads(payloadsByUserId) {
   }
 }
 
-function makeLabelCell(name) {
+function makeInitials(name) {
+  const parts = String(name ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const raw = parts.length >= 2
+    ? `${parts[0][0] || ""}${parts[1][0] || ""}`
+    : String(name ?? "").slice(0, 2);
+
+  return raw.toUpperCase() || "С";
+}
+
+function makeLabelCell(state) {
   const td = document.createElement("td");
   td.className = "label-cell";
   td.rowSpan = 2;
+  td.title = state.name || "Сотрудник";
 
   const main = document.createElement("span");
   main.className = "label-main";
-  main.textContent = name;
+  main.textContent = state.name;
 
   const sub = document.createElement("span");
   sub.className = "label-sub";
   sub.textContent = "День / Ночь";
 
-  td.append(main, sub);
+  const avatar = document.createElement("span");
+  avatar.className = "label-avatar";
+  avatar.textContent = makeInitials(state.name);
+
+  td.addEventListener("click", () => {
+    if (isMobileNow()) setMobileEmployee(state);
+  });
+
+  td.append(avatar, main, sub);
   return td;
 }
 
@@ -744,6 +783,7 @@ function handleMatrixFocusIn(e) {
 
   if (isMobileNow()) {
     mobileSelectedIdx = ctx.index;
+    setMobileEmployee(ctx.state);
     updateMobileToolbar();
     focusDayColumn(ctx.index);
     scrollTableToColumn(ctx.index);
@@ -1048,7 +1088,8 @@ function buildTable() {
       nightTr.classList.add("person-divider");
     }
 
-    dayTr.appendChild(makeLabelCell(state.name));
+    state.labelCell = makeLabelCell(state);
+    dayTr.appendChild(state.labelCell);
 
     for (let i = 0; i < daysInMonth; i++) {
       dayTr.appendChild(createDayInput(state, i, idx));
@@ -1069,6 +1110,9 @@ function buildTable() {
 
   matrixBody.appendChild(fragment);
   applyStateToDom();
+  if (isMobileNow()) {
+    setMobileEmployee(teamStates[0]);
+  }
 }
 
 function applyStateToDom() {
@@ -1177,7 +1221,7 @@ function calendarFirstHalfNormForBase(baseDayHours) {
 }
 
 function personalNormHours(state) {
-  const baseDayHours = getBaseDayHours(state.gender);
+  const baseDayHours = getBaseDayHours(state.gender, state.branch);
   const monthNorm = calendarNormHoursForBase(baseDayHours);
 
   let effectiveLeaveDays = 0;
@@ -1192,7 +1236,7 @@ function personalNormHours(state) {
 }
 
 function firstHalfStats(state) {
-  const baseDayHours = getBaseDayHours(state.gender);
+  const baseDayHours = getBaseDayHours(state.gender, state.branch);
   const endIdx = Math.min(14, daysInMonth - 1);
 
   let weekdays = 0;
@@ -1305,7 +1349,7 @@ function initCurrentDaySelection() {
     if (dayIdx >= 0) {
       requestAnimationFrame(() => {
         if (isMobileNow()) {
-          setMobileDay(dayIdx);
+          setMobileDay(dayIdx, { scroll: false });
         } else {
           clearFocusColumn();
           scrollTableToColumn(dayIdx);
@@ -1313,7 +1357,7 @@ function initCurrentDaySelection() {
       });
     }
   } else if (isMobileNow()) {
-    requestAnimationFrame(() => setMobileDay(0));
+    requestAnimationFrame(() => setMobileDay(0, { scroll: false }));
   } else {
     clearFocusColumn();
   }
@@ -1684,7 +1728,7 @@ window.addEventListener("resize", () => {
     resizeRaf = 0;
 
     if (isMobileNow()) {
-      setMobileDay(mobileSelectedIdx);
+      setMobileDay(mobileSelectedIdx, { scroll: false });
     } else {
       clearFocusColumn();
     }
