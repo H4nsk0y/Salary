@@ -588,29 +588,38 @@ function makeLabelCell(state) {
 }
 
 function setSharedDayMarkByCycle(dayIndex, clickCount) {
-  if (clickCount === 1) {
-    sharedHoliday[dayIndex] = true;
-    sharedTransferredOff[dayIndex] = false;
-    sharedShortDay[dayIndex] = false;
-    return;
-  }
+  if (clickCount === 1) return setSharedDayMark(dayIndex, "holiday");
+  if (clickCount === 2) return setSharedDayMark(dayIndex, "transferred");
+  return setSharedDayMark(dayIndex, "short");
+}
 
-  if (clickCount === 2) {
-    sharedHoliday[dayIndex] = false;
-    sharedTransferredOff[dayIndex] = true;
-    sharedShortDay[dayIndex] = false;
-    return;
-  }
+function setSharedDayMark(dayIndex, type) {
+  const nextHoliday = type === "holiday";
+  const nextTransferred = type === "transferred";
+  const nextShort = type === "short";
+  const changed =
+    sharedHoliday[dayIndex] !== nextHoliday ||
+    sharedTransferredOff[dayIndex] !== nextTransferred ||
+    sharedShortDay[dayIndex] !== nextShort;
 
-  sharedHoliday[dayIndex] = false;
-  sharedTransferredOff[dayIndex] = false;
-  sharedShortDay[dayIndex] = true;
+  sharedHoliday[dayIndex] = nextHoliday;
+  sharedTransferredOff[dayIndex] = nextTransferred;
+  sharedShortDay[dayIndex] = nextShort;
+
+  return changed;
 }
 
 function clearSharedDayMark(dayIndex) {
+  const changed =
+    Boolean(sharedHoliday[dayIndex]) ||
+    Boolean(sharedTransferredOff[dayIndex]) ||
+    Boolean(sharedShortDay[dayIndex]);
+
   sharedHoliday[dayIndex] = false;
   sharedTransferredOff[dayIndex] = false;
   sharedShortDay[dayIndex] = false;
+
+  return changed;
 }
 
 function createHeaderCell(dayIndex) {
@@ -645,14 +654,14 @@ function createHeaderCell(dayIndex) {
     if (clickTimer) clearTimeout(clickTimer);
 
     clickTimer = setTimeout(() => {
-      setSharedDayMarkByCycle(dayIndex, clickCount >= 3 ? 3 : clickCount);
+      const changed = setSharedDayMarkByCycle(dayIndex, clickCount >= 3 ? 3 : clickCount);
       clickCount = 0;
       clickTimer = null;
 
       updateDayMarkClasses(dayIndex);
       renderSharedSummary();
       recalcAllPeople();
-      scheduleSave();
+      if (changed) scheduleSave();
       updateMobileToolbar();
     }, 320);
   });
@@ -668,11 +677,11 @@ function createHeaderCell(dayIndex) {
 
     if (isMobileNow()) setMobileDay(dayIndex);
 
-    clearSharedDayMark(dayIndex);
+    const changed = clearSharedDayMark(dayIndex);
     updateDayMarkClasses(dayIndex);
     renderSharedSummary();
     recalcAllPeople();
-    scheduleSave();
+    if (changed) scheduleSave();
     updateMobileToolbar();
   });
 
@@ -971,7 +980,7 @@ function handleMatrixInput(e) {
 
 function isTableDragIgnoredTarget(target) {
   if (!(target instanceof Element)) return true;
-  return Boolean(target.closest("input, textarea, select, button, a, label"));
+  return Boolean(target.closest("thead, input, textarea, select, button, a, label"));
 }
 
 function startTableDrag(e) {
@@ -1305,6 +1314,9 @@ function updatePersonSummary(state) {
   state.nightRowEl?.classList.toggle("overtime-row", hasOvertime);
   state.nightRowEl?.classList.toggle("overtime-row-bottom", hasOvertime);
 
+  state.labelCell?.classList.toggle("is-overtime", hasOvertime);
+  state.summaryEl?.classList.toggle("is-overtime", hasOvertime);
+
   if (!state.summaryEl) return;
 
   state.summaryEl.innerHTML = `
@@ -1618,17 +1630,12 @@ mHolidayBtn?.addEventListener("click", () => {
   const idx = mobileSelectedIdx;
   if (idx < 0 || idx >= daysInMonth) return;
 
-  const next = !sharedHoliday[idx];
-  sharedHoliday[idx] = next;
-  sharedTransferredOff[idx] = false;
-  sharedShortDay[idx] = false;
-
-  if (!next) sharedHoliday[idx] = false;
+  const changed = setSharedDayMark(idx, sharedHoliday[idx] ? null : "holiday");
 
   updateDayMarkClasses(idx);
   renderSharedSummary();
   recalcAllPeople();
-  scheduleSave();
+  if (changed) scheduleSave();
   updateMobileToolbar();
 });
 
@@ -1636,17 +1643,12 @@ mTransferredBtn?.addEventListener("click", () => {
   const idx = mobileSelectedIdx;
   if (idx < 0 || idx >= daysInMonth) return;
 
-  const next = !sharedTransferredOff[idx];
-  sharedHoliday[idx] = false;
-  sharedTransferredOff[idx] = next;
-  sharedShortDay[idx] = false;
-
-  if (!next) sharedTransferredOff[idx] = false;
+  const changed = setSharedDayMark(idx, sharedTransferredOff[idx] ? null : "transferred");
 
   updateDayMarkClasses(idx);
   renderSharedSummary();
   recalcAllPeople();
-  scheduleSave();
+  if (changed) scheduleSave();
   updateMobileToolbar();
 });
 
@@ -1654,17 +1656,12 @@ mShortBtn?.addEventListener("click", () => {
   const idx = mobileSelectedIdx;
   if (idx < 0 || idx >= daysInMonth) return;
 
-  const next = !sharedShortDay[idx];
-  sharedHoliday[idx] = false;
-  sharedTransferredOff[idx] = false;
-  sharedShortDay[idx] = next;
-
-  if (!next) sharedShortDay[idx] = false;
+  const changed = setSharedDayMark(idx, sharedShortDay[idx] ? null : "short");
 
   updateDayMarkClasses(idx);
   renderSharedSummary();
   recalcAllPeople();
-  scheduleSave();
+  if (changed) scheduleSave();
   updateMobileToolbar();
 });
 

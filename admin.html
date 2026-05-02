@@ -364,19 +364,6 @@
         background-color: rgba(16, 185, 129, 0.2) !important;
       }
 
-      .admin-matrix th.holiday-col {
-        color: rgba(254, 243, 199, 0.98) !important;
-      }
-
-      .admin-matrix th.transferred-col {
-        background-color: rgba(59, 130, 246, 0.24) !important;
-        color: rgba(219, 234, 254, 0.98) !important;
-      }
-
-      .admin-matrix th.short-col {
-        color: rgba(209, 250, 229, 0.98) !important;
-      }
-
       .employee-day-row td {
         background-color: rgba(255, 255, 255, 0.012);
       }
@@ -405,9 +392,18 @@
         background-color: rgba(76, 5, 25, 0.96) !important;
       }
 
+      .label-cell.is-overtime,
+      .summary-cell.is-overtime {
+        background-color: rgba(76, 5, 25, 0.96) !important;
+      }
+
       .overtime-row .label-main,
       .overtime-row-top .label-main,
       .overtime-row-bottom .label-main {
+        color: rgba(255, 228, 230, 0.98);
+      }
+
+      .label-cell.is-overtime .label-main {
         color: rgba(255, 228, 230, 0.98);
       }
 
@@ -417,12 +413,21 @@
         color: rgba(253, 164, 175, 0.92);
       }
 
+      .label-cell.is-overtime .label-sub {
+        color: rgba(253, 164, 175, 0.92);
+      }
+
       .overtime-row .summary-main strong,
       .overtime-row-top .summary-main strong,
       .overtime-row-bottom .summary-main strong,
       .overtime-row .summary-line strong,
       .overtime-row-top .summary-line strong,
       .overtime-row-bottom .summary-line strong {
+        color: rgba(255, 228, 230, 0.98);
+      }
+
+      .summary-cell.is-overtime .summary-main strong,
+      .summary-cell.is-overtime .summary-line strong {
         color: rgba(255, 228, 230, 0.98);
       }
 
@@ -501,36 +506,6 @@
   text-transform: uppercase;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
-
-      .admin-matrix td.weekend-col:not(.label-cell):not(.summary-cell),
-      .admin-matrix td.holiday-col:not(.label-cell):not(.summary-cell),
-      .admin-matrix td.transferred-col:not(.label-cell):not(.summary-cell),
-      .admin-matrix td.short-col:not(.label-cell):not(.summary-cell) {
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-      }
-
-      .admin-matrix td.weekend-col .input-hour {
-        border-color: rgba(248, 113, 113, 0.34);
-        background: rgba(127, 29, 29, 0.22);
-      }
-
-      .admin-matrix td.holiday-col .input-hour {
-        border-color: rgba(245, 158, 11, 0.5);
-        background: rgba(120, 53, 15, 0.26);
-        color: rgba(254, 243, 199, 0.98);
-      }
-
-      .admin-matrix td.transferred-col .input-hour {
-        border-color: rgba(96, 165, 250, 0.46);
-        background: rgba(30, 64, 175, 0.22);
-        color: rgba(219, 234, 254, 0.98);
-      }
-
-      .admin-matrix td.short-col .input-hour {
-        border-color: rgba(52, 211, 153, 0.46);
-        background: rgba(6, 95, 70, 0.22);
-        color: rgba(209, 250, 229, 0.98);
-      }
 
       .input-hour:focus {
         outline: none;
