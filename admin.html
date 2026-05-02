@@ -603,13 +603,41 @@
 
       /* ========= Мобильная панель (аналог table.html) ========= */
 #mobileBar {
-  display: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(2, 6, 23, 0.86);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 16px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
 }
+
+@media (min-width: 768px) {
+  #mobileBar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  #mobileBar .mbar-row:first-child {
+    flex: 0 0 auto;
+    min-width: 250px;
+  }
+
+  #mobileBar .mbar-row:nth-child(2) {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+  }
+
+  #mobileBar .mbar-employee-row {
+    display: none;
+  }
+}
+
 @media (max-width: 767px) {
   #mobileBar {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
     position: -webkit-sticky;
     position: sticky;
     top: calc(env(safe-area-inset-top, 0px) + 48px);

@@ -78,7 +78,6 @@ let horizontalScrollRaf = 0;
 let resizeRaf = 0;
 let isSyncingHorizontalScroll = false;
 let tableDragState = null;
-let suppressDayHeaderClickUntil = 0;
 
 // Mobile toolbar
 let mobileSelectedIdx = 0;
@@ -201,7 +200,6 @@ function focusDayColumn(dayIdx0) {
 }
 
 function updateMobileToolbar() {
-  if (!isMobileNow()) return;
   const idx = mobileSelectedIdx;
   if (idx < 0 || idx >= daysInMonth) return;
 
@@ -513,15 +511,57 @@ function hasSharedMarks(payload) {
   );
 }
 
-function chooseSharedMarkSource(payloadsByUserId) {
-  for (const payload of payloadsByUserId.values()) {
-    if (hasSharedMarks(payload)) return payload;
+function hasDepartmentSharedMarks(payload) {
+  if (!hasSharedMarks(payload)) return false;
+  if (payload.sharedMarksSource !== "department") return false;
+  return !payload.sharedMarksDepartmentKey || payload.sharedMarksDepartmentKey === managedDepartment?.key;
+}
+
+function getSharedMarkCode(payload, index) {
+  if (payload.isHoliday?.[index]) return "holiday";
+  if (payload.isTransferredOff?.[index]) return "transferred";
+  if (payload.isShortDay?.[index]) return "short";
+  return "none";
+}
+
+function chooseSharedMarkSet(payloadsByUserId) {
+  const payloads = Array.from(payloadsByUserId.values())
+    .filter(hasSharedMarks)
+    .filter((payload) => payload.sharedMarksSource !== "personal");
+  if (!payloads.length) return null;
+
+  const departmentPayloads = payloads.filter(hasDepartmentSharedMarks);
+  const sources = departmentPayloads.length ? departmentPayloads : payloads;
+  const nextHoliday = new Array(daysInMonth).fill(false);
+  const nextTransferred = new Array(daysInMonth).fill(false);
+  const nextShort = new Array(daysInMonth).fill(false);
+
+  for (let i = 0; i < daysInMonth; i++) {
+    const counts = { none: 0, holiday: 0, transferred: 0, short: 0 };
+
+    for (const payload of sources) {
+      counts[getSharedMarkCode(payload, i)] += 1;
+    }
+
+    let best = "none";
+    for (const code of ["holiday", "transferred", "short"]) {
+      if (counts[code] > counts[best]) best = code;
+    }
+
+    nextHoliday[i] = best === "holiday";
+    nextTransferred[i] = best === "transferred";
+    nextShort[i] = best === "short";
   }
-  return null;
+
+  return {
+    isHoliday: nextHoliday,
+    isTransferredOff: nextTransferred,
+    isShortDay: nextShort,
+  };
 }
 
 function applyLoadedPayloads(payloadsByUserId) {
-  const sharedSource = chooseSharedMarkSource(payloadsByUserId);
+  const sharedSource = chooseSharedMarkSet(payloadsByUserId);
 
   if (sharedSource?.isHoliday?.length === daysInMonth) {
     sharedHoliday = sharedSource.isHoliday.map(Boolean);
@@ -625,6 +665,7 @@ function clearSharedDayMark(dayIndex) {
 function createHeaderCell(dayIndex) {
   const th = document.createElement("th");
   th.dataset.dayIndex = String(dayIndex);
+  th.tabIndex = 0;
 
   const dayNumber = dayIndex + 1;
   const weekday = new Date(year, month, dayNumber).getDay();
@@ -645,11 +686,7 @@ function createHeaderCell(dayIndex) {
   let clickCount = 0;
   let clickTimer = null;
 
-  th.addEventListener("click", () => {
-    if (performance.now() < suppressDayHeaderClickUntil) return;
-
-    if (isMobileNow()) setMobileDay(dayIndex);
-
+  const markByPointerCount = () => {
     clickCount += 1;
     if (clickTimer) clearTimeout(clickTimer);
 
@@ -664,6 +701,25 @@ function createHeaderCell(dayIndex) {
       if (changed) scheduleSave();
       updateMobileToolbar();
     }, 320);
+  };
+
+  th.addEventListener("pointerup", (e) => {
+    if (e.pointerType === "touch") {
+      setMobileDay(dayIndex);
+      return;
+    }
+
+    if (e.button !== 0) return;
+
+    setMobileDay(dayIndex, { scroll: false });
+    markByPointerCount();
+  });
+
+  th.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    setMobileDay(dayIndex, { scroll: false });
+    markByPointerCount();
   });
 
   th.addEventListener("contextmenu", (e) => {
@@ -693,6 +749,8 @@ function currentPayloadForState(state) {
     v: 5,
     year,
     month,
+    sharedMarksSource: "department",
+    sharedMarksDepartmentKey: managedDepartment?.key ?? null,
     isHoliday: [...sharedHoliday],
     isTransferredOff: [...sharedTransferredOff],
     isShortDay: [...sharedShortDay],
@@ -1020,14 +1078,9 @@ function endTableDrag(e) {
   if (!tableScrollable || !tableDragState) return;
   if (e?.pointerId !== undefined && tableDragState.pointerId !== e.pointerId) return;
 
-  const wasDragging = tableDragState.hasMoved;
   tableScrollable.releasePointerCapture?.(tableDragState.pointerId);
   tableScrollable.classList.remove("is-dragging");
   tableDragState = null;
-
-  if (wasDragging) {
-    suppressDayHeaderClickUntil = performance.now() + 250;
-  }
 }
 
 function createDayInput(state, i, memberIndex) {
@@ -1381,7 +1434,9 @@ function initCurrentDaySelection() {
         if (isMobileNow()) {
           setMobileDay(dayIdx, { scroll: false });
         } else {
-          clearFocusColumn();
+          mobileSelectedIdx = dayIdx;
+          focusDayColumn(dayIdx);
+          updateMobileToolbar();
           scrollTableToColumn(dayIdx);
         }
       });
@@ -1389,7 +1444,7 @@ function initCurrentDaySelection() {
   } else if (isMobileNow()) {
     requestAnimationFrame(() => setMobileDay(0, { scroll: false }));
   } else {
-    clearFocusColumn();
+    requestAnimationFrame(() => setMobileDay(0, { scroll: false }));
   }
 }
 

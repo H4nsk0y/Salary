@@ -585,6 +585,7 @@ let currentLoadedPayload = null;
 let currentMoneySnapshot = null;
 let currentPaySummary = createEmptyPaySummary();
 let suppressActualInputSync = false;
+let personalSharedMarksChanged = false;
 
 function replaceElementWithClone(el) {
   if (!el) return null;
@@ -1690,10 +1691,20 @@ function recalcAll() {
 }
 
 function currentPayload() {
+  const sharedMarksMeta = personalSharedMarksChanged
+    ? { sharedMarksSource: "personal" }
+    : currentLoadedPayload?.sharedMarksSource
+      ? {
+          sharedMarksSource: currentLoadedPayload.sharedMarksSource,
+          sharedMarksDepartmentKey: currentLoadedPayload.sharedMarksDepartmentKey ?? null,
+        }
+      : {};
+
   return {
     v: 5,
     year,
     month,
+    ...sharedMarksMeta,
     isHoliday,
     isTransferredOff,
     isShortDay,
@@ -1811,6 +1822,7 @@ function buildTableForMonth() {
   leaveType = new Array(daysInMonth).fill(null);
 
   currentLoadedPayload = null;
+  personalSharedMarksChanged = false;
   currentPaySummary = createEmptyPaySummary();
   currentMoneySnapshot = null;
   fillActualInputsFromState();
@@ -1872,6 +1884,7 @@ function buildTableForMonth() {
         clickCount = 0;
         clickTimer = null;
 
+        personalSharedMarksChanged = true;
         updateDayMarkClasses(idx);
         recalcAll();
         scheduleSave();
@@ -1885,6 +1898,7 @@ function buildTableForMonth() {
       isHoliday[idx] = false;
       isTransferredOff[idx] = false;
       isShortDay[idx] = false;
+      personalSharedMarksChanged = true;
       updateDayMarkClasses(idx);
       recalcAll();
       scheduleSave();
@@ -2083,6 +2097,7 @@ function applyMonthMoneyContext(payload) {
 
 function applyPayload(payload) {
   currentLoadedPayload = payload ?? null;
+  personalSharedMarksChanged = false;
 
   if (!payload || typeof payload !== "object") {
     currentPaySummary = createEmptyPaySummary();
@@ -2265,6 +2280,7 @@ mHolidayBtn?.addEventListener("click", () => {
     isHoliday[idx] = false;
   }
 
+  personalSharedMarksChanged = true;
   updateDayMarkClasses(idx);
   recalcAll();
   scheduleSave();
@@ -2284,6 +2300,7 @@ mTransferredBtn?.addEventListener("click", () => {
     isTransferredOff[idx] = false;
   }
 
+  personalSharedMarksChanged = true;
   updateDayMarkClasses(idx);
   recalcAll();
   scheduleSave();
@@ -2303,6 +2320,7 @@ mShortBtn?.addEventListener("click", () => {
     isShortDay[idx] = false;
   }
 
+  personalSharedMarksChanged = true;
   updateDayMarkClasses(idx);
   recalcAll();
   scheduleSave();
