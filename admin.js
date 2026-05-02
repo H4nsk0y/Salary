@@ -22,6 +22,7 @@ const FEMALE_DAY_HOURS = 7.2;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const MAX_HOURS_PER_DAY = 24;
 const SHORT_DAY_REDUCTION_HOURS = 1;
+const TABLE_DRAG_THRESHOLD_PX = 5;
 
 const monthNames = [
   "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -77,6 +78,7 @@ let horizontalScrollRaf = 0;
 let resizeRaf = 0;
 let isSyncingHorizontalScroll = false;
 let tableDragState = null;
+let suppressDayHeaderClickUntil = 0;
 
 // Mobile toolbar
 let mobileSelectedIdx = 0;
@@ -635,6 +637,8 @@ function createHeaderCell(dayIndex) {
   let clickTimer = null;
 
   th.addEventListener("click", () => {
+    if (performance.now() < suppressDayHeaderClickUntil) return;
+
     if (isMobileNow()) setMobileDay(dayIndex);
 
     clickCount += 1;
@@ -978,29 +982,43 @@ function startTableDrag(e) {
   tableDragState = {
     pointerId: e.pointerId,
     startX: e.clientX,
+    startY: e.clientY,
     startScrollLeft: tableScrollable.scrollLeft,
+    hasMoved: false,
   };
 
-  tableScrollable.classList.add("is-dragging");
   tableScrollable.setPointerCapture?.(e.pointerId);
-  e.preventDefault();
 }
 
 function moveTableDrag(e) {
   if (!tableScrollable || !tableDragState || tableDragState.pointerId !== e.pointerId) return;
 
   const dx = e.clientX - tableDragState.startX;
+  const dy = e.clientY - tableDragState.startY;
+
+  if (!tableDragState.hasMoved) {
+    if (Math.abs(dx) < TABLE_DRAG_THRESHOLD_PX && Math.abs(dy) < TABLE_DRAG_THRESHOLD_PX) return;
+    tableDragState.hasMoved = true;
+    tableScrollable.classList.add("is-dragging");
+  }
+
   tableScrollable.scrollLeft = tableDragState.startScrollLeft - dx;
   requestHorizontalScrollStateSync();
+  e.preventDefault();
 }
 
 function endTableDrag(e) {
   if (!tableScrollable || !tableDragState) return;
   if (e?.pointerId !== undefined && tableDragState.pointerId !== e.pointerId) return;
 
+  const wasDragging = tableDragState.hasMoved;
   tableScrollable.releasePointerCapture?.(tableDragState.pointerId);
   tableScrollable.classList.remove("is-dragging");
   tableDragState = null;
+
+  if (wasDragging) {
+    suppressDayHeaderClickUntil = performance.now() + 250;
+  }
 }
 
 function createDayInput(state, i, memberIndex) {
