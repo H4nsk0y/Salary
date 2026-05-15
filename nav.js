@@ -2,10 +2,12 @@ import {
   deleteMyNotification,
   getMyProfile,
   listMyNotifications,
+  markMyNotificationsRead,
 } from "./db.js";
 import "./scrollbar.js";
 
 const NAV_STYLE_ID = "alvisa-common-nav-style";
+const NOTIFICATION_READ_STORAGE_KEY = "alvisa.notificationReadIds.v1";
 
 const MAIN_LINKS = [
   { key: "calculator", href: "calculator.html", label: "Калькулятор" },
@@ -200,6 +202,12 @@ function injectNavStyles() {
       color: rgb(203 213 225);
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .app-top-header .app-notification-item.is-unread {
+      border-color: rgba(129, 140, 248, 0.30);
+      background: rgba(99, 102, 241, 0.075);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
     }
 
     .app-top-header .app-notification-item + .app-notification-item {
@@ -460,6 +468,40 @@ function formatNotificationTime(value) {
   });
 }
 
+function getLocalNotificationReadIds() {
+  try {
+    const raw = localStorage.getItem(NOTIFICATION_READ_STORAGE_KEY);
+    const parsed = JSON.parse(raw || "[]");
+    return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function rememberLocalNotificationReadIds(ids) {
+  if (!ids?.length) return;
+
+  try {
+    const readIds = getLocalNotificationReadIds();
+    for (const id of ids) readIds.add(String(id));
+
+    const compact = Array.from(readIds).slice(-300);
+    localStorage.setItem(NOTIFICATION_READ_STORAGE_KEY, JSON.stringify(compact));
+  } catch {
+    // Browser storage can be disabled; server state remains the source of truth.
+  }
+}
+
+function applyLocalNotificationReadState(items) {
+  const readIds = getLocalNotificationReadIds();
+  if (!readIds.size) return items;
+
+  return items.map((item) => {
+    if (item?.read_at || !readIds.has(String(item?.id))) return item;
+    return { ...item, read_at: "local" };
+  });
+}
+
 function createNotificationsWidget() {
   const root = document.createElement("div");
   root.className = "app-notifications";
@@ -502,11 +544,42 @@ function createNotificationsWidget() {
   let notifications = [];
   let loaded = false;
   let loading = false;
+  let markAfterLoad = false;
+  let markingRead = false;
 
   const updateBadge = () => {
-    const count = notifications.length;
+    const count = notifications.filter((item) => !item.read_at).length;
     badge.textContent = count > 9 ? "9+" : String(count);
     badge.classList.toggle("is-visible", count > 0);
+  };
+
+  const getUnreadNotificationIds = () =>
+    notifications
+      .filter((item) => !item.read_at)
+      .map((item) => Number(item.id))
+      .filter((id) => Number.isFinite(id));
+
+  const markVisibleNotificationsRead = async () => {
+    if (markingRead) return;
+
+    const ids = getUnreadNotificationIds();
+    if (!ids.length) return;
+
+    markingRead = true;
+    const readAt = new Date().toISOString();
+    rememberLocalNotificationReadIds(ids);
+    notifications = notifications.map((item) =>
+      ids.includes(Number(item.id)) ? { ...item, read_at: item.read_at || readAt } : item
+    );
+    updateBadge();
+
+    try {
+      await markMyNotificationsRead(ids);
+    } catch {
+      // The local mark keeps the badge calm until the DB migration is applied.
+    } finally {
+      markingRead = false;
+    }
   };
 
   const renderList = () => {
@@ -524,6 +597,7 @@ function createNotificationsWidget() {
     for (const item of notifications) {
       const card = document.createElement("div");
       card.className = "app-notification-item";
+      card.classList.toggle("is-unread", !item.read_at);
 
       const row = document.createElement("div");
       row.className = "app-notification-title-row";
@@ -598,9 +672,13 @@ function createNotificationsWidget() {
     }
 
     try {
-      notifications = await listMyNotifications();
+      notifications = applyLocalNotificationReadState(await listMyNotifications());
       loaded = true;
       renderList();
+      if (markAfterLoad && !panel.classList.contains("is-open")) {
+        markAfterLoad = false;
+        void markVisibleNotificationsRead();
+      }
     } catch (error) {
       loaded = true;
       if (String(error?.message || "").includes("NO_SESSION")) {
@@ -614,10 +692,15 @@ function createNotificationsWidget() {
   };
 
   const setOpen = (nextOpen) => {
+    const wasOpen = panel.classList.contains("is-open");
     panel.classList.toggle("is-open", nextOpen);
     button.classList.toggle("is-open", nextOpen);
     button.setAttribute("aria-expanded", String(nextOpen));
     if (nextOpen) void load();
+    else if (wasOpen) {
+      if (loading) markAfterLoad = true;
+      void markVisibleNotificationsRead();
+    }
   };
 
   button.addEventListener("click", () => {

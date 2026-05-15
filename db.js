@@ -18,6 +18,12 @@ const ADMIN_PROFILE_SELECT_WITHOUT_EMPLOYMENT =
 const ADMIN_PROFILE_SELECT_LEGACY =
   "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number";
 
+const NOTIFICATION_SELECT =
+  "id, type, title, body, url, created_at, expires_at, department_key, read_at";
+
+const NOTIFICATION_SELECT_LEGACY =
+  "id, type, title, body, url, created_at, expires_at, department_key";
+
 function isNotFoundError(error) {
   return (
     error &&
@@ -499,6 +505,20 @@ export async function managedSaveManyTimesheets(items) {
   if (error) throw error;
 }
 
+function isMissingNotificationReadAtColumnError(error) {
+  const text = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].filter(Boolean).join(" ");
+
+  return (
+    /read_at/i.test(text) &&
+    /(column|schema cache|does not exist|could not find|42703|PGRST204)/i.test(text)
+  );
+}
+
 export async function notifyDepartmentTimesheetSaved({ departmentKey, year, month } = {}) {
   const key = String(departmentKey ?? "").trim();
   const normalized = assertValidYearMonth(year, month);
@@ -517,15 +537,45 @@ export async function notifyDepartmentTimesheetSaved({ departmentKey, year, mont
 export async function listMyNotifications() {
   await requireUserId();
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("user_notifications")
-    .select("id, type, title, body, url, created_at, expires_at, department_key")
+    .select(NOTIFICATION_SELECT)
     .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false })
     .limit(20);
 
+  if (error && isMissingNotificationReadAtColumnError(error)) {
+    const fallback = await supabase
+      .from("user_notifications")
+      .select(NOTIFICATION_SELECT_LEGACY)
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    data = fallback.data?.map((item) => ({ ...item, read_at: null }));
+    error = fallback.error;
+  }
+
   if (error) throw error;
   return data ?? [];
+}
+
+export async function markMyNotificationsRead(notificationIds = []) {
+  await requireUserId();
+
+  const ids = [...new Set(
+    (Array.isArray(notificationIds) ? notificationIds : [])
+      .map((id) => Number(id))
+      .filter((id) => Number.isFinite(id))
+  )];
+
+  if (!ids.length) return;
+
+  const { error } = await supabase.rpc("mark_my_notifications_read", {
+    p_notification_ids: ids,
+  });
+
+  if (error) throw error;
 }
 
 export async function deleteMyNotification(notificationId) {
