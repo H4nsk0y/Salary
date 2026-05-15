@@ -92,6 +92,13 @@ function isRestAfterNightShift(day, night) {
   return isSameHours(day, 2) && isSameHours(night, 5);
 }
 
+function isNightShiftStart(day, night) {
+  return (
+    (isSameHours(day, 2) && isSameHours(night, 2)) ||
+    (isSameHours(day, 4) && isSameHours(night, 7))
+  );
+}
+
 function getDisplayName(row) {
   return (
     String(row?.display_name ?? "").trim() ||
@@ -128,6 +135,14 @@ function getShiftInfo(row) {
     if (day > 0 && night > 0) label = `${formatHours(day).replace(" ч", "")}/${formatHours(night).replace(" ч", "")}`;
     else if (day > 0) label = `${formatHours(day)} день`;
     else label = `${formatHours(night)} ночь`;
+
+    if (isNightShiftStart(day, night)) {
+      return {
+        kind: "night-shift",
+        label,
+        tone: "danger",
+      };
+    }
 
     return {
       kind: "work",
@@ -185,7 +200,7 @@ function createPersonRow(row) {
 
   const item = document.createElement("div");
   item.className = "flex min-w-0 items-center gap-3 rounded-2xl bg-slate-950/25 p-3 ring-1 ring-white/10";
-  if (info.kind === "rest") {
+  if (info.kind === "rest" || info.kind === "night-shift") {
     item.className = "flex min-w-0 items-center gap-3 rounded-2xl bg-rose-500/10 p-3 ring-1 ring-rose-400/20";
   }
 
