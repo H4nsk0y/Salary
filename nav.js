@@ -318,7 +318,29 @@ function injectNavStyles() {
       }
 
       .app-top-header .app-notification-panel {
-        right: -54px;
+        position: fixed;
+        top: calc(env(safe-area-inset-top, 0px) + 64px);
+        left: 10px;
+        right: 10px;
+        width: auto;
+        max-height: calc(100vh - 84px);
+        max-height: calc(100dvh - 84px - env(safe-area-inset-bottom, 0px));
+        border-radius: 22px;
+      }
+
+      .app-top-header .app-notification-list {
+        max-height: calc(100vh - 158px);
+        max-height: calc(100dvh - 158px - env(safe-area-inset-bottom, 0px));
+        overscroll-behavior: contain;
+      }
+
+      .app-top-header .app-notification-title,
+      .app-top-header .app-notification-body {
+        overflow-wrap: anywhere;
+      }
+
+      .app-top-header .app-notification-meta {
+        flex-wrap: wrap;
       }
 
       .app-top-header .app-menu-button:hover {
