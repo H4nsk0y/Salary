@@ -7,6 +7,7 @@ const TEMPLATE_BLOCK_HEIGHT = 3;
 const DAY_START_COLUMN = "I";
 const FIRST_HALF_END_DAY = 15;
 const EXPORT_LAST_USED_COLUMN = "BC";
+const TEMPLATE_31_DAY_SUFFIX = "_31";
 
 const MONTH_NAMES = [
   "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -18,6 +19,7 @@ const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const SHORT_DAY_REDUCTION_HOURS = 1;
+const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 
 const POSITION_LABELS = {
   egais_head: "Руководитель Отдела ЕГАИС",
@@ -73,6 +75,22 @@ function columnNumberToLetter(num) {
   return out;
 }
 
+function shiftColumnLetter(letter, offset) {
+  return columnNumberToLetter(columnLetterToNumber(letter) + offset);
+}
+
+function getTemplateUrlForMonth(templateUrl, daysInMonth) {
+  if (daysInMonth <= 30) return templateUrl;
+
+  try {
+    const url = new URL(templateUrl, window.location.href);
+    url.pathname = url.pathname.replace(/(_31)?\.xlsx$/i, `${TEMPLATE_31_DAY_SUFFIX}.xlsx`);
+    return url.href;
+  } catch {
+    return String(templateUrl).replace(/(_31)?\.xlsx$/i, `${TEMPLATE_31_DAY_SUFFIX}.xlsx`);
+  }
+}
+
 function deepClone(value) {
   if (value == null) return value;
   return JSON.parse(JSON.stringify(value));
@@ -92,6 +110,20 @@ function parseRange(range) {
 
 function formatRange({ startCol, startRow, endCol, endRow }) {
   return `${columnNumberToLetter(startCol)}${startRow}:${columnNumberToLetter(endCol)}${endRow}`;
+}
+
+function shiftSummaryColumns(summaryCols, offset) {
+  if (!offset) return summaryCols;
+
+  return {
+    firstHalf: Object.fromEntries(
+      Object.entries(summaryCols.firstHalf).map(([key, col]) => [key, shiftColumnLetter(col, offset)])
+    ),
+    month: Object.fromEntries(
+      Object.entries(summaryCols.month).map(([key, col]) => [key, shiftColumnLetter(col, offset)])
+    ),
+    comment: shiftColumnLetter(summaryCols.comment, offset),
+  };
 }
 
 function rangeIntersectsRows(range, rowStart, rowEnd) {
@@ -206,6 +238,8 @@ function normalizeLeaveTypeLegacy(lt) {
   if (!lt) return null;
   if (lt === "vacation") return "vac_paid";
   if (lt === "sick") return "sick";
+  if (lt === NOT_EMPLOYED_LEAVE_TYPE) return NOT_EMPLOYED_LEAVE_TYPE;
+  if (String(lt).trim().toUpperCase() === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
   return String(lt);
 }
 
@@ -218,6 +252,7 @@ function leaveTypeToCode(lt) {
   if (t === "edu_paid") return "У";
   if (t === "edu_unpaid") return "УД";
   if (t === "sick") return "Б";
+  if (t === NOT_EMPLOYED_LEAVE_TYPE) return "НТ";
   return "";
 }
 
@@ -280,12 +315,30 @@ function calendarNormForRange({
   );
 }
 
-function leaveDaysForRange({
+function normHoursForDay({
+  year,
+  month,
+  dayIndex,
+  baseDayHours,
+  sharedHoliday,
+  sharedTransferredOff,
+  sharedShortDay,
+}) {
+  if (isWeekendByIndex(year, month, dayIndex)) return 0;
+  if (sharedHoliday[dayIndex] || sharedTransferredOff[dayIndex]) return 0;
+  return Math.max(0, baseDayHours - (sharedShortDay[dayIndex] ? SHORT_DAY_REDUCTION_HOURS : 0));
+}
+
+function leaveHoursForRange({
+  year,
+  month,
   startDayIndex,
   endDayIndex,
+  baseDayHours,
   leaveType,
   sharedHoliday,
   sharedTransferredOff,
+  sharedShortDay,
 }) {
   let total = 0;
 
@@ -293,7 +346,15 @@ function leaveDaysForRange({
     const lt = normalizeLeaveTypeLegacy(leaveType?.[i]);
     if (!lt) continue;
     if (sharedHoliday[i] || sharedTransferredOff[i]) continue;
-    total += 1;
+    total += normHoursForDay({
+      year,
+      month,
+      dayIndex: i,
+      baseDayHours,
+      sharedHoliday,
+      sharedTransferredOff,
+      sharedShortDay,
+    });
   }
 
   return total;
@@ -334,24 +395,32 @@ function buildExportStats({
     sharedShortDay,
   });
 
-  const monthLeaveDays = leaveDaysForRange({
+  const monthLeaveHours = leaveHoursForRange({
+    year,
+    month,
     startDayIndex: 0,
     endDayIndex: endMonthIdx,
+    baseDayHours,
     leaveType: state.leaveType,
     sharedHoliday,
     sharedTransferredOff,
+    sharedShortDay,
   });
 
-  const firstHalfLeaveDays = leaveDaysForRange({
+  const firstHalfLeaveHours = leaveHoursForRange({
+    year,
+    month,
     startDayIndex: 0,
     endDayIndex: endHalfIdx,
+    baseDayHours,
     leaveType: state.leaveType,
     sharedHoliday,
     sharedTransferredOff,
+    sharedShortDay,
   });
 
-  const monthPersonalNorm = monthNormCalendar - monthLeaveDays * baseDayHours;
-  const firstHalfPersonalNorm = firstHalfNormCalendar - firstHalfLeaveDays * baseDayHours;
+  const monthPersonalNorm = Math.max(0, monthNormCalendar - monthLeaveHours);
+  const firstHalfPersonalNorm = Math.max(0, firstHalfNormCalendar - firstHalfLeaveHours);
 
   const monthDayHours = sumRange(state.dayHours, 0, endMonthIdx);
   const monthNightHours = sumRange(state.nightHours, 0, endMonthIdx);
@@ -457,12 +526,58 @@ function downloadBuffer(buffer, fileName) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function getStyleAwareRowCount(worksheet) {
+  let maxRow = Math.max(
+    Number(worksheet.rowCount) || 0,
+    Number(worksheet.actualRowCount) || 0,
+    Array.isArray(worksheet._rows) ? worksheet._rows.length : 0
+  );
+
+  const modelRows = Array.isArray(worksheet.model?.rows) ? worksheet.model.rows : [];
+  for (let i = 0; i < modelRows.length; i += 1) {
+    const rowModel = modelRows[i];
+    const modelNumber = Number(rowModel?.number ?? rowModel?.r ?? rowModel?.rowNumber);
+    maxRow = Math.max(maxRow, Number.isFinite(modelNumber) ? modelNumber : i + 1);
+  }
+
+  return maxRow;
+}
+
+function clearRowPresentation(worksheet, rowNumber) {
+  const row = worksheet.getRow(rowNumber);
+  const maxCol = Math.max(
+    Number(worksheet.columnCount) || 0,
+    Number(worksheet.actualColumnCount) || 0
+  );
+
+  row.height = undefined;
+  row.hidden = false;
+  row.outlineLevel = 0;
+  row.style = {};
+  row.values = [];
+
+  for (let col = 1; col <= maxCol; col += 1) {
+    const cell = row.getCell(col);
+    cell.value = null;
+    cell.style = {};
+  }
+}
+
 function removeRowsAfter(worksheet, lastUsedRow) {
-  const maxRow = worksheet.rowCount || worksheet.actualRowCount || 0;
+  const maxRow = getStyleAwareRowCount(worksheet);
   const extraCount = maxRow - lastUsedRow;
 
   if (extraCount > 0) {
     worksheet.spliceRows(lastUsedRow + 1, extraCount);
+  }
+
+  if (Array.isArray(worksheet._rows) && worksheet._rows.length > lastUsedRow) {
+    worksheet._rows.length = lastUsedRow;
+  }
+
+  const maxAfterSplice = getStyleAwareRowCount(worksheet);
+  for (let row = lastUsedRow + 1; row <= maxAfterSplice; row += 1) {
+    clearRowPresentation(worksheet, row);
   }
 }
 
@@ -477,9 +592,9 @@ function clearCellsAfterRow(worksheet, rowStart) {
   }
 }
 
-function setPrintAreaToUsedTable(worksheet, lastRow) {
+function setPrintAreaToUsedTable(worksheet, lastRow, lastUsedColumn = EXPORT_LAST_USED_COLUMN) {
   worksheet.pageSetup = worksheet.pageSetup || {};
-  worksheet.pageSetup.printArea = `B1:${EXPORT_LAST_USED_COLUMN}${lastRow}`;
+  worksheet.pageSetup.printArea = `B1:${lastUsedColumn}${lastRow}`;
   worksheet.pageSetup.fitToPage = true;
   worksheet.pageSetup.fitToWidth = 1;
   worksheet.pageSetup.fitToHeight = 0;
@@ -514,10 +629,16 @@ export async function exportDepartmentTimesheetXlsx({
   }
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const summaryOffset = daysInMonth > 30 ? 1 : 0;
+  const effectiveTemplateUrl = getTemplateUrlForMonth(templateUrl, daysInMonth);
 
-  const response = await fetch(templateUrl, { cache: "no-store" });
+  const response = await fetch(effectiveTemplateUrl, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error("Не удалось загрузить Excel-шаблон. Проверьте путь templateUrl.");
+    throw new Error(
+      daysInMonth > 30
+        ? "Не удалось загрузить Excel-шаблон на 31 день. Проверьте файл templates/tabel-template_31.xlsx."
+        : "Не удалось загрузить Excel-шаблон. Проверьте путь templateUrl."
+    );
   }
 
   const arrayBuffer = await response.arrayBuffer();
@@ -536,7 +657,7 @@ export async function exportDepartmentTimesheetXlsx({
   );
 
   const dayStartCol = columnLetterToNumber(DAY_START_COLUMN);
-  const firstHalfStartCol = columnLetterToNumber("AM");
+  const firstHalfStartCol = columnLetterToNumber(shiftColumnLetter("AM", summaryOffset));
   const maxTemplateDays = firstHalfStartCol - dayStartCol;
 
   if (daysInMonth > maxTemplateDays) {
@@ -550,7 +671,7 @@ export async function exportDepartmentTimesheetXlsx({
 
   clearMergedRangesFromRow(worksheet, TEMPLATE_BLOCK_START_ROW);
 
-  const removeCount = Math.max(0, worksheet.rowCount - TEMPLATE_BLOCK_START_ROW + 1);
+  const removeCount = Math.max(0, getStyleAwareRowCount(worksheet) - TEMPLATE_BLOCK_START_ROW + 1);
   if (removeCount > 0) {
     worksheet.spliceRows(TEMPLATE_BLOCK_START_ROW, removeCount);
   }
@@ -563,7 +684,7 @@ export async function exportDepartmentTimesheetXlsx({
 
   const departmentLabel = getDepartmentLabel(department);
 
-  const summaryCols = {
+  const summaryCols = shiftSummaryColumns({
     firstHalf: {
       days: "AM",
       hours: "AN",
@@ -585,7 +706,7 @@ export async function exportDepartmentTimesheetXlsx({
       avgOvertime: "BB",
     },
     comment: "BC",
-  };
+  }, summaryOffset);
 
   for (let idx = 0; idx < list.length; idx += 1) {
     const state = list[idx];
@@ -656,10 +777,16 @@ export async function exportDepartmentTimesheetXlsx({
 
   const lastDataRow = TEMPLATE_BLOCK_START_ROW + list.length * TEMPLATE_BLOCK_HEIGHT - 1;
 
-  clearColumnRange(worksheet, "BD", "BF", TEMPLATE_BLOCK_START_ROW, lastDataRow);
+  clearColumnRange(
+    worksheet,
+    shiftColumnLetter("BD", summaryOffset),
+    shiftColumnLetter("BF", summaryOffset),
+    TEMPLATE_BLOCK_START_ROW,
+    lastDataRow
+  );
   clearCellsAfterRow(worksheet, lastDataRow + 1);
   removeRowsAfter(worksheet, lastDataRow);
-  setPrintAreaToUsedTable(worksheet, lastDataRow);
+  setPrintAreaToUsedTable(worksheet, lastDataRow, shiftColumnLetter(EXPORT_LAST_USED_COLUMN, summaryOffset));
 
   const fileDepartment = String(department?.key || "department").trim() || "department";
   const fileMonth = String(month + 1).padStart(2, "0");

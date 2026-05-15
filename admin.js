@@ -9,6 +9,7 @@ import {
   listManagedDepartmentMembers,
   managedLoadTimesheet,
   managedSaveManyTimesheets,
+  notifyDepartmentTimesheetSaved,
   ownerCreateDepartmentInvite,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
@@ -22,6 +23,7 @@ const FEMALE_DAY_HOURS = 7.2;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const MAX_HOURS_PER_DAY = 24;
 const SHORT_DAY_REDUCTION_HOURS = 1;
+const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 const TABLE_DRAG_THRESHOLD_PX = 5;
 
 const monthNames = [
@@ -288,6 +290,44 @@ function getBaseDayHours(gender, branch) {
     : DEFAULT_DAY_HOURS;
 }
 
+function normHoursForDay(index, baseDayHours) {
+  if (isWeekendByIndex(year, month, index)) return 0;
+  if (sharedHoliday[index] || sharedTransferredOff[index]) return 0;
+  return Math.max(0, baseDayHours - (sharedShortDay[index] ? SHORT_DAY_REDUCTION_HOURS : 0));
+}
+
+function parseIsoDateLocal(value) {
+  const match = String(value ?? "").trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const y = Number(match[1]);
+  const m = Number(match[2]) - 1;
+  const d = Number(match[3]);
+  const date = new Date(y, m, d);
+
+  if (date.getFullYear() !== y || date.getMonth() !== m || date.getDate() !== d) return null;
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function applyEmploymentDateDefaultsToState(state) {
+  const employmentDate = parseIsoDateLocal(state?.employmentDate);
+  if (!employmentDate) return;
+
+  const baseDayHours = getBaseDayHours(state.gender, state.branch);
+
+  for (let i = 0; i < daysInMonth; i += 1) {
+    const date = new Date(year, month, i + 1);
+    date.setHours(0, 0, 0, 0);
+    if (date >= employmentDate) continue;
+    if (normHoursForDay(i, baseDayHours) <= 0) continue;
+    if (normalizeLeaveTypeLegacy(state.leaveType[i])) continue;
+    if ((Number(state.dayHours[i]) || 0) > 0 || (Number(state.nightHours[i]) || 0) > 0) continue;
+
+    state.leaveType[i] = NOT_EMPLOYED_LEAVE_TYPE;
+  }
+}
+
 function sanitizeDayCellValue(raw) {
   let s = String(raw ?? "").toUpperCase();
   s = s
@@ -297,13 +337,17 @@ function sanitizeDayCellValue(raw) {
     .replaceAll("D", "Д")
     .replaceAll("Z", "З")
     .replaceAll("U", "У")
-    .replaceAll("Y", "У");
+    .replaceAll("Y", "У")
+    .replaceAll("N", "Н");
 
   s = s.replace(/\s+/g, "");
-  const letters = s.replace(/[^ОТБДЗУЛ]/g, "");
+  const letters = s.replace(/[^ОТБДЗУЛН]/g, "");
 
   if (letters) {
     if (letters.includes("Б")) return "Б";
+    if (letters.startsWith("Н")) {
+      return "НТ";
+    }
     if (letters.startsWith("О")) {
       const second = letters[1] || "";
       if (second === "Т") return "ОТ";
@@ -354,6 +398,8 @@ function normalizeLeaveTypeLegacy(lt) {
   if (!lt) return null;
   if (lt === "vacation") return "vac_paid";
   if (lt === "sick") return "sick";
+  if (lt === NOT_EMPLOYED_LEAVE_TYPE) return NOT_EMPLOYED_LEAVE_TYPE;
+  if (String(lt).trim().toUpperCase() === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
   return String(lt);
 }
 
@@ -369,7 +415,8 @@ function normalizeLeaveToken(raw) {
     .replaceAll("Z", "З")
     .replaceAll("U", "У")
     .replaceAll("Y", "У")
-    .replaceAll("L", "Л");
+    .replaceAll("L", "Л")
+    .replaceAll("N", "Н");
 
   if (s === "О" || s === "ОТ") return "vac_paid";
   if (s === "ОД") return "vac_unpaid";
@@ -377,6 +424,7 @@ function normalizeLeaveToken(raw) {
   if (s === "Б" || s === "БЛ") return "sick";
   if (s === "У") return "edu_paid";
   if (s === "УД") return "edu_unpaid";
+  if (s === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
   return null;
 }
 
@@ -399,6 +447,7 @@ function leaveTypeToCode(lt, raw = "") {
   if (t === "edu_paid") return "У";
   if (t === "edu_unpaid") return "УД";
   if (t === "sick") return "Б";
+  if (t === NOT_EMPLOYED_LEAVE_TYPE) return "НТ";
   return "";
 }
 
@@ -440,6 +489,7 @@ function createState(member) {
     name: buildMemberLabel(member),
     gender: member?.gender ?? null,
     branch: member?.branch ?? null,
+    employmentDate: member?.employment_date ?? null,
     position: member?.position ?? "",
     tabNumber: member?.tab_number ?? "",
     dayHours: new Array(daysInMonth).fill(0),
@@ -585,6 +635,8 @@ function applyLoadedPayloads(payloadsByUserId) {
     if (payload?.leaveType?.length === daysInMonth) {
       state.leaveType = payload.leaveType.map((x) => normalizeLeaveTypeLegacy(x));
     }
+
+    applyEmploymentDateDefaultsToState(state);
   }
 }
 
@@ -986,7 +1038,7 @@ function handleDayInput(input, state, i) {
     return;
   }
 
-  setError(`Некорректное значение у ${state.name}, день ${i + 1}. Допустимы числа или коды: ОТ, ОД, ОЗ, У, УД, Б.`);
+  setError(`Некорректное значение у ${state.name}, день ${i + 1}. Допустимы числа или коды: ОТ, ОД, ОЗ, У, УД, Б, НТ.`);
 }
 
 function handleNightInput(input, state, i) {
@@ -1239,6 +1291,7 @@ function updateDayMarkClasses(index) {
 function countLeaves(state) {
   let ot = 0;
   let sick = 0;
+  let nt = 0;
   let other = 0;
 
   for (let i = 0; i < daysInMonth; i++) {
@@ -1247,10 +1300,11 @@ function countLeaves(state) {
 
     if (lt === "vac_paid") ot++;
     else if (lt === "sick") sick++;
+    else if (lt === NOT_EMPLOYED_LEAVE_TYPE) nt++;
     else other++;
   }
 
-  return { ot, sick, other };
+  return { ot, sick, nt, other };
 }
 
 function calendarNormHoursForBase(baseDayHours) {
@@ -1304,14 +1358,14 @@ function personalNormHours(state) {
   const baseDayHours = getBaseDayHours(state.gender, state.branch);
   const monthNorm = calendarNormHoursForBase(baseDayHours);
 
-  let effectiveLeaveDays = 0;
+  let effectiveLeaveHours = 0;
   for (let i = 0; i < daysInMonth; i++) {
     const lt = normalizeLeaveTypeLegacy(state.leaveType[i]);
     if (!lt) continue;
-    if (!sharedHoliday[i] && !sharedTransferredOff[i]) effectiveLeaveDays++;
+    effectiveLeaveHours += normHoursForDay(i, baseDayHours);
   }
 
-  const personalNorm = monthNorm - effectiveLeaveDays * baseDayHours;
+  const personalNorm = Math.max(0, monthNorm - effectiveLeaveHours);
   return { monthNorm, personalNorm };
 }
 
@@ -1323,7 +1377,7 @@ function firstHalfStats(state) {
   let holidayWeekdays = 0;
   let transferredWeekdays = 0;
   let shortWeekdays = 0;
-  let leaveEffectiveDays = 0;
+  let leaveEffectiveHours = 0;
 
   for (let i = 0; i <= endIdx; i++) {
     if (isWeekendByIndex(year, month, i)) continue;
@@ -1334,7 +1388,7 @@ function firstHalfStats(state) {
     else if (sharedShortDay[i]) shortWeekdays++;
 
     const lt = normalizeLeaveTypeLegacy(state.leaveType[i]);
-    if (lt && !sharedHoliday[i] && !sharedTransferredOff[i]) leaveEffectiveDays++;
+    if (lt) leaveEffectiveHours += normHoursForDay(i, baseDayHours);
   }
 
   const monthHalfNorm =
@@ -1343,7 +1397,7 @@ function firstHalfStats(state) {
     transferredWeekdays * baseDayHours -
     shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
 
-  const personalHalfNorm = monthHalfNorm - leaveEffectiveDays * baseDayHours;
+  const personalHalfNorm = Math.max(0, monthHalfNorm - leaveEffectiveHours);
   const workedFH = sumRange(state.dayHours, 0, endIdx) + sumRange(state.nightHours, 0, endIdx);
 
   return { personalHalfNorm, workedFH };
@@ -1387,8 +1441,8 @@ function updatePersonSummary(state) {
         <strong>${fmtHours(totalDay)} / ${fmtHours(totalNight)}</strong>
       </div>
       <div class="summary-line muted">
-        <span>ОТ / Б / проч.</span>
-        <strong>${leaves.ot} / ${leaves.sick} / ${leaves.other}</strong>
+        <span>ОТ / Б / НТ / проч.</span>
+        <strong>${leaves.ot} / ${leaves.sick} / ${leaves.nt} / ${leaves.other}</strong>
       </div>
     </div>
   `;
@@ -1509,6 +1563,23 @@ function mapInviteError(error) {
   return message || "Не удалось создать приглашение.";
 }
 
+function mapNotificationError(error) {
+  const message = String(error?.message || "");
+
+  if (message.includes("ACCESS_DENIED")) return "Табель сохранён, но уведомление не отправлено: недостаточно прав.";
+  if (message.includes("DEPARTMENT_NOT_FOUND")) return "Табель сохранён, но уведомление не отправлено: отдел не найден.";
+  if (
+    message.includes("notify_department_timesheet_saved") ||
+    message.includes("user_notifications") ||
+    message.includes("Could not find the function") ||
+    message.includes("schema cache")
+  ) {
+    return "Табель сохранён, но для уведомлений нужно запустить supabase-sql/008_department_notifications.sql.";
+  }
+
+  return "Табель сохранён, но уведомление не отправлено.";
+}
+
 async function createCurrentDepartmentInvite() {
   if (!managedDepartment?.key) {
     setError("Не найден текущий отдел для приглашения.");
@@ -1544,14 +1615,32 @@ async function createCurrentDepartmentInvite() {
 }
 
 
-async function doSaveAll() {
+async function doSaveAll({ notify = false } = {}) {
   setSaveStatus("Сохраняю…", "busy");
+  setError(null);
 
   try {
     const items = currentSaveItems();
     await managedSaveManyTimesheets(items);
     lastSavedSignature = currentSignature();
     dirty = false;
+
+    if (notify) {
+      try {
+        await notifyDepartmentTimesheetSaved({
+          departmentKey: managedDepartment?.key,
+          year,
+          month,
+        });
+        setSaveStatus("Сохранено и отправлено", "ok");
+        return;
+      } catch (notificationError) {
+        setSaveStatus("Сохранено без уведомления", "err");
+        setError(mapNotificationError(notificationError));
+        return;
+      }
+    }
+
     setSaveStatus(
       `Сохранено: ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`,
       "ok"
@@ -1573,7 +1662,7 @@ function scheduleSave() {
       setSaveStatus("Сохранено", "ok");
       return;
     }
-    await doSaveAll();
+    await doSaveAll({ notify: false });
   }, 900);
 }
 
@@ -1729,7 +1818,7 @@ logoutBtn?.addEventListener("click", async () => {
 });
 
 saveBtn?.addEventListener("click", async () => {
-  await doSaveAll();
+  await doSaveAll({ notify: true });
 });
 
 exportExcelBtn?.addEventListener("click", async () => {

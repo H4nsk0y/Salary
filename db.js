@@ -1,12 +1,18 @@
 import { supabase } from "./supabaseClient.js";
 
 const PROFILE_SELECT =
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date";
+
+const PROFILE_SELECT_WITH_BRANCH =
   "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch";
 
 const PROFILE_SELECT_LEGACY =
   "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number";
 
 const ADMIN_PROFILE_SELECT =
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number, branch, employment_date";
+
+const ADMIN_PROFILE_SELECT_WITHOUT_EMPLOYMENT =
   "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number, branch";
 
 function isNotFoundError(error) {
@@ -28,6 +34,20 @@ function isMissingBranchColumnError(error) {
 
   return (
     /branch/i.test(text) &&
+    /(column|schema cache|does not exist|could not find|42703|PGRST204)/i.test(text)
+  );
+}
+
+function isMissingEmploymentDateColumnError(error) {
+  const text = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].filter(Boolean).join(" ");
+
+  return (
+    /employment_date/i.test(text) &&
     /(column|schema cache|does not exist|could not find|42703|PGRST204)/i.test(text)
   );
 }
@@ -68,7 +88,25 @@ export async function getMyProfile() {
 
   if (error) {
     if (isNotFoundError(error)) return null;
-    if (isMissingBranchColumnError(error)) {
+
+    if (isMissingEmploymentDateColumnError(error)) {
+      const { data: withBranchData, error: withBranchError } = await supabase
+        .from("profiles")
+        .select(PROFILE_SELECT_WITH_BRANCH)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (!withBranchError) {
+        return withBranchData ? { ...withBranchData, employment_date: null } : null;
+      }
+
+      if (!isMissingBranchColumnError(withBranchError)) {
+        if (isNotFoundError(withBranchError)) return null;
+        throw withBranchError;
+      }
+    }
+
+    if (isMissingBranchColumnError(error) || isMissingEmploymentDateColumnError(error)) {
       const { data: legacyData, error: legacyError } = await supabase
         .from("profiles")
         .select(PROFILE_SELECT_LEGACY)
@@ -80,7 +118,7 @@ export async function getMyProfile() {
         throw legacyError;
       }
 
-      return legacyData ? { ...legacyData, branch: null } : null;
+      return legacyData ? { ...legacyData, branch: null, employment_date: null } : null;
     }
 
     throw error;
@@ -108,6 +146,7 @@ export async function updateMyProfile({
   avatarUrl,
   tabNumber,
   branch,
+  employmentDate,
 }) {
   const userId = await requireUserId();
 
@@ -120,12 +159,17 @@ export async function updateMyProfile({
   if (avatarUrl !== undefined) patch.avatar_url = avatarUrl;
   if (tabNumber !== undefined) patch.tab_number = tabNumber;
   if (branch !== undefined) patch.branch = branch;
+  if (employmentDate !== undefined) patch.employment_date = employmentDate;
 
   const { error } = await supabase
     .from("profiles")
     .upsert(patch, { onConflict: "user_id" });
 
   if (error) {
+    if (employmentDate !== undefined && isMissingEmploymentDateColumnError(error)) {
+      throw new Error("В базе пока нет поля даты трудоустройства. Запусти supabase-sql/007_profile_employment_date.sql в Supabase SQL Editor.");
+    }
+
     if (branch !== undefined && isMissingBranchColumnError(error)) {
       throw new Error("В базе пока нет поля филиала. Запусти supabase-sql/004_profile_branch.sql в Supabase SQL Editor.");
     }
@@ -357,10 +401,20 @@ export async function listManagedDepartmentMembers(departmentKey) {
 
   if (!userIds.length) return [];
 
-  const { data: profiles, error: profilesError } = await supabase
+  let { data: profiles, error: profilesError } = await supabase
     .from("profiles")
     .select(ADMIN_PROFILE_SELECT)
     .in("user_id", userIds);
+
+  if (profilesError && isMissingEmploymentDateColumnError(profilesError)) {
+    const fallback = await supabase
+      .from("profiles")
+      .select(ADMIN_PROFILE_SELECT_WITHOUT_EMPLOYMENT)
+      .in("user_id", userIds);
+
+    profiles = fallback.data;
+    profilesError = fallback.error;
+  }
 
   if (profilesError) throw profilesError;
 
@@ -380,6 +434,7 @@ export async function listManagedDepartmentMembers(departmentKey) {
       branch: profile?.branch ?? null,
       position: profile?.position ?? "",
       tab_number: profile?.tab_number ?? "",
+      employment_date: profile?.employment_date ?? null,
       avatar_url: profile?.avatar_url ?? null,
       hide_money: profile?.hide_money ?? false,
       created_at: profile?.created_at ?? null,
@@ -424,6 +479,49 @@ export async function managedSaveManyTimesheets(items) {
   const { error } = await supabase
     .from("timesheets")
     .upsert(normalizedRows, { onConflict: "user_id,year,month" });
+
+  if (error) throw error;
+}
+
+export async function notifyDepartmentTimesheetSaved({ departmentKey, year, month } = {}) {
+  const key = String(departmentKey ?? "").trim();
+  const normalized = assertValidYearMonth(year, month);
+
+  if (!key) throw new Error("Не указан отдел.");
+
+  const { error } = await supabase.rpc("notify_department_timesheet_saved", {
+    p_department_key: key,
+    p_year: normalized.year,
+    p_month: normalized.month,
+  });
+
+  if (error) throw error;
+}
+
+export async function listMyNotifications() {
+  await requireUserId();
+
+  const { data, error } = await supabase
+    .from("user_notifications")
+    .select("id, type, title, body, url, created_at, expires_at, department_key")
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function deleteMyNotification(notificationId) {
+  await requireUserId();
+
+  const id = Number(notificationId);
+  if (!Number.isFinite(id)) throw new Error("Некорректное уведомление.");
+
+  const { error } = await supabase
+    .from("user_notifications")
+    .delete()
+    .eq("id", id);
 
   if (error) throw error;
 }

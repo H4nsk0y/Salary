@@ -27,6 +27,7 @@ const LEAVE_LABELS = {
   sick: "Больничный",
   edu_paid: "Учебный отпуск",
   edu_unpaid: "Учебный без оплаты",
+  not_employed: "Не трудоустроен",
 };
 
 function setStatus(text, tone = "neutral") {

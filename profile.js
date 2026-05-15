@@ -40,6 +40,7 @@ const OVERTIME_LIMIT_YEAR = 120;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const HAZARD_POSITION_RATE = 0.04;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
+const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
@@ -64,6 +65,7 @@ const okladInput = document.getElementById("okladInput");
 const genderSelect = document.getElementById("genderSelect");
 const tabNumberInput = document.getElementById("tabNumberInput");
 const branchSelect = document.getElementById("branchSelect");
+const employmentDateInput = document.getElementById("employmentDateInput");
 const okladPeekBtnInitial = document.getElementById("okladInputPeekBtn");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const refreshBtn = document.getElementById("refreshBtn");
@@ -180,6 +182,7 @@ function getProfileAutofillFields() {
     genderSelect,
     tabNumberInput,
     branchSelect,
+    employmentDateInput,
     okladInput,
   ].filter(Boolean);
 }
@@ -203,6 +206,7 @@ function getExpectedProfileFieldValues(profile) {
     gender: profile?.gender ?? "",
     tabNumber: profile?.tab_number ?? "",
     branch: profile?.branch ?? "",
+    employmentDate: profile?.employment_date ?? "",
     oklad: profile?.oklad != null ? String(profile.oklad) : "",
   };
 }
@@ -213,6 +217,7 @@ function applyExpectedProfileFieldValues(values) {
   if (genderSelect) genderSelect.value = values.gender;
   if (tabNumberInput) tabNumberInput.value = values.tabNumber;
   if (branchSelect) branchSelect.value = values.branch;
+  if (employmentDateInput) employmentDateInput.value = values.employmentDate;
   if (okladInput) okladInput.value = values.oklad;
 }
 
@@ -399,6 +404,8 @@ function normalizeLeaveTypeLegacy(lt) {
   if (!lt) return null;
   if (lt === "vacation") return "vac_paid";
   if (lt === "sick") return "sick";
+  if (lt === NOT_EMPLOYED_LEAVE_TYPE) return NOT_EMPLOYED_LEAVE_TYPE;
+  if (String(lt).trim().toUpperCase() === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
   return String(lt);
 }
 
@@ -411,6 +418,7 @@ function leaveTypeToCode(lt) {
   if (t === "edu_paid") return "У";
   if (t === "edu_unpaid") return "УД";
   if (t === "sick") return "Б";
+  if (t === NOT_EMPLOYED_LEAVE_TYPE) return "НТ";
   return "";
 }
 
@@ -423,6 +431,7 @@ function leaveTypeToLabel(lt) {
   if (t === "edu_paid") return "Учебный отпуск (У)";
   if (t === "edu_unpaid") return "Учебный отпуск без оплаты (УД)";
   if (t === "sick") return "Больничный (Б)";
+  if (t === NOT_EMPLOYED_LEAVE_TYPE) return "Не трудоустроен (НТ)";
   return String(t);
 }
 
@@ -821,6 +830,20 @@ function computeCalendarNormFromPayload(payload, baseDayHours) {
   );
 }
 
+function getPayloadNormHoursForDay({
+  y,
+  m,
+  index,
+  baseDayHours,
+  isHoliday,
+  isTransferredOff,
+  isShortDay,
+}) {
+  if (isWeekendByIndex(y, m, index)) return 0;
+  if (isHoliday[index] || isTransferredOff[index]) return 0;
+  return Math.max(0, baseDayHours - (isShortDay[index] ? SHORT_DAY_REDUCTION_HOURS : 0));
+}
+
 function getHolidayWorkedTotalsFromPayload(payload) {
   if (!payload || typeof payload !== "object") return { hDay: 0, hNight: 0 };
 
@@ -964,7 +987,11 @@ function resolveMoneySummaryFromPayload(payload, profile) {
 
 function isCompensatoryLeaveForYear(lt) {
   const t = normalizeLeaveTypeLegacy(lt);
-  return t === "sick" || t === "vac_unpaid" || t === "vac_unpaid_required" || t === "edu_paid" || t === "edu_unpaid";
+  return t === "sick" ||
+    t === "vac_unpaid" ||
+    t === "vac_unpaid_required" ||
+    t === "edu_paid" ||
+    t === "edu_unpaid";
 }
 
 function computeCompensatoryLeaveHours(payload) {
@@ -976,16 +1003,24 @@ function computeCompensatoryLeaveHours(payload) {
 
   const isHoliday = Array.isArray(payload.isHoliday) ? payload.isHoliday : new Array(daysInMonth).fill(false);
   const isTransferredOff = Array.isArray(payload.isTransferredOff) ? payload.isTransferredOff : new Array(daysInMonth).fill(false);
+  const isShortDay = Array.isArray(payload.isShortDay) ? payload.isShortDay : new Array(daysInMonth).fill(false);
   const leaveType = Array.isArray(payload.leaveType) ? payload.leaveType : new Array(daysInMonth).fill(null);
 
-  let effectiveDays = 0;
+  let effectiveHours = 0;
   for (let i = 0; i < daysInMonth; i++) {
-    if (isHoliday[i] || isTransferredOff[i]) continue;
     if (!isCompensatoryLeaveForYear(leaveType[i])) continue;
-    effectiveDays++;
+    effectiveHours += getPayloadNormHoursForDay({
+      y,
+      m,
+      index: i,
+      baseDayHours: BASE_DAY_HOURS,
+      isHoliday,
+      isTransferredOff,
+      isShortDay,
+    });
   }
 
-  return effectiveDays * BASE_DAY_HOURS;
+  return effectiveHours;
 }
 
 function computeMonthOvertimeSigned(payload) {
@@ -1022,15 +1057,22 @@ function computeMonthOvertimeSigned(payload) {
     transferredWeekdays * BASE_DAY_HOURS -
     shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
 
-  let leaveEffective = 0;
+  let leaveEffectiveHours = 0;
   for (let i = 0; i < daysInMonth; i++) {
     const lt = normalizeLeaveTypeLegacy(leaveType[i]);
     if (!lt) continue;
-    if (isHoliday[i] || isTransferredOff[i]) continue;
-    leaveEffective++;
+    leaveEffectiveHours += getPayloadNormHoursForDay({
+      y,
+      m,
+      index: i,
+      baseDayHours: BASE_DAY_HOURS,
+      isHoliday,
+      isTransferredOff,
+      isShortDay,
+    });
   }
 
-  const personalNorm = monthNorm - leaveEffective * BASE_DAY_HOURS;
+  const personalNorm = Math.max(0, monthNorm - leaveEffectiveHours);
   const workedTotal = sum(dayHours) + sum(nightHours);
 
   return workedTotal - personalNorm;
@@ -1385,6 +1427,7 @@ async function refreshProfile() {
     gender: "",
     tab_number: "",
     branch: "",
+    employment_date: "",
     oklad: null,
     role: "user",
     avatar_url: null,
@@ -1403,6 +1446,7 @@ async function refreshProfile() {
   if (!requireDom(displayNameInput, "displayNameInput")) return;
   if (!requireDom(tabNumberInput, "tabNumberInput")) return;
   if (!requireDom(branchSelect, "branchSelect")) return;
+  if (!requireDom(employmentDateInput, "employmentDateInput")) return;
   if (!requireDom(okladInput, "okladInput")) return;
   if (!requireDom(positionSelect, "positionSelect")) return;
 
@@ -1629,7 +1673,12 @@ async function renderCalendar() {
     const ltCode = leaveTypeToCode(ltRaw);
     if (ltCode) {
       const t = document.createElement("span");
-      t.className = ltNorm === "sick" ? "cal-tag sick" : "cal-tag leave";
+      t.className =
+        ltNorm === "sick"
+          ? "cal-tag sick"
+          : ltNorm === NOT_EMPLOYED_LEAVE_TYPE
+            ? "cal-tag not-employed"
+            : "cal-tag leave";
       t.textContent = ltCode;
       tags.appendChild(t);
     }
@@ -1761,11 +1810,13 @@ async function saveProfile() {
   if (!requireDom(displayNameInput, "displayNameInput")) return;
   if (!requireDom(tabNumberInput, "tabNumberInput")) return;
   if (!requireDom(branchSelect, "branchSelect")) return;
+  if (!requireDom(employmentDateInput, "employmentDateInput")) return;
   if (!requireDom(okladInput, "okladInput")) return;
 
   const displayName = displayNameInput.value.trim();
   const tabNumber = String(tabNumberInput.value || "").trim();
   const branch = branchSelect ? String(branchSelect.value || "") : "";
+  const employmentDate = String(employmentDateInput?.value || "").trim();
   const oklad = parseNumber(okladInput.value);
   const position = positionSelect ? String(positionSelect.value || "") : "";
   const gender = genderSelect ? String(genderSelect.value || "") : "";
@@ -1790,6 +1841,22 @@ async function saveProfile() {
     setError("Некорректный филиал.");
     return;
   }
+  if (employmentDate && !/^\d{4}-\d{2}-\d{2}$/.test(employmentDate)) {
+    setError("Некорректная дата трудоустройства.");
+    return;
+  }
+  if (employmentDate) {
+    const [dateYear, dateMonth, dateDay] = employmentDate.split("-").map(Number);
+    const parsedEmploymentDate = new Date(dateYear, dateMonth - 1, dateDay);
+    if (
+      parsedEmploymentDate.getFullYear() !== dateYear ||
+      parsedEmploymentDate.getMonth() !== dateMonth - 1 ||
+      parsedEmploymentDate.getDate() !== dateDay
+    ) {
+      setError("Некорректная дата трудоустройства.");
+      return;
+    }
+  }
 
   if (tabNumber.length > 64) {
     setError("Табельный номер слишком длинный.");
@@ -1804,6 +1871,7 @@ async function saveProfile() {
       displayName: displayName || null,
       tabNumber: tabNumber || null,
       branch: branch || null,
+      employmentDate: employmentDate || null,
       oklad: okladInput.value.trim() ? oklad : null,
       position: position || null,
       gender: gender || null,
@@ -1961,7 +2029,7 @@ for (const field of [displayNameInput, tabNumberInput, okladInput].filter(Boolea
   field.addEventListener("drop", markProfileFieldsTouched);
   field.addEventListener("compositionstart", markProfileFieldsTouched);
 }
-for (const field of [positionSelect, genderSelect, branchSelect].filter(Boolean)) {
+for (const field of [positionSelect, genderSelect, branchSelect, employmentDateInput].filter(Boolean)) {
   field.addEventListener("pointerdown", markProfileFieldsTouched);
   field.addEventListener("keydown", markProfileFieldsTouched);
   field.addEventListener("change", markProfileFieldsTouched);

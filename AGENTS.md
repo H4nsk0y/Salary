@@ -115,6 +115,8 @@ Owner-страницы должны проверять:
 - `money_pin_salt text`
 - `auto_collapse_table_panels boolean not null`
 - `tab_number text`
+- `branch text`
+- `employment_date date`
 
 `timesheets`
 - личные табели
@@ -141,6 +143,12 @@ Owner-страницы должны проверять:
 - сообщения чата отдела
 - используется Realtime-подписка по `department_key`
 
+`user_notifications`
+- личные уведомления пользователей
+- `expires_at` скрывает уведомления спустя неделю
+- пользователь видит и удаляет только свои уведомления
+- уведомления отдела отправляются через RPC, а не прямыми insert с клиента
+
 `user_presence`
 - heartbeat пользователей для owner-страницы онлайн
 - ожидаемые поля: `user_id`, `last_seen`, `page`, `updated_at`
@@ -163,6 +171,7 @@ Owner-страницы должны проверять:
 - `owner_set_user_department(p_user_id uuid, p_department_key text default null)`
 - `owner_set_department_editor(p_department_key text, p_user_id uuid, p_is_editor boolean)`
 - `owner_list_payroll_analytics(p_year integer default null, p_department_key text default null)`
+- `notify_department_timesheet_saved(p_department_key text, p_year integer, p_month integer)`
 
 Новые owner-специфичные операции лучше делать через `security definer` RPC в стиле уже существующих функций.
 
@@ -197,6 +206,7 @@ Owner-страницы должны проверять:
 - `Б` - больничный
 - `У` - учебный отпуск
 - `УД` - учебный отпуск без оплаты
+- `НТ` - не трудоустроен в этот день; уменьшает личную норму на норму конкретного рабочего дня, но не относится к оплачиваемым отсутствиям
 
 Обязательные поля профиля для доступа к табелю:
 - `display_name`

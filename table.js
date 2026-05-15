@@ -32,6 +32,7 @@ let LEAVE_HOURS_PER_DAY = DEFAULT_DAY_HOURS;
 
 const MAX_HOURS_PER_DAY = 24;
 const SHORT_DAY_REDUCTION_HOURS = 1;
+const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 
 let focusDayIndex = null;
 let mobileSelectedIdx = 0;
@@ -302,11 +303,15 @@ function isWeekendByIndex(y, m, dayIndex0) {
 function sanitizeDayCellValue(raw) {
   let s = String(raw ?? "").toUpperCase();
   s = s.replaceAll("O","О").replaceAll("T","Т").replaceAll("B","Б")
-       .replaceAll("D","Д").replaceAll("Z","З").replaceAll("U","У").replaceAll("Y","У");
+       .replaceAll("D","Д").replaceAll("Z","З").replaceAll("U","У").replaceAll("Y","У")
+       .replaceAll("N","Н");
   s = s.replace(/\s+/g, "");
-  const letters = s.replace(/[^ОТБДЗУЛ]/g, "");
+  const letters = s.replace(/[^ОТБДЗУЛН]/g, "");
   if (letters) {
     if (letters.includes("Б")) return "Б";
+    if (letters.startsWith("Н")) {
+      return "НТ";
+    }
     if (letters.startsWith("О")) {
       const second = letters[1] || "";
       if (second === "Т") return "ОТ";
@@ -347,13 +352,14 @@ function normalizeLeaveToken(raw) {
   if (!s0) return null;
   const s = s0.replaceAll("O","О").replaceAll("T","Т").replaceAll("B","Б")
                .replaceAll("D","Д").replaceAll("Z","З").replaceAll("U","У")
-               .replaceAll("Y","У").replaceAll("L","Л");
+               .replaceAll("Y","У").replaceAll("L","Л").replaceAll("N","Н");
   if (s === "О" || s === "ОТ") return "vac_paid";
   if (s === "ОД") return "vac_unpaid";
   if (s === "ОЗ") return "vac_unpaid_required";
   if (s === "Б" || s === "БЛ") return "sick";
   if (s === "У") return "edu_paid";
   if (s === "УД") return "edu_unpaid";
+  if (s === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
   return null;
 }
 
@@ -369,6 +375,8 @@ function normalizeLeaveTypeLegacy(lt) {
   if (!lt) return null;
   if (lt === "vacation") return "vac_paid";
   if (lt === "sick") return "sick";
+  if (lt === NOT_EMPLOYED_LEAVE_TYPE) return NOT_EMPLOYED_LEAVE_TYPE;
+  if (String(lt).trim().toUpperCase() === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
   return String(lt);
 }
 
@@ -457,6 +465,7 @@ function leaveTypeToCode(lt, raw = "") {
   if (t === "edu_paid") return "У";
   if (t === "edu_unpaid") return "УД";
   if (t === "sick") return "Б";
+  if (t === NOT_EMPLOYED_LEAVE_TYPE) return "НТ";
   return "";
 }
 
@@ -574,6 +583,7 @@ let leaveType = [];
 let profileRole = "user";
 let profileOklad = null;
 let profilePosition = "";
+let profileEmploymentDate = null;
 let ensureTableMoneyAccess = async () => true;
 let okladVisible = true;
 let payVisible = true;
@@ -1151,8 +1161,44 @@ function calendarNormHours() {
   );
 }
 
+function normHoursForDay(index, baseDayHours = BASE_DAY_HOURS) {
+  if (isWeekendByIndex(year, month, index)) return 0;
+  if (isHoliday[index] || isTransferredOff[index]) return 0;
+  return Math.max(0, baseDayHours - (isShortDay[index] ? SHORT_DAY_REDUCTION_HOURS : 0));
+}
+
+function parseIsoDateLocal(value) {
+  const match = String(value ?? "").trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const y = Number(match[1]);
+  const m = Number(match[2]) - 1;
+  const d = Number(match[3]);
+  const date = new Date(y, m, d);
+
+  if (date.getFullYear() !== y || date.getMonth() !== m || date.getDate() !== d) return null;
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function applyEmploymentDateDefaults() {
+  const employmentDate = parseIsoDateLocal(profileEmploymentDate);
+  if (!employmentDate) return;
+
+  for (let i = 0; i < daysInMonth; i++) {
+    const date = new Date(year, month, i + 1);
+    date.setHours(0, 0, 0, 0);
+    if (date >= employmentDate) continue;
+    if (normHoursForDay(i) <= 0) continue;
+    if (normalizeLeaveTypeLegacy(leaveType[i])) continue;
+    if ((Number(dayHours[i]) || 0) > 0 || (Number(nightHours[i]) || 0) > 0) continue;
+
+    leaveType[i] = NOT_EMPLOYED_LEAVE_TYPE;
+  }
+}
+
 function personalNormHours(monthNorm) {
-  let otTotal = 0, sickTotal = 0, unpaidTotal = 0, eduTotal = 0, effectiveLeaveDays = 0;
+  let otTotal = 0, sickTotal = 0, unpaidTotal = 0, eduTotal = 0, notEmployedTotal = 0, effectiveLeaveHours = 0;
   for (let i = 0; i < daysInMonth; i++) {
     const lt = normalizeLeaveTypeLegacy(leaveType[i]);
     if (!lt) continue;
@@ -1160,10 +1206,11 @@ function personalNormHours(monthNorm) {
     else if (lt === "sick") sickTotal++;
     else if (lt === "vac_unpaid" || lt === "vac_unpaid_required") unpaidTotal++;
     else if (lt === "edu_paid" || lt === "edu_unpaid") eduTotal++;
-    if (!isHoliday[i] && !isTransferredOff[i]) effectiveLeaveDays++;
+    else if (lt === NOT_EMPLOYED_LEAVE_TYPE) notEmployedTotal++;
+    effectiveLeaveHours += normHoursForDay(i, LEAVE_HOURS_PER_DAY);
   }
-  const personalNorm = monthNorm - effectiveLeaveDays * LEAVE_HOURS_PER_DAY;
-  return { otTotal, sickTotal, unpaidTotal, eduTotal, personalNorm };
+  const personalNorm = Math.max(0, monthNorm - effectiveLeaveHours);
+  return { otTotal, sickTotal, unpaidTotal, eduTotal, notEmployedTotal, personalNorm };
 }
 
 function holidayWorkedTotals() {
@@ -1182,7 +1229,7 @@ function firstHalfStats() {
   let holidayWD = 0;
   let transferredWD = 0;
   let shortWD = 0;
-  let leaveEffective = 0;
+  let leaveEffectiveHours = 0;
 
   for (let i = 0; i <= endIdx; i++) {
     if (isWeekendByIndex(year, month, i)) continue;
@@ -1193,7 +1240,7 @@ function firstHalfStats() {
     else if (isShortDay[i]) shortWD++;
 
     const lt = normalizeLeaveTypeLegacy(leaveType[i]);
-    if (lt && !isHoliday[i] && !isTransferredOff[i]) leaveEffective++;
+    if (lt) leaveEffectiveHours += normHoursForDay(i, LEAVE_HOURS_PER_DAY);
   }
 
   const monthHalfNorm =
@@ -1202,7 +1249,7 @@ function firstHalfStats() {
     transferredWD * BASE_DAY_HOURS -
     shortWD * SHORT_DAY_REDUCTION_HOURS;
 
-  const personalHalfNorm = monthHalfNorm - leaveEffective * LEAVE_HOURS_PER_DAY;
+  const personalHalfNorm = Math.max(0, monthHalfNorm - leaveEffectiveHours);
   const workedFH = sumRange(dayHours, 0, endIdx) + sumRange(nightHours, 0, endIdx);
 
   return { personalHalfNorm, workedFH };
@@ -1554,7 +1601,7 @@ function recalcAll() {
   if (monthYearDisplay) monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
 
   const monthNorm = calendarNormHours();
-  const { otTotal, sickTotal, unpaidTotal, eduTotal, personalNorm } = personalNormHours(monthNorm);
+  const { otTotal, sickTotal, unpaidTotal, eduTotal, notEmployedTotal, personalNorm } = personalNormHours(monthNorm);
   const totalDay = sumArr(dayHours);
   const totalNight = sumArr(nightHours);
   const workedHours = totalDay + totalNight;
@@ -1567,7 +1614,7 @@ function recalcAll() {
   animateNumber(normMonthEl, monthNorm, (v) => v.toFixed(1), 360);
   animateNumber(normEffectiveEl, personalNorm, (v) => v.toFixed(1), 360);
   animateNumber(overtimeEl, workedHours - personalNorm, (v) => (v >= 0 ? "+" : "") + v.toFixed(1), 360);
-  if (leaveDaysEl) leaveDaysEl.textContent = `ОТ:${otTotal} • Б:${sickTotal} • ОД/ОЗ:${unpaidTotal} • У/УД:${eduTotal}`;
+  if (leaveDaysEl) leaveDaysEl.textContent = `ОТ:${otTotal} • Б:${sickTotal} • ОД/ОЗ:${unpaidTotal} • У/УД:${eduTotal} • НТ:${notEmployedTotal}`;
 
   const { personalHalfNorm, workedFH } = firstHalfStats();
   if (normFirstHalfEl) normFirstHalfEl.textContent = personalHalfNorm.toFixed(1);
@@ -2001,7 +2048,7 @@ function buildTableForMonth() {
         return;
       }
 
-      setError("Некорректное значение. Допустимы только числа или коды: ОТ, ОД, ОЗ, У, УД, Б.");
+      setError("Некорректное значение. Допустимы только числа или коды: ОТ, ОД, ОЗ, У, УД, Б, НТ.");
     });
 
     dayTd.appendChild(dayInput);
@@ -2095,6 +2142,24 @@ function applyMonthMoneyContext(payload) {
   if (okladInput) okladInput.value = "";
 }
 
+function renderInputsFromState() {
+  for (let i = 0; i < daysInMonth; i++) {
+    updateDayMarkClasses(i);
+    const dt = normalizeLeaveTypeLegacy(leaveType[i]);
+    if (dt) dayInputs[i].value = leaveTypeToCode(dt, "ОТ");
+    else dayInputs[i].value = formatHourForInput(dayHours[i]);
+
+    if (leaveType[i]) lockNightCell(i);
+    else {
+      unlockNightCell(i);
+      nightInputs[i].value = formatHourForInput(nightHours[i]);
+    }
+
+    dayInputs[i].dataset.prev = dayInputs[i].value ?? "";
+    nightInputs[i].dataset.prev = nightInputs[i].value ?? "";
+  }
+}
+
 function applyPayload(payload) {
   currentLoadedPayload = payload ?? null;
   personalSharedMarksChanged = false;
@@ -2103,7 +2168,10 @@ function applyPayload(payload) {
     currentPaySummary = createEmptyPaySummary();
     fillActualInputsFromState();
     applyMonthMoneyContext(null);
+    applyEmploymentDateDefaults();
+    renderInputsFromState();
     syncPaidLeaveControls();
+    updateMobileToolbar();
     return;
   }
 
@@ -2124,22 +2192,9 @@ function applyPayload(payload) {
 
   currentPaySummary = normalizeStoredPaySummary(payload.paySummary);
   applyMonthMoneyContext(payload);
+  applyEmploymentDateDefaults();
 
-  for (let i = 0; i < daysInMonth; i++) {
-    updateDayMarkClasses(i);
-    const dt = normalizeLeaveTypeLegacy(leaveType[i]);
-    if (dt) dayInputs[i].value = leaveTypeToCode(dt, "ОТ");
-    else dayInputs[i].value = formatHourForInput(dayHours[i]);
-
-    if (leaveType[i]) lockNightCell(i);
-    else {
-      unlockNightCell(i);
-      nightInputs[i].value = formatHourForInput(nightHours[i]);
-    }
-
-    dayInputs[i].dataset.prev = dayInputs[i].value ?? "";
-    nightInputs[i].dataset.prev = nightInputs[i].value ?? "";
-  }
+  renderInputsFromState();
 
   fillActualInputsFromState();
   syncActualNetInputUi();
@@ -2441,6 +2496,7 @@ applyAutoCollapsedPanels(profile);
   profileRole = profile?.role ?? "user";
   profileOklad = profile?.oklad ?? null;
   profilePosition = profile?.position ?? "";
+  profileEmploymentDate = profile?.employment_date ?? null;
 
   const managedDepartment = await getMyManagedDepartment().catch(() => null);
 

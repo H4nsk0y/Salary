@@ -559,6 +559,16 @@
         scrollbar-color: rgba(99, 102, 241, 0.55) rgba(30, 41, 59, 0.55);
       }
 
+      #tableScrollable {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      #tableScrollable::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+      }
+
       @media (max-width: 1024px) {
         .label-cell {
           min-width: 170px;
@@ -941,7 +951,7 @@
           </div>
 
           <div class="text-xs text-slate-400">
-            Коды: <span class="text-slate-200">ОТ</span>, <span class="text-slate-200">ОД</span>, <span class="text-slate-200">ОЗ</span>, <span class="text-slate-200">У</span>, <span class="text-slate-200">УД</span>, <span class="text-slate-200">Б</span>
+            Коды: <span class="text-slate-200">ОТ</span>, <span class="text-slate-200">ОД</span>, <span class="text-slate-200">ОЗ</span>, <span class="text-slate-200">У</span>, <span class="text-slate-200">УД</span>, <span class="text-slate-200">Б</span>, <span class="text-slate-200">НТ</span>
           </div>
         </div>
 
