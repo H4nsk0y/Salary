@@ -217,8 +217,118 @@ function applyExpectedProfileFieldValues(values) {
   if (genderSelect) genderSelect.value = values.gender;
   if (tabNumberInput) tabNumberInput.value = values.tabNumber;
   if (branchSelect) branchSelect.value = values.branch;
-  if (employmentDateInput) employmentDateInput.value = values.employmentDate;
+  if (employmentDateInput) {
+    employmentDateInput.value = values.employmentDate;
+    updateEmploymentDateHint();
+  }
   if (okladInput) okladInput.value = values.oklad;
+}
+
+function pluralRu(value, one, few, many) {
+  const n = Math.abs(Number(value)) % 100;
+  const n1 = n % 10;
+
+  if (n > 10 && n < 20) return many;
+  if (n1 > 1 && n1 < 5) return few;
+  if (n1 === 1) return one;
+  return many;
+}
+
+function formatEmploymentDuration({ years, months, days }) {
+  const parts = [];
+
+  if (years > 0) parts.push(`${years} ${pluralRu(years, "год", "года", "лет")}`);
+  if (months > 0) parts.push(`${months} ${pluralRu(months, "месяц", "месяца", "месяцев")}`);
+  if (days > 0 || !parts.length) parts.push(`${days} ${pluralRu(days, "день", "дня", "дней")}`);
+
+  return parts.join(", ");
+}
+
+function parseProfileDate(value) {
+  const raw = String(value ?? "").trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const y = Number(match[1]);
+  const m = Number(match[2]) - 1;
+  const d = Number(match[3]);
+  const date = new Date(y, m, d);
+
+  if (date.getFullYear() !== y || date.getMonth() !== m || date.getDate() !== d) return null;
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function getDaysInMonth(year, monthIndex) {
+  return new Date(year, monthIndex + 1, 0).getDate();
+}
+
+function addYearsClamped(date, years) {
+  const year = date.getFullYear() + years;
+  const month = date.getMonth();
+  const day = Math.min(date.getDate(), getDaysInMonth(year, month));
+  return new Date(year, month, day);
+}
+
+function addMonthsClamped(date, months) {
+  const totalMonth = date.getMonth() + months;
+  const year = date.getFullYear() + Math.floor(totalMonth / 12);
+  const month = ((totalMonth % 12) + 12) % 12;
+  const day = Math.min(date.getDate(), getDaysInMonth(year, month));
+  return new Date(year, month, day);
+}
+
+function diffCalendarInclusive(startDate, endDate) {
+  const endExclusive = addDays(endDate, 1);
+
+  let years = endExclusive.getFullYear() - startDate.getFullYear();
+  let anchor = addYearsClamped(startDate, years);
+
+  if (anchor > endExclusive) {
+    years -= 1;
+    anchor = addYearsClamped(startDate, years);
+  }
+
+  let months = endExclusive.getMonth() - anchor.getMonth() +
+    (endExclusive.getFullYear() - anchor.getFullYear()) * 12;
+  let monthAnchor = addMonthsClamped(anchor, months);
+
+  if (monthAnchor > endExclusive) {
+    months -= 1;
+    monthAnchor = addMonthsClamped(anchor, months);
+  }
+
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const days = Math.max(0, Math.round((endExclusive - monthAnchor) / msPerDay));
+
+  return { years, months, days };
+}
+
+function updateEmploymentDateHint() {
+  if (!employmentDateInput) return;
+
+  const startDate = parseProfileDate(employmentDateInput.value);
+  if (!startDate) {
+    employmentDateInput.title = "Выберите дату трудоустройства, чтобы увидеть стаж в АЛВИСА.";
+    return;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (startDate > today) {
+    employmentDateInput.title = "Дата трудоустройства еще не наступила.";
+    return;
+  }
+
+  const duration = diffCalendarInclusive(startDate, today);
+  employmentDateInput.title = `Вы работаете в АЛВИСА уже ${formatEmploymentDuration(duration)}.`;
 }
 
 function guardProfileFieldsAgainstLateAutofill(profile) {
@@ -2034,6 +2144,11 @@ for (const field of [positionSelect, genderSelect, branchSelect, employmentDateI
   field.addEventListener("keydown", markProfileFieldsTouched);
   field.addEventListener("change", markProfileFieldsTouched);
 }
+
+employmentDateInput?.addEventListener("mouseenter", updateEmploymentDateHint);
+employmentDateInput?.addEventListener("focus", updateEmploymentDateHint);
+employmentDateInput?.addEventListener("input", updateEmploymentDateHint);
+employmentDateInput?.addEventListener("change", updateEmploymentDateHint);
 
 setupProfileMoneyControls();
 
