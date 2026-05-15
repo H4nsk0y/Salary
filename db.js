@@ -15,6 +15,9 @@ const ADMIN_PROFILE_SELECT =
 const ADMIN_PROFILE_SELECT_WITHOUT_EMPLOYMENT =
   "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number, branch";
 
+const ADMIN_PROFILE_SELECT_LEGACY =
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number";
+
 function isNotFoundError(error) {
   return (
     error &&
@@ -406,10 +409,23 @@ export async function listManagedDepartmentMembers(departmentKey) {
     .select(ADMIN_PROFILE_SELECT)
     .in("user_id", userIds);
 
-  if (profilesError && isMissingEmploymentDateColumnError(profilesError)) {
+  if (
+    profilesError &&
+    (isMissingEmploymentDateColumnError(profilesError) || isMissingBranchColumnError(profilesError))
+  ) {
     const fallback = await supabase
       .from("profiles")
       .select(ADMIN_PROFILE_SELECT_WITHOUT_EMPLOYMENT)
+      .in("user_id", userIds);
+
+    profiles = fallback.data;
+    profilesError = fallback.error;
+  }
+
+  if (profilesError && isMissingBranchColumnError(profilesError)) {
+    const fallback = await supabase
+      .from("profiles")
+      .select(ADMIN_PROFILE_SELECT_LEGACY)
       .in("user_id", userIds);
 
     profiles = fallback.data;
