@@ -20,6 +20,7 @@ const FEMALE_DAY_HOURS = 7.2;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
+const DISMISSED_LEAVE_TYPE = "dismissed";
 
 const POSITION_LABELS = {
   egais_head: "Руководитель Отдела ЕГАИС",
@@ -250,7 +251,9 @@ function normalizeLeaveTypeLegacy(lt) {
   if (lt === "vacation") return "vac_paid";
   if (lt === "sick") return "sick";
   if (lt === NOT_EMPLOYED_LEAVE_TYPE) return NOT_EMPLOYED_LEAVE_TYPE;
+  if (lt === DISMISSED_LEAVE_TYPE) return DISMISSED_LEAVE_TYPE;
   if (String(lt).trim().toUpperCase() === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
+  if (String(lt).trim().toUpperCase() === "УВ") return DISMISSED_LEAVE_TYPE;
   return String(lt);
 }
 
@@ -264,6 +267,7 @@ function leaveTypeToCode(lt) {
   if (t === "edu_unpaid") return "УД";
   if (t === "sick") return "Б";
   if (t === NOT_EMPLOYED_LEAVE_TYPE) return "НТ";
+  if (t === DISMISSED_LEAVE_TYPE) return "УВ";
   return "";
 }
 
@@ -356,6 +360,7 @@ function leaveHoursForRange({
   for (let i = startDayIndex; i <= endDayIndex; i += 1) {
     const lt = normalizeLeaveTypeLegacy(leaveType?.[i]);
     if (!lt) continue;
+    if (lt === DISMISSED_LEAVE_TYPE) continue;
     if (sharedHoliday[i] || sharedTransferredOff[i]) continue;
     total += normHoursForDay({
       year,

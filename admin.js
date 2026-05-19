@@ -7,6 +7,7 @@ import {
   getMyProfile,
   getDepartmentByKey,
   listManagedDepartmentMembers,
+  managedListTimesheetsBefore,
   managedLoadTimesheet,
   managedSaveManyTimesheets,
   notifyDepartmentTimesheetSaved,
@@ -24,6 +25,7 @@ const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const MAX_HOURS_PER_DAY = 24;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
+const DISMISSED_LEAVE_TYPE = "dismissed";
 const TABLE_DRAG_THRESHOLD_PX = 5;
 
 const monthNames = [
@@ -328,6 +330,37 @@ function applyEmploymentDateDefaultsToState(state) {
   }
 }
 
+function isDismissedLeaveType(leaveTypeValue) {
+  return normalizeLeaveTypeLegacy(leaveTypeValue) === DISMISSED_LEAVE_TYPE;
+}
+
+function isNormAffectingLeaveType(leaveTypeValue) {
+  const leave = normalizeLeaveTypeLegacy(leaveTypeValue);
+  return Boolean(leave && leave !== DISMISSED_LEAVE_TYPE);
+}
+
+function findDismissalIndex(state) {
+  if (state?.dismissedBeforeMonth) return -1;
+  return state?.leaveType?.findIndex((leave) => isDismissedLeaveType(leave)) ?? -1;
+}
+
+function payloadHasDismissal(payload) {
+  if (!payload || !Array.isArray(payload.leaveType)) return false;
+  return payload.leaveType.some((leave) => isDismissedLeaveType(leave));
+}
+
+function applyDismissalsBeforeMonth(rows) {
+  const dismissedUsers = new Set();
+
+  for (const row of rows ?? []) {
+    if (payloadHasDismissal(row?.payload)) dismissedUsers.add(String(row.user_id));
+  }
+
+  for (const state of teamStates) {
+    state.dismissedBeforeMonth = dismissedUsers.has(String(state.userId));
+  }
+}
+
 function sanitizeDayCellValue(raw) {
   let s = String(raw ?? "").toUpperCase();
   s = s
@@ -338,10 +371,11 @@ function sanitizeDayCellValue(raw) {
     .replaceAll("Z", "З")
     .replaceAll("U", "У")
     .replaceAll("Y", "У")
-    .replaceAll("N", "Н");
+    .replaceAll("N", "Н")
+    .replaceAll("V", "В");
 
   s = s.replace(/\s+/g, "");
-  const letters = s.replace(/[^ОТБДЗУЛН]/g, "");
+  const letters = s.replace(/[^ОТБДЗУЛНВ]/g, "");
 
   if (letters) {
     if (letters.includes("Б")) return "Б";
@@ -357,6 +391,7 @@ function sanitizeDayCellValue(raw) {
     }
     if (letters.startsWith("У")) {
       const second = letters[1] || "";
+      if (second === "В") return "УВ";
       if (second === "Д") return "УД";
       return "У";
     }
@@ -399,7 +434,9 @@ function normalizeLeaveTypeLegacy(lt) {
   if (lt === "vacation") return "vac_paid";
   if (lt === "sick") return "sick";
   if (lt === NOT_EMPLOYED_LEAVE_TYPE) return NOT_EMPLOYED_LEAVE_TYPE;
+  if (lt === DISMISSED_LEAVE_TYPE) return DISMISSED_LEAVE_TYPE;
   if (String(lt).trim().toUpperCase() === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
+  if (String(lt).trim().toUpperCase() === "УВ") return DISMISSED_LEAVE_TYPE;
   return String(lt);
 }
 
@@ -416,7 +453,8 @@ function normalizeLeaveToken(raw) {
     .replaceAll("U", "У")
     .replaceAll("Y", "У")
     .replaceAll("L", "Л")
-    .replaceAll("N", "Н");
+    .replaceAll("N", "Н")
+    .replaceAll("V", "В");
 
   if (s === "О" || s === "ОТ") return "vac_paid";
   if (s === "ОД") return "vac_unpaid";
@@ -425,6 +463,7 @@ function normalizeLeaveToken(raw) {
   if (s === "У") return "edu_paid";
   if (s === "УД") return "edu_unpaid";
   if (s === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
+  if (s === "УВ") return DISMISSED_LEAVE_TYPE;
   return null;
 }
 
@@ -448,6 +487,7 @@ function leaveTypeToCode(lt, raw = "") {
   if (t === "edu_unpaid") return "УД";
   if (t === "sick") return "Б";
   if (t === NOT_EMPLOYED_LEAVE_TYPE) return "НТ";
+  if (t === DISMISSED_LEAVE_TYPE) return "УВ";
   return "";
 }
 
@@ -490,6 +530,7 @@ function createState(member) {
     gender: member?.gender ?? null,
     branch: member?.branch ?? null,
     employmentDate: member?.employment_date ?? null,
+    dismissedBeforeMonth: false,
     position: member?.position ?? "",
     tabNumber: member?.tab_number ?? "",
     dayHours: new Array(daysInMonth).fill(0),
@@ -829,8 +870,10 @@ function lockNightCell(state, i) {
   const el = state.nightInputs[i];
   if (!el) return;
   el.value = "";
+  el.dataset.prev = "";
   el.disabled = true;
   el.classList.add("opacity-50", "cursor-not-allowed");
+  el.title = "Недоступно для заполнения";
 }
 
 function unlockNightCell(state, i) {
@@ -838,6 +881,52 @@ function unlockNightCell(state, i) {
   if (!el) return;
   el.disabled = false;
   el.classList.remove("opacity-50", "cursor-not-allowed");
+  el.title = "";
+}
+
+function lockDayCell(state, i) {
+  const el = state.dayInputs[i];
+  if (!el) return;
+  el.value = "";
+  el.dataset.prev = "";
+  el.disabled = true;
+  el.classList.add("opacity-50", "cursor-not-allowed");
+  el.title = "Сотрудник уволен, дальнейшее заполнение заблокировано";
+}
+
+function unlockDayCell(state, i) {
+  const el = state.dayInputs[i];
+  if (!el) return;
+  el.disabled = false;
+  el.classList.remove("opacity-50", "cursor-not-allowed");
+  el.title = "";
+}
+
+function applyDismissalLockToState(state, { clearFuture = true } = {}) {
+  const dismissalIndex = findDismissalIndex(state);
+  const hasDismissal = state.dismissedBeforeMonth || dismissalIndex >= 0;
+
+  for (let i = 0; i < daysInMonth; i += 1) {
+    const isAfterDismissal = state.dismissedBeforeMonth || (dismissalIndex >= 0 && i > dismissalIndex);
+
+    if (isAfterDismissal) {
+      if (clearFuture) {
+        state.dayHours[i] = 0;
+        state.nightHours[i] = 0;
+        state.leaveType[i] = null;
+      }
+      lockDayCell(state, i);
+      lockNightCell(state, i);
+      continue;
+    }
+
+    unlockDayCell(state, i);
+
+    if (normalizeLeaveTypeLegacy(state.leaveType[i])) lockNightCell(state, i);
+    else unlockNightCell(state, i);
+  }
+
+  state.labelCell?.classList.toggle("is-dismissed", hasDismissal);
 }
 
 function clampDayTotalOrRevert({ state, index, nextDay, nextNight, onRevert }) {
@@ -1101,6 +1190,7 @@ function handleDayInput(input, state, i) {
     if (state.leaveType[i]) {
       state.leaveType[i] = null;
       unlockNightCell(state, i);
+      applyDismissalLockToState(state, { clearFuture: false });
     }
     state.dayHours[i] = 0;
     input.dataset.prev = "";
@@ -1111,7 +1201,7 @@ function handleDayInput(input, state, i) {
   const parsed = parseHoursOrLeave(raw);
 
   if (parsed.kind === "leave") {
-    if (weekend) {
+    if (weekend && parsed.leave !== DISMISSED_LEAVE_TYPE) {
       setError("Коды отсутствия нельзя ставить на выходные (сб/вс).");
       revertToPrev(input);
       return;
@@ -1123,6 +1213,7 @@ function handleDayInput(input, state, i) {
     state.nightHours[i] = 0;
     lockNightCell(state, i);
     input.dataset.prev = input.value;
+    applyDismissalLockToState(state, { clearFuture: true });
     onPersonDataChanged(state);
     return;
   }
@@ -1131,6 +1222,7 @@ function handleDayInput(input, state, i) {
     if (state.leaveType[i]) {
       state.leaveType[i] = null;
       unlockNightCell(state, i);
+      applyDismissalLockToState(state, { clearFuture: false });
     }
 
     const nextDay = sanitizeHourNumber(parsed.hours);
@@ -1150,7 +1242,7 @@ function handleDayInput(input, state, i) {
     return;
   }
 
-  setError(`Некорректное значение у ${state.name}, день ${i + 1}. Допустимы числа или коды: ОТ, ОД, ОЗ, У, УД, Б, НТ.`);
+  setError(`Некорректное значение у ${state.name}, день ${i + 1}. Допустимы числа или коды: ОТ, ОД, ОЗ, У, УД, Б, НТ, УВ.`);
 }
 
 function handleNightInput(input, state, i) {
@@ -1378,6 +1470,8 @@ function applyStateToDom() {
       state.dayInputs[i].dataset.prev = state.dayInputs[i].value ?? "";
       state.nightInputs[i].dataset.prev = state.nightInputs[i].value ?? "";
     }
+
+    applyDismissalLockToState(state, { clearFuture: true });
   }
 
   for (let i = 0; i < daysInMonth; i++) {
@@ -1409,6 +1503,7 @@ function countLeaves(state) {
   for (let i = 0; i < daysInMonth; i++) {
     const lt = normalizeLeaveTypeLegacy(state.leaveType[i]);
     if (!lt) continue;
+    if (lt === DISMISSED_LEAVE_TYPE) continue;
 
     if (lt === "vac_paid") ot++;
     else if (lt === "sick") sick++;
@@ -1472,8 +1567,7 @@ function personalNormHours(state) {
 
   let effectiveLeaveHours = 0;
   for (let i = 0; i < daysInMonth; i++) {
-    const lt = normalizeLeaveTypeLegacy(state.leaveType[i]);
-    if (!lt) continue;
+    if (!isNormAffectingLeaveType(state.leaveType[i])) continue;
     effectiveLeaveHours += normHoursForDay(i, baseDayHours);
   }
 
@@ -1499,8 +1593,9 @@ function firstHalfStats(state) {
     else if (sharedTransferredOff[i]) transferredWeekdays++;
     else if (sharedShortDay[i]) shortWeekdays++;
 
-    const lt = normalizeLeaveTypeLegacy(state.leaveType[i]);
-    if (lt) leaveEffectiveHours += normHoursForDay(i, baseDayHours);
+    if (isNormAffectingLeaveType(state.leaveType[i])) {
+      leaveEffectiveHours += normHoursForDay(i, baseDayHours);
+    }
   }
 
   const monthHalfNorm =
@@ -1846,15 +1941,18 @@ async function loadCurrentMonth() {
     const members = await listManagedDepartmentMembers(managedDepartment.key);
     resetMonthArrays(members);
 
-    const payloads = await Promise.all(
-      teamStates.map((state) => managedLoadTimesheet(state.userId, year, month))
-    );
+    const userIds = teamStates.map((state) => state.userId);
+    const [payloads, previousRows] = await Promise.all([
+      Promise.all(teamStates.map((state) => managedLoadTimesheet(state.userId, year, month))),
+      managedListTimesheetsBefore(userIds, year, month),
+    ]);
 
     const payloadsByUserId = new Map();
     for (let i = 0; i < teamStates.length; i++) {
       payloadsByUserId.set(teamStates[i].userId, payloads[i]);
     }
 
+    applyDismissalsBeforeMonth(previousRows);
     applyLoadedPayloads(payloadsByUserId);
     buildTable();
     syncTopTableScrollWidth();

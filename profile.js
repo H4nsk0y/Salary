@@ -41,6 +41,7 @@ const SHORT_DAY_REDUCTION_HOURS = 1;
 const HAZARD_POSITION_RATE = 0.04;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
+const DISMISSED_LEAVE_TYPE = "dismissed";
 
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
@@ -526,7 +527,9 @@ function normalizeLeaveTypeLegacy(lt) {
   if (lt === "vacation") return "vac_paid";
   if (lt === "sick") return "sick";
   if (lt === NOT_EMPLOYED_LEAVE_TYPE) return NOT_EMPLOYED_LEAVE_TYPE;
+  if (lt === DISMISSED_LEAVE_TYPE) return DISMISSED_LEAVE_TYPE;
   if (String(lt).trim().toUpperCase() === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
+  if (String(lt).trim().toUpperCase() === "УВ") return DISMISSED_LEAVE_TYPE;
   return String(lt);
 }
 
@@ -540,6 +543,7 @@ function leaveTypeToCode(lt) {
   if (t === "edu_unpaid") return "УД";
   if (t === "sick") return "Б";
   if (t === NOT_EMPLOYED_LEAVE_TYPE) return "НТ";
+  if (t === DISMISSED_LEAVE_TYPE) return "УВ";
   return "";
 }
 
@@ -553,6 +557,7 @@ function leaveTypeToLabel(lt) {
   if (t === "edu_unpaid") return "Учебный отпуск без оплаты (УД)";
   if (t === "sick") return "Больничный (Б)";
   if (t === NOT_EMPLOYED_LEAVE_TYPE) return "Не трудоустроен (НТ)";
+  if (t === DISMISSED_LEAVE_TYPE) return "Увольнение (УВ)";
   return String(t);
 }
 
@@ -1182,6 +1187,7 @@ function computeMonthOvertimeSigned(payload) {
   for (let i = 0; i < daysInMonth; i++) {
     const lt = normalizeLeaveTypeLegacy(leaveType[i]);
     if (!lt) continue;
+    if (lt === DISMISSED_LEAVE_TYPE) continue;
     leaveEffectiveHours += getPayloadNormHoursForDay({
       y,
       m,

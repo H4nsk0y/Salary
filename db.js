@@ -296,6 +296,27 @@ export async function listMyTimesheetsByYear(year, options = {}) {
   return data ?? [];
 }
 
+export async function listMyTimesheetsBefore(year, month, options = {}) {
+  const userId = await requireUserId();
+  const normalized = assertValidYearMonth(year, month);
+  const withPayload = Boolean(options.withPayload);
+  const select = withPayload
+    ? "year, month, payload, updated_at"
+    : "year, month, updated_at";
+
+  const { data, error } = await supabase
+    .from("timesheets")
+    .select(select)
+    .eq("user_id", userId)
+    .or(`year.lt.${normalized.year},and(year.eq.${normalized.year},month.lt.${normalized.month})`)
+    .order("year", { ascending: false })
+    .order("month", { ascending: false })
+    .limit(240);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function deleteMyTimesheet(year, month) {
   const userId = await requireUserId();
   const normalized = assertValidYearMonth(year, month);
@@ -481,6 +502,30 @@ export async function managedLoadTimesheet(userId, year, month) {
   }
 
   return data?.payload ?? null;
+}
+
+export async function managedListTimesheetsBefore(userIds, year, month) {
+  const ids = [...new Set(
+    (Array.isArray(userIds) ? userIds : [])
+      .map((id) => String(id ?? "").trim())
+      .filter(Boolean)
+  )];
+
+  if (!ids.length) return [];
+
+  const normalized = assertValidYearMonth(year, month);
+
+  const { data, error } = await supabase
+    .from("timesheets")
+    .select("user_id, year, month, payload")
+    .in("user_id", ids)
+    .or(`year.lt.${normalized.year},and(year.eq.${normalized.year},month.lt.${normalized.month})`)
+    .order("year", { ascending: false })
+    .order("month", { ascending: false })
+    .limit(5000);
+
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function managedSaveManyTimesheets(items) {

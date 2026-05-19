@@ -1,7 +1,7 @@
 
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
-import { getMyProfile, getMyManagedDepartment, loadTimesheet, saveTimesheet } from "./db.js";
+import { getMyProfile, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, saveTimesheet } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import {
   buildProfileCompletionUrl,
@@ -33,9 +33,11 @@ let LEAVE_HOURS_PER_DAY = DEFAULT_DAY_HOURS;
 const MAX_HOURS_PER_DAY = 24;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
+const DISMISSED_LEAVE_TYPE = "dismissed";
 
 let focusDayIndex = null;
 let mobileSelectedIdx = 0;
+let dismissedBeforeMonth = false;
 
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
@@ -304,9 +306,9 @@ function sanitizeDayCellValue(raw) {
   let s = String(raw ?? "").toUpperCase();
   s = s.replaceAll("O","О").replaceAll("T","Т").replaceAll("B","Б")
        .replaceAll("D","Д").replaceAll("Z","З").replaceAll("U","У").replaceAll("Y","У")
-       .replaceAll("N","Н");
+       .replaceAll("N","Н").replaceAll("V","В");
   s = s.replace(/\s+/g, "");
-  const letters = s.replace(/[^ОТБДЗУЛН]/g, "");
+  const letters = s.replace(/[^ОТБДЗУЛНВ]/g, "");
   if (letters) {
     if (letters.includes("Б")) return "Б";
     if (letters.startsWith("Н")) {
@@ -321,6 +323,7 @@ function sanitizeDayCellValue(raw) {
     }
     if (letters.startsWith("У")) {
       const second = letters[1] || "";
+      if (second === "В") return "УВ";
       if (second === "Д") return "УД";
       return "У";
     }
@@ -352,7 +355,7 @@ function normalizeLeaveToken(raw) {
   if (!s0) return null;
   const s = s0.replaceAll("O","О").replaceAll("T","Т").replaceAll("B","Б")
                .replaceAll("D","Д").replaceAll("Z","З").replaceAll("U","У")
-               .replaceAll("Y","У").replaceAll("L","Л").replaceAll("N","Н");
+               .replaceAll("Y","У").replaceAll("L","Л").replaceAll("N","Н").replaceAll("V","В");
   if (s === "О" || s === "ОТ") return "vac_paid";
   if (s === "ОД") return "vac_unpaid";
   if (s === "ОЗ") return "vac_unpaid_required";
@@ -360,6 +363,7 @@ function normalizeLeaveToken(raw) {
   if (s === "У") return "edu_paid";
   if (s === "УД") return "edu_unpaid";
   if (s === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
+  if (s === "УВ") return DISMISSED_LEAVE_TYPE;
   return null;
 }
 
@@ -376,7 +380,9 @@ function normalizeLeaveTypeLegacy(lt) {
   if (lt === "vacation") return "vac_paid";
   if (lt === "sick") return "sick";
   if (lt === NOT_EMPLOYED_LEAVE_TYPE) return NOT_EMPLOYED_LEAVE_TYPE;
+  if (lt === DISMISSED_LEAVE_TYPE) return DISMISSED_LEAVE_TYPE;
   if (String(lt).trim().toUpperCase() === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
+  if (String(lt).trim().toUpperCase() === "УВ") return DISMISSED_LEAVE_TYPE;
   return String(lt);
 }
 
@@ -466,6 +472,7 @@ function leaveTypeToCode(lt, raw = "") {
   if (t === "edu_unpaid") return "УД";
   if (t === "sick") return "Б";
   if (t === NOT_EMPLOYED_LEAVE_TYPE) return "НТ";
+  if (t === DISMISSED_LEAVE_TYPE) return "УВ";
   return "";
 }
 
@@ -1197,6 +1204,32 @@ function applyEmploymentDateDefaults() {
   }
 }
 
+function isDismissedLeaveType(leaveTypeValue) {
+  return normalizeLeaveTypeLegacy(leaveTypeValue) === DISMISSED_LEAVE_TYPE;
+}
+
+function isNormAffectingLeaveType(leaveTypeValue) {
+  const leave = normalizeLeaveTypeLegacy(leaveTypeValue);
+  return Boolean(leave && leave !== DISMISSED_LEAVE_TYPE);
+}
+
+function findDismissalIndex() {
+  if (dismissedBeforeMonth) return -1;
+  return leaveType.findIndex((leave) => isDismissedLeaveType(leave));
+}
+
+function payloadHasDismissal(payload) {
+  if (!payload || !Array.isArray(payload.leaveType)) return false;
+  return payload.leaveType.some((leave) => isDismissedLeaveType(leave));
+}
+
+async function refreshDismissalBeforeMonth() {
+  dismissedBeforeMonth = false;
+
+  const rows = await listMyTimesheetsBefore(year, month, { withPayload: true });
+  dismissedBeforeMonth = rows.some((row) => payloadHasDismissal(row?.payload));
+}
+
 function personalNormHours(monthNorm) {
   let otTotal = 0, sickTotal = 0, unpaidTotal = 0, eduTotal = 0, notEmployedTotal = 0, effectiveLeaveHours = 0;
   for (let i = 0; i < daysInMonth; i++) {
@@ -1207,7 +1240,7 @@ function personalNormHours(monthNorm) {
     else if (lt === "vac_unpaid" || lt === "vac_unpaid_required") unpaidTotal++;
     else if (lt === "edu_paid" || lt === "edu_unpaid") eduTotal++;
     else if (lt === NOT_EMPLOYED_LEAVE_TYPE) notEmployedTotal++;
-    effectiveLeaveHours += normHoursForDay(i, LEAVE_HOURS_PER_DAY);
+    if (lt !== DISMISSED_LEAVE_TYPE) effectiveLeaveHours += normHoursForDay(i, LEAVE_HOURS_PER_DAY);
   }
   const personalNorm = Math.max(0, monthNorm - effectiveLeaveHours);
   return { otTotal, sickTotal, unpaidTotal, eduTotal, notEmployedTotal, personalNorm };
@@ -1239,8 +1272,9 @@ function firstHalfStats() {
     else if (isTransferredOff[i]) transferredWD++;
     else if (isShortDay[i]) shortWD++;
 
-    const lt = normalizeLeaveTypeLegacy(leaveType[i]);
-    if (lt) leaveEffectiveHours += normHoursForDay(i, LEAVE_HOURS_PER_DAY);
+    if (isNormAffectingLeaveType(leaveType[i])) {
+      leaveEffectiveHours += normHoursForDay(i, LEAVE_HOURS_PER_DAY);
+    }
   }
 
   const monthHalfNorm =
@@ -1830,8 +1864,10 @@ function lockNightCell(i) {
   const el = nightInputs?.[i];
   if (!el) return;
   el.value = "";
+  el.dataset.prev = "";
   el.disabled = true;
   el.classList.add("opacity-50","cursor-not-allowed");
+  el.title = "Недоступно для заполнения";
 }
 
 function unlockNightCell(i) {
@@ -1839,6 +1875,49 @@ function unlockNightCell(i) {
   if (!el) return;
   el.disabled = false;
   el.classList.remove("opacity-50","cursor-not-allowed");
+  el.title = "";
+}
+
+function lockDayCell(i) {
+  const el = dayInputs?.[i];
+  if (!el) return;
+  el.value = "";
+  el.dataset.prev = "";
+  el.disabled = true;
+  el.classList.add("opacity-50","cursor-not-allowed");
+  el.title = "После кода УВ дальнейшее заполнение заблокировано";
+}
+
+function unlockDayCell(i) {
+  const el = dayInputs?.[i];
+  if (!el) return;
+  el.disabled = false;
+  el.classList.remove("opacity-50","cursor-not-allowed");
+  el.title = "";
+}
+
+function applyDismissalLock({ clearFuture = true } = {}) {
+  const dismissalIndex = findDismissalIndex();
+
+  for (let i = 0; i < daysInMonth; i++) {
+    const isAfterDismissal = dismissedBeforeMonth || (dismissalIndex >= 0 && i > dismissalIndex);
+
+    if (isAfterDismissal) {
+      if (clearFuture) {
+        dayHours[i] = 0;
+        nightHours[i] = 0;
+        leaveType[i] = null;
+      }
+      lockDayCell(i);
+      lockNightCell(i);
+      continue;
+    }
+
+    unlockDayCell(i);
+
+    if (normalizeLeaveTypeLegacy(leaveType[i])) lockNightCell(i);
+    else unlockNightCell(i);
+  }
 }
 
 function clearFocusColumn() {
@@ -2006,7 +2085,11 @@ function buildTableForMonth() {
 
       if (!raw.trim()) {
         setError(null);
-        if (leaveType[i]) { leaveType[i] = null; unlockNightCell(i); }
+        if (leaveType[i]) {
+          leaveType[i] = null;
+          unlockNightCell(i);
+          applyDismissalLock({ clearFuture: false });
+        }
         dayHours[i] = 0;
         dayInput.dataset.prev = "";
         recalcAll();
@@ -2017,7 +2100,7 @@ function buildTableForMonth() {
       const parsed = parseHoursOrLeave(raw);
 
       if (parsed.kind === "leave") {
-        if (weekend) {
+        if (weekend && parsed.leave !== DISMISSED_LEAVE_TYPE) {
           setError("Коды отсутствия нельзя ставить на выходные (сб/вс).");
           revertToPrev(dayInput);
           return;
@@ -2029,6 +2112,7 @@ function buildTableForMonth() {
         nightHours[i] = 0;
         lockNightCell(i);
         dayInput.dataset.prev = dayInput.value;
+        applyDismissalLock({ clearFuture: true });
         recalcAll();
         scheduleSave();
         return;
@@ -2036,7 +2120,11 @@ function buildTableForMonth() {
 
       if (parsed.kind === "hours") {
         setError(null);
-        if (leaveType[i]) { leaveType[i] = null; unlockNightCell(i); }
+        if (leaveType[i]) {
+          leaveType[i] = null;
+          unlockNightCell(i);
+          applyDismissalLock({ clearFuture: false });
+        }
         const nextDay = sanitizeHourNumber(parsed.hours);
         const nextNight = sanitizeHourNumber(nightHours[i] || 0);
         const ok = clampDayTotalOrRevert({ index: i, nextDay, nextNight, onRevert: () => revertToPrev(dayInput) });
@@ -2048,7 +2136,7 @@ function buildTableForMonth() {
         return;
       }
 
-      setError("Некорректное значение. Допустимы только числа или коды: ОТ, ОД, ОЗ, У, УД, Б, НТ.");
+      setError("Некорректное значение. Допустимы только числа или коды: ОТ, ОД, ОЗ, У, УД, Б, НТ, УВ.");
     });
 
     dayTd.appendChild(dayInput);
@@ -2158,6 +2246,8 @@ function renderInputsFromState() {
     dayInputs[i].dataset.prev = dayInputs[i].value ?? "";
     nightInputs[i].dataset.prev = nightInputs[i].value ?? "";
   }
+
+  applyDismissalLock({ clearFuture: true });
 }
 
 function applyPayload(payload) {
@@ -2256,7 +2346,10 @@ function syncOkladActionState() {
 async function loadCurrentMonthFromDb() {
   setSaveStatus("Загружаю…", "busy");
   try {
-    const payload = await loadTimesheet(year, month);
+    const [payload] = await Promise.all([
+      loadTimesheet(year, month),
+      refreshDismissalBeforeMonth(),
+    ]);
     applyPayload(payload);
 
     if (payload) {
