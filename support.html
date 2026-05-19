@@ -31,6 +31,24 @@
       border: 1px solid rgba(255, 255, 255, .12);
       box-shadow: 0 24px 80px rgba(15, 23, 42, .38);
     }
+
+    .bank-option[aria-pressed="true"][data-bank="tbank"] {
+      border-color: rgba(251, 191, 36, .55);
+      background: rgba(251, 191, 36, .14);
+      color: rgb(254, 243, 199);
+    }
+
+    .bank-option[aria-pressed="true"][data-bank="sber"] {
+      border-color: rgba(52, 211, 153, .55);
+      background: rgba(16, 185, 129, .14);
+      color: rgb(209, 250, 229);
+    }
+
+    .bank-option[aria-pressed="true"][data-bank="ozon"] {
+      border-color: rgba(96, 165, 250, .65);
+      background: rgba(37, 99, 235, .18);
+      color: rgb(219, 234, 254);
+    }
   </style>
 </head>
 <body class="font-sans text-slate-100 antialiased">
@@ -51,6 +69,24 @@
           Сейчас проект находится в разработке, а часть сервисов может быть недоступна без VPN. Сбор нужен для переноса на отдельный сервер, чтобы сайт работал стабильнее и открывался без лишних костылей.
         </p>
 
+        <div class="mt-8">
+          <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Выберите удобный для вас банк</h2>
+          <div class="mt-4 grid gap-3 sm:grid-cols-3">
+            <button type="button" class="bank-option rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left transition hover:border-amber-300/40 hover:bg-amber-400/10" data-bank="tbank" aria-pressed="false">
+              <span class="block text-base font-bold text-slate-100">Т-Банк</span>
+              <span class="mt-1 block text-xs text-slate-400">QR для оплаты через Т-Банк</span>
+            </button>
+            <button type="button" class="bank-option rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left transition hover:border-emerald-300/40 hover:bg-emerald-400/10" data-bank="sber" aria-pressed="false">
+              <span class="block text-base font-bold text-slate-100">Сбер</span>
+              <span class="mt-1 block text-xs text-slate-400">QR для оплаты через Сбер</span>
+            </button>
+            <button type="button" class="bank-option rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left transition hover:border-blue-300/50 hover:bg-blue-500/10" data-bank="ozon" aria-pressed="false">
+              <span class="block text-base font-bold text-slate-100">Ozon Банк</span>
+              <span class="mt-1 block text-xs text-slate-400">QR для оплаты через Ozon</span>
+            </button>
+          </div>
+        </div>
+
         <div class="mt-7 flex flex-wrap gap-3">
           <button type="button" onclick="history.back()" class="rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-slate-100 ring-1 ring-white/10 transition hover:bg-white/15">
             Назад
@@ -62,16 +98,69 @@
       </div>
 
       <aside class="glass-card rounded-3xl p-5 text-center">
-        <div class="rounded-3xl bg-white p-4">
-          <img src="images/support_qr.png" alt="QR-код для поддержки проекта" class="mx-auto w-full max-w-[280px] rounded-2xl" />
+        <div id="qrPlaceholder" class="flex min-h-[320px] items-center justify-center rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-6">
+          <p class="max-w-[240px] text-sm leading-6 text-slate-400">
+            Выберите банк слева, и здесь появится подходящий QR-код.
+          </p>
         </div>
-        <p class="mt-4 text-sm leading-6 text-slate-300">
-          Отсканируйте QR-код в приложении банка.
-        </p>
+
+        <div id="qrPanel" class="hidden">
+          <div class="rounded-3xl bg-white p-4">
+            <img id="qrImage" src="" alt="" class="mx-auto w-full max-w-[280px] rounded-2xl" />
+          </div>
+          <p id="qrCaption" class="mt-4 text-sm font-semibold text-slate-200"></p>
+          <p class="mt-2 text-sm leading-6 text-slate-400">
+            Отсканируйте QR-код в приложении выбранного банка.
+          </p>
+        </div>
       </aside>
     </section>
   </main>
 
+  <script>
+    const banks = {
+      tbank: {
+        label: "Т-Банк",
+        src: "images/support_qr_tbank.png",
+        alt: "QR-код Т-Банка для поддержки проекта",
+      },
+      sber: {
+        label: "Сбер",
+        src: "images/support_qr_sber.jpg",
+        alt: "QR-код Сбера для поддержки проекта",
+      },
+      ozon: {
+        label: "Ozon Банк",
+        src: "images/support_qr_ozon.png",
+        alt: "QR-код Ozon Банка для поддержки проекта",
+      },
+    };
+
+    const options = document.querySelectorAll("[data-bank]");
+    const qrPlaceholder = document.getElementById("qrPlaceholder");
+    const qrPanel = document.getElementById("qrPanel");
+    const qrImage = document.getElementById("qrImage");
+    const qrCaption = document.getElementById("qrCaption");
+
+    function selectBank(key) {
+      const bank = banks[key];
+      if (!bank) return;
+
+      for (const option of options) {
+        option.setAttribute("aria-pressed", String(option.dataset.bank === key));
+      }
+
+      qrImage.src = bank.src;
+      qrImage.alt = bank.alt;
+      qrCaption.textContent = bank.label;
+      qrPlaceholder.classList.add("hidden");
+      qrPanel.classList.remove("hidden");
+    }
+
+    for (const option of options) {
+      option.addEventListener("click", () => selectBank(option.dataset.bank));
+    }
+  </script>
   <script type="module" src="./nav.js"></script>
   <script type="module" src="./scrollbar.js"></script>
 </body>
