@@ -869,6 +869,35 @@ function focusHorizontal(state, rowType, startIdx, step) {
   }
 }
 
+function matrixRowIndex(memberIndex, rowType) {
+  return memberIndex * 2 + (rowType === "night" ? 1 : 0);
+}
+
+function getMatrixRowContext(rowIndex) {
+  if (!Number.isInteger(rowIndex) || rowIndex < 0) return null;
+
+  const memberIndex = Math.floor(rowIndex / 2);
+  const state = teamStates[memberIndex];
+  if (!state) return null;
+
+  return {
+    state,
+    memberIndex,
+    rowType: rowIndex % 2 === 0 ? "day" : "night",
+  };
+}
+
+function focusVertical(ctx, step) {
+  const maxRows = teamStates.length * 2;
+  let rowIndex = matrixRowIndex(ctx.memberIndex, ctx.rowType) + step;
+
+  while (rowIndex >= 0 && rowIndex < maxRows) {
+    const target = getMatrixRowContext(rowIndex);
+    if (target && focusCell(target.state, target.rowType, ctx.index)) return;
+    rowIndex += step;
+  }
+}
+
 function setupMatrixInput(inputEl, memberIndex, rowType, index) {
   inputEl.dataset.memberIndex = String(memberIndex);
   inputEl.dataset.row = rowType;
@@ -892,7 +921,7 @@ function getInputContext(inputEl) {
   }
   if (rowType !== "day" && rowType !== "night") return null;
 
-  return { state, rowType, index };
+  return { state, memberIndex, rowType, index };
 }
 
 function handleMatrixFocusIn(e) {
@@ -968,7 +997,8 @@ function handleMatrixKeyDown(e) {
 
   if (key === "ArrowLeft") focusHorizontal(ctx.state, ctx.rowType, ctx.index - 1, -1);
   else if (key === "ArrowRight") focusHorizontal(ctx.state, ctx.rowType, ctx.index + 1, 1);
-  else focusCell(ctx.state, ctx.rowType === "day" ? "night" : "day", ctx.index);
+  else if (key === "ArrowUp") focusVertical(ctx, -1);
+  else focusVertical(ctx, 1);
 }
 
 function onPersonDataChanged(state) {
