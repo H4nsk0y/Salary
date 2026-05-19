@@ -852,11 +852,93 @@ function clampDayTotalOrRevert({ state, index, nextDay, nextNight, onRevert }) {
   return true;
 }
 
+function getMatrixViewportBounds() {
+  let top = 12;
+  let bottom = window.innerHeight - 20;
+
+  for (const selector of [".app-top-header", "#mobileBar", "#topTableScroll"]) {
+    const el = document.querySelector(selector);
+    if (!(el instanceof HTMLElement)) continue;
+    const style = window.getComputedStyle(el);
+    if (style.display === "none" || style.visibility === "hidden") continue;
+
+    const rect = el.getBoundingClientRect();
+    if (rect.bottom <= 0 || rect.top >= window.innerHeight) continue;
+
+    top = Math.max(top, rect.bottom + 12);
+  }
+
+  return { top, bottom };
+}
+
+function scrollElementIntoContainerView(el, container) {
+  if (!(el instanceof HTMLElement) || !(container instanceof HTMLElement)) return;
+  if (container.scrollHeight <= container.clientHeight + 2) return;
+
+  const rect = el.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  const topEdge = containerRect.top + 12;
+  const bottomEdge = containerRect.bottom - 12;
+
+  if (rect.top < topEdge) {
+    container.scrollTop += rect.top - topEdge;
+  } else if (rect.bottom > bottomEdge) {
+    container.scrollTop += rect.bottom - bottomEdge;
+  }
+}
+
+function scrollWindowToMatrixCell(el) {
+  if (!(el instanceof HTMLElement)) return;
+
+  const rect = el.getBoundingClientRect();
+  const bounds = getMatrixViewportBounds();
+
+  if (rect.top < bounds.top) {
+    window.scrollBy({ top: rect.top - bounds.top, left: 0, behavior: "auto" });
+  } else if (rect.bottom > bounds.bottom) {
+    window.scrollBy({ top: rect.bottom - bounds.bottom, left: 0, behavior: "auto" });
+  }
+}
+
+function scrollMatrixCellHorizontal(el) {
+  if (!(el instanceof HTMLElement) || !tableScrollable) return;
+
+  const rect = el.getBoundingClientRect();
+  const containerRect = tableScrollable.getBoundingClientRect();
+  const leftEdge = containerRect.left + (isMobileNow() ? 58 : 200);
+  const rightEdge = containerRect.right - 14;
+
+  if (rect.left < leftEdge) {
+    tableScrollable.scrollLeft += rect.left - leftEdge;
+  } else if (rect.right > rightEdge) {
+    tableScrollable.scrollLeft += rect.right - rightEdge;
+  }
+
+  requestHorizontalScrollStateSync();
+}
+
+function focusInputWithoutAutoScroll(el) {
+  try {
+    el.focus({ preventScroll: true });
+  } catch {
+    el.focus();
+  }
+}
+
+function ensureMatrixCellVisible(el) {
+  if (!(el instanceof HTMLElement)) return;
+
+  scrollElementIntoContainerView(el, tableScrollable);
+  scrollWindowToMatrixCell(el);
+  scrollMatrixCellHorizontal(el);
+}
+
 function focusCell(state, rowType, idx) {
   const arr = rowType === "day" ? state.dayInputs : state.nightInputs;
   const el = arr[idx];
   if (!el || el.disabled) return false;
-  el.focus();
+  focusInputWithoutAutoScroll(el);
+  ensureMatrixCellVisible(el);
   if (typeof el.select === "function") el.select();
   return true;
 }
