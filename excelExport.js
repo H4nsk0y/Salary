@@ -40,6 +40,17 @@ const POSITION_LABELS = {
   quality_control_engineer: "Инженер контроля качества",
   chemist: "Химик",
   microbiologist: "Микробиолог",
+  chief_accountant: "Главный бухгалтер",
+  deputy_chief_accountant: "Заместитель главного бухгалтера",
+  accountant_bookkeeping: "Бухгалтер",
+  system_administrator: "Системный администратор",
+  assistant_system_administrator: "Помощник системного администратора",
+  hr_service_head: "Руководитель службы персонала",
+  hr_specialist: "Специалист по персоналу",
+  director: "Директор",
+  assistant_director: "Помощник директора",
+  procurement_specialist: "Специалист по закупкам",
+  technology_accounting_specialist: "Специалист по учету",
 };
 
 const DEPARTMENT_LABELS = {

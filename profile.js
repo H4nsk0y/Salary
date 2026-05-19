@@ -149,6 +149,17 @@ const POSITION_VALUES = new Set([
   "quality_control_engineer",
   "chemist",
   "microbiologist",
+  "chief_accountant",
+  "deputy_chief_accountant",
+  "accountant_bookkeeping",
+  "system_administrator",
+  "assistant_system_administrator",
+  "hr_service_head",
+  "hr_specialist",
+  "director",
+  "assistant_director",
+  "procurement_specialist",
+  "technology_accounting_specialist",
 ]);
 
 const BRANCH_VALUES = new Set([
