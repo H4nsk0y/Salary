@@ -243,6 +243,44 @@
   white-space: nowrap;
 }
 
+.label-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.label-title-row .label-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.label-overtime-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.label-overtime-badge.is-hidden {
+  display: none;
+}
+
+.label-overtime-badge.is-minor {
+  background: rgba(245, 158, 11, 0.18);
+  color: rgba(253, 230, 138, 0.98);
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.28);
+}
+
+.label-overtime-badge.is-major {
+  background: rgba(244, 63, 94, 0.2);
+  color: rgba(255, 228, 230, 0.98);
+  box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.32);
+}
+
 .label-sub {
   display: block;
   margin-top: 2px;
@@ -429,6 +467,24 @@
       .summary-cell.is-overtime .summary-main strong,
       .summary-cell.is-overtime .summary-line strong {
         color: rgba(255, 228, 230, 0.98);
+      }
+
+      .label-cell.is-overtime-minor,
+      .summary-cell.is-overtime-minor {
+        background-color: rgba(82, 52, 13, 0.96) !important;
+      }
+
+      .label-cell.is-overtime-minor .label-main {
+        color: rgba(254, 243, 199, 0.98);
+      }
+
+      .label-cell.is-overtime-minor .label-sub {
+        color: rgba(252, 211, 77, 0.88);
+      }
+
+      .summary-cell.is-overtime-minor .summary-main strong,
+      .summary-cell.is-overtime-minor .summary-line strong {
+        color: rgba(254, 243, 199, 0.98);
       }
 
       .employee-day-row.overtime-row td:not(.label-cell):not(.summary-cell),
@@ -781,7 +837,9 @@
     letter-spacing: 0;
   }
 
+  .admin-matrix .label-title-row,
   .admin-matrix .label-main,
+  .admin-matrix .label-overtime-badge,
   .admin-matrix .label-sub {
     display: none;
   }
@@ -952,6 +1010,16 @@
 
           <div class="text-xs text-slate-400">
             Коды: <span class="text-slate-200">ОТ</span>, <span class="text-slate-200">ОД</span>, <span class="text-slate-200">ОЗ</span>, <span class="text-slate-200">У</span>, <span class="text-slate-200">УД</span>, <span class="text-slate-200">Б</span>, <span class="text-slate-200">НТ</span>, <span class="text-slate-200">УВ</span>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-400/10 px-2.5 py-1 text-[11px] font-semibold text-amber-200 ring-1 ring-amber-300/20">
+                <span class="h-2 w-2 rounded-full bg-amber-400"></span>
+                Переработка до 10 ч включительно
+              </span>
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold text-rose-200 ring-1 ring-rose-300/20">
+                <span class="h-2 w-2 rounded-full bg-rose-400"></span>
+                Переработка свыше 10 ч
+              </span>
+            </div>
           </div>
         </div>
 

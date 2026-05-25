@@ -23,6 +23,7 @@ const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const MAX_HOURS_PER_DAY = 24;
+const MINOR_OVERTIME_LIMIT_HOURS = 10;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 const DISMISSED_LEAVE_TYPE = "dismissed";
@@ -704,6 +705,14 @@ function makeLabelCell(state) {
   main.className = "label-main";
   main.textContent = state.name;
 
+  const overtimeBadge = document.createElement("span");
+  overtimeBadge.className = "label-overtime-badge is-hidden";
+  state.overtimeBadge = overtimeBadge;
+
+  const titleRow = document.createElement("span");
+  titleRow.className = "label-title-row";
+  titleRow.append(main, overtimeBadge);
+
   const sub = document.createElement("span");
   sub.className = "label-sub";
   sub.textContent = "День / Ночь";
@@ -716,7 +725,7 @@ function makeLabelCell(state) {
     if (isMobileNow()) setMobileEmployee(state);
   });
 
-  td.append(avatar, main, sub);
+  td.append(avatar, titleRow, sub);
   return td;
 }
 
@@ -1621,15 +1630,30 @@ function updatePersonSummary(state) {
 
   const overtime = workedTotal - personalNorm;
   const hasOvertime = overtime > 0.0001;
+  const hasMinorOvertime = overtime > 0.0001 && overtime <= MINOR_OVERTIME_LIMIT_HOURS + 0.0001;
+  const hasMajorOvertime = overtime > MINOR_OVERTIME_LIMIT_HOURS + 0.0001;
 
   state.dayRowEl?.classList.toggle("overtime-row", hasOvertime);
   state.dayRowEl?.classList.toggle("overtime-row-top", hasOvertime);
+  state.dayRowEl?.classList.toggle("overtime-row-minor", hasMinorOvertime);
+  state.dayRowEl?.classList.toggle("overtime-row-major", hasMajorOvertime);
 
   state.nightRowEl?.classList.toggle("overtime-row", hasOvertime);
   state.nightRowEl?.classList.toggle("overtime-row-bottom", hasOvertime);
+  state.nightRowEl?.classList.toggle("overtime-row-minor", hasMinorOvertime);
+  state.nightRowEl?.classList.toggle("overtime-row-major", hasMajorOvertime);
 
-  state.labelCell?.classList.toggle("is-overtime", hasOvertime);
-  state.summaryEl?.classList.toggle("is-overtime", hasOvertime);
+  state.labelCell?.classList.toggle("is-overtime", hasMajorOvertime);
+  state.labelCell?.classList.toggle("is-overtime-minor", hasMinorOvertime);
+  state.summaryEl?.classList.toggle("is-overtime", hasMajorOvertime);
+  state.summaryEl?.classList.toggle("is-overtime-minor", hasMinorOvertime);
+
+  if (state.overtimeBadge) {
+    state.overtimeBadge.textContent = hasOvertime ? `+${fmtHours(overtime)} ч` : "";
+    state.overtimeBadge.classList.toggle("is-hidden", !hasOvertime);
+    state.overtimeBadge.classList.toggle("is-minor", hasMinorOvertime);
+    state.overtimeBadge.classList.toggle("is-major", hasMajorOvertime);
+  }
 
   if (!state.summaryEl) return;
 
