@@ -31,6 +31,8 @@ let BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
 let LEAVE_HOURS_PER_DAY = DEFAULT_DAY_HOURS;
 
 const MAX_HOURS_PER_DAY = 24;
+const ADVANCE_PAYMENT_DAY = 25;
+const REMAINING_PAYMENT_DAY = 10;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 const DISMISSED_LEAVE_TYPE = "dismissed";
@@ -61,6 +63,9 @@ const payPeekBtnInitial = document.getElementById("payPeekBtn");
 const payPeekText = document.getElementById("payPeekText");
 const payPeekIcon = document.getElementById("payPeekIcon");
 const payWarningsBox = document.getElementById("payWarningsBox");
+const paymentCountdownCard = document.getElementById("paymentCountdownCard");
+const paymentCountdownValue = document.getElementById("paymentCountdownValue");
+const paymentCountdownHint = document.getElementById("paymentCountdownHint");
 const actualConfirmHint = document.getElementById("actualConfirmHint");
 const paidLeaveHint = document.getElementById("paidLeaveHint");
 
@@ -603,6 +608,9 @@ let currentMoneySnapshot = null;
 let currentPaySummary = createEmptyPaySummary();
 let suppressActualInputSync = false;
 let personalSharedMarksChanged = false;
+let paymentCountdownTimer = null;
+let paymentCountdownRunId = 0;
+const paymentMarksCache = new Map();
 
 function replaceElementWithClone(el) {
   if (!el) return null;
@@ -1174,6 +1182,170 @@ function normHoursForDay(index, baseDayHours = BASE_DAY_HOURS) {
   return Math.max(0, baseDayHours - (isShortDay[index] ? SHORT_DAY_REDUCTION_HOURS : 0));
 }
 
+function startOfLocalDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function paymentMonthKey(y, m) {
+  return `${y}-${String(m).padStart(2, "0")}`;
+}
+
+function snapshotCurrentPaymentMarks() {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !daysInMonth) return;
+  if (isHoliday.length !== daysInMonth || isTransferredOff.length !== daysInMonth) return;
+  paymentMarksCache.set(paymentMonthKey(year, month), {
+    isHoliday: isHoliday.map((x) => Boolean(x)),
+    isTransferredOff: isTransferredOff.map((x) => Boolean(x)),
+  });
+}
+
+function normalizePaymentMarks(payload, y, m) {
+  const length = new Date(y, m + 1, 0).getDate();
+  const holidays = Array.isArray(payload?.isHoliday) && payload.isHoliday.length === length
+    ? payload.isHoliday
+    : new Array(length).fill(false);
+  const transferred = Array.isArray(payload?.isTransferredOff) && payload.isTransferredOff.length === length
+    ? payload.isTransferredOff
+    : new Array(length).fill(false);
+
+  return {
+    isHoliday: holidays.map((x) => Boolean(x)),
+    isTransferredOff: transferred.map((x) => Boolean(x)),
+  };
+}
+
+async function getPaymentMarksForMonth(y, m) {
+  if (y === year && m === month) {
+    return {
+      isHoliday: isHoliday.map((x) => Boolean(x)),
+      isTransferredOff: isTransferredOff.map((x) => Boolean(x)),
+    };
+  }
+
+  const key = paymentMonthKey(y, m);
+  if (paymentMarksCache.has(key)) return paymentMarksCache.get(key);
+
+  try {
+    const payload = await loadTimesheet(y, m);
+    const marks = normalizePaymentMarks(payload, y, m);
+    paymentMarksCache.set(key, marks);
+    return marks;
+  } catch {
+    const marks = normalizePaymentMarks(null, y, m);
+    paymentMarksCache.set(key, marks);
+    return marks;
+  }
+}
+
+async function isPaymentNonWorkingDate(date) {
+  const d = new Date(date);
+  const dow = d.getDay();
+  if (dow === 0 || dow === 6) return true;
+
+  const marks = await getPaymentMarksForMonth(d.getFullYear(), d.getMonth());
+  const idx = d.getDate() - 1;
+  return Boolean(marks?.isHoliday?.[idx] || marks?.isTransferredOff?.[idx]);
+}
+
+async function resolvePaymentDate(rawDate) {
+  const resolved = startOfLocalDay(rawDate);
+  let guard = 20;
+
+  while (guard > 0 && await isPaymentNonWorkingDate(resolved)) {
+    resolved.setDate(resolved.getDate() - 1);
+    guard -= 1;
+  }
+
+  return resolved;
+}
+
+function formatPaymentDate(date) {
+  return date.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+}
+
+function paymentTypeLabel(type) {
+  return type === "advance" ? "Аванс" : "Остаток";
+}
+
+async function findNearestPayment(now = new Date()) {
+  const today = startOfLocalDay(now);
+  const candidates = [];
+
+  for (let offset = 0; offset <= 4; offset += 1) {
+    const base = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+    const items = [
+      { type: "remaining", rawDate: new Date(base.getFullYear(), base.getMonth(), REMAINING_PAYMENT_DAY) },
+      { type: "advance", rawDate: new Date(base.getFullYear(), base.getMonth(), ADVANCE_PAYMENT_DAY) },
+    ];
+
+    for (const item of items) {
+      const paymentDate = await resolvePaymentDate(item.rawDate);
+      if (paymentDate >= today) {
+        candidates.push({ ...item, paymentDate });
+      }
+    }
+  }
+
+  candidates.sort((a, b) => a.paymentDate - b.paymentDate);
+  return candidates[0] ?? null;
+}
+
+function renderPaymentCountdown(payment, now = new Date()) {
+  if (!paymentCountdownCard || !paymentCountdownValue || !paymentCountdownHint) return;
+
+  if (!payment) {
+    paymentCountdownValue.textContent = "—";
+    paymentCountdownHint.textContent = "Не удалось определить ближайшую выплату";
+    paymentCountdownCard.classList.remove("is-today");
+    return;
+  }
+
+  const today = startOfLocalDay(now);
+  const paymentDay = startOfLocalDay(payment.paymentDate);
+  const isToday = paymentDay.getTime() === today.getTime();
+  const type = paymentTypeLabel(payment.type);
+  const moved = startOfLocalDay(payment.rawDate).getTime() !== paymentDay.getTime();
+  const moveText = moved ? ` · перенос с ${formatPaymentDate(payment.rawDate)}` : "";
+
+  paymentCountdownCard.classList.toggle("is-today", isToday);
+  paymentCountdownHint.textContent = `${type} — ${formatPaymentDate(payment.paymentDate)}${moveText}`;
+
+  if (isToday) {
+    paymentCountdownValue.textContent = "Ожидайте выплату сегодня";
+    return;
+  }
+
+  const diffMs = Math.max(0, paymentDay.getTime() - now.getTime());
+  const totalHours = Math.max(1, Math.ceil(diffMs / (60 * 60 * 1000)));
+  const daysLeft = Math.floor(totalHours / 24);
+  const hoursLeft = totalHours % 24;
+
+  paymentCountdownValue.textContent = `${daysLeft} д ${hoursLeft} ч`;
+}
+
+async function updatePaymentCountdown() {
+  if (!paymentCountdownCard) return;
+  const runId = ++paymentCountdownRunId;
+  snapshotCurrentPaymentMarks();
+
+  const now = new Date();
+  const payment = await findNearestPayment(now);
+  if (runId !== paymentCountdownRunId) return;
+  renderPaymentCountdown(payment, now);
+}
+
+function requestPaymentCountdownUpdate() {
+  void updatePaymentCountdown();
+}
+
+function startPaymentCountdownTimer() {
+  if (paymentCountdownTimer) return;
+  requestPaymentCountdownUpdate();
+  paymentCountdownTimer = window.setInterval(requestPaymentCountdownUpdate, 60 * 1000);
+}
+
 function parseIsoDateLocal(value) {
   const match = String(value ?? "").trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
@@ -1633,6 +1805,7 @@ function getResolvedHazardRate() {
 
 function recalcAll() {
   if (monthYearDisplay) monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
+  requestPaymentCountdownUpdate();
 
   const monthNorm = calendarNormHours();
   const { otTotal, sickTotal, unpaidTotal, eduTotal, notEmployedTotal, personalNorm } = personalNormHours(monthNorm);
@@ -2616,6 +2789,7 @@ applyAutoCollapsedPanels(profile);
 
 
   await loadCurrentMonthFromDb();
+  startPaymentCountdownTimer();
 
   if (isMobileNow()) {
     const now = new Date();

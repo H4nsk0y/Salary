@@ -430,6 +430,43 @@
       font-weight: 600;
     }
 
+    .payment-countdown {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      background:
+        linear-gradient(135deg, rgba(14, 165, 233, 0.13), rgba(99, 102, 241, 0.09)),
+        rgba(15, 23, 42, 0.58);
+    }
+
+    .payment-countdown::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 1;
+      background:
+        radial-gradient(240px 120px at 15% 20%, rgba(56, 189, 248, 0.18), transparent 65%),
+        radial-gradient(220px 130px at 85% 30%, rgba(99, 102, 241, 0.14), transparent 65%);
+    }
+
+    .payment-countdown > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .payment-countdown-value {
+      font-variant-numeric: tabular-nums;
+      color: rgba(224, 242, 254, 0.98);
+    }
+
+    .payment-countdown.is-today {
+      border-color: rgba(52, 211, 153, 0.32);
+      background:
+        linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(14, 165, 233, 0.08)),
+        rgba(15, 23, 42, 0.58);
+    }
+
     #driver-page-overlay { background: rgba(2, 6, 23, 0.58) !important; backdrop-filter: blur(4px) !important; }
     #driver-highlighted-element-stage { background: transparent !important; box-shadow: none !important; }
     .driver-highlighted-element {
@@ -780,6 +817,7 @@
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Аванс</div><div class="mt-1 text-lg font-semibold" id="advancePay">—</div></div>
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Остаток</div><div class="mt-1 text-lg font-semibold" id="remainingPay">—</div></div>
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Отсутствия (дней)</div><div class="mt-1 text-lg font-semibold" id="leaveDays">—</div></div>
+            <div id="paymentCountdownCard" class="payment-countdown rounded-2xl p-5"><div class="text-xs text-slate-400">До ближайшей выплаты</div><div class="payment-countdown-value mt-1 text-lg font-semibold" id="paymentCountdownValue">—</div><div id="paymentCountdownHint" class="sr-only">—</div></div>
           </div>
 
           <section class="mt-6 rounded-3xl bg-slate-950/25 p-5 ring-1 ring-white/10">
