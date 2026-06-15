@@ -579,6 +579,24 @@ export async function notifyDepartmentTimesheetSaved({ departmentKey, year, mont
   if (error) throw error;
 }
 
+export async function sendPushNotifications({
+  departmentKey,
+  type = "department_timesheet_saved",
+} = {}) {
+  const key = String(departmentKey ?? "").trim();
+  if (!key) throw new Error("Не указан отдел.");
+
+  const { data, error } = await supabase.functions.invoke("send-push-notifications", {
+    body: {
+      departmentKey: key,
+      type,
+    },
+  });
+
+  if (error) throw error;
+  return data ?? null;
+}
+
 export async function listMyNotifications() {
   await requireUserId();
 
@@ -633,6 +651,37 @@ export async function deleteMyNotification(notificationId) {
     .from("user_notifications")
     .delete()
     .eq("id", id);
+
+  if (error) throw error;
+}
+
+export async function upsertMyPushSubscription({
+  endpoint,
+  p256dh,
+  auth,
+  userAgent = "",
+  platform = "",
+} = {}) {
+  await requireUserId();
+
+  const { data, error } = await supabase.rpc("upsert_my_push_subscription", {
+    p_endpoint: String(endpoint ?? "").trim(),
+    p_p256dh: String(p256dh ?? "").trim(),
+    p_auth: String(auth ?? "").trim(),
+    p_user_agent: String(userAgent ?? "").trim(),
+    p_platform: String(platform ?? "").trim(),
+  });
+
+  if (error) throw error;
+  return data ?? null;
+}
+
+export async function disableMyPushSubscription(endpoint) {
+  await requireUserId();
+
+  const { error } = await supabase.rpc("disable_my_push_subscription", {
+    p_endpoint: String(endpoint ?? "").trim(),
+  });
 
   if (error) throw error;
 }

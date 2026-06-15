@@ -207,9 +207,40 @@
           </span>
         </label>
 
-        <div class="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-          <div class="text-sm font-semibold text-slate-100">Скоро...</div>
-          <p class="mt-1 text-xs text-slate-400/80 leading-5"></p>
+        <label
+          for="notificationToastsToggle"
+          class="flex items-start justify-between gap-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 transition hover:bg-white/10 cursor-pointer"
+        >
+          <div>
+            <div class="text-sm font-semibold text-slate-100">
+              Показывать всплывающие уведомления на сайте
+            </div>
+            <p class="mt-1 text-xs text-slate-400/80 leading-5">
+              Если включено, новые уведомления будут появляться небольшой плашкой, пока сайт открыт.
+            </p>
+          </div>
+
+          <span class="switch">
+            <input id="notificationToastsToggle" type="checkbox" />
+            <span class="switch-slider"></span>
+          </span>
+        </label>
+
+        <div class="flex flex-col gap-3 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div class="text-sm font-semibold text-slate-100">Уведомления на телефон</div>
+            <p id="pushNotificationsHint" class="mt-1 text-xs text-slate-400/80 leading-5">
+              Можно включить системные уведомления браузера. Они начнут приходить после подключения серверной отправки.
+            </p>
+          </div>
+
+          <button
+            id="pushNotificationsBtn"
+            type="button"
+            class="shrink-0 rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/10 transition hover:bg-white/10 hover:ring-indigo-400/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:text-slate-400 disabled:opacity-70 disabled:hover:bg-white/5 disabled:hover:ring-white/10"
+          >
+            Проверяю…
+          </button>
         </div>
       </div>
 

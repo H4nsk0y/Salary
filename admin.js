@@ -12,6 +12,7 @@ import {
   managedSaveManyTimesheets,
   notifyDepartmentTimesheetSaved,
   ownerCreateDepartmentInvite,
+  sendPushNotifications,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 
@@ -1811,6 +1812,29 @@ function mapNotificationError(error) {
   return "Табель сохранён, но уведомление не отправлено.";
 }
 
+function mapPushNotificationError(error) {
+  const message = String(error?.message || error?.context?.message || "");
+
+  if (
+    message.includes("FunctionsHttpError") ||
+    message.includes("send-push-notifications") ||
+    message.includes("Edge Function") ||
+    message.includes("not found")
+  ) {
+    return "Уведомление на сайте отправлено, но push ещё не настроен: нужно задеплоить Supabase Edge Function send-push-notifications.";
+  }
+
+  if (message.includes("push_sent_at") || message.includes("push_subscriptions")) {
+    return "Уведомление на сайте отправлено, но для push нужно запустить SQL-файлы 010 и 011.";
+  }
+
+  if (message.includes("ACCESS_DENIED")) {
+    return "Уведомление на сайте отправлено, но push не отправлен: недостаточно прав.";
+  }
+
+  return "Уведомление на сайте отправлено, но push на телефон не отправился.";
+}
+
 async function createCurrentDepartmentInvite() {
   if (!managedDepartment?.key) {
     setError("Не найден текущий отдел для приглашения.");
@@ -1863,6 +1887,18 @@ async function doSaveAll({ notify = false } = {}) {
           year,
           month,
         });
+
+        try {
+          await sendPushNotifications({
+            departmentKey: managedDepartment?.key,
+            type: "department_timesheet_saved",
+          });
+        } catch (pushError) {
+          setSaveStatus("Сохранено, push не отправлен", "err");
+          setError(mapPushNotificationError(pushError));
+          return;
+        }
+
         setSaveStatus("Сохранено и отправлено", "ok");
         return;
       } catch (notificationError) {

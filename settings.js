@@ -3,6 +3,15 @@
 import { requireSession } from "./auth.js";
 import "./scrollbar.js";
 import { getMyProfile, updateMyProfileFields } from "./db.js";
+import {
+  isNotificationToastsEnabled,
+  setNotificationToastsEnabled,
+} from "./notificationSettings.js";
+import {
+  disablePushNotifications,
+  enablePushNotifications,
+  getPushNotificationState,
+} from "./pushNotifications.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import {
   createMoneyPinSecret,
@@ -16,6 +25,9 @@ const statusPill = document.getElementById("statusPill");
 const errorBox = document.getElementById("errorBox");
 const hideMoneyToggle = document.getElementById("hideMoneyToggle");
 const autoCollapseTablePanelsToggle = document.getElementById("autoCollapseTablePanelsToggle");
+const notificationToastsToggle = document.getElementById("notificationToastsToggle");
+const pushNotificationsBtn = document.getElementById("pushNotificationsBtn");
+const pushNotificationsHint = document.getElementById("pushNotificationsHint");
 const saveSettingsBtn = document.getElementById("saveSettingsBtn");
 
 let currentSettings = {
@@ -23,6 +35,7 @@ let currentSettings = {
   money_pin_hash: null,
   money_pin_salt: null,
   auto_collapse_table_panels: false,
+  notification_toasts: true,
 };
 
 let pendingSettings = {
@@ -30,6 +43,7 @@ let pendingSettings = {
   money_pin_hash: null,
   money_pin_salt: null,
   auto_collapse_table_panels: false,
+  notification_toasts: true,
 };
 
 function cloneSettings(settings) {
@@ -38,6 +52,7 @@ function cloneSettings(settings) {
     money_pin_hash: settings?.money_pin_hash ?? null,
     money_pin_salt: settings?.money_pin_salt ?? null,
     auto_collapse_table_panels: settings?.auto_collapse_table_panels === true,
+    notification_toasts: settings?.notification_toasts !== false,
   };
 }
 
@@ -49,6 +64,10 @@ function syncToggle() {
   if (autoCollapseTablePanelsToggle) {
     autoCollapseTablePanelsToggle.checked =
       pendingSettings.auto_collapse_table_panels === true;
+  }
+
+  if (notificationToastsToggle) {
+    notificationToastsToggle.checked = pendingSettings.notification_toasts !== false;
   }
 }
 
@@ -108,6 +127,7 @@ async function loadSettings() {
     money_pin_hash: profile?.money_pin_hash ?? null,
     money_pin_salt: profile?.money_pin_salt ?? null,
     auto_collapse_table_panels: profile?.auto_collapse_table_panels === true,
+    notification_toasts: isNotificationToastsEnabled(),
   };
 
   pendingSettings = cloneSettings(currentSettings);
@@ -196,6 +216,70 @@ function handleAutoCollapseTablePanelsToggleChange() {
   markDirty("Есть несохранённые изменения");
 }
 
+function applyPushButtonState(state) {
+  if (!pushNotificationsBtn || !pushNotificationsHint) return;
+
+  pushNotificationsBtn.disabled = false;
+  pushNotificationsBtn.classList.remove("text-emerald-200", "ring-emerald-400/20", "text-rose-200", "ring-rose-400/20");
+
+  if (!state?.supported) {
+    pushNotificationsBtn.disabled = true;
+    pushNotificationsBtn.textContent = "Недоступно";
+    pushNotificationsHint.textContent =
+      "Ваш браузер не поддерживает push-уведомления или сайт открыт без HTTPS.";
+    return;
+  }
+
+  if (!state?.configured) {
+    pushNotificationsBtn.disabled = true;
+    pushNotificationsBtn.textContent = "Не настроено";
+    pushNotificationsHint.textContent = "Для включения нужен публичный VAPID-ключ.";
+    return;
+  }
+
+  if (state.permission === "denied") {
+    pushNotificationsBtn.textContent = "Проверить снова";
+    pushNotificationsBtn.classList.add("text-rose-200", "ring-rose-400/20");
+    pushNotificationsHint.textContent =
+      "Браузер не выдаёт разрешение. Если окно было случайно закрыто, попробуйте ещё раз или разрешите уведомления в настройках сайта.";
+    return;
+  }
+
+  if (state.subscribed) {
+    pushNotificationsBtn.textContent = "Отключить";
+    pushNotificationsBtn.classList.add("text-emerald-200", "ring-emerald-400/20");
+    pushNotificationsHint.textContent =
+      "Этот браузер подписан на уведомления. Отправка начнет работать после подключения серверной рассылки.";
+    return;
+  }
+
+  pushNotificationsBtn.textContent = "Включить";
+  pushNotificationsHint.textContent =
+    "Нажмите, чтобы разрешить уведомления в этом браузере.";
+}
+
+async function refreshPushNotificationState() {
+  if (!pushNotificationsBtn) return;
+
+  try {
+    applyPushButtonState(await getPushNotificationState());
+  } catch (e) {
+    pushNotificationsBtn.disabled = true;
+    pushNotificationsBtn.textContent = "Ошибка";
+    if (pushNotificationsHint) {
+      pushNotificationsHint.textContent =
+        e?.message || "Не удалось проверить поддержку уведомлений.";
+    }
+  }
+}
+
+function handleNotificationToastsToggleChange() {
+  if (!notificationToastsToggle) return;
+
+  pendingSettings.notification_toasts = notificationToastsToggle.checked === true;
+  markDirty("Есть несохранённые изменения");
+}
+
 async function saveSettings() {
   if (!hideMoneyToggle) return;
 
@@ -221,6 +305,7 @@ async function saveSettings() {
     });
 
     currentSettings = cloneSettings(pendingSettings);
+    setNotificationToastsEnabled(pendingSettings.notification_toasts !== false);
     syncToggle();
     setStatus("Сохранено", "ok");
   } catch (e) {
@@ -230,12 +315,42 @@ async function saveSettings() {
   }
 }
 
+async function handlePushNotificationsClick() {
+  if (!pushNotificationsBtn) return;
+
+  pushNotificationsBtn.disabled = true;
+  pushNotificationsBtn.textContent = "Секунду…";
+  setError(null);
+
+  try {
+    const state = await getPushNotificationState();
+    const nextState = state.subscribed
+      ? await disablePushNotifications()
+      : await enablePushNotifications();
+
+    applyPushButtonState(nextState);
+    setStatus(nextState.subscribed ? "Уведомления включены" : "Уведомления отключены", "ok");
+  } catch (e) {
+    await refreshPushNotificationState();
+    setStatus("Ошибка уведомлений", "err");
+    setError(e?.message || "Не удалось изменить настройки уведомлений.");
+  }
+}
+
 hideMoneyToggle?.addEventListener("change", () => {
   void handleHideMoneyToggleChange();
 });
 
 autoCollapseTablePanelsToggle?.addEventListener("change", () => {
   handleAutoCollapseTablePanelsToggleChange();
+});
+
+notificationToastsToggle?.addEventListener("change", () => {
+  handleNotificationToastsToggleChange();
+});
+
+pushNotificationsBtn?.addEventListener("click", () => {
+  void handlePushNotificationsClick();
 });
 
 saveSettingsBtn?.addEventListener("click", () => void saveSettings());
@@ -252,6 +367,7 @@ saveSettingsBtn?.addEventListener("click", () => void saveSettings());
 
   try {
     await loadSettings();
+    await refreshPushNotificationState();
   } catch (e) {
     setStatus("Ошибка загрузки", "err");
     setError(e?.message || "Не удалось загрузить настройки.");

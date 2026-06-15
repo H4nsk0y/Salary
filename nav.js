@@ -4,6 +4,7 @@ import {
   listMyNotifications,
   markMyNotificationsRead,
 } from "./db.js";
+import { isNotificationToastsEnabled } from "./notificationSettings.js";
 import "./scrollbar.js";
 
 const NAV_STYLE_ID = "alvisa-common-nav-style";
@@ -984,6 +985,7 @@ function createNotificationsWidget() {
   };
 
   const showFreshNotificationToasts = () => {
+    if (!isNotificationToastsEnabled()) return;
     if (panel.classList.contains("is-open")) return;
 
     const shownIds = getLocalNotificationToastIds();
