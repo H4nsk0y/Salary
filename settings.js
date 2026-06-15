@@ -226,7 +226,7 @@ function applyPushButtonState(state) {
     pushNotificationsBtn.disabled = true;
     pushNotificationsBtn.textContent = "Недоступно";
     pushNotificationsHint.textContent =
-      "Ваш браузер не поддерживает push-уведомления или сайт открыт без HTTPS.";
+      state?.reason || "Ваш браузер не поддерживает push-уведомления или сайт открыт без HTTPS.";
     return;
   }
 

@@ -12,9 +12,50 @@ function isSecureContextForPush() {
   return window.isSecureContext || isLocalhost();
 }
 
+function isIosDevice() {
+  const ua = navigator.userAgent || "";
+  const platform = navigator.platform || "";
+  return /iPad|iPhone|iPod/i.test(ua) ||
+    (platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isStandaloneDisplay() {
+  return Boolean(
+    window.matchMedia?.("(display-mode: standalone)")?.matches ||
+      window.navigator.standalone === true
+  );
+}
+
+function getPushUnsupportedReason() {
+  if (!isSecureContextForPush()) {
+    return "Сайт открыт без HTTPS. Для push-уведомлений нужен защищённый адрес.";
+  }
+
+  if (isIosDevice() && !isStandaloneDisplay()) {
+    return "На iPhone уведомления работают только из версии сайта, добавленной на экран «Домой». Откройте сайт через иконку на рабочем столе.";
+  }
+
+  if (!("Notification" in window)) {
+    return "Этот браузер не поддерживает системные уведомления.";
+  }
+
+  if (!("serviceWorker" in navigator)) {
+    return "Этот браузер не поддерживает Service Worker, который нужен для push-уведомлений.";
+  }
+
+  if (!("PushManager" in window)) {
+    return isIosDevice()
+      ? "На этом iPhone Push API недоступен. Проверьте iOS 16.4+ и откройте сайт именно через иконку на экране «Домой»."
+      : "Этот браузер не поддерживает Push API.";
+  }
+
+  return "Браузер не поддерживает push-уведомления.";
+}
+
 export function isPushNotificationSupported() {
   return Boolean(
     isSecureContextForPush() &&
+      (!isIosDevice() || isStandaloneDisplay()) &&
       "Notification" in window &&
       "serviceWorker" in navigator &&
       "PushManager" in window
@@ -36,7 +77,7 @@ function urlBase64ToUint8Array(base64String) {
 
 async function getServiceWorkerRegistration() {
   if (!isPushNotificationSupported()) {
-    throw new Error("Браузер не поддерживает уведомления или сайт открыт без HTTPS.");
+    throw new Error(getPushUnsupportedReason());
   }
 
   const registration = await navigator.serviceWorker.register("./service-worker.js");
@@ -69,6 +110,7 @@ export async function getPushNotificationState() {
       configured: Boolean(VAPID_PUBLIC_KEY),
       permission: "unsupported",
       subscribed: false,
+      reason: getPushUnsupportedReason(),
     };
   }
 
@@ -98,7 +140,7 @@ export async function enablePushNotifications() {
   }
 
   if (!isPushNotificationSupported()) {
-    throw new Error("Браузер не поддерживает уведомления или сайт открыт без HTTPS.");
+    throw new Error(getPushUnsupportedReason());
   }
 
   let permission = Notification.permission;

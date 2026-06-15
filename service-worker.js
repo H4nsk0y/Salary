@@ -10,8 +10,8 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "Alvisa";
   const options = {
     body: payload.body || "Появилось новое уведомление.",
-    icon: payload.icon || "./favicon-180.png?v=3",
-    badge: payload.badge || "./favicon-48.png?v=3",
+    icon: payload.icon || "./images/favicon-180.png?v=4",
+    badge: payload.badge || "./images/favicon-48.png?v=4",
     tag: payload.tag || "alvisa-notification",
     renotify: false,
     data: {
