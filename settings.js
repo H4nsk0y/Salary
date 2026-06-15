@@ -4,10 +4,6 @@ import { requireSession } from "./auth.js";
 import "./scrollbar.js";
 import { getMyProfile, updateMyProfileFields } from "./db.js";
 import {
-  isNotificationToastsEnabled,
-  setNotificationToastsEnabled,
-} from "./notificationSettings.js";
-import {
   disablePushNotifications,
   enablePushNotifications,
   getPushNotificationState,
@@ -25,7 +21,6 @@ const statusPill = document.getElementById("statusPill");
 const errorBox = document.getElementById("errorBox");
 const hideMoneyToggle = document.getElementById("hideMoneyToggle");
 const autoCollapseTablePanelsToggle = document.getElementById("autoCollapseTablePanelsToggle");
-const notificationToastsToggle = document.getElementById("notificationToastsToggle");
 const pushNotificationsBtn = document.getElementById("pushNotificationsBtn");
 const pushNotificationsHint = document.getElementById("pushNotificationsHint");
 const saveSettingsBtn = document.getElementById("saveSettingsBtn");
@@ -35,7 +30,6 @@ let currentSettings = {
   money_pin_hash: null,
   money_pin_salt: null,
   auto_collapse_table_panels: false,
-  notification_toasts: true,
 };
 
 let pendingSettings = {
@@ -43,7 +37,6 @@ let pendingSettings = {
   money_pin_hash: null,
   money_pin_salt: null,
   auto_collapse_table_panels: false,
-  notification_toasts: true,
 };
 
 function cloneSettings(settings) {
@@ -52,7 +45,6 @@ function cloneSettings(settings) {
     money_pin_hash: settings?.money_pin_hash ?? null,
     money_pin_salt: settings?.money_pin_salt ?? null,
     auto_collapse_table_panels: settings?.auto_collapse_table_panels === true,
-    notification_toasts: settings?.notification_toasts !== false,
   };
 }
 
@@ -64,10 +56,6 @@ function syncToggle() {
   if (autoCollapseTablePanelsToggle) {
     autoCollapseTablePanelsToggle.checked =
       pendingSettings.auto_collapse_table_panels === true;
-  }
-
-  if (notificationToastsToggle) {
-    notificationToastsToggle.checked = pendingSettings.notification_toasts !== false;
   }
 }
 
@@ -127,7 +115,6 @@ async function loadSettings() {
     money_pin_hash: profile?.money_pin_hash ?? null,
     money_pin_salt: profile?.money_pin_salt ?? null,
     auto_collapse_table_panels: profile?.auto_collapse_table_panels === true,
-    notification_toasts: isNotificationToastsEnabled(),
   };
 
   pendingSettings = cloneSettings(currentSettings);
@@ -273,13 +260,6 @@ async function refreshPushNotificationState() {
   }
 }
 
-function handleNotificationToastsToggleChange() {
-  if (!notificationToastsToggle) return;
-
-  pendingSettings.notification_toasts = notificationToastsToggle.checked === true;
-  markDirty("Есть несохранённые изменения");
-}
-
 async function saveSettings() {
   if (!hideMoneyToggle) return;
 
@@ -305,7 +285,6 @@ async function saveSettings() {
     });
 
     currentSettings = cloneSettings(pendingSettings);
-    setNotificationToastsEnabled(pendingSettings.notification_toasts !== false);
     syncToggle();
     setStatus("Сохранено", "ok");
   } catch (e) {
@@ -343,10 +322,6 @@ hideMoneyToggle?.addEventListener("change", () => {
 
 autoCollapseTablePanelsToggle?.addEventListener("change", () => {
   handleAutoCollapseTablePanelsToggleChange();
-});
-
-notificationToastsToggle?.addEventListener("change", () => {
-  handleNotificationToastsToggleChange();
 });
 
 pushNotificationsBtn?.addEventListener("click", () => {
