@@ -8,6 +8,10 @@ import "./scrollbar.js";
 
 const NAV_STYLE_ID = "alvisa-common-nav-style";
 const NOTIFICATION_READ_STORAGE_KEY = "alvisa.notificationReadIds.v1";
+const NOTIFICATION_TOAST_STORAGE_KEY = "alvisa.notificationToastIds.v1";
+const NOTIFICATION_POLL_INTERVAL_MS = 45000;
+const NOTIFICATION_TOAST_DURATION_MS = 9000;
+const NOTIFICATION_TOAST_VISIBLE_LIMIT = 2;
 
 const MAIN_LINKS = [
   { key: "calculator", href: "calculator.html", label: "Калькулятор" },
@@ -271,6 +275,162 @@ function injectNavStyles() {
       color: rgb(199 210 254);
     }
 
+    .app-notification-toast-stack {
+      position: fixed;
+      right: 16px;
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      z-index: 310;
+      width: min(390px, calc(100vw - 32px));
+      display: grid;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .app-notification-toast {
+      position: relative;
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+      overflow: hidden;
+      border-radius: 24px;
+      border: 1px solid rgba(129, 140, 248, 0.26);
+      background:
+        linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+      color: rgb(226 232 240);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 13px;
+      pointer-events: auto;
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+      animation: app-notification-toast-in 0.2s ease forwards;
+    }
+
+    .app-notification-toast::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(220px 110px at 10% 10%, rgba(99, 102, 241, 0.16), transparent 65%),
+        radial-gradient(180px 100px at 88% 22%, rgba(56, 189, 248, 0.10), transparent 62%);
+    }
+
+    .app-notification-toast.is-leaving {
+      animation: app-notification-toast-out 0.18s ease forwards;
+    }
+
+    .app-notification-toast > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .app-notification-toast-icon {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 16px;
+      color: rgb(199 210 254);
+      background: rgba(99, 102, 241, 0.14);
+      border: 1px solid rgba(129, 140, 248, 0.20);
+    }
+
+    .app-notification-toast-title {
+      color: rgb(248 250 252);
+      font-size: 0.9rem;
+      font-weight: 800;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .app-notification-toast-body {
+      margin-top: 4px;
+      color: rgba(203, 213, 225, 0.92);
+      font-size: 0.82rem;
+      line-height: 1.42;
+      overflow-wrap: anywhere;
+    }
+
+    .app-notification-toast-meta {
+      margin-top: 7px;
+      color: rgba(148, 163, 184, 0.94);
+      font-size: 0.72rem;
+    }
+
+    .app-notification-toast-actions {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .app-notification-toast-link,
+    .app-notification-toast-panel,
+    .app-notification-toast-close {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      color: rgb(226 232 240);
+      background: rgba(255, 255, 255, 0.06);
+      cursor: pointer;
+      transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+    }
+
+    .app-notification-toast-link,
+    .app-notification-toast-panel {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 0.74rem;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .app-notification-toast-link {
+      color: rgb(191 219 254);
+      background: rgba(37, 99, 235, 0.16);
+      border-color: rgba(96, 165, 250, 0.22);
+    }
+
+    .app-notification-toast-close {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      line-height: 1;
+      font-size: 1.08rem;
+    }
+
+    .app-notification-toast-link:hover,
+    .app-notification-toast-panel:hover,
+    .app-notification-toast-close:hover {
+      background: rgba(255, 255, 255, 0.10);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .app-notification-toast-link:active,
+    .app-notification-toast-panel:active,
+    .app-notification-toast-close:active {
+      transform: scale(0.98);
+    }
+
+    @keyframes app-notification-toast-in {
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes app-notification-toast-out {
+      to {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+      }
+    }
+
     .app-top-header .app-mobile-menu {
       display: none;
     }
@@ -349,6 +509,25 @@ function injectNavStyles() {
 
       .app-top-header .app-notification-meta {
         flex-wrap: wrap;
+      }
+
+      .app-notification-toast-stack {
+        left: 12px;
+        right: 12px;
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        width: auto;
+      }
+
+      .app-notification-toast {
+        grid-template-columns: 34px minmax(0, 1fr) auto;
+        border-radius: 22px;
+        padding: 12px;
+      }
+
+      .app-notification-toast-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 14px;
       }
 
       .app-top-header .app-menu-button:hover {
@@ -492,6 +671,30 @@ function rememberLocalNotificationReadIds(ids) {
   }
 }
 
+function getLocalNotificationToastIds() {
+  try {
+    const raw = localStorage.getItem(NOTIFICATION_TOAST_STORAGE_KEY);
+    const parsed = JSON.parse(raw || "[]");
+    return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function rememberLocalNotificationToastIds(ids) {
+  if (!ids?.length) return;
+
+  try {
+    const shownIds = getLocalNotificationToastIds();
+    for (const id of ids) shownIds.add(String(id));
+
+    const compact = Array.from(shownIds).slice(-300);
+    localStorage.setItem(NOTIFICATION_TOAST_STORAGE_KEY, JSON.stringify(compact));
+  } catch {
+    // If localStorage is unavailable, toasts may repeat after reload; the app still works.
+  }
+}
+
 function applyLocalNotificationReadState(items) {
   const readIds = getLocalNotificationReadIds();
   if (!readIds.size) return items;
@@ -546,6 +749,7 @@ function createNotificationsWidget() {
   let loading = false;
   let markAfterLoad = false;
   let markingRead = false;
+  let pollTimer = null;
 
   const updateBadge = () => {
     const count = notifications.filter((item) => !item.read_at).length;
@@ -663,11 +867,153 @@ function createNotificationsWidget() {
     updateBadge();
   };
 
-  const load = async () => {
+  const ensureToastStack = () => {
+    let stack = document.querySelector(".app-notification-toast-stack");
+    if (stack) return stack;
+
+    stack = document.createElement("div");
+    stack.className = "app-notification-toast-stack";
+    stack.setAttribute("aria-live", "polite");
+    stack.setAttribute("aria-label", "Всплывающие уведомления");
+    document.body.appendChild(stack);
+    return stack;
+  };
+
+  const dismissToast = (toast) => {
+    if (!toast || toast.classList.contains("is-leaving")) return;
+    toast.classList.add("is-leaving");
+    window.setTimeout(() => toast.remove(), 180);
+  };
+
+  const createNotificationToastIcon = () => {
+    const icon = document.createElement("div");
+    icon.className = "app-notification-toast-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.27 21a2 2 0 0 0 3.46 0"></path>
+        <path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.86 18 12.28 18 8a6 6 0 0 0-12 0c0 4.28-1.41 5.86-2.74 7.33Z"></path>
+      </svg>
+    `;
+    return icon;
+  };
+
+  const showNotificationToast = (item) => {
+    const stack = ensureToastStack();
+    const toast = document.createElement("article");
+    toast.className = "app-notification-toast";
+    toast.tabIndex = 0;
+
+    const content = document.createElement("div");
+    const titleEl = document.createElement("div");
+    titleEl.className = "app-notification-toast-title";
+    titleEl.textContent = item.title || "Новое уведомление";
+
+    const bodyEl = document.createElement("div");
+    bodyEl.className = "app-notification-toast-body";
+    bodyEl.textContent = item.body || "Появилось новое уведомление.";
+
+    const metaEl = document.createElement("div");
+    metaEl.className = "app-notification-toast-meta";
+    metaEl.textContent = formatNotificationTime(item.created_at);
+
+    const actions = document.createElement("div");
+    actions.className = "app-notification-toast-actions";
+
+    const href = String(item.url || "").trim();
+    if (href) {
+      const openLink = document.createElement("a");
+      openLink.href = href;
+      openLink.className = "app-notification-toast-link";
+      openLink.textContent = "Открыть";
+      openLink.addEventListener("click", () => dismissToast(toast));
+      actions.appendChild(openLink);
+    }
+
+    const panelButton = document.createElement("button");
+    panelButton.type = "button";
+    panelButton.className = "app-notification-toast-panel";
+    panelButton.textContent = "Уведомления";
+    panelButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dismissToast(toast);
+      setOpen(true);
+    });
+    actions.appendChild(panelButton);
+
+    content.append(titleEl, bodyEl);
+    if (metaEl.textContent) content.appendChild(metaEl);
+    content.appendChild(actions);
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "app-notification-toast-close";
+    close.setAttribute("aria-label", "Закрыть уведомление");
+    close.textContent = "×";
+    close.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dismissToast(toast);
+    });
+
+    toast.addEventListener("click", (event) => {
+      if (event.target.closest("a, button")) return;
+      dismissToast(toast);
+      setOpen(true);
+    });
+
+    toast.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        dismissToast(toast);
+        setOpen(true);
+      }
+      if (event.key === "Escape") dismissToast(toast);
+    });
+
+    toast.append(createNotificationToastIcon(), content, close);
+    stack.appendChild(toast);
+
+    let timer = window.setTimeout(() => dismissToast(toast), NOTIFICATION_TOAST_DURATION_MS);
+    toast.addEventListener("mouseenter", () => window.clearTimeout(timer));
+    toast.addEventListener("mouseleave", () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => dismissToast(toast), 3200);
+    });
+  };
+
+  const showFreshNotificationToasts = () => {
+    if (panel.classList.contains("is-open")) return;
+
+    const shownIds = getLocalNotificationToastIds();
+    const fresh = notifications.filter((item) => {
+      const id = Number(item?.id);
+      return Number.isFinite(id) && !item.read_at && !shownIds.has(String(id));
+    });
+
+    if (!fresh.length) return;
+
+    rememberLocalNotificationToastIds(fresh.map((item) => item.id));
+
+    for (const item of fresh.slice(0, NOTIFICATION_TOAST_VISIBLE_LIMIT)) {
+      showNotificationToast(item);
+    }
+
+    if (fresh.length > NOTIFICATION_TOAST_VISIBLE_LIMIT) {
+      showNotificationToast({
+        title: `Новых уведомлений: ${fresh.length}`,
+        body: "Откройте колокольчик, чтобы посмотреть весь список.",
+        created_at: new Date().toISOString(),
+      });
+    }
+  };
+
+  const load = async ({ silent = false } = {}) => {
     if (loading) return;
     loading = true;
 
-    if (!loaded) {
+    if (!loaded && !silent) {
       list.innerHTML = `<div class="app-notification-empty">Загружаю…</div>`;
     }
 
@@ -675,6 +1021,7 @@ function createNotificationsWidget() {
       notifications = applyLocalNotificationReadState(await listMyNotifications());
       loaded = true;
       renderList();
+      showFreshNotificationToasts();
       if (markAfterLoad && !panel.classList.contains("is-open")) {
         markAfterLoad = false;
         void markVisibleNotificationsRead();
@@ -725,7 +1072,20 @@ function createNotificationsWidget() {
     button.focus();
   });
 
+  const startPolling = () => {
+    if (pollTimer) return;
+    pollTimer = window.setInterval(() => {
+      if (document.hidden) return;
+      void load({ silent: true });
+    }, NOTIFICATION_POLL_INTERVAL_MS);
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) void load({ silent: true });
+  });
+
   void load();
+  startPolling();
 
   return root;
 }

@@ -36,7 +36,9 @@ import { confirmDialog } from "./modal.js";
 
 document.body.classList.add("is-loaded");
 
-const OVERTIME_LIMIT_YEAR = 120;
+const OVERTIME_LIMIT_DEFAULT_YEAR = 120;
+const OVERTIME_LIMIT_EXTENDED_YEAR = 240;
+const OVERTIME_LIMIT_CHANGE_DATE = new Date(2026, 8, 1);
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const HAZARD_POSITION_RATE = 0.04;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
@@ -81,6 +83,8 @@ const timesheetsList = document.getElementById("timesheetsList");
 
 const overtimeBarFill = document.getElementById("overtimeBarFill");
 const overtimeBarText = document.getElementById("overtimeBarText");
+const overtimeLimitLabel = document.getElementById("overtimeLimitLabel");
+const overtimeLimitNote = document.getElementById("overtimeLimitNote");
 
 /* Calendar DOM */
 const calMonthLabel = document.getElementById("calMonthLabel");
@@ -1231,13 +1235,44 @@ function ensureYearOption(y) {
   yearSelect.appendChild(opt);
 }
 
-function applyOvertimeProgress(usedHoursForLimit) {
+function getOvertimeLimitForYear(selectedYear, now = new Date()) {
+  const y = Number(selectedYear);
+  if (!Number.isInteger(y)) return OVERTIME_LIMIT_DEFAULT_YEAR;
+  if (y < OVERTIME_LIMIT_CHANGE_DATE.getFullYear()) return OVERTIME_LIMIT_DEFAULT_YEAR;
+  if (y > OVERTIME_LIMIT_CHANGE_DATE.getFullYear()) return OVERTIME_LIMIT_EXTENDED_YEAR;
+  return now >= OVERTIME_LIMIT_CHANGE_DATE
+    ? OVERTIME_LIMIT_EXTENDED_YEAR
+    : OVERTIME_LIMIT_DEFAULT_YEAR;
+}
+
+function updateOvertimeLimitUi(selectedYear, limit) {
+  if (overtimeLimitLabel) {
+    overtimeLimitLabel.textContent = `${limit} часов в год`;
+  }
+
+  if (!overtimeLimitNote) return;
+
+  const y = Number(selectedYear);
+  if (limit === OVERTIME_LIMIT_EXTENDED_YEAR) {
+    overtimeLimitNote.textContent =
+      "240 ч применяется, если это закреплено коллективным договором или отраслевым соглашением.";
+  } else if (y === OVERTIME_LIMIT_CHANGE_DATE.getFullYear()) {
+    overtimeLimitNote.textContent =
+      "С 01.09.2026 лимит может быть до 240 ч при наличии основания.";
+  } else {
+    overtimeLimitNote.textContent =
+      "С 01.09.2026 лимит может быть до 240 ч при наличии основания.";
+  }
+}
+
+function applyOvertimeProgress(usedHoursForLimit, limit = OVERTIME_LIMIT_DEFAULT_YEAR) {
   if (!overtimeBarFill || !overtimeBarText) return;
 
   const used = Math.max(0, Number(usedHoursForLimit) || 0);
-  const pct = Math.min(100, (used / OVERTIME_LIMIT_YEAR) * 100);
+  const safeLimit = Math.max(1, Number(limit) || OVERTIME_LIMIT_DEFAULT_YEAR);
+  const pct = Math.min(100, (used / safeLimit) * 100);
 
-  overtimeBarText.textContent = `${used.toFixed(1)} / ${OVERTIME_LIMIT_YEAR} ч`;
+  overtimeBarText.textContent = `${used.toFixed(1)} / ${safeLimit} ч`;
   overtimeBarFill.style.width = `${pct}%`;
 
   overtimeBarFill.classList.remove(
@@ -1896,7 +1931,8 @@ async function refreshTimesheets() {
   const adjustedYearBalance = yearBalanceSigned - yearAdjustmentHours;
 
   const usedForLimit = Math.max(0, adjustedYearBalance);
-  const remaining = Math.max(0, OVERTIME_LIMIT_YEAR - usedForLimit);
+  const overtimeLimit = getOvertimeLimitForYear(y);
+  const remaining = Math.max(0, overtimeLimit - usedForLimit);
 
   overtimeYearEl.textContent = formatHoursSigned(adjustedYearBalance);
   overtimeRemainingEl.textContent = formatHoursPlain(remaining);
@@ -1909,7 +1945,8 @@ async function refreshTimesheets() {
     overtimeAdjustmentEl.classList.toggle("hidden", !(yearAdjustmentHours > 0.0001));
   }
 
-  applyOvertimeProgress(usedForLimit);
+  updateOvertimeLimitUi(y, overtimeLimit);
+  applyOvertimeProgress(usedForLimit, overtimeLimit);
 
   if (!rows.length) {
     const empty = document.createElement("div");

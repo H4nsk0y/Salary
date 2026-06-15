@@ -781,7 +781,11 @@
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 class="text-lg font-semibold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Переработки</h2>
-            <p class="mt-1 text-sm text-slate-300/80">Лимит по закону: <span class="font-semibold text-indigo-300">120 часов в год</span>. <a href="help.html" class="text-indigo-300/80 hover:text-indigo-200 underline underline-offset-2 text-xs">Как считается?</a></p>
+            <p class="mt-1 text-sm text-slate-300/80">
+              Лимит по закону: <span id="overtimeLimitLabel" class="font-semibold text-indigo-300">120 часов в год</span>.
+              <span id="overtimeLimitNote" class="text-xs text-slate-400/90">С 01.09.2026 лимит может быть до 240 ч при наличии основания.</span>
+              <a href="help.html" class="text-indigo-300/80 hover:text-indigo-200 underline underline-offset-2 text-xs">Как считается?</a>
+            </p>
           </div>
           <div class="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10 backdrop-blur-sm">
             <label class="text-xs text-slate-300" for="yearSelect">Год</label>
