@@ -47,6 +47,15 @@ function injectNavStyles() {
 
     .app-top-header {
       top: 0;
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    .pt-safe {
+      padding-top: calc(7rem + env(safe-area-inset-top, 0px)) !important;
+    }
+
+    .app-header-offset {
+      padding-top: calc(6rem + env(safe-area-inset-top, 0px)) !important;
     }
 
     .app-top-header .nav-link {
@@ -380,18 +389,18 @@ function injectNavStyles() {
 
       .app-top-header .app-notification-panel {
         position: fixed;
-        top: calc(env(safe-area-inset-top, 0px) + 64px);
+        top: calc(env(safe-area-inset-top, 0px) + 72px);
         left: 10px;
         right: 10px;
         width: auto;
         max-height: calc(100vh - 84px);
-        max-height: calc(100dvh - 84px - env(safe-area-inset-bottom, 0px));
+        max-height: calc(100dvh - 92px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
         border-radius: 22px;
       }
 
       .app-top-header .app-notification-list {
         max-height: calc(100vh - 158px);
-        max-height: calc(100dvh - 158px - env(safe-area-inset-bottom, 0px));
+        max-height: calc(100dvh - 166px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
         overscroll-behavior: contain;
       }
 
@@ -423,7 +432,8 @@ function injectNavStyles() {
         top: calc(100% + 8px);
         left: 12px;
         right: 12px;
-        max-height: calc(100vh - 88px);
+        max-height: calc(100vh - 96px);
+        max-height: calc(100dvh - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
         overflow-y: auto;
         border-radius: 26px;
         padding: 12px;
@@ -447,6 +457,16 @@ function injectNavStyles() {
         color: rgba(148, 163, 184, 0.92);
         text-transform: uppercase;
         letter-spacing: 0;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .pt-safe {
+        padding-top: calc(6rem + env(safe-area-inset-top, 0px)) !important;
+      }
+
+      .app-header-offset {
+        padding-top: calc(7rem + env(safe-area-inset-top, 0px)) !important;
       }
     }
   `;

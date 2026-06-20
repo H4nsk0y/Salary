@@ -70,7 +70,7 @@
 
       .admin-action-panel {
         position: sticky;
-        top: 72px;
+        top: calc(72px + env(safe-area-inset-top, 0px));
         z-index: 43;
         background: rgba(2, 6, 23, 0.92);
         border: 1px solid rgba(255, 255, 255, 0.1);
@@ -154,7 +154,7 @@
 
 .top-table-scroll {
   position: sticky;
-  top: 148px;
+  top: calc(148px + env(safe-area-inset-top, 0px));
   z-index: 35;
   height: 16px;
   margin-bottom: 10px;
@@ -712,7 +712,7 @@
   #mobileBar {
     position: -webkit-sticky;
     position: sticky;
-    top: calc(env(safe-area-inset-top, 0px) + 48px);
+    top: calc(env(safe-area-inset-top, 0px) + 72px);
     z-index: 40;
     background: rgba(2, 6, 23, 0.96);
     border: 1px solid rgba(255,255,255,0.10);
@@ -882,7 +882,7 @@
   <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
     <div data-app-header data-active="table"></div>
 
-    <div class="relative z-10 mx-auto max-w-[1600px] px-4 pt-24 pb-8 md:pt-28 md:pb-10">
+    <div class="app-header-offset relative z-10 mx-auto max-w-[1600px] px-4 pb-8 md:pb-10">
       <header class="mb-6">
         <div class="flex flex-col gap-4 rounded-3xl border border-white/10 bg-slate-950/70 p-4 md:p-5">
           <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
