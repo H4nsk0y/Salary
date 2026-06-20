@@ -480,6 +480,36 @@
     #driver-popover-item.alvisa-tour .driver-next-btn:active,
     #driver-popover-item.alvisa-tour .driver-prev-btn:active,
     #driver-popover-item.alvisa-tour .driver-close-btn:active { transform: translateY(0) !important; }
+
+    @keyframes updatesArrowNudge {
+      0%, 72%, 100% { transform: translateX(0); }
+      80% { transform: translateX(5px); }
+      88% { transform: translateX(1px); }
+    }
+
+    @keyframes updatesBadgePulse {
+      0%, 70%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+      82% { box-shadow: 0 0 0 6px rgba(244, 63, 94, 0.14); }
+    }
+
+    .profile-updates-link:hover .profile-updates-arrow {
+      transform: translateX(4px);
+    }
+
+    .profile-updates-arrow {
+      animation: updatesArrowNudge 3.8s ease-in-out infinite;
+    }
+
+    .profile-updates-badge {
+      animation: updatesBadgePulse 3.8s ease-in-out infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .profile-updates-arrow,
+      .profile-updates-badge {
+        animation: none;
+      }
+    }
   </style>
 </head>
 
@@ -491,31 +521,47 @@
   <div class="relative z-10 mx-auto max-w-8xl px-4 pt-safe pb-12 md:pb-16">
     <header class="mb-8 reveal">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div class="flex items-center gap-3 flex-1">
-          <a
-            href="updates.html"
-            class="group relative inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500 text-white ring-2 ring-indigo-300/60 shadow-[0_10px_30px_rgba(99,102,241,0.45)] transition-all duration-200 hover:scale-[1.06] hover:bg-indigo-400 hover:ring-white/70 active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-indigo-300/30"
-            title="Что нового"
-            aria-label="Открыть страницу обновлений"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M3 11V5a2 2 0 0 1 2-2h6l8 8v8a2 2 0 0 1-2 2h-6"></path>
-              <path d="M14 3v6h6"></path>
-              <path d="M9 17h6"></path>
-              <path d="M9 13h2"></path>
-              <path d="M9 21h6"></path>
-            </svg>
-
-            <span class="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white ring-2 ring-slate-950">
-              NEW
-            </span>
-          </a>
+        <div class="min-w-0 flex-1">
           <div>
             <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
               <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">Личный кабинет</span>
             </h1>
             <p class="mt-1 text-sm text-slate-300/80">Табели, переработка и настройки.</p>
           </div>
+
+          <a
+            href="updates.html"
+            class="profile-updates-link group mt-4 flex w-full max-w-md items-center gap-3 rounded-2xl border border-indigo-400/35 bg-slate-900/80 px-3 py-3 text-left shadow-[0_12px_32px_rgba(15,23,42,0.42)] transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-300/55 hover:bg-slate-900 hover:shadow-[0_16px_38px_rgba(56,189,248,0.16)] active:translate-y-0 focus:outline-none focus:ring-4 focus:ring-indigo-400/20 sm:w-fit sm:min-w-[350px]"
+            aria-label="Открыть новости и обновления проекта"
+          >
+            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-500/20 text-indigo-100 ring-1 ring-indigo-400/30 transition group-hover:bg-indigo-500/30">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 22h16a2 2 0 0 0 2-2V4H6v16a2 2 0 0 1-2 2Z"></path>
+                <path d="M2 6h4"></path>
+                <path d="M2 10h4"></path>
+                <path d="M2 14h4"></path>
+                <path d="M2 18h4"></path>
+                <path d="M10 8h8"></path>
+                <path d="M10 12h8"></path>
+                <path d="M10 16h5"></path>
+              </svg>
+            </span>
+
+            <span class="min-w-0 flex-1">
+              <span class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-bold text-slate-100">Новости и обновления</span>
+                <span class="profile-updates-badge rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-extrabold leading-none text-white">NEW</span>
+              </span>
+              <span class="mt-0.5 block text-xs text-slate-400 group-hover:text-slate-300">Посмотреть, что изменилось</span>
+            </span>
+
+            <span class="profile-updates-arrow shrink-0 text-sky-200 transition-transform" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"></path>
+                <path d="m13 6 6 6-6 6"></path>
+              </svg>
+            </span>
+          </a>
         </div>
 
        <div class="flex flex-wrap items-center gap-2">
