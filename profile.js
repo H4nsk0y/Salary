@@ -42,6 +42,7 @@ const OVERTIME_LIMIT_CHANGE_DATE = new Date(2026, 8, 1);
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const HAZARD_POSITION_RATE = 0.04;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
+const TRAINING_ACHIEVEMENT_KEY_PREFIX = "alvisa.timesheetTraining.completedOnce.v1";
 const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 const DISMISSED_LEAVE_TYPE = "dismissed";
 
@@ -60,7 +61,7 @@ const errorBox = document.getElementById("errorBox");
 const avatarImg = document.getElementById("avatarImg");
 const avatarFallback = document.getElementById("avatarFallback");
 const displayNameEl = document.getElementById("displayName");
-const emailHint = document.getElementById("emailHint");
+const trainingAchievementEl = document.getElementById("trainingAchievement");
 
 const displayNameInput = document.getElementById("displayNameInput");
 const positionSelect = document.getElementById("positionSelect");
@@ -2206,16 +2207,41 @@ employmentDateInput?.addEventListener("change", updateEmploymentDateHint);
 
 setupProfileMoneyControls();
 
+function renderTrainingAchievement(userId) {
+  if (!trainingAchievementEl) return;
+
+  const completedAt = userId
+    ? localStorage.getItem(`${TRAINING_ACHIEVEMENT_KEY_PREFIX}:${userId}`)
+    : null;
+
+  if (!completedAt) {
+    trainingAchievementEl.textContent = "—";
+    trainingAchievementEl.className = "mt-1 truncate text-xs text-slate-400/80";
+    trainingAchievementEl.removeAttribute("title");
+    return;
+  }
+
+  trainingAchievementEl.textContent = "Обучение успешно пройдено";
+  trainingAchievementEl.className = "mt-1 inline-flex max-w-full items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-200 ring-1 ring-emerald-400/25";
+
+  const date = new Date(completedAt);
+  if (!Number.isNaN(date.getTime())) {
+    trainingAchievementEl.title = `Пройдено ${date.toLocaleDateString("ru-RU")}`;
+  }
+}
+
 /* ========= boot ========= */
 
 (async () => {
+  let session;
   try {
-    await requireSession();
+    session = await requireSession();
   } catch {
     location.href = "login.html?next=profile.html";
     return;
   }
 
+  renderTrainingAchievement(session?.user?.id);
   startPresenceHeartbeat("Профиль");
 
   const now = new Date();
@@ -2240,7 +2266,7 @@ const tourProfileBtn = document.getElementById("tourProfileBtn");
 
 if (tourCalcBtn) {
   tourCalcBtn.addEventListener("click", () => {
-    window.location.href = "index.html?tour=calculator";
+    window.location.href = "calculator.html?tour=calculator";
   });
 }
 if (tourTableBtn) {

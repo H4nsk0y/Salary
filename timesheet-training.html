@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover" />
+  <title>Тренажёр табеля — Alvisa</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon-32.png?v=4" />
+  <link rel="icon" type="image/png" sizes="48x48" href="./images/favicon-48.png?v=4" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon-180.png?v=4" />
+  <link rel="shortcut icon" href="./images/favicon-64.png?v=4" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#020617" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Alvisa" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    html, body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      scroll-behavior: smooth;
+    }
+
+    :root {
+      --glass-border: rgba(255, 255, 255, 0.09);
+      --glass-bg: rgba(15, 23, 42, 0.72);
+      --card-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.86), 0 0 0 1px rgba(255, 255, 255, 0.035);
+    }
+
+    body {
+      overflow-x: hidden;
+      background: #020617;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image: radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.17;
+      mask-image: linear-gradient(to bottom, #000 0%, transparent 80%);
+    }
+
+    .pt-safe { padding-top: 7rem; }
+    .hidden { display: none !important; }
+
+    .glass-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--card-shadow);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+    }
+
+    .lesson-strip {
+      display: flex;
+      gap: 0.55rem;
+      overflow-x: auto;
+      padding: 0.2rem 0.1rem 0.65rem;
+      scrollbar-width: thin;
+      scroll-snap-type: x proximity;
+    }
+
+    .lesson-tab {
+      flex: 0 0 auto;
+      min-width: 150px;
+      scroll-snap-align: start;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.035);
+      color: rgb(148 163 184);
+      padding: 0.72rem 0.85rem;
+      text-align: left;
+      transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+    }
+
+    .lesson-tab:hover {
+      color: rgb(226 232 240);
+      background: rgba(255, 255, 255, 0.065);
+    }
+
+    .lesson-tab.is-active {
+      color: rgb(224 231 255);
+      background: rgba(99, 102, 241, 0.16);
+      border-color: rgba(129, 140, 248, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .lesson-tab.is-complete {
+      color: rgb(167 243 208);
+      border-color: rgba(52, 211, 153, 0.25);
+    }
+
+    .lesson-tab-number {
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: inherit;
+      opacity: 0.7;
+    }
+
+    .lesson-tab-title {
+      display: block;
+      margin-top: 0.22rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .mode-button,
+    .mark-button {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.035);
+      color: rgb(148 163 184);
+      transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+    }
+
+    .mode-button.is-active {
+      color: rgb(224 231 255);
+      background: rgba(99, 102, 241, 0.18);
+      border-color: rgba(129, 140, 248, 0.36);
+    }
+
+    .mark-button[aria-pressed="true"] {
+      color: rgb(241 245 249);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .mark-button[data-mark="holiday"][aria-pressed="true"] { background: rgba(245, 158, 11, 0.22); color: rgb(253 230 138); }
+    .mark-button[data-mark="transferred"][aria-pressed="true"] { background: rgba(59, 130, 246, 0.22); color: rgb(191 219 254); }
+    .mark-button[data-mark="short"][aria-pressed="true"] { background: rgba(16, 185, 129, 0.22); color: rgb(167 243 208); }
+    .mark-button:disabled { cursor: not-allowed; opacity: 0.35; }
+
+    .training-table-wrap {
+      overflow-x: auto;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(2, 6, 23, 0.55);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .training-table {
+      width: 100%;
+      min-width: 610px;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+
+    .training-table th,
+    .training-table td {
+      height: 62px;
+      padding: 7px 5px;
+      text-align: center;
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      transition: background 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .training-table tr:last-child td,
+    .training-table tr:last-child th { border-bottom: 0; }
+    .training-table th:last-child,
+    .training-table td:last-child { border-right: 0; }
+
+    .training-table thead th {
+      position: relative;
+      height: 58px;
+      color: rgb(203 213 225);
+      background: rgba(15, 23, 42, 0.88);
+      cursor: pointer;
+    }
+
+    .training-table thead th.is-selected {
+      color: rgb(224 242 254);
+      box-shadow: inset 0 -3px 0 rgb(56 189 248);
+    }
+
+    .training-table .row-label {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      width: 74px;
+      min-width: 74px;
+      color: rgb(203 213 225);
+      background: rgb(12 20 44);
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+
+    .training-table thead .row-label { z-index: 4; }
+    .training-table .weekend-cell { background: rgba(239, 68, 68, 0.09); }
+    .training-table .mark-holiday { background: rgba(245, 158, 11, 0.16) !important; }
+    .training-table .mark-transferred { background: rgba(59, 130, 246, 0.15) !important; }
+    .training-table .mark-short { background: rgba(16, 185, 129, 0.15) !important; }
+
+    .training-table .mark-badge {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      min-width: 18px;
+      height: 18px;
+      display: none;
+      place-items: center;
+      border-radius: 999px;
+      background: rgba(2, 6, 23, 0.72);
+      color: rgb(241 245 249);
+      font-size: 0.58rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .training-table th.mark-holiday .mark-badge,
+    .training-table th.mark-transferred .mark-badge,
+    .training-table th.mark-short .mark-badge { display: grid; }
+
+    .trainer-input {
+      width: 58px;
+      min-height: 42px;
+      border-radius: 11px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(2, 6, 23, 0.76);
+      color: rgb(241 245 249);
+      text-align: center;
+      font-size: 16px;
+      font-weight: 700;
+      outline: none;
+      text-transform: uppercase;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+    }
+
+    .trainer-input:focus {
+      border-color: rgba(56, 189, 248, 0.78);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.13);
+    }
+
+    .trainer-input:disabled {
+      cursor: not-allowed;
+      opacity: 0.32;
+      background: rgba(15, 23, 42, 0.5);
+    }
+
+    .training-table td.is-error,
+    .training-table th.is-error {
+      background: rgba(244, 63, 94, 0.15) !important;
+      box-shadow: inset 0 0 0 2px rgba(251, 113, 133, 0.48);
+    }
+
+    .training-table td.is-correct,
+    .training-table th.is-correct {
+      background: rgba(16, 185, 129, 0.12) !important;
+    }
+
+    .theory-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .theory-example {
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      background: rgba(15, 23, 42, 0.66);
+      padding: 1rem;
+    }
+
+    .snippet-table {
+      width: 100%;
+      margin-top: 0.85rem;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.72rem;
+    }
+
+    .snippet-table th,
+    .snippet-table td {
+      padding: 0.52rem 0.45rem;
+      text-align: center;
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .snippet-table tr:last-child td,
+    .snippet-table tr:last-child th { border-bottom: 0; }
+    .snippet-table th:last-child,
+    .snippet-table td:last-child { border-right: 0; }
+    .snippet-table th { color: rgb(148 163 184); background: rgba(2, 6, 23, 0.52); }
+    .snippet-table td { color: rgb(226 232 240); font-weight: 700; }
+
+    .feedback-box {
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      background: rgba(255, 255, 255, 0.035);
+      color: rgb(203 213 225);
+      padding: 0.9rem 1rem;
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+
+    .feedback-box.is-error {
+      border-color: rgba(251, 113, 133, 0.28);
+      background: rgba(244, 63, 94, 0.09);
+      color: rgb(254 205 211);
+    }
+
+    .feedback-box.is-success {
+      border-color: rgba(52, 211, 153, 0.28);
+      background: rgba(16, 185, 129, 0.09);
+      color: rgb(167 243 208);
+    }
+
+    .success-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+      background: rgba(2, 6, 23, 0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.22s ease, visibility 0.22s ease;
+    }
+
+    .success-overlay.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .success-mark {
+      width: 82px;
+      height: 82px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto;
+      border-radius: 999px;
+      color: rgb(209 250 229);
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(52, 211, 153, 0.4);
+      box-shadow: 0 0 42px rgba(16, 185, 129, 0.22);
+    }
+
+    @media (min-width: 768px) {
+      .pt-safe { padding-top: 6rem; }
+    }
+
+    @media (max-width: 767px) {
+      .theory-grid { grid-template-columns: 1fr; }
+      .training-table { min-width: 560px; }
+      .lesson-tab { min-width: 135px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+  <div data-app-header data-active="table"></div>
+
+  <main class="relative z-10 mx-auto max-w-7xl px-4 pt-safe pb-12 md:pb-16">
+    <header class="mb-6 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div class="max-w-3xl">
+        <div class="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20">
+          Безопасная тренировка
+        </div>
+        <h1 class="mt-4 text-3xl font-bold text-slate-100 md:text-4xl">Тренажёр табеля</h1>
+        <p class="mt-2 text-sm leading-6 text-slate-300/85">
+          Заполняйте учебную неделю, проверяйте себя и переходите к следующему заданию. Эти данные никогда не попадут в настоящий табель.
+        </p>
+      </div>
+
+      <div class="min-w-0">
+        <div class="mb-2 text-xs font-semibold uppercase text-slate-400">Режим примеров</div>
+        <div id="modeControl" class="grid grid-cols-2 gap-1 rounded-2xl bg-white/[0.035] p-1 ring-1 ring-white/10">
+          <button type="button" class="mode-button rounded-xl px-3 py-2 text-xs font-semibold" data-mode="standard">Стандартная норма</button>
+          <button type="button" class="mode-button rounded-xl px-3 py-2 text-xs font-semibold" data-mode="female">Женская CHATEAU</button>
+        </div>
+        <p id="modeHint" class="mt-2 max-w-sm text-xs leading-5 text-slate-500">Выбран стандартный режим.</p>
+      </div>
+    </header>
+
+    <section class="mb-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div id="stepCounter" class="text-xs font-semibold uppercase text-indigo-200">Шаг 1 из 8</div>
+          <div id="progressText" class="mt-1 text-sm text-slate-400">Пройдено: 0 из 8</div>
+        </div>
+        <button id="resetProgressBtn" type="button" class="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white">
+          Сбросить прогресс
+        </button>
+      </div>
+      <div class="mt-3 h-2 overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10">
+        <div id="progressBar" class="h-full rounded-full bg-emerald-400 transition-[width] duration-500" style="width: 0%"></div>
+      </div>
+    </section>
+
+    <nav id="lessonStrip" class="lesson-strip mb-5" aria-label="Уроки тренажёра"></nav>
+
+    <section id="lessonArea">
+      <div class="border-y border-white/10 py-5">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div id="lessonKind" class="text-xs font-semibold uppercase text-sky-200">Теория</div>
+            <h2 id="lessonTitle" class="mt-2 text-2xl font-bold text-slate-100">Как устроены смены</h2>
+            <p id="lessonDescription" class="mt-2 max-w-4xl text-sm leading-6 text-slate-300/90"></p>
+          </div>
+          <span id="lessonStatus" class="hidden shrink-0 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20">Пройдено</span>
+        </div>
+      </div>
+
+      <div id="theoryPanel" class="mt-6">
+        <div id="theoryExamples" class="theory-grid"></div>
+        <div class="mt-5 rounded-2xl border border-amber-400/20 bg-amber-500/8 px-4 py-3 text-sm leading-6 text-amber-100/90">
+          Ночные часы всегда раскладываются на две календарные даты. Смотрите не только на день выхода, но и на дату, в которую смена закончилась.
+        </div>
+      </div>
+
+      <div id="exercisePanel" class="mt-6 hidden">
+        <div id="lessonReference" class="mb-4 hidden rounded-2xl border border-indigo-400/20 bg-indigo-500/10 p-4">
+          <div id="lessonReferenceTitle" class="text-xs font-bold uppercase text-indigo-200">Шпаргалка по кодам</div>
+          <div id="lessonReferenceList" class="mt-3 grid gap-2 text-xs text-slate-300 sm:grid-cols-2 lg:grid-cols-3"></div>
+        </div>
+
+        <div class="mb-4 flex flex-col gap-3 border-b border-white/10 pb-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div class="text-xs font-semibold uppercase text-slate-500">Выбранный день</div>
+            <div id="selectedDayLabel" class="mt-1 text-sm font-semibold text-slate-100">Понедельник, 1 число</div>
+          </div>
+          <div class="flex flex-wrap gap-2" aria-label="Отметки выбранного дня">
+            <button type="button" class="mark-button rounded-xl px-3 py-2 text-xs font-semibold" data-mark="holiday" aria-pressed="false">Праздник</button>
+            <button type="button" class="mark-button rounded-xl px-3 py-2 text-xs font-semibold" data-mark="transferred" aria-pressed="false">Перенесённый</button>
+            <button type="button" class="mark-button rounded-xl px-3 py-2 text-xs font-semibold" data-mark="short" aria-pressed="false">Сокращённый</button>
+          </div>
+        </div>
+
+        <div class="training-table-wrap" id="trainingTableWrap">
+          <table class="training-table" aria-label="Учебная неделя табеля">
+            <thead><tr id="trainingHeaderRow"></tr></thead>
+            <tbody>
+              <tr id="trainingDayRow"></tr>
+              <tr id="trainingNightRow"></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+          <span>Часы и коды вводятся так же, как в настоящем табеле.</span>
+          <span>Суббота и воскресенье выделены отдельно.</span>
+          <span>Для отметки сначала выберите день.</span>
+        </div>
+      </div>
+
+      <div id="feedbackBox" class="feedback-box mt-5" aria-live="polite">
+        Прочитайте задание и заполните учебный табель.
+      </div>
+
+      <div id="lessonActions" class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-wrap gap-2">
+          <button id="previousLessonBtn" type="button" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
+          <button id="resetLessonBtn" type="button" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10">Очистить урок</button>
+        </div>
+        <button id="primaryLessonBtn" type="button" class="rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white ring-1 ring-indigo-300/40 transition hover:bg-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-400/20">Начать практику</button>
+      </div>
+    </section>
+
+    <section id="completionPanel" class="hidden py-10 text-center">
+      <div class="success-mark">
+        <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m5 12 4 4L19 6"></path>
+        </svg>
+      </div>
+      <h2 class="mt-5 text-3xl font-bold text-slate-100">Тренировка завершена</h2>
+      <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-300/85">Вы прошли все основные сценарии заполнения табеля. Теперь можно открыть настоящий табель или повторить любой урок.</p>
+      <div class="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+        <a href="table.html" class="rounded-2xl bg-emerald-500/20 px-5 py-3 text-sm font-bold text-emerald-100 ring-1 ring-emerald-400/30 transition hover:bg-emerald-500/30">Открыть настоящий табель</a>
+        <button id="restartCourseBtn" type="button" class="rounded-2xl bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 ring-1 ring-white/10 transition hover:bg-white/10">Пройти ещё раз</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="successOverlay" class="success-overlay" aria-hidden="true">
+    <div class="glass-card w-full max-w-sm rounded-3xl p-7 text-center">
+      <div class="success-mark">
+        <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m5 12 4 4L19 6"></path>
+        </svg>
+      </div>
+      <div class="mt-5 text-2xl font-bold text-slate-100">Правильно</div>
+      <div id="successMessage" class="mt-2 text-sm text-slate-300">Переходим дальше…</div>
+    </div>
+  </div>
+
+  <script type="module" src="./nav.js"></script>
+  <script type="module" src="./timesheet-training.js"></script>
+</body>
+</html>
