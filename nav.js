@@ -1,9 +1,11 @@
 import {
+  deleteAllMyNotifications,
   deleteMyNotification,
   getMyProfile,
   listMyNotifications,
   markMyNotificationsRead,
 } from "./db.js";
+import { alertDialog, confirmDialog } from "./modal.js";
 import "./scrollbar.js";
 
 const NAV_STYLE_ID = "alvisa-common-nav-style";
@@ -184,14 +186,46 @@ function injectNavStyles() {
       color: rgb(226 232 240);
     }
 
+    .app-top-header .app-notification-panel-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .app-top-header .app-notification-clear,
     .app-top-header .app-notification-refresh {
+      min-height: 30px;
       border-radius: 999px;
       padding: 6px 9px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, opacity 0.16s ease;
+    }
+
+    .app-top-header .app-notification-clear {
+      color: rgb(254 202 202);
+      background: rgba(244, 63, 94, 0.08);
+      border: 1px solid rgba(248, 113, 113, 0.16);
+    }
+
+    .app-top-header .app-notification-clear:hover {
+      color: rgb(255 228 230);
+      background: rgba(244, 63, 94, 0.14);
+      border-color: rgba(248, 113, 113, 0.28);
+    }
+
+    .app-top-header .app-notification-clear:disabled,
+    .app-top-header .app-notification-refresh:disabled {
+      cursor: default;
+      opacity: 0.5;
+    }
+
+    .app-top-header .app-notification-refresh {
       color: rgb(186 230 253);
       background: rgba(14, 165, 233, 0.10);
       border: 1px solid rgba(56, 189, 248, 0.18);
-      font-size: 0.72rem;
-      font-weight: 700;
     }
 
     .app-top-header .app-notification-list {
@@ -548,6 +582,15 @@ function createNotificationsWidget() {
   title.className = "app-notification-panel-title";
   title.textContent = "Уведомления";
 
+  const headActions = document.createElement("div");
+  headActions.className = "app-notification-panel-actions";
+
+  const clearAll = document.createElement("button");
+  clearAll.type = "button";
+  clearAll.className = "app-notification-clear";
+  clearAll.textContent = "Очистить все";
+  clearAll.hidden = true;
+
   const refresh = document.createElement("button");
   refresh.type = "button";
   refresh.className = "app-notification-refresh";
@@ -557,7 +600,8 @@ function createNotificationsWidget() {
   list.className = "app-notification-list";
   list.innerHTML = `<div class="app-notification-empty">Загружаю…</div>`;
 
-  head.append(title, refresh);
+  headActions.append(clearAll, refresh);
+  head.append(title, headActions);
   panel.append(head, list);
   root.append(button, panel);
 
@@ -572,6 +616,7 @@ function createNotificationsWidget() {
     const count = notifications.filter((item) => !item.read_at).length;
     badge.textContent = count > 9 ? "9+" : String(count);
     badge.classList.toggle("is-visible", count > 0);
+    clearAll.hidden = notifications.length === 0;
   };
 
   const getUnreadNotificationIds = () =>
@@ -731,6 +776,43 @@ function createNotificationsWidget() {
   refresh.addEventListener("click", () => {
     loaded = false;
     void load();
+  });
+
+  clearAll.addEventListener("click", async () => {
+    if (!notifications.length || clearAll.disabled) return;
+
+    const confirmed = await confirmDialog({
+      title: "Очистить уведомления?",
+      message: "Все уведомления будут удалены из списка.",
+      note: "Это действие нельзя отменить.",
+      confirmText: "Очистить все",
+      cancelText: "Оставить",
+      tone: "danger",
+    });
+    if (!confirmed) return;
+
+    clearAll.disabled = true;
+    refresh.disabled = true;
+
+    try {
+      await deleteAllMyNotifications();
+      notifications = [];
+      try {
+        localStorage.removeItem(NOTIFICATION_READ_STORAGE_KEY);
+      } catch {
+        // Browser storage can be disabled; notifications are already deleted on the server.
+      }
+      renderList();
+    } catch (error) {
+      await alertDialog({
+        title: "Не удалось очистить уведомления",
+        message: error?.message || "Попробуйте ещё раз чуть позже.",
+        tone: "danger",
+      });
+    } finally {
+      clearAll.disabled = false;
+      refresh.disabled = false;
+    }
   });
 
   document.addEventListener("click", (event) => {

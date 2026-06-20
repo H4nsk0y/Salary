@@ -718,6 +718,17 @@ export async function deleteMyNotification(notificationId) {
   if (error) throw error;
 }
 
+export async function deleteAllMyNotifications() {
+  const userId = await requireUserId();
+
+  const { error } = await supabase
+    .from("user_notifications")
+    .delete()
+    .eq("user_id", userId);
+
+  if (error) throw error;
+}
+
 export async function upsertMyPushSubscription({
   endpoint,
   p256dh,
