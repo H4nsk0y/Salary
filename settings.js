@@ -2,7 +2,7 @@
 
 import { requireSession } from "./auth.js";
 import "./scrollbar.js";
-import { getMyProfile, updateMyProfileFields } from "./db.js";
+import { getMyDepartmentMembershipKey, getMyProfile, updateMyProfileFields } from "./db.js";
 import {
   disablePushNotifications,
   enablePushNotifications,
@@ -21,15 +21,20 @@ const statusPill = document.getElementById("statusPill");
 const errorBox = document.getElementById("errorBox");
 const hideMoneyToggle = document.getElementById("hideMoneyToggle");
 const autoCollapseTablePanelsToggle = document.getElementById("autoCollapseTablePanelsToggle");
+const egaisFileRemindersRow = document.getElementById("egaisFileRemindersRow");
+const egaisFileRemindersToggle = document.getElementById("egaisFileRemindersToggle");
 const pushNotificationsBtn = document.getElementById("pushNotificationsBtn");
 const pushNotificationsHint = document.getElementById("pushNotificationsHint");
 const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+
+let canUseEgaisFileReminders = false;
 
 let currentSettings = {
   hide_money: false,
   money_pin_hash: null,
   money_pin_salt: null,
   auto_collapse_table_panels: false,
+  egais_file_reminders_enabled: false,
 };
 
 let pendingSettings = {
@@ -37,6 +42,7 @@ let pendingSettings = {
   money_pin_hash: null,
   money_pin_salt: null,
   auto_collapse_table_panels: false,
+  egais_file_reminders_enabled: false,
 };
 
 function cloneSettings(settings) {
@@ -45,6 +51,7 @@ function cloneSettings(settings) {
     money_pin_hash: settings?.money_pin_hash ?? null,
     money_pin_salt: settings?.money_pin_salt ?? null,
     auto_collapse_table_panels: settings?.auto_collapse_table_panels === true,
+    egais_file_reminders_enabled: settings?.egais_file_reminders_enabled === true,
   };
 }
 
@@ -56,6 +63,12 @@ function syncToggle() {
   if (autoCollapseTablePanelsToggle) {
     autoCollapseTablePanelsToggle.checked =
       pendingSettings.auto_collapse_table_panels === true;
+  }
+
+  egaisFileRemindersRow?.classList.toggle("hidden", !canUseEgaisFileReminders);
+  if (egaisFileRemindersToggle) {
+    egaisFileRemindersToggle.checked =
+      canUseEgaisFileReminders && pendingSettings.egais_file_reminders_enabled === true;
   }
 }
 
@@ -108,13 +121,20 @@ async function loadSettings() {
   setStatus("Загружаю настройки…", "busy");
   setError(null);
 
-  const profile = await getMyProfile();
+  const [profile, departmentKey] = await Promise.all([
+    getMyProfile(),
+    getMyDepartmentMembershipKey(),
+  ]);
+
+  canUseEgaisFileReminders = departmentKey === "egais";
 
   currentSettings = {
     hide_money: isMoneyProtectionEnabled(profile),
     money_pin_hash: profile?.money_pin_hash ?? null,
     money_pin_salt: profile?.money_pin_salt ?? null,
     auto_collapse_table_panels: profile?.auto_collapse_table_panels === true,
+    egais_file_reminders_enabled:
+      canUseEgaisFileReminders && profile?.egais_file_reminders_enabled === true,
   };
 
   pendingSettings = cloneSettings(currentSettings);
@@ -203,6 +223,14 @@ function handleAutoCollapseTablePanelsToggleChange() {
   markDirty("Есть несохранённые изменения");
 }
 
+function handleEgaisFileRemindersToggleChange() {
+  if (!egaisFileRemindersToggle || !canUseEgaisFileReminders) return;
+
+  pendingSettings.egais_file_reminders_enabled =
+    egaisFileRemindersToggle.checked === true;
+  markDirty("Есть несохранённые изменения");
+}
+
 function applyPushButtonState(state) {
   if (!pushNotificationsBtn || !pushNotificationsHint) return;
 
@@ -276,13 +304,20 @@ async function saveSettings() {
   setError(null);
 
   try {
-    await updateMyProfileFields({
+    const profilePatch = {
       hide_money: pendingSettings.hide_money === true,
       money_pin_hash: pendingSettings.money_pin_hash,
       money_pin_salt: pendingSettings.money_pin_salt,
       auto_collapse_table_panels:
         pendingSettings.auto_collapse_table_panels === true,
-    });
+    };
+
+    if (canUseEgaisFileReminders) {
+      profilePatch.egais_file_reminders_enabled =
+        pendingSettings.egais_file_reminders_enabled === true;
+    }
+
+    await updateMyProfileFields(profilePatch);
 
     currentSettings = cloneSettings(pendingSettings);
     syncToggle();
@@ -322,6 +357,10 @@ hideMoneyToggle?.addEventListener("change", () => {
 
 autoCollapseTablePanelsToggle?.addEventListener("change", () => {
   handleAutoCollapseTablePanelsToggleChange();
+});
+
+egaisFileRemindersToggle?.addEventListener("change", () => {
+  handleEgaisFileRemindersToggleChange();
 });
 
 pushNotificationsBtn?.addEventListener("click", () => {

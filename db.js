@@ -1,6 +1,9 @@
 import { supabase } from "./supabaseClient.js";
 
 const PROFILE_SELECT =
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, egais_file_reminders_enabled";
+
+const PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS =
   "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date";
 
 const PROFILE_SELECT_WITH_BRANCH =
@@ -61,6 +64,20 @@ function isMissingEmploymentDateColumnError(error) {
   );
 }
 
+function isMissingEgaisFileRemindersColumnError(error) {
+  const text = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].filter(Boolean).join(" ");
+
+  return (
+    /egais_file_reminders_enabled/i.test(text) &&
+    /(column|schema cache|does not exist|could not find|42703|PGRST204)/i.test(text)
+  );
+}
+
 function assertValidYearMonth(year, month) {
   const y = Number(year);
   const m = Number(month);
@@ -97,6 +114,23 @@ export async function getMyProfile() {
 
   if (error) {
     if (isNotFoundError(error)) return null;
+
+    if (isMissingEgaisFileRemindersColumnError(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("profiles")
+        .select(PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (!fallbackError) {
+        return fallbackData
+          ? { ...fallbackData, egais_file_reminders_enabled: false }
+          : null;
+      }
+
+      if (isNotFoundError(fallbackError)) return null;
+      throw fallbackError;
+    }
 
     if (isMissingEmploymentDateColumnError(error)) {
       const { data: withBranchData, error: withBranchError } = await supabase
@@ -715,7 +749,7 @@ export async function disableMyPushSubscription(endpoint) {
   if (error) throw error;
 }
 
-export async function getMyChatDepartment() {
+export async function getMyDepartmentMembershipKey() {
   const userId = await requireUserId();
 
   const { data: memberRow, error: memberError } = await supabase
@@ -726,9 +760,14 @@ export async function getMyChatDepartment() {
     .maybeSingle();
 
   if (memberError && !isNotFoundError(memberError)) throw memberError;
-  if (memberRow?.department_key) {
-    return memberRow.department_key;
-  }
+  return memberRow?.department_key ?? null;
+}
+
+export async function getMyDepartmentKey() {
+  const memberDepartmentKey = await getMyDepartmentMembershipKey();
+  if (memberDepartmentKey) return memberDepartmentKey;
+
+  const userId = await requireUserId();
 
   const { data: editorRow, error: editorError } = await supabase
     .from("department_editors")
@@ -739,6 +778,10 @@ export async function getMyChatDepartment() {
 
   if (editorError && !isNotFoundError(editorError)) throw editorError;
   return editorRow?.department_key ?? null;
+}
+
+export async function getMyChatDepartment() {
+  return getMyDepartmentKey();
 }
 
 export async function listMyDepartmentMessages(limit = 100) {

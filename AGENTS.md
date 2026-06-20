@@ -117,6 +117,7 @@ Owner-страницы должны проверять:
 - `tab_number text`
 - `branch text`
 - `employment_date date`
+- `egais_file_reminders_enabled boolean not null`
 
 `timesheets`
 - личные табели
@@ -174,11 +175,14 @@ Owner-страницы должны проверять:
 - `owner_list_payroll_analytics(p_year integer default null, p_department_key text default null)`
 - `notify_department_timesheet_saved(p_department_key text, p_year integer, p_month integer)`
 - `notify_personal_timesheet_changes(p_department_key text, p_year integer, p_month integer, p_changes jsonb)`
+- имена авторов персональных уведомлений сокращаются до формата `Фамилия И.О.` через `014_short_notification_names.sql`
 - будущие push-уведомления: `push_subscriptions`, `upsert_my_push_subscription(...)`, `disable_my_push_subscription(p_endpoint text)`
 
 Push-уведомления:
 - клиентские файлы: `pushNotifications.js`, `pushConfig.js`, `service-worker.js`
 - серверная отправка: Supabase Edge Function `supabase/functions/send-push-notifications/index.ts`
+- напоминания ЕГАИС о суточных файлах: `supabase/functions/send-egais-file-reminders/index.ts` + `supabase-sql/013_egais_file_reminders.sql`
+- настройка напоминаний о суточных видна только участникам `department_members` отдела `egais`; отправка выполняется в 13:00 и 00:30 по Москве
 - в `pushConfig.js` хранится только публичный VAPID-ключ
 - приватный VAPID-ключ нельзя коммитить в репозиторий; он нужен только серверной отправке / Supabase Edge Function
 - для отправки нужны SQL `010_push_subscriptions.sql` и `011_push_delivery_state.sql`
