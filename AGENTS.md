@@ -148,7 +148,7 @@ Owner-страницы должны проверять:
 - `expires_at` скрывает уведомления спустя неделю
 - пользователь видит и удаляет только свои уведомления
 - уведомления отдела отправляются через RPC, а не прямыми insert с клиента
-- всплывающие уведомления на сайте включаются/выключаются локально через `notificationSettings.js`; это не push на телефон
+- ручное сохранение общего табеля создаёт персональные уведомления только сотрудникам, чьи данные изменились после предыдущей отправки; используется `012_personal_timesheet_notifications.sql`
 
 `user_presence`
 - heartbeat пользователей для owner-страницы онлайн
@@ -173,6 +173,7 @@ Owner-страницы должны проверять:
 - `owner_set_department_editor(p_department_key text, p_user_id uuid, p_is_editor boolean)`
 - `owner_list_payroll_analytics(p_year integer default null, p_department_key text default null)`
 - `notify_department_timesheet_saved(p_department_key text, p_year integer, p_month integer)`
+- `notify_personal_timesheet_changes(p_department_key text, p_year integer, p_month integer, p_changes jsonb)`
 - будущие push-уведомления: `push_subscriptions`, `upsert_my_push_subscription(...)`, `disable_my_push_subscription(p_endpoint text)`
 
 Push-уведомления:

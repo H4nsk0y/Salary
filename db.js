@@ -579,6 +579,35 @@ export async function notifyDepartmentTimesheetSaved({ departmentKey, year, mont
   if (error) throw error;
 }
 
+export async function notifyPersonalTimesheetChanges({
+  departmentKey,
+  year,
+  month,
+  changes = [],
+} = {}) {
+  const key = String(departmentKey ?? "").trim();
+  const normalized = assertValidYearMonth(year, month);
+  const normalizedChanges = (Array.isArray(changes) ? changes : [])
+    .map((item) => ({
+      user_id: String(item?.userId ?? "").trim(),
+      summary: String(item?.summary ?? "").trim().slice(0, 900),
+    }))
+    .filter((item) => item.user_id);
+
+  if (!key) throw new Error("Не указан отдел.");
+  if (!normalizedChanges.length) return 0;
+
+  const { data, error } = await supabase.rpc("notify_personal_timesheet_changes", {
+    p_department_key: key,
+    p_year: normalized.year,
+    p_month: normalized.month,
+    p_changes: normalizedChanges,
+  });
+
+  if (error) throw error;
+  return Number(data) || 0;
+}
+
 export async function sendPushNotifications({
   departmentKey,
   type = "department_timesheet_saved",

@@ -10,7 +10,7 @@ import {
   managedListTimesheetsBefore,
   managedLoadTimesheet,
   managedSaveManyTimesheets,
-  notifyDepartmentTimesheetSaved,
+  notifyPersonalTimesheetChanges,
   ownerCreateDepartmentInvite,
   sendPushNotifications,
 } from "./db.js";
@@ -33,6 +33,10 @@ const TABLE_DRAG_THRESHOLD_PX = 5;
 const monthNames = [
   "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
   "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+];
+const monthNamesGenitive = [
+  "января", "февраля", "марта", "апреля", "мая", "июня",
+  "июля", "августа", "сентября", "октября", "ноября", "декабря",
 ];
 const DOW_SHORT = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 
@@ -98,6 +102,8 @@ const mEmployeeName = document.getElementById("mEmployeeName");
 
 let dirty = false;
 let lastSavedSignature = "";
+let notificationBaselineByUserId = new Map();
+let hasPendingPersonalPush = false;
 let saveTimer = null;
 
 function setError(msg) {
@@ -874,6 +880,113 @@ function currentSaveItems() {
 
 function currentSignature() {
   return JSON.stringify(currentSaveItems());
+}
+
+function notificationSnapshotForState(state) {
+  return {
+    isHoliday: sharedHoliday.map(Boolean),
+    isTransferredOff: sharedTransferredOff.map(Boolean),
+    isShortDay: sharedShortDay.map(Boolean),
+    dayHours: state.dayHours.map((value) => sanitizeHourNumber(Number(value))),
+    nightHours: state.nightHours.map((value) => sanitizeHourNumber(Number(value))),
+    leaveType: state.leaveType.map((value) => normalizeLeaveTypeLegacy(value)),
+  };
+}
+
+function resetNotificationBaseline() {
+  notificationBaselineByUserId = new Map(
+    teamStates.map((state) => [state.userId, notificationSnapshotForState(state)])
+  );
+}
+
+function updateNotificationBaseline(userIds) {
+  const ids = new Set((Array.isArray(userIds) ? userIds : []).map(String));
+
+  for (const state of teamStates) {
+    if (!ids.has(String(state.userId))) continue;
+    notificationBaselineByUserId.set(state.userId, notificationSnapshotForState(state));
+  }
+}
+
+function notificationCellLabel(snapshot, index) {
+  const leaveCode = leaveTypeToCode(snapshot?.leaveType?.[index], "ОТ");
+  if (leaveCode) return leaveCode;
+
+  const day = sanitizeHourNumber(Number(snapshot?.dayHours?.[index]));
+  const night = sanitizeHourNumber(Number(snapshot?.nightHours?.[index]));
+  const parts = [];
+
+  if (day > 0) parts.push(`${fmtHours(day)} ч день`);
+  if (night > 0) parts.push(`${fmtHours(night)} ч ночь`);
+
+  return parts.length ? parts.join(" + ") : "выходной";
+}
+
+function notificationDayMarkLabel(snapshot, index) {
+  if (snapshot?.isHoliday?.[index]) return "праздничный день";
+  if (snapshot?.isTransferredOff?.[index]) return "перенесённый выходной";
+  if (snapshot?.isShortDay?.[index]) return "сокращённый день";
+  return "обычный день";
+}
+
+function notificationNumberChanged(previous, current) {
+  return Math.abs(Number(previous || 0) - Number(current || 0)) > 1e-9;
+}
+
+function collectPersonalTimesheetChanges() {
+  const result = [];
+
+  for (const state of teamStates) {
+    const previous = notificationBaselineByUserId.get(state.userId);
+    if (!previous) continue;
+
+    const current = notificationSnapshotForState(state);
+    const dayChanges = [];
+
+    for (let index = 0; index < daysInMonth; index += 1) {
+      const cellChanged =
+        notificationNumberChanged(previous.dayHours?.[index], current.dayHours?.[index]) ||
+        notificationNumberChanged(previous.nightHours?.[index], current.nightHours?.[index]) ||
+        normalizeLeaveTypeLegacy(previous.leaveType?.[index]) !==
+          normalizeLeaveTypeLegacy(current.leaveType?.[index]);
+
+      const markChanged =
+        Boolean(previous.isHoliday?.[index]) !== Boolean(current.isHoliday?.[index]) ||
+        Boolean(previous.isTransferredOff?.[index]) !== Boolean(current.isTransferredOff?.[index]) ||
+        Boolean(previous.isShortDay?.[index]) !== Boolean(current.isShortDay?.[index]);
+
+      if (!cellChanged && !markChanged) continue;
+
+      const details = [];
+      if (cellChanged) {
+        details.push(
+          `${notificationCellLabel(previous, index)} → ${notificationCellLabel(current, index)}`
+        );
+      }
+      if (markChanged) {
+        details.push(
+          `${notificationDayMarkLabel(previous, index)} → ${notificationDayMarkLabel(current, index)}`
+        );
+      }
+
+      dayChanges.push(`${index + 1} ${monthNamesGenitive[month]}: ${details.join(", ")}`);
+    }
+
+    if (!dayChanges.length) continue;
+
+    const visibleChanges = dayChanges.slice(0, 3);
+    const hiddenCount = dayChanges.length - visibleChanges.length;
+    const summary = `${visibleChanges.join("; ")}${
+      hiddenCount > 0 ? `; ещё изменений: ${hiddenCount}` : ""
+    }.`;
+
+    result.push({
+      userId: state.userId,
+      summary,
+    });
+  }
+
+  return result;
 }
 
 function lockNightCell(state, i) {
@@ -1800,13 +1913,17 @@ function mapNotificationError(error) {
 
   if (message.includes("ACCESS_DENIED")) return "Табель сохранён, но уведомление не отправлено: недостаточно прав.";
   if (message.includes("DEPARTMENT_NOT_FOUND")) return "Табель сохранён, но уведомление не отправлено: отдел не найден.";
+  if (message.includes("RECIPIENT_NOT_IN_DEPARTMENT")) {
+    return "Табель сохранён, но один из получателей больше не состоит в этом отделе. Обновите страницу.";
+  }
   if (
+    message.includes("notify_personal_timesheet_changes") ||
     message.includes("notify_department_timesheet_saved") ||
     message.includes("user_notifications") ||
     message.includes("Could not find the function") ||
     message.includes("schema cache")
   ) {
-    return "Табель сохранён, но для уведомлений нужно запустить supabase-sql/008_department_notifications.sql.";
+    return "Табель сохранён, но для персональных уведомлений нужно запустить supabase-sql/012_personal_timesheet_notifications.sql.";
   }
 
   return "Табель сохранён, но уведомление не отправлено.";
@@ -1875,6 +1992,12 @@ async function doSaveAll({ notify = false } = {}) {
   setError(null);
 
   try {
+    if (notify && saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+
+    const personalChanges = notify ? collectPersonalTimesheetChanges() : [];
     const items = currentSaveItems();
     await managedSaveManyTimesheets(items);
     lastSavedSignature = currentSignature();
@@ -1882,24 +2005,46 @@ async function doSaveAll({ notify = false } = {}) {
 
     if (notify) {
       try {
-        await notifyDepartmentTimesheetSaved({
-          departmentKey: managedDepartment?.key,
-          year,
-          month,
-        });
+        if (personalChanges.length) {
+          await notifyPersonalTimesheetChanges({
+            departmentKey: managedDepartment?.key,
+            year,
+            month,
+            changes: personalChanges,
+          });
+
+          updateNotificationBaseline(personalChanges.map((item) => item.userId));
+          hasPendingPersonalPush = true;
+        }
+
+        if (!personalChanges.length && !hasPendingPersonalPush) {
+          setSaveStatus("Сохранено, новых изменений нет", "ok");
+          return;
+        }
 
         try {
           await sendPushNotifications({
             departmentKey: managedDepartment?.key,
-            type: "department_timesheet_saved",
+            type: "personal_timesheet_changed",
           });
+          hasPendingPersonalPush = false;
         } catch (pushError) {
-          setSaveStatus("Сохранено, push не отправлен", "err");
+          setSaveStatus(
+            personalChanges.length
+              ? `Сохранено для ${personalChanges.length}, push не отправлен`
+              : "Сохранено, push не отправлен",
+            "err"
+          );
           setError(mapPushNotificationError(pushError));
           return;
         }
 
-        setSaveStatus("Сохранено и отправлено", "ok");
+        setSaveStatus(
+          personalChanges.length
+            ? `Сохранено и отправлено: ${personalChanges.length}`
+            : "Сохранено, новых изменений нет",
+          "ok"
+        );
         return;
       } catch (notificationError) {
         setSaveStatus("Сохранено без уведомления", "err");
@@ -2019,6 +2164,8 @@ async function loadCurrentMonth() {
     syncHorizontalScrollState();
 
     lastSavedSignature = currentSignature();
+    resetNotificationBaseline();
+    hasPendingPersonalPush = false;
     dirty = false;
     setSaveStatus("Сохранено", "ok");
 

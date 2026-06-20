@@ -30,6 +30,23 @@ function injectNavStyles() {
   const style = document.createElement("style");
   style.id = NAV_STYLE_ID;
   style.textContent = `
+    .app-top-safe-area-cover {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top, 0px);
+      pointer-events: none;
+      z-index: 49;
+      background: rgba(2, 6, 23, 0.96);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .app-top-header {
+      top: 0;
+    }
+
     .app-top-header .nav-link {
       position: relative;
       transition: color 0.2s;
@@ -847,7 +864,11 @@ function renderHeader(mount) {
   inner.append(home, actions);
   header.appendChild(inner);
   header.appendChild(mobileMenu);
-  mount.replaceWith(header);
+  const safeAreaCover = document.createElement("div");
+  safeAreaCover.className = "app-top-safe-area-cover";
+  safeAreaCover.setAttribute("aria-hidden", "true");
+
+  mount.replaceWith(safeAreaCover, header);
   setupMobileMenu(header, menuButton, mobileMenu);
   return header;
 }
