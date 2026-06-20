@@ -75,6 +75,8 @@ Alvisa - статическое фронтенд-приложение для с�
 
 Новые пункты верхнего меню добавлять в `nav.js`, а не вручную в каждую HTML-страницу.
 
+Основное меню сотрудника: калькулятор, личный табель, смены, `tasks.html`, профиль. Страница новостей доступна из профиля и не дублируется в общем header.
+
 Чат отдела сейчас считается замороженной функцией: `chat.html`, `chat.js`, `department_messages` и Realtime-логику не удалять без отдельного решения, но пункт "Чат" не показывать в общей навигации и не развивать эту часть без явной просьбы.
 
 ## Авторизация и роли
@@ -151,10 +153,25 @@ Owner-страницы должны проверять:
 - уведомления отдела отправляются через RPC, а не прямыми insert с клиента
 - ручное сохранение общего табеля создаёт персональные уведомления только сотрудникам, чьи данные изменились после предыдущей отправки; используется `012_personal_timesheet_notifications.sql`
 
+`department_tasks` / `department_task_assignees`
+- простые задачи отдела без статусов и workflow
+- руководитель или редактор табеля назначает задачу выбранным сотрудникам, всей смене на дату или всему отделу
+- обычный сотрудник видит только задачи, где он назначен исполнителем
+- удалять задачи может только owner или редактор соответствующего отдела
+- задача и связанное с ней уведомление удаляются через 8 часов после срока; используется `cleanup_expired_department_tasks()` и страховочная очистка при загрузке списка
+- создание задачи формирует персональные `user_notifications`; схема и RPC находятся в `018_department_tasks.sql`
+- клиентская страница: `tasks.html` + `tasks.js`
+
 `user_presence`
 - heartbeat пользователей для owner-страницы онлайн
 - ожидаемые поля: `user_id`, `last_seen`, `page`, `updated_at`
 - онлайн считается по `last_seen > now() - interval '2 minutes'`
+- страница `schedule.html` по умолчанию показывает отдел пользователя, но позволяет просматривать смены других отделов через `017_cross_department_schedule.sql`
+
+`owner_audit_log`
+- журнал действий владельца с пользователями
+- хранит `actor_user_id`, `target_user_id`, `action`, `details`, `created_at`
+- доступен только owner; добавляется скриптом `016_owner_user_control_center.sql`
 
 Существующие DB helper-функции/политики, которые уже используются:
 - `is_owner()`
@@ -169,7 +186,12 @@ Owner-страницы должны проверять:
 - `owner_list_department_editors(p_department_key text)`
 - `owner_add_department_editor(p_department_key text, p_user_id uuid)`
 - `owner_remove_department_editor(p_department_key text, p_user_id uuid)`
+- `owner_delete_department_invite(p_token text)`
 - `owner_list_users()`
+- `owner_list_users_v2()`
+- `owner_update_user_profile(...)`
+- `owner_list_user_timesheets(p_user_id uuid, p_limit integer default 36)`
+- `owner_list_user_audit(p_user_id uuid default null, p_limit integer default 100)`
 - `owner_set_user_department(p_user_id uuid, p_department_key text default null)`
 - `owner_set_department_editor(p_department_key text, p_user_id uuid, p_is_editor boolean)`
 - `owner_list_payroll_analytics(p_year integer default null, p_department_key text default null)`
@@ -187,6 +209,12 @@ Push-уведомления:
 - приватный VAPID-ключ нельзя коммитить в репозиторий; он нужен только серверной отправке / Supabase Edge Function
 - для отправки нужны SQL `010_push_subscriptions.sql` и `011_push_delivery_state.sql`
 - Edge Function требует env/secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+
+Owner Auth:
+- серверные действия с учётными записями выполняет `supabase/functions/owner-account-admin/index.ts`
+- service-role ключ не должен попадать в клиентский JS
+- блокировка, завершение сессий и удаление запрещены для текущего owner-аккаунта
+- данные, табели и аудит сотрудника открываются лениво через `ownerUserControl.js`
 
 Новые owner-специфичные операции лучше делать через `security definer` RPC в стиле уже существующих функций.
 

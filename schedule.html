@@ -80,6 +80,11 @@
       display: none !important;
     }
 
+    #scheduleDepartmentSelect option {
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
     @media (min-width: 768px) {
       .pt-safe {
         padding-top: 6rem;
@@ -107,6 +112,17 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
+          <label class="w-full sm:w-auto">
+            <span class="mb-1.5 block text-[11px] font-semibold uppercase text-sky-200/80">Смотреть отдел</span>
+            <span class="relative block">
+              <select
+                id="scheduleDepartmentSelect"
+                class="min-h-[42px] w-full min-w-0 cursor-pointer appearance-none rounded-2xl border border-sky-400/35 bg-slate-950/90 px-4 py-2.5 pr-10 text-sm font-semibold text-slate-100 outline-none transition hover:bg-slate-900 focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/15 sm:min-w-[240px]"
+                aria-label="Смотреть смены отдела"
+              ></select>
+              <span class="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-lg text-sky-200" aria-hidden="true">⌄</span>
+            </span>
+          </label>
           <label class="inline-flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15">
             <input id="hideRestCheckbox" type="checkbox" class="h-4 w-4 rounded border-white/20 bg-slate-950/70 accent-sky-400" />
             <span>Скрыть отсыпной</span>

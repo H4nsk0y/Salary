@@ -3,6 +3,7 @@ import {
   getMyProfile,
   listAllDepartments,
   ownerCreateDepartmentInvite,
+  ownerDeleteDepartmentInvite,
   ownerListDepartmentInvites,
   ownerListUsers,
   ownerRevokeDepartmentInvite,
@@ -11,6 +12,7 @@ import {
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { confirmDialog } from "./modal.js";
+import { setupOwnerUserControl } from "./ownerUserControl.js";
 
 document.body.classList.add("is-loaded");
 
@@ -50,6 +52,8 @@ let filteredUsers = [];
 let invites = [];
 let isLoading = false;
 let isInvitesLoading = false;
+let currentOwnerUserId = "";
+let ownerUserControl = null;
 const busyUserIds = new Set();
 
 function setStatus(text, tone = "neutral") {
@@ -131,6 +135,13 @@ function formatDateTime(value) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatMoney(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "—";
+  return `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(number)} ₽`;
 }
 
 function formatRelative(value) {
@@ -221,6 +232,7 @@ function isProfileComplete(row) {
 function getSearchBlob(row) {
   return [
     row?.user_id,
+    row?.email,
     row?.display_name,
     row?.position,
     row?.tab_number,
@@ -452,6 +464,39 @@ function createInviteCard(invite) {
     actions.appendChild(revokeBtn);
   }
 
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "rounded-2xl bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-400/20 transition-all hover:bg-rose-500/15";
+  deleteBtn.textContent = "Удалить";
+  deleteBtn.addEventListener("click", async () => {
+    const departmentName = invite.department_name || invite.department_key || "отдела";
+    const ok = await confirmDialog({
+      title: "Удалить приглашение?",
+      message: invite.is_active === true
+        ? `Активная ссылка для отдела "${departmentName}" сразу перестанет работать.`
+        : `Приглашение для отдела "${departmentName}" исчезнет из списка.`,
+      note: "Это действие нельзя отменить.",
+      confirmText: "Удалить",
+      cancelText: "Оставить",
+      tone: "danger",
+    });
+    if (!ok) return;
+
+    try {
+      setStatus("Удаляю приглашение…", "busy");
+      setError(null);
+      deleteBtn.disabled = true;
+      await ownerDeleteDepartmentInvite(invite.token);
+      await loadInvites({ silent: true });
+      setStatus("Приглашение удалено", "ok");
+    } catch (error) {
+      setStatus("Ошибка", "err");
+      setError(mapError(error));
+      deleteBtn.disabled = false;
+    }
+  });
+  actions.appendChild(deleteBtn);
+
   top.append(main, actions);
   card.appendChild(top);
   return card;
@@ -568,6 +613,10 @@ function createUserCard(row) {
       .filter(Boolean)
       .join(" • ") || `ID: ${String(row.user_id).slice(0, 8)}`;
 
+  const email = document.createElement("div");
+  email.className = "mt-1 truncate text-xs text-slate-500";
+  email.textContent = row.email || "Email появится после обновления owner-функций";
+
   const badges = document.createElement("div");
   badges.className = "mt-4 flex flex-wrap gap-2";
   badges.appendChild(createBadge(row.department_name || "Без отдела", row.department_key ? "sky" : "warn"));
@@ -576,12 +625,14 @@ function createUserCard(row) {
     badges.appendChild(createBadge(`Редактор: ${editorNames.join(", ")}`, "indigo"));
   }
 
-  body.append(nameRow, meta, badges);
+  body.append(nameRow, meta, email, badges);
   top.append(createAvatar(row, displayName), body);
 
   const details = document.createElement("div");
   details.className = "mt-5 grid gap-3 sm:grid-cols-2";
   details.append(
+    createDetail("Email", row.email || "—"),
+    createDetail("Оклад", formatMoney(row.oklad)),
     createDetail("Активность", `${formatRelative(row.last_seen)}${row.page ? ` • ${row.page}` : ""}`),
     createDetail("Регистрация", formatDateTime(row.created_at)),
     createDetail("Отделов", String(row.department_count ?? 0)),
@@ -600,9 +651,10 @@ function createUserCard(row) {
   controls.className = "mt-5 rounded-3xl bg-slate-950/25 p-4 ring-1 ring-white/10";
 
   const controlsGrid = document.createElement("div");
-  controlsGrid.className = "grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]";
+  controlsGrid.className = "grid min-w-0 gap-3";
 
   const departmentControl = document.createElement("div");
+  departmentControl.className = "min-w-0";
   const departmentLabel = document.createElement("label");
   departmentLabel.className = "mb-2 block text-xs font-semibold uppercase text-slate-400";
   departmentLabel.textContent = "Отдел";
@@ -612,7 +664,21 @@ function createUserCard(row) {
   departmentControl.append(departmentLabel, selectWrap);
 
   const actionStack = document.createElement("div");
-  actionStack.className = "flex flex-wrap items-end gap-2";
+  actionStack.className = "flex min-w-0 flex-wrap items-center gap-2";
+
+  const detailsBtn = document.createElement("button");
+  detailsBtn.type = "button";
+  detailsBtn.className = "rounded-2xl bg-indigo-500/10 px-4 py-2.5 text-sm font-semibold text-indigo-200 ring-1 ring-indigo-400/20 transition-all hover:bg-indigo-500/15";
+  detailsBtn.textContent = "Подробнее";
+  detailsBtn.addEventListener("click", () => ownerUserControl?.openUser(row, "overview"));
+
+  const previewBtn = document.createElement("button");
+  previewBtn.type = "button";
+  previewBtn.className = "rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition-all hover:bg-white/10";
+  previewBtn.textContent = "Посмотреть как сотрудник";
+  previewBtn.addEventListener("click", () => ownerUserControl?.openUser(row, "preview"));
+
+  actionStack.append(detailsBtn, previewBtn);
 
   const editorBtn = document.createElement("button");
   editorBtn.type = "button";
@@ -709,6 +775,9 @@ function mapError(error) {
   if (message.includes("INVITE_REVOKED")) return "Приглашение уже отозвано.";
   if (message.includes("INVITE_EXPIRED")) return "Срок приглашения истек.";
   if (message.includes("INVITE_USED_UP")) return "Лимит приглашения исчерпан.";
+  if (message.includes("owner_delete_department_invite")) {
+    return "Для удаления приглашений нужно запустить supabase-sql/015_delete_department_invites.sql в Supabase SQL Editor.";
+  }
   if (message.includes("department_invites") || message.includes("owner_create_department_invite") || message.includes("gen_random_bytes")) {
     return "Для приглашений нужно запустить supabase-sql/006_fix_invite_permissions_and_pgcrypto.sql в Supabase SQL Editor.";
   }
@@ -876,8 +945,10 @@ function bindEvents() {
 }
 
 (async () => {
+  let session;
   try {
-    await requireSession();
+    session = await requireSession();
+    currentOwnerUserId = String(session?.user?.id || "");
   } catch {
     location.href = "login.html?next=owner-users.html";
     return;
@@ -901,6 +972,15 @@ function bindEvents() {
     departments = await listAllDepartments();
     renderDepartmentFilter();
     renderInviteDepartmentSelect();
+
+    ownerUserControl = setupOwnerUserControl({
+      getUsers: () => users,
+      getDepartments: () => departments,
+      refreshUsers: () => loadUsers({ silent: true }),
+      setStatus,
+      setError,
+      currentOwnerUserId,
+    });
 
     await Promise.all([
       loadUsers(),

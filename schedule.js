@@ -1,5 +1,9 @@
 import { requireSession } from "./auth.js";
-import { listDepartmentShiftOverview } from "./db.js";
+import {
+  getMyDepartmentKey,
+  listAllDepartments,
+  listDepartmentShiftOverview,
+} from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 
 document.body.classList.add("is-loaded");
@@ -15,8 +19,12 @@ const todayWorkCount = document.getElementById("todayWorkCount");
 const tomorrowWorkCount = document.getElementById("tomorrowWorkCount");
 const departmentCount = document.getElementById("departmentCount");
 const hideRestCheckbox = document.getElementById("hideRestCheckbox");
+const departmentSelect = document.getElementById("scheduleDepartmentSelect");
 
 let rows = [];
+let departments = [];
+let selectedDepartmentKey = "";
+let currentUserId = "";
 let isLoading = false;
 const HIDE_REST_KEY = "alvisa_schedule_hide_rest_after_night";
 
@@ -174,6 +182,11 @@ function getShiftInfo(row) {
   };
 }
 
+function isWorkingShift(row) {
+  const kind = getShiftInfo(row).kind;
+  return kind === "work" || kind === "night-shift";
+}
+
 function createBadge(info) {
   const badge = document.createElement("span");
   badge.className = "inline-flex w-fit max-w-full items-center rounded-full px-3 py-1 text-xs font-semibold ring-1";
@@ -197,11 +210,16 @@ function createBadge(info) {
 function createPersonRow(row) {
   const info = getShiftInfo(row);
   const name = getDisplayName(row);
+  const isCurrentUser = String(row?.user_id || "") === currentUserId;
 
   const item = document.createElement("div");
   item.className = "flex min-w-0 items-center gap-3 rounded-2xl bg-slate-950/25 p-3 ring-1 ring-white/10";
   if (info.kind === "rest" || info.kind === "night-shift") {
     item.className = "flex min-w-0 items-center gap-3 rounded-2xl bg-rose-500/10 p-3 ring-1 ring-rose-400/20";
+  }
+  if (isCurrentUser) {
+    item.classList.remove("ring-1", "ring-white/10", "ring-rose-400/20");
+    item.classList.add("ring-2", "ring-indigo-400/60", "shadow-[0_0_24px_rgba(99,102,241,0.12)]");
   }
 
   const avatar = document.createElement("div");
@@ -230,11 +248,21 @@ function createPersonRow(row) {
   top.className = "grid min-w-0 gap-2";
 
   const title = document.createElement("div");
-  title.className = "block min-w-0 max-w-full truncate text-sm font-semibold text-slate-100";
+  title.className = "block min-w-0 flex-1 truncate text-sm font-semibold text-slate-100";
   title.textContent = name;
   title.title = name;
 
-  top.append(title, createBadge(info));
+  const identity = document.createElement("div");
+  identity.className = "flex min-w-0 items-center gap-2";
+  identity.appendChild(title);
+  if (isCurrentUser) {
+    const selfBadge = document.createElement("span");
+    selfBadge.className = "shrink-0 rounded-full bg-indigo-500/15 px-2 py-0.5 text-[10px] font-bold text-indigo-100 ring-1 ring-indigo-400/30";
+    selfBadge.textContent = "Вы";
+    identity.appendChild(selfBadge);
+  }
+
+  top.append(identity, createBadge(info));
 
   const meta = document.createElement("div");
   meta.className = "mt-1 min-w-0 max-w-full truncate text-xs text-slate-400";
@@ -260,12 +288,12 @@ function groupRowsByDate(list) {
 }
 
 function createDayCard(dateText, dateRows, offset) {
-  const working = dateRows.filter((row) => getShiftInfo(row).kind === "work");
+  const working = dateRows.filter(isWorkingShift);
   const restCount = dateRows.filter((row) => getShiftInfo(row).kind === "rest").length;
   const hideRest = hideRestCheckbox?.checked === true;
   const other = dateRows.filter((row) => {
     const info = getShiftInfo(row);
-    if (info.kind === "work") return false;
+    if (isWorkingShift(row)) return false;
     if (hideRest && info.kind === "rest") return false;
     return true;
   });
@@ -339,30 +367,36 @@ function render() {
   if (!daysGrid) return;
   daysGrid.innerHTML = "";
 
+  const selectedDepartment = departments.find((item) => item.key === selectedDepartmentKey);
+  if (departmentLabel) {
+    departmentLabel.textContent = selectedDepartment
+      ? `Отдел: ${selectedDepartment.name || selectedDepartment.key}`
+      : "Отдел не выбран";
+  }
+
   const grouped = groupRowsByDate(rows);
   const dates = [...grouped.keys()].sort();
 
   if (!rows.length || !dates.length) {
+    if (todayWorkCount) todayWorkCount.textContent = "0";
+    if (tomorrowWorkCount) tomorrowWorkCount.textContent = "0";
+    if (departmentCount) departmentCount.textContent = "0";
+    if (emptyState) {
+      emptyState.textContent = "В выбранном отделе пока нет сотрудников или данных по сменам.";
+    }
     emptyState?.classList.remove("hidden");
     return;
   }
 
   emptyState?.classList.add("hidden");
 
-  const first = rows[0];
-  if (departmentLabel) {
-    departmentLabel.textContent = first?.department_name
-      ? `Отдел: ${first.department_name}`
-      : "Отдел найден";
-  }
-
   const uniqueUsers = new Set(rows.map((row) => row.user_id).filter(Boolean));
   if (departmentCount) departmentCount.textContent = String(uniqueUsers.size);
 
   const todayRows = grouped.get(dates[0]) || [];
   const tomorrowRows = grouped.get(dates[1]) || [];
-  if (todayWorkCount) todayWorkCount.textContent = String(todayRows.filter((row) => getShiftInfo(row).kind === "work").length);
-  if (tomorrowWorkCount) tomorrowWorkCount.textContent = String(tomorrowRows.filter((row) => getShiftInfo(row).kind === "work").length);
+  if (todayWorkCount) todayWorkCount.textContent = String(todayRows.filter(isWorkingShift).length);
+  if (tomorrowWorkCount) tomorrowWorkCount.textContent = String(tomorrowRows.filter(isWorkingShift).length);
 
   dates.forEach((dateText, index) => {
     daysGrid.appendChild(createDayCard(dateText, grouped.get(dateText) || [], index));
@@ -378,11 +412,42 @@ function initRestFilter() {
   });
 }
 
+function renderDepartmentSelect() {
+  if (!departmentSelect) return;
+  departmentSelect.innerHTML = "";
+
+  for (const department of departments) {
+    const option = document.createElement("option");
+    option.value = department.key;
+    option.textContent = department.name || department.key;
+    departmentSelect.appendChild(option);
+  }
+
+  departmentSelect.value = selectedDepartmentKey;
+}
+
+function updateDepartmentUrl() {
+  const url = new URL(window.location.href);
+  if (selectedDepartmentKey) url.searchParams.set("department", selectedDepartmentKey);
+  else url.searchParams.delete("department");
+  history.replaceState(null, "", url.toString());
+}
+
+function bindDepartmentSelect() {
+  departmentSelect?.addEventListener("change", () => {
+    selectedDepartmentKey = String(departmentSelect.value || "").trim();
+    updateDepartmentUrl();
+    void loadSchedule();
+  });
+}
+
 function mapError(error) {
   const message = String(error?.message || "");
 
   if (message.includes("NO_SESSION")) return "Сессия истекла. Войдите заново.";
-  if (message.includes("ACCESS_DENIED")) return "Недостаточно прав для просмотра этого отдела.";
+  if (message.includes("ACCESS_DENIED")) {
+    return "Для просмотра других отделов запустите supabase-sql/017_cross_department_schedule.sql в Supabase SQL Editor.";
+  }
   if (message.includes("DEPARTMENT_NOT_FOUND")) return "Для вашего аккаунта пока не найден отдел.";
   if (message.includes("list_department_shift_overview") || message.includes("function")) {
     return "В базе пока нет функции графика. Запустите supabase-sql/005_shift_overview_and_department_invites.sql в Supabase SQL Editor.";
@@ -402,6 +467,7 @@ async function loadSchedule() {
     setError(null);
 
     rows = await listDepartmentShiftOverview({
+      departmentKey: selectedDepartmentKey,
       startDate: toLocalIsoDate(new Date()),
       days: 2,
     });
@@ -429,14 +495,41 @@ async function loadSchedule() {
 refreshBtn?.addEventListener("click", () => void loadSchedule());
 
 (async () => {
+  let session;
   try {
-    await requireSession();
+    session = await requireSession();
+    currentUserId = String(session?.user?.id || "");
   } catch {
     location.href = "login.html?next=schedule.html";
     return;
   }
 
   startPresenceHeartbeat("Смены отдела");
+  setStatus("Загружаю отделы…", "busy");
+
+  try {
+    const [departmentRows, myDepartmentKey] = await Promise.all([
+      listAllDepartments(),
+      getMyDepartmentKey(),
+    ]);
+    departments = departmentRows ?? [];
+
+    const requestedKey = new URL(window.location.href).searchParams.get("department") || "";
+    selectedDepartmentKey = departments.some((item) => item.key === requestedKey)
+      ? requestedKey
+      : departments.some((item) => item.key === myDepartmentKey)
+        ? myDepartmentKey
+        : departments[0]?.key || "";
+
+    renderDepartmentSelect();
+    bindDepartmentSelect();
+    updateDepartmentUrl();
+  } catch (error) {
+    setStatus("Ошибка загрузки", "err");
+    setError(mapError(error));
+    return;
+  }
+
   initRestFilter();
   await loadSchedule();
 })();

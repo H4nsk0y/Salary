@@ -217,6 +217,14 @@
 
         <div class="flex flex-wrap items-center gap-2">
           <button
+            id="auditLogBtn"
+            type="button"
+            class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition-all hover:bg-white/10"
+          >
+            Журнал действий
+          </button>
+
+          <button
             id="refreshBtn"
             type="button"
             class="rounded-2xl bg-indigo-500/15 px-4 py-2.5 text-sm font-semibold text-indigo-200 ring-1 ring-indigo-400/30 transition-all hover:bg-indigo-500/20 hover:ring-indigo-300/50"
@@ -404,11 +412,147 @@
     </section>
 
     <section>
-      <div id="usersList" class="grid gap-4 xl:grid-cols-2"></div>
+      <div id="usersList" class="grid gap-4 2xl:grid-cols-2"></div>
       <div id="emptyState" class="hidden rounded-3xl bg-slate-950/35 p-6 text-sm text-slate-300 ring-1 ring-white/10 backdrop-blur-sm">
         По текущим фильтрам никого не найдено.
       </div>
     </section>
+  </div>
+
+  <div id="ownerUserDrawer" class="hidden fixed inset-0 z-[90]" aria-hidden="true">
+    <button
+      id="ownerUserDrawerBackdrop"
+      type="button"
+      class="absolute inset-0 bg-slate-950/75 backdrop-blur-sm"
+      aria-label="Закрыть карточку сотрудника"
+    ></button>
+
+    <aside
+      id="ownerUserDrawerPanel"
+      class="absolute inset-y-0 right-0 flex w-full flex-col overflow-hidden border-l border-white/10 bg-slate-950 shadow-2xl sm:max-w-3xl"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ownerUserDrawerTitle"
+    >
+      <header class="flex items-center gap-4 border-b border-white/10 px-4 py-4 sm:px-6">
+        <div id="ownerUserDrawerAvatar" class="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-indigo-500/15 font-bold text-indigo-100 ring-1 ring-indigo-400/25"></div>
+        <div class="min-w-0 flex-1">
+          <h2 id="ownerUserDrawerTitle" class="truncate text-lg font-semibold text-slate-100">Сотрудник</h2>
+          <p id="ownerUserDrawerSubtitle" class="mt-0.5 truncate text-xs text-slate-400">—</p>
+        </div>
+        <button
+          id="ownerUserDrawerCloseBtn"
+          type="button"
+          class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white/5 text-xl text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white"
+          aria-label="Закрыть"
+          title="Закрыть"
+        >×</button>
+      </header>
+
+      <nav id="ownerUserTabs" class="flex gap-2 overflow-x-auto border-b border-white/10 px-4 py-3 sm:px-6" aria-label="Разделы карточки сотрудника">
+        <button type="button" data-owner-user-tab="overview" class="owner-user-tab shrink-0 rounded-2xl px-4 py-2 text-sm font-semibold">Данные</button>
+        <button type="button" data-owner-user-tab="preview" class="owner-user-tab shrink-0 rounded-2xl px-4 py-2 text-sm font-semibold">Просмотр</button>
+        <button type="button" data-owner-user-tab="timesheets" class="owner-user-tab shrink-0 rounded-2xl px-4 py-2 text-sm font-semibold">Табели</button>
+        <button type="button" data-owner-user-tab="audit" class="owner-user-tab shrink-0 rounded-2xl px-4 py-2 text-sm font-semibold">Журнал</button>
+      </nav>
+
+      <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <section id="ownerUserOverviewTab" data-owner-user-panel="overview" class="space-y-6 p-4 sm:p-6">
+          <div id="ownerUserAccountSummary" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"></div>
+
+          <form id="ownerUserProfileForm" class="border-t border-white/10 pt-6" autocomplete="off">
+            <div class="mb-4">
+              <h3 class="text-base font-semibold text-slate-100">Данные профиля</h3>
+              <p class="mt-1 text-xs leading-5 text-slate-400">Изменения сохраняются в журнале действий.</p>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="sm:col-span-2">
+                <label for="ownerUserDisplayName" class="mb-2 block text-sm font-medium text-slate-200">ФИО</label>
+                <input id="ownerUserDisplayName" class="input-glass" type="text" autocomplete="off" />
+              </div>
+
+              <div>
+                <label for="ownerUserPosition" class="mb-2 block text-sm font-medium text-slate-200">Должность</label>
+                <span class="select-wrap"><select id="ownerUserPosition" class="ui-select"></select></span>
+              </div>
+
+              <div>
+                <label for="ownerUserGender" class="mb-2 block text-sm font-medium text-slate-200">Пол</label>
+                <span class="select-wrap">
+                  <select id="ownerUserGender" class="ui-select">
+                    <option value="">Не выбран</option>
+                    <option value="male">Мужской</option>
+                    <option value="female">Женский</option>
+                  </select>
+                </span>
+              </div>
+
+              <div>
+                <label for="ownerUserTabNumber" class="mb-2 block text-sm font-medium text-slate-200">Табельный номер</label>
+                <input id="ownerUserTabNumber" class="input-glass" type="text" autocomplete="off" />
+              </div>
+
+              <div>
+                <label for="ownerUserBranch" class="mb-2 block text-sm font-medium text-slate-200">Филиал</label>
+                <span class="select-wrap"><select id="ownerUserBranch" class="ui-select"></select></span>
+              </div>
+
+              <div>
+                <label for="ownerUserEmploymentDate" class="mb-2 block text-sm font-medium text-slate-200">Дата трудоустройства</label>
+                <input id="ownerUserEmploymentDate" class="input-glass" type="date" autocomplete="off" />
+              </div>
+
+              <div>
+                <label for="ownerUserOklad" class="mb-2 block text-sm font-medium text-slate-200">Оклад, ₽</label>
+                <input id="ownerUserOklad" class="input-glass" type="text" inputmode="decimal" autocomplete="off" />
+              </div>
+            </div>
+
+            <div class="mt-5 flex justify-end">
+              <button id="ownerUserSaveBtn" type="submit" class="rounded-2xl bg-indigo-500/15 px-5 py-2.5 text-sm font-semibold text-indigo-200 ring-1 ring-indigo-400/30 transition hover:bg-indigo-500/25 disabled:cursor-not-allowed disabled:opacity-50">
+                Сохранить профиль
+              </button>
+            </div>
+          </form>
+
+          <div class="border-t border-white/10 pt-6">
+            <h3 class="text-base font-semibold text-slate-100">Управление аккаунтом</h3>
+            <p class="mt-1 text-xs leading-5 text-slate-400">Пароль не отображается и не изменяется владельцем.</p>
+            <div id="ownerUserAccountActions" class="mt-4 flex flex-wrap gap-2">
+              <button id="ownerUserRecoveryBtn" type="button" class="rounded-2xl bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-200 ring-1 ring-sky-400/20 transition hover:bg-sky-500/15">Отправить сброс пароля</button>
+              <button id="ownerUserSessionsBtn" type="button" class="rounded-2xl bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-200 ring-1 ring-amber-400/20 transition hover:bg-amber-500/15">Завершить сессии</button>
+              <button id="ownerUserBlockBtn" type="button" class="rounded-2xl bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-200 ring-1 ring-rose-400/20 transition hover:bg-rose-500/15">Заблокировать вход</button>
+              <button id="ownerUserDeleteBtn" type="button" class="rounded-2xl bg-rose-600/15 px-4 py-2.5 text-sm font-semibold text-rose-100 ring-1 ring-rose-500/30 transition hover:bg-rose-600/25">Удалить аккаунт</button>
+            </div>
+            <p id="ownerUserProtectedHint" class="hidden mt-3 text-xs text-amber-200"></p>
+          </div>
+        </section>
+
+        <section id="ownerUserPreviewTab" data-owner-user-panel="preview" class="hidden p-4 sm:p-6">
+          <div class="rounded-2xl bg-sky-500/10 p-4 text-sm text-sky-100 ring-1 ring-sky-400/20">
+            Режим просмотра от лица сотрудника. Здесь нельзя изменять его данные.
+          </div>
+          <div id="ownerUserPreviewContent" class="mt-6 space-y-6"></div>
+        </section>
+
+        <section id="ownerUserTimesheetsTab" data-owner-user-panel="timesheets" class="hidden p-4 sm:p-6">
+          <div class="mb-5">
+            <h3 class="text-base font-semibold text-slate-100">Сохранённые табели</h3>
+            <p class="mt-1 text-xs leading-5 text-slate-400">Просмотр часов, отметок и выплат без возможности редактирования.</p>
+          </div>
+          <div id="ownerUserTimesheetsList" class="space-y-3"></div>
+        </section>
+
+        <section id="ownerUserAuditTab" data-owner-user-panel="audit" class="hidden p-4 sm:p-6">
+          <div class="mb-5">
+            <h3 id="ownerUserAuditHeading" class="text-base font-semibold text-slate-100">История сотрудника</h3>
+            <p class="mt-1 text-xs leading-5 text-slate-400">Кто, когда и что изменил.</p>
+          </div>
+          <div id="ownerUserAuditList" class="space-y-3"></div>
+        </section>
+      </div>
+    </aside>
   </div>
 
   <script type="module" src="./nav.js"></script>

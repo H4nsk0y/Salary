@@ -927,6 +927,68 @@ export async function listDepartmentShiftOverview({
   return data ?? [];
 }
 
+export async function createDepartmentTask({
+  departmentKey,
+  taskDate,
+  dueAt,
+  text,
+  assignmentMode,
+  userIds = [],
+} = {}) {
+  const key = String(departmentKey ?? "").trim();
+  const date = String(taskDate ?? "").trim();
+  const due = String(dueAt ?? "").trim();
+  const taskText = String(text ?? "").trim();
+  const mode = String(assignmentMode ?? "").trim();
+  const recipients = [...new Set(
+    (Array.isArray(userIds) ? userIds : [])
+      .map((id) => String(id || "").trim())
+      .filter(Boolean)
+  )];
+
+  if (!key) throw new Error("Не указан отдел.");
+  if (!date) throw new Error("Не указана дата задачи.");
+  if (!due) throw new Error("Не указан срок выполнения.");
+  if (!taskText) throw new Error("Введите текст задачи.");
+
+  const { data, error } = await supabase.rpc("create_department_task", {
+    p_department_key: key,
+    p_task_date: date,
+    p_due_at: due,
+    p_text: taskText,
+    p_assignment_mode: mode,
+    p_user_ids: recipients,
+  });
+
+  if (error) throw error;
+  return Array.isArray(data) ? data[0] ?? null : data ?? null;
+}
+
+export async function listMyDepartmentTasks({
+  departmentKey = null,
+  limit = 100,
+} = {}) {
+  const key = String(departmentKey ?? "").trim();
+  const { data, error } = await supabase.rpc("list_my_department_tasks", {
+    p_department_key: key || null,
+    p_limit: Math.min(300, Math.max(1, Number(limit) || 100)),
+  });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function deleteDepartmentTask(taskId) {
+  const id = Number(taskId);
+  if (!Number.isInteger(id) || id <= 0) throw new Error("Некорректная задача.");
+
+  const { error } = await supabase.rpc("delete_department_task", {
+    p_task_id: id,
+  });
+
+  if (error) throw error;
+}
+
 export async function upsertMyPresence(pageName = "") {
   const userId = await requireUserId();
   const now = new Date().toISOString();
@@ -948,10 +1010,112 @@ export async function upsertMyPresence(pageName = "") {
 }
 
 export async function ownerListUsers() {
+  const modern = await supabase.rpc("owner_list_users_v2");
+
+  if (!modern.error) return modern.data ?? [];
+
+  const modernErrorText = [
+    modern.error?.message,
+    modern.error?.details,
+    modern.error?.hint,
+    modern.error?.code,
+  ].filter(Boolean).join(" ");
+
+  if (!/owner_list_users_v2|PGRST202|schema cache|could not find/i.test(modernErrorText)) {
+    throw modern.error;
+  }
+
   const { data, error } = await supabase.rpc("owner_list_users");
 
   if (error) throw error;
   return data ?? [];
+}
+
+export async function ownerUpdateUserProfile({
+  userId,
+  displayName = null,
+  position = null,
+  gender = null,
+  tabNumber = null,
+  branch = null,
+  employmentDate = null,
+  oklad = null,
+} = {}) {
+  const uid = String(userId ?? "").trim();
+  if (!uid) throw new Error("Не указан пользователь.");
+
+  const { error } = await supabase.rpc("owner_update_user_profile", {
+    p_user_id: uid,
+    p_display_name: displayName || null,
+    p_position: position || null,
+    p_gender: gender || null,
+    p_tab_number: tabNumber || null,
+    p_branch: branch || null,
+    p_employment_date: employmentDate || null,
+    p_oklad: oklad === "" || oklad == null ? null : Number(oklad),
+  });
+
+  if (error) throw error;
+}
+
+export async function ownerListUserTimesheets(userId, limit = 36) {
+  const uid = String(userId ?? "").trim();
+  if (!uid) throw new Error("Не указан пользователь.");
+
+  const { data, error } = await supabase.rpc("owner_list_user_timesheets", {
+    p_user_id: uid,
+    p_limit: Math.min(120, Math.max(1, Number(limit) || 36)),
+  });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function ownerListUserAudit(userId = null, limit = 100) {
+  const uid = String(userId ?? "").trim();
+  const { data, error } = await supabase.rpc("owner_list_user_audit", {
+    p_user_id: uid || null,
+    p_limit: Math.min(500, Math.max(1, Number(limit) || 100)),
+  });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function ownerRunAccountAction({
+  action,
+  userId,
+  redirectTo = "",
+} = {}) {
+  const normalizedAction = String(action ?? "").trim();
+  const uid = String(userId ?? "").trim();
+  if (!normalizedAction) throw new Error("Не указано действие.");
+  if (!uid) throw new Error("Не указан пользователь.");
+
+  const { data, error } = await supabase.functions.invoke("owner-account-admin", {
+    body: {
+      action: normalizedAction,
+      userId: uid,
+      redirectTo: String(redirectTo ?? "").trim(),
+    },
+  });
+
+  if (error) {
+    let serverMessage = "";
+    try {
+      const response = typeof error?.context?.clone === "function"
+        ? error.context.clone()
+        : error?.context;
+      const payload = await response?.json?.();
+      serverMessage = String(payload?.error || "").trim();
+    } catch {
+      serverMessage = "";
+    }
+    throw new Error(serverMessage || error.message || "Не удалось выполнить действие с аккаунтом.");
+  }
+
+  if (data?.error) throw new Error(String(data.error));
+  return data ?? null;
 }
 
 export async function ownerListPayrollAnalytics({ year = null, departmentKey = null } = {}) {
@@ -1031,6 +1195,17 @@ export async function ownerRevokeDepartmentInvite(token) {
   if (!value) throw new Error("Не указан токен приглашения.");
 
   const { error } = await supabase.rpc("owner_revoke_department_invite", {
+    p_token: value,
+  });
+
+  if (error) throw error;
+}
+
+export async function ownerDeleteDepartmentInvite(token) {
+  const value = String(token ?? "").trim();
+  if (!value) throw new Error("Не указан токен приглашения.");
+
+  const { error } = await supabase.rpc("owner_delete_department_invite", {
     p_token: value,
   });
 
