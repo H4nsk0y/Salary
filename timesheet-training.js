@@ -4,6 +4,7 @@ import { confirmDialog } from "./modal.js";
 
 const PROGRESS_KEY = "alvisa.timesheetTraining.v1";
 const ACHIEVEMENT_KEY_PREFIX = "alvisa.timesheetTraining.completedOnce.v1";
+const RESULT_KEY_PREFIX = "alvisa.timesheetTraining.result.v2";
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const AUTO_ADVANCE_MS = 1150;
 
@@ -44,6 +45,32 @@ const MARK_LABELS = {
   short: "С",
 };
 
+const MARK_NAMES = {
+  holiday: "праздник",
+  transferred: "перенесённый выходной",
+  short: "сокращённый день",
+};
+
+const CODE_LABELS = {
+  "ОТ": "оплачиваемый отпуск",
+  "ОД": "отпуск без оплаты по заявлению",
+  "ОЗ": "обязательный отпуск без оплаты",
+  "Б": "больничный",
+  "У": "оплачиваемый учебный отпуск",
+  "УД": "учебный отпуск без оплаты",
+  "НТ": "ещё не трудоустроен",
+  "УВ": "уволен",
+};
+
+const TRAINING_TOPICS = [
+  { id: "day", label: "Дневные смены", lessons: ["basics", "five-day"] },
+  { id: "night", label: "Ночные смены", lessons: ["day-night-rest", "continuous-nights"] },
+  { id: "absence", label: "Коды отсутствий", lessons: ["absence-codes"] },
+  { id: "calendar", label: "Особые дни", lessons: ["calendar-marks"] },
+  { id: "employment", label: "Приём и увольнение", lessons: ["employment-codes"] },
+  { id: "exam", label: "Итоговый экзамен", lessons: ["final-exam"] },
+];
+
 const VALID_CODES = new Set(["ОТ", "ОД", "ОЗ", "Б", "У", "УД", "НТ", "УВ"]);
 
 function emptyValues() {
@@ -53,6 +80,50 @@ function emptyValues() {
 function week(day = emptyValues(), night = emptyValues(), marks = emptyValues()) {
   return { day, night, marks };
 }
+
+const EXAM_SCENARIOS = [
+  {
+    id: "day-night-short",
+    description: "Понедельник — дневная смена с 8:00 до 20:00; вторник — выход в ночь; среда — окончание ночной смены; четверг — оплачиваемый отпуск; пятница — сокращённая дневная смена с 8:00 до 17:00.",
+    expected: (mode) => week(
+      [mode.longDay, 2, mode.nightCloseDay, "ОТ", mode.shortDay, null, null],
+      [null, 2, 5, null, null, null, null],
+      [null, null, null, null, "short", null, null]
+    ),
+  },
+  {
+    id: "continuous-nights",
+    description: "Сотрудник выходит в ночь в понедельник и ещё раз во вторник. В среду ночная серия заканчивается; четверг отмечен больничным; пятница является перенесённым выходным.",
+    expected: (mode) => week(
+      [2, mode.continuousNightDay, mode.nightCloseDay, "Б", null, null, null],
+      [2, 7, 5, null, null, null, null],
+      [null, null, null, null, "transferred", null, null]
+    ),
+  },
+  {
+    id: "employment",
+    description: "В понедельник сотрудник ещё не трудоустроен; во вторник работает с 8:00 до 17:00; в среду — с 8:00 до 20:00; четверг является оплачиваемым учебным отпуском; в пятницу сотрудник уволен.",
+    expected: (mode) => week(["НТ", mode.regularDay, mode.longDay, "У", "УВ", null, null]),
+  },
+  {
+    id: "holiday-night",
+    description: "Понедельник является праздником; во вторник сотрудник работает с 8:00 до 17:00; в среду выходит в ночь; в четверг заканчивает ночную смену; в пятницу находится в отпуске без оплаты по заявлению.",
+    expected: (mode) => week(
+      [null, mode.regularDay, 2, mode.nightCloseDay, "ОД", null, null],
+      [null, null, 2, 5, null, null, null],
+      ["holiday", null, null, null, null, null, null]
+    ),
+  },
+  {
+    id: "mixed-week",
+    description: "Понедельник — обычная дневная смена с 8:00 до 17:00; вторник — сокращённая дневная смена с тем же временем начала; среда — оплачиваемый отпуск; четверг — дневная смена с 8:00 до 20:00; пятница является праздником.",
+    expected: (mode) => week(
+      [mode.regularDay, mode.shortDay, "ОТ", mode.longDay, null, null, null],
+      emptyValues(),
+      [null, "short", null, null, "holiday", null, null]
+    ),
+  },
+];
 
 const LESSONS = [
   {
@@ -141,17 +212,12 @@ const LESSONS = [
     expected: (mode) => week(["НТ", "НТ", mode.regularDay, mode.regularDay, "УВ", null, null]),
   },
   {
-    id: "final-week",
+    id: "final-exam",
     type: "exercise",
-    title: "Итоговая неделя",
-    shortTitle: "Финал",
-    description: (mode) => `Понедельник — дневная смена 8:00–20:00 (${formatHours(mode.longDay)} часа); вторник — выход в ночь; среда — окончание ночи; четверг — оплачиваемый отпуск; пятница — сокращённая дневная смена (${formatHours(mode.shortDay)} часа).`,
-    hint: (mode) => `Проверьте значения: понедельник — ${formatHours(mode.longDay)}, вторник — 2/2, среда — ${formatHours(mode.nightCloseDay)}/5, четверг — ОТ, пятница — ${formatHours(mode.shortDay)} и отметка сокращённого дня.`,
-    expected: (mode) => week(
-      [mode.longDay, 2, mode.nightCloseDay, "ОТ", mode.shortDay, null, null],
-      [null, 2, 5, null, null, null, null],
-      [null, null, null, null, "short", null, null]
-    ),
+    isExam: true,
+    title: "Итоговый экзамен",
+    shortTitle: "Экзамен",
+    description: "Случайное итоговое задание без предварительной подсказки.",
   },
 ];
 
@@ -183,8 +249,11 @@ const elements = {
   actions: document.getElementById("lessonActions"),
   previous: document.getElementById("previousLessonBtn"),
   resetLesson: document.getElementById("resetLessonBtn"),
+  newExam: document.getElementById("newExamBtn"),
   primary: document.getElementById("primaryLessonBtn"),
   completion: document.getElementById("completionPanel"),
+  completionTopics: document.getElementById("completionTopics"),
+  completionExamResult: document.getElementById("completionExamResult"),
   restart: document.getElementById("restartCourseBtn"),
   successOverlay: document.getElementById("successOverlay"),
   successMessage: document.getElementById("successMessage"),
@@ -200,6 +269,8 @@ let completedLessons = new Set();
 let courseFinished = false;
 let autoAdvanceTimer = null;
 let currentUserId = null;
+let activeExamScenario = null;
+let lastExamScore = null;
 
 let headerCells = [];
 let dayInputs = [];
@@ -216,6 +287,26 @@ function currentMode() {
 
 function resolveLessonText(value, mode = currentMode()) {
   return typeof value === "function" ? value(mode) : String(value || "");
+}
+
+function pickExamScenario() {
+  const index = Math.floor(Math.random() * EXAM_SCENARIOS.length);
+  return EXAM_SCENARIOS[index] || EXAM_SCENARIOS[0];
+}
+
+function ensureExamScenario() {
+  if (!activeExamScenario) activeExamScenario = pickExamScenario();
+  return activeExamScenario;
+}
+
+function resolveLessonDescription(lesson) {
+  if (lesson?.isExam) return ensureExamScenario().description;
+  return resolveLessonText(lesson?.description);
+}
+
+function getExpectedWeek(lesson) {
+  if (lesson?.isExam) return ensureExamScenario().expected(currentMode());
+  return lesson.expected(currentMode());
 }
 
 function isFemaleChateauProfile(profile) {
@@ -257,10 +348,39 @@ function rememberTrainingCompletion() {
   localStorage.setItem(`${ACHIEVEMENT_KEY_PREFIX}:${currentUserId}`, new Date().toISOString());
 }
 
+function readTrainingResult() {
+  if (!currentUserId) return { masteredLessons: [], bestExamScore: 0 };
+
+  try {
+    const parsed = JSON.parse(localStorage.getItem(`${RESULT_KEY_PREFIX}:${currentUserId}`) || "null");
+    return {
+      masteredLessons: Array.isArray(parsed?.masteredLessons) ? parsed.masteredLessons : [],
+      bestExamScore: Number.isFinite(Number(parsed?.bestExamScore)) ? Number(parsed.bestExamScore) : 0,
+    };
+  } catch {
+    return { masteredLessons: [], bestExamScore: 0 };
+  }
+}
+
+function rememberTrainingProgress() {
+  if (!currentUserId) return;
+
+  const previous = readTrainingResult();
+  const masteredLessons = [...new Set([...previous.masteredLessons, ...completedLessons])];
+  const bestExamScore = Math.max(previous.bestExamScore, Number(lastExamScore) || 0);
+
+  localStorage.setItem(`${RESULT_KEY_PREFIX}:${currentUserId}`, JSON.stringify({
+    masteredLessons,
+    bestExamScore,
+    updatedAt: new Date().toISOString(),
+  }));
+}
+
 async function resolveTrainingUser() {
   try {
     const session = await getSession();
     currentUserId = session?.user?.id || null;
+    rememberTrainingProgress();
     if (courseFinished) rememberTrainingCompletion();
   } catch {
     currentUserId = null;
@@ -408,11 +528,6 @@ function valuesMatch(actual, expected) {
 
   if (isCodeValue(expected)) return actual.kind === "code" && actual.value === expected;
   return actual.kind === "number" && Math.abs(actual.value - Number(expected)) < 0.001;
-}
-
-function expectedDescription(value) {
-  if (value == null || value === "") return "пусто";
-  return formatHours(value);
 }
 
 function createRowLabel(text) {
@@ -617,11 +732,95 @@ function clearEvaluation() {
   });
 }
 
-function setFeedback(message, tone = "neutral") {
-  elements.feedback.textContent = message;
+function setFeedback(message, tone = "neutral", details = []) {
+  elements.feedback.replaceChildren();
+
+  const summary = document.createElement("div");
+  summary.className = "font-semibold";
+  summary.textContent = message;
+  elements.feedback.appendChild(summary);
+
+  if (details.length) {
+    const list = document.createElement("ul");
+    list.className = "feedback-details";
+    for (const detail of details) {
+      const item = document.createElement("li");
+      item.textContent = detail;
+      list.appendChild(item);
+    }
+    elements.feedback.appendChild(list);
+  }
+
   elements.feedback.classList.remove("is-error", "is-success");
   if (tone === "error") elements.feedback.classList.add("is-error");
   if (tone === "success") elements.feedback.classList.add("is-success");
+}
+
+function describeActual(actual) {
+  if (actual.kind === "blank") return "ячейка оставлена пустой";
+  if (actual.kind === "invalid") return `введено непонятное значение «${actual.value}»`;
+  if (actual.kind === "code") return `указан код ${actual.value}`;
+  return `указано ${formatHours(actual.value)} часа`;
+}
+
+function explainNumericExpectation(index, row, expected, expectedWeek) {
+  const mode = currentMode();
+  const pairedDay = expectedWeek.day[index];
+  const pairedNight = expectedWeek.night[index];
+
+  if (row === "День" && expected === 2 && pairedNight === 2) {
+    return "Это начало ночной смены: в строках «День» и «Ночь» ставится 2/2.";
+  }
+  if (row === "Ночь" && expected === 2 && pairedDay === 2) {
+    return "При выходе в ночь ночная часть первой даты равна 2 часам.";
+  }
+  if (row === "День" && expected === mode.nightCloseDay && pairedNight === 5) {
+    return `Ночная смена заканчивается на следующую дату сочетанием ${formatHours(mode.nightCloseDay)}/5.`;
+  }
+  if (row === "Ночь" && expected === 5 && pairedDay === mode.nightCloseDay) {
+    return `Это окончание ночной смены: правильная связка — ${formatHours(mode.nightCloseDay)}/5.`;
+  }
+  if (row === "День" && expected === mode.continuousNightDay && pairedNight === 7) {
+    return `При переходе из ночи в ночь используется сочетание ${formatHours(mode.continuousNightDay)}/7.`;
+  }
+  if (row === "Ночь" && expected === 7 && pairedDay === mode.continuousNightDay) {
+    return `При переходе из ночи в ночь используется сочетание ${formatHours(mode.continuousNightDay)}/7.`;
+  }
+  if (row === "День" && expected === mode.regularDay) {
+    return `Смена с 8:00 до 17:00 записывается как ${formatHours(mode.regularDay)} часа в строке «День».`;
+  }
+  if (row === "День" && expected === mode.longDay) {
+    return `Смена с 8:00 до 20:00 записывается как ${formatHours(mode.longDay)} часа в строке «День».`;
+  }
+  if (row === "День" && expected === mode.shortDay) {
+    return `В сокращённый рабочий день нужно указать ${formatHours(mode.shortDay)} часа.`;
+  }
+  return `В строке «${row}» должно быть ${formatHours(expected)}.`;
+}
+
+function explainCellError({ day, index, row, actual, expected, expectedWeek }) {
+  const location = `${day.full}, строка «${row}»`;
+
+  if (expected == null || expected === "") {
+    return `${location}: здесь должно быть пусто, но ${describeActual(actual)}.`;
+  }
+
+  if (isCodeValue(expected)) {
+    const meaning = CODE_LABELS[expected] || "нужный код отсутствия";
+    return `${location}: по условию нужен код ${expected} — ${meaning}; сейчас ${describeActual(actual)}.`;
+  }
+
+  return `${location}: ${explainNumericExpectation(index, row, expected, expectedWeek)} Сейчас ${describeActual(actual)}.`;
+}
+
+function explainMarkError(day, actualMark, expectedMark) {
+  if (!expectedMark) {
+    return `${day.full}: календарная отметка не требуется, уберите «${MARK_NAMES[actualMark] || actualMark}».`;
+  }
+  if (!actualMark) {
+    return `${day.full}: выберите этот день и отметьте его как «${MARK_NAMES[expectedMark]}».`;
+  }
+  return `${day.full}: вместо «${MARK_NAMES[actualMark]}» нужна отметка «${MARK_NAMES[expectedMark]}».`;
 }
 
 function renderLessonReference(lesson) {
@@ -659,8 +858,11 @@ function validateCurrentExercise() {
   clearEvaluation();
   dayInputs.forEach(normalizeInput);
 
-  const expected = lesson.expected(currentMode());
+  const expected = getExpectedWeek(lesson);
   const errors = [];
+  let requiredChecks = 0;
+  let correctRequiredChecks = 0;
+  let unexpectedValues = 0;
 
   DAYS.forEach((day, index) => {
     const rowChecks = [
@@ -673,50 +875,76 @@ function validateCurrentExercise() {
       const matches = valuesMatch(actual, check.expected);
       const cell = check.input.closest("td");
       const meaningful = check.expected != null || actual.kind !== "blank";
+      const required = check.expected != null && check.expected !== "";
+      if (required) requiredChecks += 1;
       if (matches) {
+        if (required) correctRequiredChecks += 1;
         if (meaningful) cell.classList.add("is-correct");
       } else {
+        if (!required && actual.kind !== "blank") unexpectedValues += 1;
         cell.classList.add("is-error");
-        errors.push(`${day.short}, ${check.row}: нужно ${expectedDescription(check.expected)}`);
+        errors.push(explainCellError({
+          day,
+          index,
+          row: check.row,
+          actual,
+          expected: check.expected,
+          expectedWeek: expected,
+        }));
       }
     }
 
     const actualMark = marks[index] || null;
     const expectedMark = expected.marks[index] || null;
+    if (expectedMark) requiredChecks += 1;
     if (actualMark === expectedMark) {
+      if (expectedMark) correctRequiredChecks += 1;
       if (expectedMark) headerCells[index].classList.add("is-correct");
     } else {
+      if (!expectedMark && actualMark) unexpectedValues += 1;
       headerCells[index].classList.add("is-error");
-      const markText = expectedMark === "holiday"
-        ? "праздник"
-        : expectedMark === "transferred"
-          ? "перенесённый выходной"
-          : expectedMark === "short"
-            ? "сокращённый день"
-            : "без отметки";
-      errors.push(`${day.short}: нужна отметка «${markText}»`);
+      errors.push(explainMarkError(day, actualMark, expectedMark));
     }
   });
 
+  const examScore = lesson.isExam
+    ? Math.max(0, Math.round(((correctRequiredChecks - unexpectedValues) / Math.max(1, requiredChecks)) * 100))
+    : null;
+
   if (!errors.length) {
-    setFeedback("Всё заполнено правильно.", "success");
+    lastExamScore = lesson.isExam ? 100 : lastExamScore;
+    setFeedback(
+      lesson.isExam ? "Экзамен сдан на 100%. Ни одной ошибки." : "Всё заполнено правильно.",
+      "success"
+    );
     completeCurrentLesson();
     return true;
   }
 
-  if (attempts === 1) {
-    setFeedback(`Пока есть ошибки: ${errors.length}. Проверьте выделенные ячейки. Подсказка: ${resolveLessonText(lesson.hint)}`, "error");
-  } else {
-    const details = errors.slice(0, 5).join("; ");
-    const remaining = errors.length > 5 ? ` Ещё ошибок: ${errors.length - 5}.` : "";
-    setFeedback(`${details}.${remaining}`, "error");
+  const visibleErrors = errors.slice(0, 5);
+  if (errors.length > visibleErrors.length) {
+    visibleErrors.push(`Осталось ещё ошибок: ${errors.length - visibleErrors.length}.`);
   }
+
+  if (lesson.isExam) {
+    lastExamScore = examScore;
+    rememberTrainingProgress();
+    setFeedback(`Результат экзамена: ${examScore}%. Разберитесь с отмеченными местами и попробуйте ещё раз.`, "error", visibleErrors);
+    return false;
+  }
+
+  const lessonHint = attempts === 1 ? resolveLessonText(lesson.hint) : "";
+  const summary = lessonHint
+    ? `Нашлось ошибок: ${errors.length}. ${lessonHint}`
+    : `Осталось ошибок: ${errors.length}. Проверьте объяснения ниже.`;
+  setFeedback(summary, "error", visibleErrors);
   return false;
 }
 
 function completeCurrentLesson() {
   const lesson = currentLesson();
   completedLessons.add(lesson.id);
+  rememberTrainingProgress();
   elements.lessonStatus.classList.remove("hidden");
   updateProgressUi();
   renderLessonStrip();
@@ -753,6 +981,21 @@ function updateProgressUi() {
     : `Шаг ${lessonIndex + 1} из ${LESSONS.length}`;
 }
 
+function renderTopicMap(container, masteredLessons = completedLessons) {
+  if (!container) return;
+  container.replaceChildren();
+
+  for (const topic of TRAINING_TOPICS) {
+    const mastered = topic.lessons.every((lessonId) => masteredLessons.has(lessonId));
+    if (!mastered) continue;
+
+    const item = document.createElement("div");
+    item.className = "topic-map-item";
+    item.textContent = topic.label;
+    container.appendChild(item);
+  }
+}
+
 function renderLessonStrip() {
   elements.lessonStrip.replaceChildren();
 
@@ -785,16 +1028,25 @@ function renderLesson() {
 
   elements.lessonArea.classList.remove("hidden");
   elements.completion.classList.add("hidden");
-  elements.lessonKind.textContent = lesson.type === "theory" ? "Теория" : "Практическое задание";
+  elements.lessonKind.textContent = lesson.isExam
+    ? "Экзамен без подсказок"
+    : lesson.type === "theory"
+      ? "Теория"
+      : "Практическое задание";
   elements.lessonTitle.textContent = lesson.title;
-  const lessonDescription = resolveLessonText(lesson.description);
+  const lessonDescription = resolveLessonDescription(lesson);
   elements.lessonDescription.textContent = lessonDescription;
   elements.lessonStatus.classList.toggle("hidden", !completedLessons.has(lesson.id));
   elements.theoryPanel.classList.toggle("hidden", lesson.type !== "theory");
   elements.exercisePanel.classList.toggle("hidden", lesson.type !== "exercise");
   elements.resetLesson.classList.toggle("hidden", lesson.type !== "exercise");
-  elements.primary.textContent = lesson.type === "theory" ? "Начать практику" : "Проверить";
+  elements.primary.textContent = lesson.type === "theory"
+    ? "Начать практику"
+    : lesson.isExam
+      ? "Сдать экзамен"
+      : "Проверить";
   elements.previous.disabled = lessonIndex === 0;
+  elements.newExam.classList.toggle("hidden", !lesson.isExam);
 
   if (lesson.type === "theory") {
     renderLessonReference(lesson);
@@ -803,7 +1055,11 @@ function renderLesson() {
   } else {
     renderLessonReference(lesson);
     buildTrainingTable();
-    setFeedback(`Задание: ${lessonDescription}`);
+    setFeedback(
+      lesson.isExam
+        ? "Подсказки отключены. Заполните неделю по условию и сдайте экзамен."
+        : `Задание: ${lessonDescription}`
+    );
   }
 
   updateModeUi();
@@ -815,8 +1071,11 @@ function renderLesson() {
 function renderCompletion() {
   courseFinished = true;
   rememberTrainingCompletion();
+  rememberTrainingProgress();
   elements.lessonArea.classList.add("hidden");
   elements.completion.classList.remove("hidden");
+  renderTopicMap(elements.completionTopics);
+  elements.completionExamResult.textContent = "Экзамен: 100%";
   updateProgressUi();
   renderLessonStrip();
   saveProgress();
@@ -837,7 +1096,24 @@ function resetCurrentLesson() {
   if (currentLesson().type !== "exercise") return;
   attempts = 0;
   buildTrainingTable();
-  setFeedback(`Задание очищено. ${resolveLessonText(currentLesson().description)}`);
+  const lesson = currentLesson();
+  setFeedback(
+    lesson.isExam
+      ? "Экзаменационный бланк очищен. Условие осталось прежним."
+      : `Задание очищено. ${resolveLessonDescription(lesson)}`
+  );
+}
+
+function chooseNewExamScenario() {
+  if (!currentLesson().isExam) return;
+
+  const alternatives = EXAM_SCENARIOS.filter((scenario) => scenario.id !== activeExamScenario?.id);
+  activeExamScenario = alternatives[Math.floor(Math.random() * alternatives.length)] || pickExamScenario();
+  lastExamScore = null;
+  attempts = 0;
+  elements.lessonDescription.textContent = activeExamScenario.description;
+  buildTrainingTable();
+  setFeedback("Новое экзаменационное задание готово. Подсказки отключены.");
 }
 
 function updateModeUi() {
@@ -863,6 +1139,8 @@ async function resetAllProgress() {
   completedLessons = new Set();
   lessonIndex = 0;
   courseFinished = false;
+  activeExamScenario = null;
+  lastExamScore = null;
   localStorage.removeItem(PROGRESS_KEY);
   renderLesson();
 }
@@ -875,7 +1153,11 @@ async function personalizeModeFromProfile() {
     const shouldUseFemale = isFemaleChateauProfile(profile);
     const nextMode = shouldUseFemale ? "female" : "standard";
     modeKey = nextMode;
-    renderLesson();
+    if (courseFinished) {
+      updateModeUi();
+    } else {
+      renderLesson();
+    }
     elements.modeHint.textContent = shouldUseFemale
       ? "По вашему профилю применяется женская норма CHATEAU ALVISA. Задания, подсказки и проверка часов уже пересчитаны."
       : "По вашему профилю применяется стандартная 40-часовая рабочая неделя.";
@@ -909,6 +1191,7 @@ function bindEvents() {
   elements.primary.addEventListener("click", () => {
     if (currentLesson().type === "theory") {
       completedLessons.add(currentLesson().id);
+      rememberTrainingProgress();
       updateProgressUi();
       saveProgress();
       goToLesson(1);
@@ -919,11 +1202,14 @@ function bindEvents() {
 
   elements.previous.addEventListener("click", () => goToLesson(lessonIndex - 1));
   elements.resetLesson.addEventListener("click", resetCurrentLesson);
+  elements.newExam.addEventListener("click", chooseNewExamScenario);
   elements.resetProgress.addEventListener("click", () => void resetAllProgress());
   elements.restart.addEventListener("click", () => {
     completedLessons = new Set();
     lessonIndex = 0;
     courseFinished = false;
+    activeExamScenario = null;
+    lastExamScore = null;
     localStorage.removeItem(PROGRESS_KEY);
     renderLesson();
   });

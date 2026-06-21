@@ -319,6 +319,174 @@
       color: rgb(167 243 208);
     }
 
+    .feedback-details {
+      display: grid;
+      gap: 0.5rem;
+      margin: 0.75rem 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .feedback-details li {
+      position: relative;
+      padding-left: 1.15rem;
+      color: rgb(226 232 240);
+      font-weight: 500;
+    }
+
+    .feedback-details li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.62em;
+      width: 0.38rem;
+      height: 0.38rem;
+      border-radius: 999px;
+      background: rgb(251 113 133);
+    }
+
+    .topic-map {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem;
+    }
+
+    .topic-map-item {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.65rem;
+      border: 1px solid rgba(52, 211, 153, 0.2);
+      border-radius: 12px;
+      background: rgba(16, 185, 129, 0.08);
+      padding: 0.75rem;
+      color: rgb(209 250 229);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    .topic-map-item::before {
+      content: "✓";
+      flex: 0 0 auto;
+      width: 1.45rem;
+      height: 1.45rem;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: rgba(52, 211, 153, 0.16);
+      color: rgb(110 231 183);
+    }
+
+    .manager-table-wrap {
+      overflow: auto;
+      max-height: 68vh;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      background: rgba(2, 6, 23, 0.58);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .manager-table {
+      min-width: 2240px;
+      width: max-content;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+
+    .manager-table th,
+    .manager-table td {
+      height: 52px;
+      min-width: 64px;
+      padding: 5px 4px;
+      text-align: center;
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(2, 6, 23, 0.35);
+    }
+
+    .manager-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      height: 58px;
+      color: rgb(203 213 225);
+      background: rgb(15 23 42);
+      font-size: 0.7rem;
+      cursor: pointer;
+    }
+
+    .manager-table thead th.is-selected {
+      color: rgb(224 242 254);
+      box-shadow: inset 0 -3px 0 rgb(56 189 248);
+    }
+
+    .manager-table .manager-person-cell {
+      position: sticky;
+      left: 0;
+      z-index: 4;
+      width: 190px;
+      min-width: 190px;
+      max-width: 190px;
+      padding: 0.75rem;
+      text-align: left;
+      background: rgb(12 20 44);
+      box-shadow: 8px 0 20px -18px rgba(0, 0, 0, 0.95);
+    }
+
+    .manager-table thead .manager-person-cell { z-index: 7; }
+
+    .manager-table .manager-row-label {
+      width: 54px;
+      min-width: 54px;
+      color: rgb(148 163 184);
+      background: rgb(12 20 44);
+      font-size: 0.68rem;
+      font-weight: 800;
+    }
+
+    .manager-table .manager-summary-cell {
+      position: sticky;
+      right: 0;
+      z-index: 4;
+      width: 145px;
+      min-width: 145px;
+      padding: 0.65rem;
+      background: rgb(12 20 44);
+      text-align: left;
+    }
+
+    .manager-table thead .manager-summary-cell { z-index: 7; }
+
+    .manager-table .is-weekend { background: rgba(239, 68, 68, 0.075); }
+    .manager-table .mark-holiday { background: rgba(245, 158, 11, 0.15); }
+    .manager-table .mark-transferred { background: rgba(59, 130, 246, 0.14); }
+    .manager-table .mark-short { background: rgba(16, 185, 129, 0.14); }
+    .manager-table .is-error { box-shadow: inset 0 0 0 2px rgba(251, 113, 133, 0.5); }
+    .manager-table .is-correct { background: rgba(16, 185, 129, 0.11); }
+
+    .manager-input {
+      width: 48px;
+      min-height: 36px;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      border-radius: 9px;
+      background: rgba(2, 6, 23, 0.76);
+      color: rgb(241 245 249);
+      outline: none;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .manager-input:focus {
+      border-color: rgba(56, 189, 248, 0.8);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+    }
+
+    .manager-input:disabled { cursor: not-allowed; opacity: 0.3; }
+
     .success-overlay {
       position: fixed;
       inset: 0;
@@ -360,6 +528,14 @@
       .theory-grid { grid-template-columns: 1fr; }
       .training-table { min-width: 560px; }
       .lesson-tab { min-width: 135px; }
+      .topic-map { grid-template-columns: 1fr; }
+      .manager-table .manager-person-cell {
+        position: static;
+        width: 145px;
+        min-width: 145px;
+        max-width: 145px;
+      }
+      .manager-table .manager-summary-cell { position: static; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -382,21 +558,31 @@
           Безопасная тренировка
         </div>
         <h1 class="mt-4 text-3xl font-bold text-slate-100 md:text-4xl">Тренажёр табеля</h1>
-        <p class="mt-2 text-sm leading-6 text-slate-300/85">
+        <p id="trainingPageLead" class="mt-2 text-sm leading-6 text-slate-300/85">
           Заполняйте учебную неделю, проверяйте себя и переходите к следующему заданию. Эти данные никогда не попадут в настоящий табель.
         </p>
       </div>
 
-      <div class="min-w-0">
+      <div class="min-w-0 space-y-4">
+        <div id="trainingTrackGroup" class="hidden">
+          <div class="mb-2 text-xs font-semibold uppercase text-slate-400">Выберите курс</div>
+          <div id="trainingTrackControl" class="grid grid-cols-2 gap-1 rounded-2xl bg-white/[0.035] p-1 ring-1 ring-white/10">
+            <button id="employeeTrackBtn" type="button" class="mode-button is-active rounded-xl px-3 py-2 text-xs font-semibold">Для сотрудника</button>
+            <button id="managerTrackBtn" type="button" class="mode-button hidden rounded-xl px-3 py-2 text-xs font-semibold">Для руководителя</button>
+          </div>
+        </div>
+        <div>
         <div class="mb-2 text-xs font-semibold uppercase text-slate-400">Режим примеров</div>
         <div id="modeControl" class="grid grid-cols-2 gap-1 rounded-2xl bg-white/[0.035] p-1 ring-1 ring-white/10">
           <button type="button" class="mode-button rounded-xl px-3 py-2 text-xs font-semibold" data-mode="standard">Стандартная норма</button>
           <button type="button" class="mode-button rounded-xl px-3 py-2 text-xs font-semibold" data-mode="female">Женская CHATEAU</button>
         </div>
         <p id="modeHint" class="mt-2 max-w-sm text-xs leading-5 text-slate-500">Выбран стандартный режим.</p>
+        </div>
       </div>
     </header>
 
+    <div id="employeeTrainingRoot">
     <section class="mb-5">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -476,6 +662,7 @@
         <div class="flex flex-wrap gap-2">
           <button id="previousLessonBtn" type="button" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
           <button id="resetLessonBtn" type="button" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10">Очистить урок</button>
+          <button id="newExamBtn" type="button" class="hidden rounded-2xl bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-200 ring-1 ring-sky-400/25 transition hover:bg-sky-500/20">Другое задание</button>
         </div>
         <button id="primaryLessonBtn" type="button" class="rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white ring-1 ring-indigo-300/40 transition hover:bg-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-400/20">Начать практику</button>
       </div>
@@ -489,9 +676,92 @@
       </div>
       <h2 class="mt-5 text-3xl font-bold text-slate-100">Тренировка завершена</h2>
       <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-300/85">Вы прошли все основные сценарии заполнения табеля. Теперь можно открыть настоящий табель или повторить любой урок.</p>
+      <div class="mx-auto mt-6 max-w-2xl rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-left">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="text-xs font-bold uppercase text-emerald-200">Освоенные темы</div>
+          <div id="completionExamResult" class="text-xs font-semibold text-slate-400"></div>
+        </div>
+        <div id="completionTopics" class="topic-map mt-3"></div>
+      </div>
       <div class="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
         <a href="table.html" class="rounded-2xl bg-emerald-500/20 px-5 py-3 text-sm font-bold text-emerald-100 ring-1 ring-emerald-400/30 transition hover:bg-emerald-500/30">Открыть настоящий табель</a>
         <button id="restartCourseBtn" type="button" class="rounded-2xl bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 ring-1 ring-white/10 transition hover:bg-white/10">Пройти ещё раз</button>
+      </div>
+    </section>
+    </div>
+
+    <section id="managerTrainingRoot" class="hidden">
+      <div class="border-y border-white/10 py-5">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div class="max-w-4xl">
+            <div class="text-xs font-bold uppercase text-sky-200">Учебный отдел</div>
+            <h2 class="mt-2 text-2xl font-bold text-slate-100">Практика руководителя</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-300/85">Работайте с вымышленными сотрудниками. Данные не сохраняются в общий табель и не создают уведомлений.</p>
+          </div>
+          <button id="managerNewVariantBtn" type="button" class="rounded-xl bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-200 ring-1 ring-sky-400/25 transition hover:bg-sky-500/20">Новый вариант</button>
+        </div>
+      </div>
+
+      <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div id="managerStepCounter" class="text-xs font-semibold uppercase text-indigo-200">Задание 1 из 9</div>
+          <div id="managerProgressText" class="mt-1 text-sm text-slate-400">Выполнено: 0 из 9</div>
+        </div>
+        <div class="h-2 w-full overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10 sm:w-64">
+          <div id="managerProgressBar" class="h-full rounded-full bg-sky-400 transition-[width] duration-500" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <nav id="managerMissionStrip" class="lesson-strip mt-4" aria-label="Задания руководителя"></nav>
+
+      <div id="managerMissionArea" class="mt-4">
+        <div class="border-y border-white/10 py-5">
+          <div class="text-xs font-semibold uppercase text-amber-200">Практическое задание</div>
+          <h3 id="managerMissionTitle" class="mt-2 text-2xl font-bold text-slate-100"></h3>
+          <p id="managerMissionDescription" class="mt-2 max-w-5xl text-sm leading-6 text-slate-300/90"></p>
+        </div>
+
+        <div id="managerBriefings" class="mt-5 grid gap-3 lg:grid-cols-2"></div>
+
+        <div class="mt-5 flex flex-col gap-3 border-y border-white/10 py-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div class="text-xs font-semibold uppercase text-slate-500">Выбранный день</div>
+            <div id="managerSelectedDayLabel" class="mt-1 text-sm font-semibold text-slate-100">Понедельник, 1 число</div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="mark-button rounded-xl px-3 py-2 text-xs font-semibold" data-manager-mark="holiday" aria-pressed="false">Праздник</button>
+            <button type="button" class="mark-button rounded-xl px-3 py-2 text-xs font-semibold" data-manager-mark="transferred" aria-pressed="false">Перенесённый</button>
+            <button type="button" class="mark-button rounded-xl px-3 py-2 text-xs font-semibold" data-manager-mark="short" aria-pressed="false">Сокращённый</button>
+          </div>
+        </div>
+
+        <div id="managerTableWrap" class="manager-table-wrap mt-5">
+          <table class="manager-table" aria-label="Учебный табель отдела">
+            <thead><tr id="managerTableHeader"></tr></thead>
+            <tbody id="managerTableBody"></tbody>
+          </table>
+        </div>
+
+        <div id="managerFeedback" class="feedback-box mt-5" aria-live="polite">Прочитайте условия для каждого сотрудника и заполните учебный месяц.</div>
+
+        <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex flex-wrap gap-2">
+            <button id="managerPreviousBtn" type="button" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10 disabled:opacity-40">Назад</button>
+            <button id="managerResetBtn" type="button" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10">Очистить</button>
+          </div>
+          <button id="managerCheckBtn" type="button" class="rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white ring-1 ring-indigo-300/40 transition hover:bg-indigo-400">Проверить отдел</button>
+        </div>
+      </div>
+
+      <div id="managerCompletionPanel" class="hidden py-10 text-center">
+        <div class="success-mark">
+          <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m5 12 4 4L19 6"></path>
+          </svg>
+        </div>
+        <h2 class="mt-5 text-3xl font-bold text-slate-100">Курс руководителя пройден</h2>
+        <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-300/85">Вы отработали нормы, отсутствия, перенос переработки, ночные смены, кадровые коды и общий календарь отдела.</p>
+        <button id="managerRestartBtn" type="button" class="mt-6 rounded-2xl bg-sky-500/15 px-5 py-3 text-sm font-bold text-sky-100 ring-1 ring-sky-400/30 transition hover:bg-sky-500/25">Пройти курс заново</button>
       </div>
     </section>
   </main>
@@ -510,5 +780,6 @@
 
   <script type="module" src="./nav.js"></script>
   <script type="module" src="./timesheet-training.js"></script>
+  <script type="module" src="./manager-training.js"></script>
 </body>
 </html>
