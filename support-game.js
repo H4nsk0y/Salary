@@ -2,16 +2,41 @@ import { getSession } from "./auth.js";
 
 const REWARD_KEY_PREFIX = "alvisa.easterRunner.reward.v1";
 const PENDING_REWARD_KEY = "alvisa.easterRunner.pendingReward.v1";
+const SOUND_SETTING_KEY = "alvisa.easterRunner.soundEnabled.v1";
 const REWARD_SCORE = 350;
+const SCORE_SOUND_THRESHOLD = 300;
 const SPEED_STEP_SCORE = 200;
+const MUSIC_STEP_MS = 150;
 const WORLD_HEIGHT = 360;
 const GROUND_Y = 294;
+const MUSIC_BARS = [
+  [659.25, 0, 783.99, 880, 783.99, 0, 659.25, 587.33, 523.25, 0, 587.33, 659.25, 783.99, 659.25, 587.33, 0],
+  [523.25, 0, 659.25, 783.99, 880, 783.99, 659.25, 0, 698.46, 659.25, 587.33, 523.25, 587.33, 0, 659.25, 0],
+  [880, 0, 783.99, 659.25, 587.33, 659.25, 783.99, 0, 987.77, 880, 783.99, 659.25, 698.46, 0, 783.99, 0],
+  [659.25, 587.33, 523.25, 0, 659.25, 783.99, 880, 0, 783.99, 698.46, 659.25, 587.33, 523.25, 0, 0, 0],
+  [523.25, 587.33, 659.25, 0, 523.25, 659.25, 783.99, 0, 587.33, 659.25, 698.46, 659.25, 587.33, 523.25, 493.88, 0],
+  [659.25, 0, 698.46, 659.25, 587.33, 0, 523.25, 493.88, 523.25, 587.33, 659.25, 783.99, 698.46, 659.25, 587.33, 0],
+  [783.99, 880, 987.77, 0, 880, 783.99, 698.46, 0, 659.25, 698.46, 783.99, 880, 783.99, 0, 659.25, 0],
+  [587.33, 659.25, 783.99, 0, 698.46, 659.25, 587.33, 0, 523.25, 587.33, 659.25, 698.46, 659.25, 587.33, 523.25, 0],
+  [659.25, 783.99, 880, 0, 1046.5, 987.77, 880, 0, 783.99, 880, 987.77, 783.99, 698.46, 659.25, 587.33, 0],
+  [523.25, 0, 587.33, 659.25, 698.46, 0, 659.25, 587.33, 523.25, 493.88, 523.25, 587.33, 659.25, 0, 523.25, 0],
+  [880, 783.99, 698.46, 659.25, 783.99, 0, 659.25, 0, 587.33, 659.25, 698.46, 783.99, 880, 0, 783.99, 0],
+  [659.25, 0, 783.99, 880, 783.99, 698.46, 659.25, 0, 587.33, 523.25, 587.33, 659.25, 523.25, 0, 0, 0],
+];
+const MUSIC_MELODY = MUSIC_BARS.flat();
+const MUSIC_BASS_BY_BAR = [130.81, 174.61, 220, 196, 130.81, 146.83, 196, 174.61, 220, 130.81, 174.61, 196];
 
 const elements = {
   trigger: document.getElementById("supportEasterTrigger"),
   overlay: document.getElementById("easterGameOverlay"),
   canvas: document.getElementById("easterGameCanvas"),
   close: document.getElementById("easterGameCloseBtn"),
+  pause: document.getElementById("easterGamePauseBtn"),
+  pauseIcon: document.getElementById("easterGamePauseIcon"),
+  resumeIcon: document.getElementById("easterGameResumeIcon"),
+  sound: document.getElementById("easterGameSoundBtn"),
+  soundOnIcon: document.getElementById("easterGameSoundOnIcon"),
+  soundOffIcon: document.getElementById("easterGameSoundOffIcon"),
   jump: document.getElementById("easterGameJumpBtn"),
   start: document.getElementById("easterGameStartBtn"),
   score: document.getElementById("easterGameScore"),
@@ -50,6 +75,11 @@ let obstacles = [];
 let particles = [];
 let scorePopups = [];
 let rewardUnlockedThisRun = false;
+let scoreSoundPlayed = false;
+let soundEnabled = localStorage.getItem(SOUND_SETTING_KEY) !== "false";
+let audioContext = null;
+let musicTimer = 0;
+let musicStep = 0;
 
 const dino = {
   x: 105,
@@ -81,11 +111,177 @@ function resetRunner() {
   particles = [];
   scorePopups = [];
   rewardUnlockedThisRun = false;
+  scoreSoundPlayed = false;
+  musicStep = 0;
   dino.y = GROUND_Y - dino.height;
   dino.velocityY = 0;
   dino.grounded = true;
   elements.score.textContent = "0";
   elements.passed.textContent = "0";
+}
+
+function getAudioContext() {
+  if (!soundEnabled) return null;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!audioContext) audioContext = new AudioContextClass();
+  if (audioContext.state === "suspended") void audioContext.resume();
+  return audioContext;
+}
+
+function playTone({ frequency, endFrequency = frequency, duration = 0.12, delay = 0, type = "sine", gain = 0.04 }) {
+  const audio = getAudioContext();
+  if (!audio) return;
+  const startAt = audio.currentTime + delay;
+  const stopAt = startAt + duration;
+  const oscillator = audio.createOscillator();
+  const volume = audio.createGain();
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(Math.max(1, frequency), startAt);
+  oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, endFrequency), stopAt);
+  volume.gain.setValueAtTime(0.0001, startAt);
+  volume.gain.exponentialRampToValueAtTime(gain, startAt + Math.min(0.018, duration / 3));
+  volume.gain.exponentialRampToValueAtTime(0.0001, stopAt);
+  oscillator.connect(volume);
+  volume.connect(audio.destination);
+  oscillator.start(startAt);
+  oscillator.stop(stopAt + 0.02);
+}
+
+function playMetalClick({ delay = 0, gain = 0.012 } = {}) {
+  const audio = getAudioContext();
+  if (!audio) return;
+  const duration = 0.035;
+  const startAt = audio.currentTime + delay;
+  const buffer = audio.createBuffer(1, Math.ceil(audio.sampleRate * duration), audio.sampleRate);
+  const samples = buffer.getChannelData(0);
+  for (let index = 0; index < samples.length; index += 1) {
+    const fade = 1 - index / samples.length;
+    samples[index] = (Math.random() * 2 - 1) * fade * fade;
+  }
+
+  const source = audio.createBufferSource();
+  const filter = audio.createBiquadFilter();
+  const volume = audio.createGain();
+  source.buffer = buffer;
+  filter.type = "highpass";
+  filter.frequency.setValueAtTime(2600, startAt);
+  volume.gain.setValueAtTime(gain, startAt);
+  volume.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+  source.connect(filter);
+  filter.connect(volume);
+  volume.connect(audio.destination);
+  source.start(startAt);
+}
+
+function playJumpSound() {
+  playTone({ frequency: 220, endFrequency: 480, duration: 0.11, type: "square", gain: 0.025 });
+  playTone({ frequency: 330, endFrequency: 620, duration: 0.08, delay: 0.025, gain: 0.02 });
+}
+
+function playScoreSound() {
+  [523.25, 659.25, 783.99].forEach((frequency, index) => {
+    playTone({ frequency, endFrequency: frequency * 1.04, duration: 0.2, delay: index * 0.11, type: "triangle", gain: 0.04 });
+  });
+}
+
+function playPointSound(points) {
+  if (points >= 10) {
+    playMetalClick({ gain: 0.016 });
+    playTone({ frequency: 1450, endFrequency: 2050, duration: 0.055, type: "sine", gain: 0.012 });
+    playMetalClick({ delay: 0.085, gain: 0.014 });
+    playTone({ frequency: 1900, endFrequency: 2700, duration: 0.065, delay: 0.085, type: "sine", gain: 0.011 });
+    return;
+  }
+  playMetalClick();
+  playTone({ frequency: 1500, endFrequency: 2150, duration: 0.05, type: "sine", gain: 0.009 });
+}
+
+function playDefeatSound() {
+  playTone({ frequency: 190, endFrequency: 65, duration: 0.5, type: "sawtooth", gain: 0.035 });
+  playTone({ frequency: 120, endFrequency: 50, duration: 0.46, delay: 0.06, type: "triangle", gain: 0.035 });
+}
+
+function stopBackgroundMusic() {
+  window.clearTimeout(musicTimer);
+  musicTimer = 0;
+}
+
+function playBackgroundMusicStep() {
+  if (!soundEnabled || phase !== "running" || document.hidden) {
+    stopBackgroundMusic();
+    return;
+  }
+
+  const melodyFrequency = MUSIC_MELODY[musicStep % MUSIC_MELODY.length];
+  if (melodyFrequency) {
+    playTone({
+      frequency: melodyFrequency,
+      endFrequency: melodyFrequency,
+      duration: 0.105,
+      type: "square",
+      gain: 0.006,
+    });
+  }
+  if (musicStep % 4 === 0) {
+    const barIndex = Math.floor(musicStep / 16) % MUSIC_BASS_BY_BAR.length;
+    const bassRoot = MUSIC_BASS_BY_BAR[barIndex];
+    const bassFrequency = Math.floor(musicStep / 4) % 2 === 0 ? bassRoot : bassRoot * 1.5;
+    playTone({
+      frequency: bassFrequency,
+      endFrequency: bassFrequency,
+      duration: 0.13,
+      type: "triangle",
+      gain: 0.004,
+    });
+  }
+
+  musicStep = (musicStep + 1) % MUSIC_MELODY.length;
+  musicTimer = window.setTimeout(playBackgroundMusicStep, MUSIC_STEP_MS);
+}
+
+function startBackgroundMusic() {
+  stopBackgroundMusic();
+  if (!soundEnabled || phase !== "running" || document.hidden) return;
+  playBackgroundMusicStep();
+}
+
+function syncSoundButton() {
+  if (!elements.sound) return;
+  const supported = Boolean(window.AudioContext || window.webkitAudioContext);
+  elements.sound.classList.toggle("hidden", !supported);
+  if (!supported) return;
+  elements.sound.setAttribute("aria-pressed", String(soundEnabled));
+  elements.sound.setAttribute("aria-label", soundEnabled ? "Отключить звук" : "Включить звук");
+  elements.sound.title = soundEnabled ? "Отключить звук" : "Включить звук";
+  elements.soundOnIcon.classList.toggle("hidden", !soundEnabled);
+  elements.soundOffIcon.classList.toggle("hidden", soundEnabled);
+}
+
+function syncPauseButton() {
+  if (!elements.pause) return;
+  const paused = phase === "paused";
+  const available = phase === "running" || paused;
+  elements.pause.disabled = !available;
+  elements.pause.setAttribute("aria-pressed", String(paused));
+  elements.pause.setAttribute("aria-label", paused ? "Продолжить игру" : "Поставить на паузу");
+  elements.pause.title = paused ? "Продолжить игру" : "Поставить на паузу";
+  elements.pauseIcon.classList.toggle("hidden", paused);
+  elements.resumeIcon.classList.toggle("hidden", !paused);
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem(SOUND_SETTING_KEY, String(soundEnabled));
+  syncSoundButton();
+  if (soundEnabled) {
+    getAudioContext();
+    if (phase === "running") startBackgroundMusic();
+  } else {
+    stopBackgroundMusic();
+    if (audioContext?.state === "running") void audioContext.suspend();
+  }
 }
 
 function showMessage({ eyebrow, title, text, button }) {
@@ -106,6 +302,7 @@ function openGame() {
   elements.overlay.setAttribute("aria-hidden", "false");
   document.body.style.overflow = "hidden";
   phase = "ready";
+  syncPauseButton();
   resetRunner();
   showMessage({
     eyebrow: "Пасхалка найдена",
@@ -122,20 +319,58 @@ function openGame() {
 }
 
 function closeGame() {
+  stopBackgroundMusic();
   elements.overlay.classList.add("hidden");
   elements.overlay.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
   cancelAnimationFrame(animationFrame);
   animationFrame = 0;
   phase = "ready";
+  syncPauseButton();
   elements.trigger.focus();
 }
 
 function startGame() {
+  getAudioContext();
   resetRunner();
   phase = "running";
+  syncPauseButton();
   hideMessage();
   lastFrameTime = performance.now();
+  startBackgroundMusic();
+}
+
+function pauseGame({ focusControl = true } = {}) {
+  if (phase !== "running") return;
+  phase = "paused";
+  stopBackgroundMusic();
+  syncPauseButton();
+  showMessage({
+    eyebrow: "Забег приостановлен",
+    title: "Пауза",
+    text: "Игра продолжится с того же места.",
+    button: "Продолжить",
+  });
+  if (focusControl) elements.start.focus();
+}
+
+function resumeGame() {
+  if (phase !== "paused") return;
+  phase = "running";
+  syncPauseButton();
+  hideMessage();
+  lastFrameTime = performance.now();
+  startBackgroundMusic();
+}
+
+function togglePause() {
+  if (phase === "running") pauseGame();
+  else if (phase === "paused") resumeGame();
+}
+
+function handleStartButton() {
+  if (phase === "paused") resumeGame();
+  else startGame();
 }
 
 function jump() {
@@ -146,6 +381,7 @@ function jump() {
   if (phase !== "running" || !dino.grounded) return;
   dino.velocityY = -790;
   dino.grounded = false;
+  playJumpSound();
   for (let index = 0; index < 5; index += 1) {
     particles.push({
       x: dino.x + 12,
@@ -176,6 +412,7 @@ function addScore(obstacle) {
   obstacle.counted = true;
   passedObstacles += 1;
   const points = passedObstacles % 10 === 0 ? 10 : 3;
+  const previousScore = score;
   score += points;
   elements.score.textContent = String(score);
   elements.passed.textContent = String(passedObstacles);
@@ -185,6 +422,13 @@ function addScore(obstacle) {
   if (nextSpeedLevel > speedLevel) {
     speedLevel = nextSpeedLevel;
     scorePopups.push({ x: worldWidth / 2, y: 95, text: "УСКОРЕНИЕ!", life: 1.25, large: true });
+  }
+
+  if (!scoreSoundPlayed && previousScore < SCORE_SOUND_THRESHOLD && score >= SCORE_SOUND_THRESHOLD) {
+    scoreSoundPlayed = true;
+    playScoreSound();
+  } else {
+    playPointSound(points);
   }
 
   if (!rewardUnlockedThisRun && score >= REWARD_SCORE) unlockReward();
@@ -203,6 +447,9 @@ function collisionWith(obstacle) {
 
 function loseGame() {
   phase = "gameover";
+  syncPauseButton();
+  stopBackgroundMusic();
+  playDefeatSound();
   showMessage({
     eyebrow: "Забег окончен",
     title: `${score} очков`,
@@ -402,6 +649,11 @@ function handleKeydown(event) {
     closeGame();
     return;
   }
+  if (event.code === "KeyP") {
+    event.preventDefault();
+    togglePause();
+    return;
+  }
   if (event.code === "Space" || event.key === "ArrowUp") {
     event.preventDefault();
     jump();
@@ -420,16 +672,23 @@ function bindEvents() {
     triggerTimer = window.setTimeout(() => { triggerClicks = 0; }, 1200);
   });
   elements.close?.addEventListener("click", closeGame);
-  elements.start?.addEventListener("click", startGame);
+  elements.pause?.addEventListener("click", togglePause);
+  elements.sound?.addEventListener("click", toggleSound);
+  elements.start?.addEventListener("click", handleStartButton);
   elements.jump?.addEventListener("click", jump);
   elements.canvas?.addEventListener("pointerdown", jump);
   window.addEventListener("keydown", handleKeydown);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && phase === "running") pauseGame({ focusControl: false });
+  });
   window.addEventListener("resize", () => {
     if (!elements.overlay.classList.contains("hidden")) resizeCanvas();
   });
 }
 
 async function initialize() {
+  syncSoundButton();
+  syncPauseButton();
   bindEvents();
   try {
     const session = await getSession();
