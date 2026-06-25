@@ -1,9 +1,15 @@
 import { supabase } from "./supabaseClient.js";
 
 const PROFILE_SELECT =
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, egais_file_reminders_enabled, hide_calculator_nav";
+
+const PROFILE_SELECT_WITHOUT_HIDE_CALCULATOR_NAV =
   "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, egais_file_reminders_enabled";
 
 const PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS =
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, hide_calculator_nav";
+
+const PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS_AND_HIDE_CALCULATOR_NAV =
   "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date";
 
 const PROFILE_SELECT_WITH_BRANCH =
@@ -78,6 +84,20 @@ function isMissingEgaisFileRemindersColumnError(error) {
   );
 }
 
+function isMissingHideCalculatorNavColumnError(error) {
+  const text = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].filter(Boolean).join(" ");
+
+  return (
+    /hide_calculator_nav/i.test(text) &&
+    /(column|schema cache|does not exist|could not find|42703|PGRST204)/i.test(text)
+  );
+}
+
 function assertValidYearMonth(year, month) {
   const y = Number(year);
   const m = Number(month);
@@ -115,16 +135,62 @@ export async function getMyProfile() {
   if (error) {
     if (isNotFoundError(error)) return null;
 
+    if (isMissingHideCalculatorNavColumnError(error)) {
+      let { data: fallbackData, error: fallbackError } = await supabase
+        .from("profiles")
+        .select(PROFILE_SELECT_WITHOUT_HIDE_CALCULATOR_NAV)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (fallbackError && isMissingEgaisFileRemindersColumnError(fallbackError)) {
+        const fallback = await supabase
+          .from("profiles")
+          .select(PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS_AND_HIDE_CALCULATOR_NAV)
+          .eq("user_id", userId)
+          .maybeSingle();
+        fallbackData = fallback.data;
+        fallbackError = fallback.error;
+      }
+
+      if (!fallbackError) {
+        return fallbackData
+          ? {
+              ...fallbackData,
+              egais_file_reminders_enabled:
+                fallbackData.egais_file_reminders_enabled === true,
+              hide_calculator_nav: false,
+            }
+          : null;
+      }
+
+      if (isNotFoundError(fallbackError)) return null;
+      throw fallbackError;
+    }
+
     if (isMissingEgaisFileRemindersColumnError(error)) {
-      const { data: fallbackData, error: fallbackError } = await supabase
+      let { data: fallbackData, error: fallbackError } = await supabase
         .from("profiles")
         .select(PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS)
         .eq("user_id", userId)
         .maybeSingle();
 
+      if (fallbackError && isMissingHideCalculatorNavColumnError(fallbackError)) {
+        const fallback = await supabase
+          .from("profiles")
+          .select(PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS_AND_HIDE_CALCULATOR_NAV)
+          .eq("user_id", userId)
+          .maybeSingle();
+        fallbackData = fallback.data;
+        fallbackError = fallback.error;
+      }
+
       if (!fallbackError) {
         return fallbackData
-          ? { ...fallbackData, egais_file_reminders_enabled: false }
+          ? {
+              ...fallbackData,
+              egais_file_reminders_enabled: false,
+              hide_calculator_nav: fallbackData.hide_calculator_nav === true,
+            }
           : null;
       }
 
@@ -229,7 +295,16 @@ export async function updateMyProfileFields(fields) {
     .from("profiles")
     .upsert(patch, { onConflict: "user_id" });
 
-  if (error) throw error;
+  if (error) {
+    if (
+      Object.prototype.hasOwnProperty.call(patch, "hide_calculator_nav") &&
+      isMissingHideCalculatorNavColumnError(error)
+    ) {
+      throw new Error("В базе пока нет поля скрытия калькулятора. Запусти supabase-sql/020_hide_calculator_nav.sql в Supabase SQL Editor.");
+    }
+
+    throw error;
+  }
 }
 
 export async function updateMyMoneyPin({
@@ -727,6 +802,31 @@ export async function deleteAllMyNotifications() {
     .eq("user_id", userId);
 
   if (error) throw error;
+}
+
+export async function submitEasterRunnerScore({ mode, score, passed } = {}) {
+  await requireUserId();
+
+  const { data, error } = await supabase.rpc("submit_easter_runner_score", {
+    p_mode: String(mode ?? "").trim(),
+    p_score: Number(score) || 0,
+    p_passed: Number(passed) || 0,
+  });
+
+  if (error) throw error;
+  return Array.isArray(data) ? data[0] ?? null : data ?? null;
+}
+
+export async function listEasterRunnerLeaderboard(mode = "normal", limit = 5) {
+  await requireUserId();
+
+  const { data, error } = await supabase.rpc("list_easter_runner_leaderboard", {
+    p_mode: String(mode ?? "").trim(),
+    p_limit: Number(limit) || 5,
+  });
+
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function upsertMyPushSubscription({

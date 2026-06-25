@@ -492,12 +492,12 @@
               Калькулятор зарплаты
             </span>
           </h1>
-          <p class="mt-1 text-sm text-slate-300/80">Рассчитайте свою зарплату на основе текущих данных. <br>Оклад берется автоматически из личного кабинета</p>
+          <p class="mt-1 text-sm text-slate-300/80">Рассчитайте зарплату по текущим данным. <br>После входа оклад подставится из личного кабинета.</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2 self-end sm:self-center">
-        <a id="loginLink" href="login.html?next=index.html"
+        <a id="loginLink" href="login.html?next=calculator.html"
            class="hidden rounded-2xl bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">
           Войти
         </a>
@@ -760,6 +760,41 @@
               </div>
               <p id="remaining" class="mt-2 text-xl font-semibold tracking-tight">—</p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        id="calculatorSignupPrompt"
+        class="mt-6 hidden overflow-hidden rounded-3xl border border-indigo-300/15 bg-gradient-to-br from-indigo-500/15 via-sky-500/10 to-emerald-500/10 p-5 ring-1 ring-white/10"
+      >
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div class="min-w-0">
+            <div class="inline-flex items-center gap-2 rounded-full bg-white/[0.07] px-3 py-1 text-xs font-semibold text-sky-100 ring-1 ring-white/10">
+              <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
+              Можно без регистрации
+            </div>
+            <h3 class="mt-3 text-xl font-bold tracking-tight text-slate-50">
+              Посчитали зарплату? Сохраните всё в личном кабинете
+            </h3>
+            <p class="mt-2 max-w-xl text-sm leading-6 text-slate-300/85">
+              После регистрации оклад будет подставляться сам, расчёты можно будет сравнивать с фактическими выплатами, а табель сохранит историю по месяцам.
+            </p>
+          </div>
+
+          <div class="flex shrink-0 flex-col gap-2 sm:w-44">
+            <a
+              href="login.html?mode=signup&next=calculator.html"
+              class="rounded-2xl bg-indigo-500/25 px-4 py-3 text-center text-sm font-bold text-indigo-50 ring-1 ring-indigo-300/25 transition hover:bg-indigo-500/35 hover:ring-indigo-200/40"
+            >
+              Зарегистрироваться
+            </a>
+            <a
+              href="login.html?next=calculator.html"
+              class="rounded-2xl bg-white/5 px-4 py-3 text-center text-sm font-semibold text-slate-200 ring-1 ring-white/10 transition hover:bg-white/10"
+            >
+              Уже есть аккаунт
+            </a>
           </div>
         </div>
       </div>

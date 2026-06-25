@@ -498,6 +498,7 @@ function renderLink(link, activeKey, variant = "desktop") {
   const a = document.createElement("a");
   a.href = link.href;
   a.className = linkClass(link.key === activeKey, variant);
+  a.dataset.navKey = link.key;
   a.textContent = link.label;
   return a;
 }
@@ -917,6 +918,16 @@ function setupMobileMenu(header, button, menu) {
   });
 }
 
+function applyProfileNavPreferences(header, profile) {
+  if (!header || !profile) return;
+
+  if (profile.hide_calculator_nav === true) {
+    header
+      .querySelectorAll('[data-nav-key="calculator"]')
+      .forEach((link) => link.remove());
+  }
+}
+
 function renderHeader(mount) {
   const activeKey = mount.dataset.active || detectActiveKey();
   const ownerNavMode = mount.dataset.ownerNav || "auto";
@@ -975,12 +986,14 @@ function renderHeader(mount) {
   return header;
 }
 
-async function enhanceOwnerNavIfNeeded(header) {
-  if (!header || header.dataset.ownerNavMode === "false") return;
-  if (header.dataset.ownerNavEnhanced === "true") return;
+async function enhanceNavForProfile(header) {
+  if (!header) return;
 
   try {
     const profile = await getMyProfile();
+    applyProfileNavPreferences(header, profile);
+    if (header.dataset.ownerNavMode === "false") return;
+    if (header.dataset.ownerNavEnhanced === "true") return;
     if (profile?.role !== "owner") return;
 
     const activeKey = header.dataset.activeKey || detectActiveKey();
@@ -1001,7 +1014,7 @@ function initCommonNav() {
 
   injectNavStyles();
   const header = renderHeader(mount);
-  void enhanceOwnerNavIfNeeded(header);
+  void enhanceNavForProfile(header);
 }
 
 initCommonNav();

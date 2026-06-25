@@ -21,6 +21,7 @@ const statusPill = document.getElementById("statusPill");
 const errorBox = document.getElementById("errorBox");
 const hideMoneyToggle = document.getElementById("hideMoneyToggle");
 const autoCollapseTablePanelsToggle = document.getElementById("autoCollapseTablePanelsToggle");
+const hideCalculatorNavToggle = document.getElementById("hideCalculatorNavToggle");
 const egaisFileRemindersRow = document.getElementById("egaisFileRemindersRow");
 const egaisFileRemindersToggle = document.getElementById("egaisFileRemindersToggle");
 const pushNotificationsBtn = document.getElementById("pushNotificationsBtn");
@@ -34,6 +35,7 @@ let currentSettings = {
   money_pin_hash: null,
   money_pin_salt: null,
   auto_collapse_table_panels: false,
+  hide_calculator_nav: false,
   egais_file_reminders_enabled: false,
 };
 
@@ -42,6 +44,7 @@ let pendingSettings = {
   money_pin_hash: null,
   money_pin_salt: null,
   auto_collapse_table_panels: false,
+  hide_calculator_nav: false,
   egais_file_reminders_enabled: false,
 };
 
@@ -51,6 +54,7 @@ function cloneSettings(settings) {
     money_pin_hash: settings?.money_pin_hash ?? null,
     money_pin_salt: settings?.money_pin_salt ?? null,
     auto_collapse_table_panels: settings?.auto_collapse_table_panels === true,
+    hide_calculator_nav: settings?.hide_calculator_nav === true,
     egais_file_reminders_enabled: settings?.egais_file_reminders_enabled === true,
   };
 }
@@ -63,6 +67,10 @@ function syncToggle() {
   if (autoCollapseTablePanelsToggle) {
     autoCollapseTablePanelsToggle.checked =
       pendingSettings.auto_collapse_table_panels === true;
+  }
+
+  if (hideCalculatorNavToggle) {
+    hideCalculatorNavToggle.checked = pendingSettings.hide_calculator_nav === true;
   }
 
   egaisFileRemindersRow?.classList.toggle("hidden", !canUseEgaisFileReminders);
@@ -133,6 +141,7 @@ async function loadSettings() {
     money_pin_hash: profile?.money_pin_hash ?? null,
     money_pin_salt: profile?.money_pin_salt ?? null,
     auto_collapse_table_panels: profile?.auto_collapse_table_panels === true,
+    hide_calculator_nav: profile?.hide_calculator_nav === true,
     egais_file_reminders_enabled:
       canUseEgaisFileReminders && profile?.egais_file_reminders_enabled === true,
   };
@@ -223,6 +232,13 @@ function handleAutoCollapseTablePanelsToggleChange() {
   markDirty("Есть несохранённые изменения");
 }
 
+function handleHideCalculatorNavToggleChange() {
+  if (!hideCalculatorNavToggle) return;
+
+  pendingSettings.hide_calculator_nav = hideCalculatorNavToggle.checked === true;
+  markDirty("Есть несохранённые изменения");
+}
+
 function handleEgaisFileRemindersToggleChange() {
   if (!egaisFileRemindersToggle || !canUseEgaisFileReminders) return;
 
@@ -310,6 +326,7 @@ async function saveSettings() {
       money_pin_salt: pendingSettings.money_pin_salt,
       auto_collapse_table_panels:
         pendingSettings.auto_collapse_table_panels === true,
+      hide_calculator_nav: pendingSettings.hide_calculator_nav === true,
     };
 
     if (canUseEgaisFileReminders) {
@@ -357,6 +374,10 @@ hideMoneyToggle?.addEventListener("change", () => {
 
 autoCollapseTablePanelsToggle?.addEventListener("change", () => {
   handleAutoCollapseTablePanelsToggleChange();
+});
+
+hideCalculatorNavToggle?.addEventListener("change", () => {
+  handleHideCalculatorNavToggleChange();
 });
 
 egaisFileRemindersToggle?.addEventListener("change", () => {

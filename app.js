@@ -12,6 +12,7 @@ const resetBtn = document.getElementById("resetBtn");
 const loginLink = document.getElementById("loginLink");
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
+const calculatorSignupPrompt = document.getElementById("calculatorSignupPrompt");
 
 const els = {
   oklad: document.getElementById("oklad"),
@@ -332,11 +333,13 @@ async function initAuthUI() {
     loginLink?.classList.remove("hidden");
     logoutBtn?.classList.add("hidden");
     adminLink?.classList.add("hidden");
+    calculatorSignupPrompt?.classList.remove("hidden");
     return;
   }
 
   loginLink?.classList.add("hidden");
   logoutBtn?.classList.remove("hidden");
+  calculatorSignupPrompt?.classList.add("hidden");
   startPresenceHeartbeat("Калькулятор");
 
   try {

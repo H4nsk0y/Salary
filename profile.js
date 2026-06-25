@@ -605,6 +605,18 @@ function formatMoney(value) {
   })} ₽`;
 }
 
+function isTimesheetMonthStarted(year, month, now = new Date()) {
+  const y = Number(year);
+  const m = Number(month);
+  if (!Number.isInteger(y) || !Number.isInteger(m)) return false;
+  if (m < 0 || m > 11) return false;
+
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  return y < currentYear || (y === currentYear && m <= currentMonth);
+}
+
 function normalizeMoneyNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) ? Number(n.toFixed(2)) : null;
@@ -1920,9 +1932,10 @@ async function refreshTimesheets() {
   setError(null);
 
   const rows = await listMyTimesheetsByYear(y, { withPayload: true });
+  const startedRows = rows.filter((row) => isTimesheetMonthStarted(row?.year, row?.month));
 
   payloadByMonth = new Map();
-  for (const r of rows) {
+  for (const r of startedRows) {
     if (r && typeof r.month === "number" && r.payload) payloadByMonth.set(r.month, r.payload);
   }
 
@@ -1933,7 +1946,7 @@ async function refreshTimesheets() {
   let yearNetIncome = 0;
   let yearTaxPaid = 0;
 
-  for (const r of rows) {
+  for (const r of startedRows) {
     if (!r?.payload) continue;
 
     yearBalanceSigned += computeMonthOvertimeSigned(r.payload);
@@ -1964,18 +1977,20 @@ async function refreshTimesheets() {
   updateOvertimeLimitUi(y, overtimeLimit);
   applyOvertimeProgress(usedForLimit, overtimeLimit);
 
-  if (!rows.length) {
+  if (!startedRows.length) {
     const empty = document.createElement("div");
     empty.className = "rounded-3xl bg-slate-950/25 p-4 ring-1 ring-white/10 text-sm text-slate-300/90";
-    empty.textContent = "Пока нет сохранённых табелей за этот год.";
+    empty.textContent = rows.length
+      ? "Будущие табели появятся здесь и попадут в итоги после начала своего месяца."
+      : "Пока нет сохранённых табелей за этот год.";
     timesheetsList.appendChild(empty);
-    setStatus("Нечего показывать", "neutral");
+    setStatus(rows.length ? "Будущие табели пока не учитываются" : "Нечего показывать", "neutral");
     await renderCalendar();
     return;
   }
 
-  rows.sort((a, b) => (a.month ?? 0) - (b.month ?? 0));
-  for (const row of rows) timesheetsList.appendChild(createTimesheetCard(row));
+  startedRows.sort((a, b) => (a.month ?? 0) - (b.month ?? 0));
+  for (const row of startedRows) timesheetsList.appendChild(createTimesheetCard(row));
 
   setStatus("Готово", "ok");
 

@@ -1,14 +1,53 @@
 import { getSession } from "./auth.js";
+import { listEasterRunnerLeaderboard, submitEasterRunnerScore } from "./db.js";
 
 const REWARD_KEY_PREFIX = "alvisa.easterRunner.reward.v1";
 const PENDING_REWARD_KEY = "alvisa.easterRunner.pendingReward.v1";
 const SOUND_SETTING_KEY = "alvisa.easterRunner.soundEnabled.v1";
+const MODE_SETTING_KEY = "alvisa.easterRunner.mode.v1";
+const LEADERBOARD_LIMIT = 5;
 const REWARD_SCORE = 350;
 const SCORE_SOUND_THRESHOLD = 300;
-const SPEED_STEP_SCORE = 200;
 const MUSIC_STEP_MS = 150;
 const WORLD_HEIGHT = 360;
 const GROUND_Y = 294;
+const BACKGROUND_SCROLL_FACTOR = 0.16;
+const HARDCORE_SECRET_OBSTACLE_CHANCE = 0.08;
+const HARDCORE_SECRET_SPEED_MULTIPLIER = 1.85;
+const GAME_MODES = {
+  normal: {
+    key: "normal",
+    label: "Обычный",
+    badge: "NORMAL",
+    intro: "Перепрыгивайте палеты и продержитесь как можно дольше. Каждый обычный прыжок дает +3 очка, каждый 10-й - +10.",
+    baseSpeed: 720,
+    speedBoost: 92,
+    speedStepScore: 200,
+    initialSpawn: 1.1,
+    spawnBase: 1.15,
+    spawnRandom: 0.72,
+    spawnPenalty: 0.06,
+    minSpawn: 0.68,
+    obstacleWeights: { single: 5, tall: 3, chaos: 2 },
+    getPoints: (passed) => (passed % 10 === 0 ? 10 : 3),
+  },
+  hardcore: {
+    key: "hardcore",
+    label: "Хардкор",
+    badge: "HARD",
+    intro: "Скорость сразу высокая, за каждую палету дается 1 очко, а ускорение включается каждые 15 очков.",
+    baseSpeed: 806,
+    speedBoost: 93.6,
+    speedStepScore: 15,
+    initialSpawn: 0.85,
+    spawnBase: 0.9,
+    spawnRandom: 0.46,
+    spawnPenalty: 0.035,
+    minSpawn: 0.56,
+    obstacleWeights: { single: 3, tall: 4, chaos: 4 },
+    getPoints: () => 1,
+  },
+};
 const MUSIC_BARS = [
   [659.25, 0, 783.99, 880, 783.99, 0, 659.25, 587.33, 523.25, 0, 587.33, 659.25, 783.99, 659.25, 587.33, 0],
   [523.25, 0, 659.25, 783.99, 880, 783.99, 659.25, 0, 698.46, 659.25, 587.33, 523.25, 587.33, 0, 659.25, 0],
@@ -45,6 +84,13 @@ const elements = {
   messageEyebrow: document.getElementById("easterGameMessageEyebrow"),
   messageTitle: document.getElementById("easterGameMessageTitle"),
   messageText: document.getElementById("easterGameMessageText"),
+  modePicker: document.getElementById("easterGameModePicker"),
+  modeButtons: Array.from(document.querySelectorAll("[data-easter-mode]")),
+  leaderboard: document.getElementById("easterGameLeaderboard"),
+  leaderboardTitle: document.getElementById("easterGameLeaderboardTitle"),
+  leaderboardBadge: document.getElementById("easterGameLeaderboardBadge"),
+  leaderboardList: document.getElementById("easterGameLeaderboardList"),
+  leaderboardEmpty: document.getElementById("easterGameLeaderboardEmpty"),
 };
 
 const context = elements.canvas?.getContext("2d");
@@ -52,14 +98,49 @@ const idleRunnerImage = new Image();
 const runRunnerImage = new Image();
 const jumpRunnerImage = new Image();
 const palletImage = new Image();
+const palletTallImage = new Image();
+const palletChaosImage = new Image();
 const warehouseBackgroundImage = new Image();
 idleRunnerImage.src = "./images/easter-runner-idle.png";
 runRunnerImage.src = "./images/easter-runner-run.png";
 jumpRunnerImage.src = "./images/easter-runner-jump.png";
 palletImage.src = "./images/easter-pallet.png";
+palletTallImage.src = "./images/easter-pallet-tall.png";
+palletChaosImage.src = "./images/easter-pallet-chaos.png";
 warehouseBackgroundImage.src = "./images/easter-warehouse-bg.png";
 
+const OBSTACLE_TYPES = {
+  single: {
+    key: "single",
+    image: palletImage,
+    fallbackRatio: 0.89,
+    minHeight: 52,
+    maxHeight: 70,
+    insetX: 5,
+    insetTop: 6,
+  },
+  tall: {
+    key: "tall",
+    image: palletTallImage,
+    fallbackRatio: 0.94,
+    minHeight: 78,
+    maxHeight: 96,
+    insetX: 7,
+    insetTop: 7,
+  },
+  chaos: {
+    key: "chaos",
+    image: palletChaosImage,
+    fallbackRatio: 0.74,
+    minHeight: 86,
+    maxHeight: 104,
+    insetX: 8,
+    insetTop: 8,
+  },
+};
+
 let currentUserId = null;
+let currentMode = GAME_MODES[localStorage.getItem(MODE_SETTING_KEY)] ? localStorage.getItem(MODE_SETTING_KEY) : "normal";
 let triggerClicks = 0;
 let triggerTimer = null;
 let animationFrame = 0;
@@ -68,7 +149,7 @@ let worldWidth = 960;
 let phase = "ready";
 let score = 0;
 let passedObstacles = 0;
-let speed = 360;
+let speed = GAME_MODES.normal.baseSpeed;
 let speedLevel = 0;
 let spawnTimer = 1.1;
 let obstacles = [];
@@ -80,6 +161,7 @@ let soundEnabled = localStorage.getItem(SOUND_SETTING_KEY) !== "false";
 let audioContext = null;
 let musicTimer = 0;
 let musicStep = 0;
+let backgroundOffset = 0;
 
 const dino = {
   x: 105,
@@ -89,6 +171,44 @@ const dino = {
   velocityY: 0,
   grounded: true,
 };
+
+function getModeConfig(modeKey = currentMode) {
+  return GAME_MODES[modeKey] || GAME_MODES.normal;
+}
+
+function getObstacleRatio(type) {
+  const image = type.image;
+  if (image?.naturalWidth && image?.naturalHeight) {
+    return image.naturalWidth / image.naturalHeight;
+  }
+  return type.fallbackRatio;
+}
+
+function syncModeControls() {
+  const mode = getModeConfig();
+  elements.modeButtons.forEach((button) => {
+    const selected = button.dataset.easterMode === mode.key;
+    button.setAttribute("aria-pressed", String(selected));
+    button.disabled = phase === "running" || phase === "paused";
+  });
+  if (elements.leaderboardTitle) elements.leaderboardTitle.textContent = `Топ-5: ${mode.label}`;
+  if (elements.leaderboardBadge) elements.leaderboardBadge.textContent = mode.badge;
+}
+
+function setGameMode(modeKey) {
+  if (!GAME_MODES[modeKey] || phase === "running" || phase === "paused") return;
+  currentMode = modeKey;
+  localStorage.setItem(MODE_SETTING_KEY, currentMode);
+  syncModeControls();
+
+  if (phase === "ready") {
+    elements.messageText.textContent = getModeConfig().intro;
+  }
+
+  if (phase === "gameover" && !elements.leaderboard?.classList.contains("hidden")) {
+    void renderLeaderboard(null, currentMode);
+  }
+}
 
 function resizeCanvas() {
   if (!elements.canvas || !context) return;
@@ -102,17 +222,19 @@ function resizeCanvas() {
 }
 
 function resetRunner() {
+  const mode = getModeConfig();
   score = 0;
   passedObstacles = 0;
-  speed = 360;
+  speed = mode.baseSpeed;
   speedLevel = 0;
-  spawnTimer = 1.1;
+  spawnTimer = mode.initialSpawn;
   obstacles = [];
   particles = [];
   scorePopups = [];
   rewardUnlockedThisRun = false;
   scoreSoundPlayed = false;
   musicStep = 0;
+  backgroundOffset = 0;
   dino.y = GROUND_Y - dino.height;
   dino.velocityY = 0;
   dino.grounded = true;
@@ -284,11 +406,88 @@ function toggleSound() {
   }
 }
 
-function showMessage({ eyebrow, title, text, button }) {
+function setLeaderboardMessage(message) {
+  if (!elements.leaderboardList || !elements.leaderboardEmpty) return;
+  elements.leaderboardList.replaceChildren();
+  elements.leaderboardEmpty.textContent = message;
+  elements.leaderboardEmpty.classList.remove("hidden");
+}
+
+async function renderLeaderboard(currentUser = null, modeKey = currentMode) {
+  if (!elements.leaderboardList || !elements.leaderboardEmpty) return;
+  const mode = getModeConfig(modeKey);
+  if (elements.leaderboardTitle) elements.leaderboardTitle.textContent = `Топ-5: ${mode.label}`;
+  if (elements.leaderboardBadge) elements.leaderboardBadge.textContent = mode.badge;
+
+  let entries = [];
+  try {
+    entries = await listEasterRunnerLeaderboard(mode.key, LEADERBOARD_LIMIT);
+  } catch (error) {
+    console.warn("Не удалось загрузить таблицу лидеров", error);
+    setLeaderboardMessage("Общий топ появится после запуска SQL-скрипта для таблицы лидеров.");
+    return;
+  }
+
+  elements.leaderboardList.replaceChildren();
+  elements.leaderboardEmpty.textContent = `Пока нет результатов в режиме "${mode.label}". Этот забег может стать первым.`;
+  elements.leaderboardEmpty.classList.toggle("hidden", entries.length > 0);
+
+  entries.forEach((entry, index) => {
+    const row = document.createElement("div");
+    row.className = `easter-leaderboard-row${entry.user_id === currentUser ? " is-current" : ""}`;
+
+    const rank = document.createElement("div");
+    rank.className = "easter-leaderboard-rank";
+    rank.textContent = String(entry.rank || index + 1);
+
+    const result = document.createElement("div");
+    result.className = "min-w-0";
+
+    const scoreLine = document.createElement("div");
+    scoreLine.className = "easter-leaderboard-score";
+    scoreLine.textContent = entry.display_name || "Сотрудник";
+
+    const meta = document.createElement("div");
+    meta.className = "easter-leaderboard-meta";
+    meta.textContent = `Палеты: ${entry.passed}`;
+
+    const scoreValue = document.createElement("div");
+    scoreValue.className = "easter-leaderboard-date";
+    scoreValue.textContent = `${entry.score} очков`;
+
+    result.append(scoreLine, meta);
+    row.append(rank, result, scoreValue);
+    elements.leaderboardList.append(row);
+  });
+}
+
+async function saveAndRenderLeaderboard({ modeKey, finalScore, finalPassed } = {}) {
+  setLeaderboardMessage("Загружаем общий топ...");
+
+  try {
+    await submitEasterRunnerScore({
+      mode: modeKey,
+      score: finalScore,
+      passed: finalPassed,
+    });
+  } catch (error) {
+    console.warn("Не удалось сохранить результат", error);
+    setLeaderboardMessage("Не удалось сохранить результат. Проверь, запущен ли SQL-скрипт для таблицы лидеров.");
+    return;
+  }
+
+  await renderLeaderboard(currentUserId, modeKey);
+}
+
+function showMessage({ eyebrow, title, text, button, leaderboard = false, modePicker = true }) {
+  syncModeControls();
   elements.messageEyebrow.textContent = eyebrow;
   elements.messageTitle.textContent = title;
   elements.messageText.textContent = text;
   elements.start.querySelector("span").textContent = button;
+  elements.modePicker?.classList.toggle("hidden", !modePicker);
+  elements.message.classList.toggle("with-leaderboard", leaderboard);
+  elements.leaderboard?.classList.toggle("hidden", !leaderboard);
   elements.message.classList.remove("hidden");
 }
 
@@ -307,7 +506,7 @@ function openGame() {
   showMessage({
     eyebrow: "Пасхалка найдена",
     title: "ЕГАИСные гонки",
-    text: "Перепрыгивайте палеты и продержитесь как можно дольше.",
+    text: getModeConfig().intro,
     button: "Начать",
   });
   requestAnimationFrame(() => {
@@ -350,6 +549,7 @@ function pauseGame({ focusControl = true } = {}) {
     title: "Пауза",
     text: "Игра продолжится с того же места.",
     button: "Продолжить",
+    modePicker: false,
   });
   if (focusControl) elements.start.focus();
 }
@@ -395,14 +595,37 @@ function jump() {
   }
 }
 
+function chooseObstacleType() {
+  const weights = getModeConfig().obstacleWeights;
+  const entries = Object.entries(weights);
+  const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
+  let cursor = Math.random() * total;
+
+  for (const [key, weight] of entries) {
+    cursor -= weight;
+    if (cursor <= 0) return OBSTACLE_TYPES[key] || OBSTACLE_TYPES.single;
+  }
+
+  return OBSTACLE_TYPES.single;
+}
+
 function spawnObstacle() {
-  const height = 52 + Math.random() * 20;
-  const width = height * 0.89;
+  const type = chooseObstacleType();
+  const height = type.minHeight + Math.random() * (type.maxHeight - type.minHeight);
+  const width = height * getObstacleRatio(type);
+  const mode = getModeConfig();
+  const secretSpeed = mode.key === "hardcore" && Math.random() < HARDCORE_SECRET_OBSTACLE_CHANCE
+    ? mode.baseSpeed * HARDCORE_SECRET_SPEED_MULTIPLIER
+    : null;
+
   obstacles.push({
     x: worldWidth + width,
+    previousX: worldWidth + width,
     y: GROUND_Y - height,
     width,
     height,
+    type,
+    secretSpeed,
     counted: false,
   });
 }
@@ -411,14 +634,15 @@ function addScore(obstacle) {
   if (obstacle.counted || obstacle.x + obstacle.width >= dino.x) return;
   obstacle.counted = true;
   passedObstacles += 1;
-  const points = passedObstacles % 10 === 0 ? 10 : 3;
+  const mode = getModeConfig();
+  const points = mode.getPoints(passedObstacles);
   const previousScore = score;
   score += points;
   elements.score.textContent = String(score);
   elements.passed.textContent = String(passedObstacles);
   scorePopups.push({ x: dino.x + 28, y: dino.y - 8, text: `+${points}`, life: 0.8 });
 
-  const nextSpeedLevel = Math.floor(score / SPEED_STEP_SCORE);
+  const nextSpeedLevel = Math.floor(score / mode.speedStepScore);
   if (nextSpeedLevel > speedLevel) {
     speedLevel = nextSpeedLevel;
     scorePopups.push({ x: worldWidth / 2, y: 95, text: "УСКОРЕНИЕ!", life: 1.25, large: true });
@@ -437,24 +661,49 @@ function addScore(obstacle) {
 function collisionWith(obstacle) {
   const insetX = 8;
   const insetY = 7;
-  return (
-    dino.x + insetX < obstacle.x + obstacle.width - 5 &&
-    dino.x + dino.width - insetX > obstacle.x + 5 &&
-    dino.y + insetY < obstacle.y + obstacle.height &&
-    dino.y + dino.height - 4 > obstacle.y + 6
-  );
+  const obstacleInsetX = obstacle.type?.insetX ?? 5;
+  const obstacleInsetTop = obstacle.type?.insetTop ?? 6;
+  const dinoLeft = dino.x + insetX;
+  const dinoRight = dino.x + dino.width - insetX;
+  const dinoTop = dino.y + insetY;
+  const dinoBottom = dino.y + dino.height - 4;
+  const obstacleLeft = obstacle.x + obstacleInsetX;
+  const obstacleRight = obstacle.x + obstacle.width - obstacleInsetX;
+  const obstacleTop = obstacle.y + obstacleInsetTop;
+  const obstacleBottom = obstacle.y + obstacle.height;
+  const hasVerticalOverlap = dinoTop < obstacleBottom && dinoBottom > obstacleTop;
+  const hasCurrentOverlap = dinoLeft < obstacleRight && dinoRight > obstacleLeft;
+
+  if (hasVerticalOverlap && hasCurrentOverlap) return true;
+  if (!hasVerticalOverlap || obstacle.previousX === undefined) return false;
+
+  const previousLeft = obstacle.previousX + obstacleInsetX;
+  const previousRight = obstacle.previousX + obstacle.width - obstacleInsetX;
+  const sweptLeft = Math.min(previousLeft, obstacleLeft);
+  const sweptRight = Math.max(previousRight, obstacleRight);
+
+  return dinoLeft < sweptRight && dinoRight > sweptLeft;
 }
 
 function loseGame() {
+  const finishedMode = currentMode;
+  const finalScore = score;
+  const finalPassed = passedObstacles;
   phase = "gameover";
   syncPauseButton();
   stopBackgroundMusic();
   playDefeatSound();
   showMessage({
     eyebrow: "Забег окончен",
-    title: `${score} очков`,
-    text: `Перепрыгнуто палет: ${passedObstacles}. Попробуйте побить свой результат.`,
+    title: `${finalScore} очков`,
+    text: `Перепрыгнуто палет: ${finalPassed}. Попробуйте побить общий рекорд.`,
     button: "Ещё раз",
+    leaderboard: true,
+  });
+  void saveAndRenderLeaderboard({
+    modeKey: finishedMode,
+    finalScore,
+    finalPassed,
   });
 }
 
@@ -510,7 +759,9 @@ function updateParticles(delta) {
 }
 
 function updateGame(delta) {
-  speed = 360 + speedLevel * 92;
+  const mode = getModeConfig();
+  speed = mode.baseSpeed + speedLevel * mode.speedBoost;
+  backgroundOffset += speed * BACKGROUND_SCROLL_FACTOR * delta;
   dino.velocityY += 2200 * delta;
   dino.y += dino.velocityY * delta;
   const groundTop = GROUND_Y - dino.height;
@@ -523,54 +774,43 @@ function updateGame(delta) {
   spawnTimer -= delta;
   if (spawnTimer <= 0) {
     spawnObstacle();
-    spawnTimer = Math.max(0.68, 1.15 + Math.random() * 0.72 - speedLevel * 0.06);
+    spawnTimer = Math.max(mode.minSpawn, mode.spawnBase + Math.random() * mode.spawnRandom - speedLevel * mode.spawnPenalty);
   }
 
   for (const obstacle of obstacles) {
-    obstacle.x -= speed * delta;
-    addScore(obstacle);
-    if (phase === "running" && collisionWith(obstacle)) loseGame();
+    const obstacleSpeed = obstacle.secretSpeed ?? speed;
+    obstacle.previousX = obstacle.x;
+    obstacle.x -= obstacleSpeed * delta;
+    if (phase === "running" && collisionWith(obstacle)) {
+      loseGame();
+      break;
+    }
+    if (phase === "running") addScore(obstacle);
   }
   obstacles = obstacles.filter((obstacle) => obstacle.x + obstacle.width > -30);
   updateParticles(delta);
 }
 
-function drawCoverImage(image) {
-  const sourceRatio = image.naturalWidth / image.naturalHeight;
-  const targetRatio = worldWidth / WORLD_HEIGHT;
-  let sourceX = 0;
-  let sourceY = 0;
-  let sourceWidth = image.naturalWidth;
-  let sourceHeight = image.naturalHeight;
+function drawScrollingBackgroundImage(image) {
+  const imageRatio = image.naturalWidth / image.naturalHeight;
+  const tileHeight = WORLD_HEIGHT;
+  const tileWidth = Math.max(worldWidth, tileHeight * imageRatio);
+  const offset = backgroundOffset % tileWidth;
 
-  if (sourceRatio > targetRatio) {
-    sourceWidth = image.naturalHeight * targetRatio;
-    sourceX = (image.naturalWidth - sourceWidth) / 2;
-  } else {
-    sourceHeight = image.naturalWidth / targetRatio;
-    sourceY = (image.naturalHeight - sourceHeight) / 2;
+  for (let x = -offset; x < worldWidth + tileWidth; x += tileWidth) {
+    context.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, x - 1, 0, tileWidth + 2, tileHeight);
   }
-
-  context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, worldWidth, WORLD_HEIGHT);
 }
 
 function drawBackground() {
   if (warehouseBackgroundImage.complete && warehouseBackgroundImage.naturalWidth) {
-    drawCoverImage(warehouseBackgroundImage);
+    drawScrollingBackgroundImage(warehouseBackgroundImage);
     context.fillStyle = "rgba(2,6,23,.12)";
     context.fillRect(0, 0, worldWidth, WORLD_HEIGHT);
   } else {
     context.fillStyle = "#071125";
     context.fillRect(0, 0, worldWidth, WORLD_HEIGHT);
   }
-
-  context.strokeStyle = "rgba(110,231,183,.45)";
-  context.lineWidth = 2;
-  context.beginPath();
-  context.moveTo(0, GROUND_Y + 1);
-  context.lineTo(worldWidth, GROUND_Y + 1);
-  context.stroke();
-
 }
 
 function drawRunner() {
@@ -599,8 +839,9 @@ function drawRunner() {
 
 function drawObstacles() {
   obstacles.forEach((obstacle) => {
-    if (palletImage.complete && palletImage.naturalWidth) {
-      context.drawImage(palletImage, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+    const image = obstacle.type?.image || palletImage;
+    if (image.complete && image.naturalWidth) {
+      context.drawImage(image, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
     } else {
       context.fillStyle = "#b77932";
       context.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
@@ -674,6 +915,9 @@ function bindEvents() {
   elements.close?.addEventListener("click", closeGame);
   elements.pause?.addEventListener("click", togglePause);
   elements.sound?.addEventListener("click", toggleSound);
+  elements.modeButtons.forEach((button) => {
+    button.addEventListener("click", () => setGameMode(button.dataset.easterMode));
+  });
   elements.start?.addEventListener("click", handleStartButton);
   elements.jump?.addEventListener("click", jump);
   elements.canvas?.addEventListener("pointerdown", jump);
@@ -689,6 +933,7 @@ function bindEvents() {
 async function initialize() {
   syncSoundButton();
   syncPauseButton();
+  syncModeControls();
   bindEvents();
   try {
     const session = await getSession();
