@@ -103,7 +103,7 @@ const EXAM_SCENARIOS = [
   {
     id: "employment",
     description: "В понедельник сотрудник ещё не трудоустроен; во вторник работает с 8:00 до 17:00; в среду — с 8:00 до 20:00; четверг является оплачиваемым учебным отпуском; в пятницу сотрудник уволен.",
-    expected: (mode) => week(["НТ", mode.regularDay, mode.longDay, "У", "УВ", null, null]),
+    expected: (mode) => week(["НТ", mode.regularDay, mode.longDay, "У", "УВ", "УВ", "УВ"]),
   },
   {
     id: "holiday-night",
@@ -209,7 +209,7 @@ const LESSONS = [
       ["НТ", "ещё не трудоустроен"],
       ["УВ", "уволен; дальнейшие дни блокируются"],
     ],
-    expected: (mode) => week(["НТ", "НТ", mode.regularDay, mode.regularDay, "УВ", null, null]),
+    expected: (mode) => week(["НТ", "НТ", mode.regularDay, mode.regularDay, "УВ", "УВ", "УВ"]),
   },
   {
     id: "final-exam",
@@ -615,7 +615,10 @@ function createTrainingInput(row, index) {
   input.spellcheck = false;
   input.setAttribute("aria-label", `${row === "day" ? "День" : "Ночь"}, ${DAYS[index].full}`);
 
-  input.addEventListener("focus", () => setSelectedDay(index));
+  input.addEventListener("focus", () => {
+    input.dataset.prevValue = input.value ?? "";
+    setSelectedDay(index);
+  });
   input.addEventListener("input", () => {
     userStartedExercise = true;
     if (row === "night") {
@@ -634,18 +637,19 @@ function createTrainingInput(row, index) {
 function normalizeInput(input) {
   const row = input.dataset.row;
   const index = Number(input.dataset.dayIndex);
+  const wasDismissedCell = row === "day" && normalizeCode(input.dataset.prevValue ?? input.value) === "УВ";
   const actual = parseActual(input.value, row);
+
+  if (wasDismissedCell && !(actual.kind === "code" && actual.value === "УВ")) {
+    clearDismissalTail(index);
+  }
 
   if (actual.kind === "code") {
     input.value = actual.value;
     if (row === "day") {
       nightInputs[index].value = "";
       if (actual.value === "УВ") {
-        for (let i = index + 1; i < DAYS.length; i += 1) {
-          dayInputs[i].value = "";
-          nightInputs[i].value = "";
-          marks[i] = null;
-        }
+        fillDismissalTail(index + 1);
       }
     }
   } else if (actual.kind === "number") {
@@ -658,6 +662,24 @@ function normalizeInput(input) {
 
   applyInputLocks();
   renderMarks();
+  input.dataset.prevValue = input.value ?? "";
+}
+
+function clearDismissalTail(startIndex) {
+  for (let i = startIndex; i < DAYS.length; i += 1) {
+    if (normalizeCode(dayInputs[i]?.value) !== "УВ") continue;
+    dayInputs[i].value = "";
+    nightInputs[i].value = "";
+    marks[i] = null;
+  }
+}
+
+function fillDismissalTail(startIndex) {
+  for (let i = startIndex; i < DAYS.length; i += 1) {
+    dayInputs[i].value = "УВ";
+    nightInputs[i].value = "";
+    marks[i] = null;
+  }
 }
 
 function handleInputNavigation(event) {
@@ -857,6 +879,7 @@ function validateCurrentExercise() {
   attempts += 1;
   clearEvaluation();
   dayInputs.forEach(normalizeInput);
+  nightInputs.forEach(normalizeInput);
 
   const expected = getExpectedWeek(lesson);
   const errors = [];
@@ -869,6 +892,17 @@ function validateCurrentExercise() {
       { row: "День", input: dayInputs[index], expected: expected.day[index] },
       { row: "Ночь", input: nightInputs[index], expected: expected.night[index] },
     ];
+    const dayActualForTotal = parseActual(dayInputs[index].value, "day");
+    const nightActualForTotal = parseActual(nightInputs[index].value, "night");
+    if (
+      dayActualForTotal.kind === "number"
+      && nightActualForTotal.kind === "number"
+      && dayActualForTotal.value + nightActualForTotal.value > 24
+    ) {
+      dayInputs[index].closest("td")?.classList.add("is-error");
+      nightInputs[index].closest("td")?.classList.add("is-error");
+      errors.push(`${day.full}: в сутки нельзя ставить больше 24 часов.`);
+    }
 
     for (const check of rowChecks) {
       const actual = parseActual(check.input.value, check.input.dataset.row);

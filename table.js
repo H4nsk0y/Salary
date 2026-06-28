@@ -2054,8 +2054,6 @@ function unlockNightCell(i) {
 function lockDayCell(i) {
   const el = dayInputs?.[i];
   if (!el) return;
-  el.value = "";
-  el.dataset.prev = "";
   el.disabled = true;
   el.classList.add("opacity-50","cursor-not-allowed");
   el.title = "После кода УВ дальнейшее заполнение заблокировано";
@@ -2069,6 +2067,23 @@ function unlockDayCell(i) {
   el.title = "";
 }
 
+function clearDismissalTail(startIndex) {
+  for (let i = startIndex; i < daysInMonth; i++) {
+    if (!isDismissedLeaveType(leaveType[i])) continue;
+    leaveType[i] = null;
+    dayHours[i] = 0;
+    nightHours[i] = 0;
+    if (dayInputs[i]) {
+      dayInputs[i].value = "";
+      dayInputs[i].dataset.prev = "";
+    }
+    if (nightInputs[i]) {
+      nightInputs[i].value = "";
+      nightInputs[i].dataset.prev = "";
+    }
+  }
+}
+
 function applyDismissalLock({ clearFuture = true } = {}) {
   const dismissalIndex = findDismissalIndex();
 
@@ -2079,7 +2094,15 @@ function applyDismissalLock({ clearFuture = true } = {}) {
       if (clearFuture) {
         dayHours[i] = 0;
         nightHours[i] = 0;
-        leaveType[i] = null;
+        leaveType[i] = DISMISSED_LEAVE_TYPE;
+        if (dayInputs[i]) {
+          dayInputs[i].value = "УВ";
+          dayInputs[i].dataset.prev = "УВ";
+        }
+        if (nightInputs[i]) {
+          nightInputs[i].value = "";
+          nightInputs[i].dataset.prev = "";
+        }
       }
       lockDayCell(i);
       lockNightCell(i);
@@ -2255,9 +2278,14 @@ function buildTableForMonth() {
       const sanitized = sanitizeDayCellValue(dayInput.value);
       if (sanitized !== dayInput.value) dayInput.value = sanitized;
       const raw = dayInput.value;
+      const hadDismissalAtCell = isDismissedLeaveType(leaveType[i]);
 
       if (!raw.trim()) {
         setError(null);
+        if (hadDismissalAtCell) {
+          clearDismissalTail(i);
+          applyDismissalLock({ clearFuture: false });
+        }
         if (leaveType[i]) {
           leaveType[i] = null;
           unlockNightCell(i);
@@ -2278,6 +2306,9 @@ function buildTableForMonth() {
           revertToPrev(dayInput);
           return;
         }
+        if (hadDismissalAtCell && parsed.leave !== DISMISSED_LEAVE_TYPE) {
+          clearDismissalTail(i);
+        }
         setError(null);
         leaveType[i] = parsed.leave;
         dayInput.value = sanitizeLeaveDisplayValue(raw, parsed.leave);
@@ -2293,6 +2324,10 @@ function buildTableForMonth() {
 
       if (parsed.kind === "hours") {
         setError(null);
+        if (hadDismissalAtCell) {
+          clearDismissalTail(i);
+          applyDismissalLock({ clearFuture: false });
+        }
         if (leaveType[i]) {
           leaveType[i] = null;
           unlockNightCell(i);

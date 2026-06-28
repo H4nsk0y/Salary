@@ -1010,8 +1010,6 @@ function unlockNightCell(state, i) {
 function lockDayCell(state, i) {
   const el = state.dayInputs[i];
   if (!el) return;
-  el.value = "";
-  el.dataset.prev = "";
   el.disabled = true;
   el.classList.add("opacity-50", "cursor-not-allowed");
   el.title = "Сотрудник уволен, дальнейшее заполнение заблокировано";
@@ -1025,6 +1023,23 @@ function unlockDayCell(state, i) {
   el.title = "";
 }
 
+function clearDismissalTailForState(state, startIndex) {
+  for (let i = startIndex; i < daysInMonth; i += 1) {
+    if (!isDismissedLeaveType(state.leaveType[i])) continue;
+    state.leaveType[i] = null;
+    state.dayHours[i] = 0;
+    state.nightHours[i] = 0;
+    if (state.dayInputs[i]) {
+      state.dayInputs[i].value = "";
+      state.dayInputs[i].dataset.prev = "";
+    }
+    if (state.nightInputs[i]) {
+      state.nightInputs[i].value = "";
+      state.nightInputs[i].dataset.prev = "";
+    }
+  }
+}
+
 function applyDismissalLockToState(state, { clearFuture = true } = {}) {
   const dismissalIndex = findDismissalIndex(state);
   const hasDismissal = state.dismissedBeforeMonth || dismissalIndex >= 0;
@@ -1036,7 +1051,15 @@ function applyDismissalLockToState(state, { clearFuture = true } = {}) {
       if (clearFuture) {
         state.dayHours[i] = 0;
         state.nightHours[i] = 0;
-        state.leaveType[i] = null;
+        state.leaveType[i] = DISMISSED_LEAVE_TYPE;
+        if (state.dayInputs[i]) {
+          state.dayInputs[i].value = "УВ";
+          state.dayInputs[i].dataset.prev = "УВ";
+        }
+        if (state.nightInputs[i]) {
+          state.nightInputs[i].value = "";
+          state.nightInputs[i].dataset.prev = "";
+        }
       }
       lockDayCell(state, i);
       lockNightCell(state, i);
@@ -1308,8 +1331,13 @@ function handleDayInput(input, state, i) {
   if (sanitized !== input.value) input.value = sanitized;
 
   const raw = input.value;
+  const hadDismissalAtCell = isDismissedLeaveType(state.leaveType[i]);
 
   if (!raw.trim()) {
+    if (hadDismissalAtCell) {
+      clearDismissalTailForState(state, i);
+      applyDismissalLockToState(state, { clearFuture: false });
+    }
     if (state.leaveType[i]) {
       state.leaveType[i] = null;
       unlockNightCell(state, i);
@@ -1330,6 +1358,9 @@ function handleDayInput(input, state, i) {
       return;
     }
 
+    if (hadDismissalAtCell && parsed.leave !== DISMISSED_LEAVE_TYPE) {
+      clearDismissalTailForState(state, i);
+    }
     state.leaveType[i] = parsed.leave;
     input.value = sanitizeLeaveDisplayValue(raw, parsed.leave);
     state.dayHours[i] = 0;
@@ -1342,6 +1373,10 @@ function handleDayInput(input, state, i) {
   }
 
   if (parsed.kind === "hours") {
+    if (hadDismissalAtCell) {
+      clearDismissalTailForState(state, i);
+      applyDismissalLockToState(state, { clearFuture: false });
+    }
     if (state.leaveType[i]) {
       state.leaveType[i] = null;
       unlockNightCell(state, i);

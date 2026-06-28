@@ -37,17 +37,29 @@ const CODE_LABELS = {
 };
 
 const VALID_CODES = new Set(Object.keys(CODE_LABELS));
+const ABSENCE_CODE_REFERENCE = [
+  ["ОТ", "оплачиваемый отпуск"],
+  ["ОД", "отпуск без оплаты"],
+  ["ОЗ", "обязательный отпуск без оплаты"],
+  ["Б", "больничный"],
+  ["У", "оплачиваемый учебный отпуск"],
+  ["УД", "учебный отпуск без оплаты"],
+];
+const EMPLOYMENT_CODE_REFERENCE = [
+  ["НТ", "не трудоустроен в этот день"],
+  ["УВ", "уволен; все последующие дни заполняются этим кодом автоматически"],
+];
 const PEOPLE = [
-  ["Сафина Алина Ринатовна", "Оператор", "female"],
-  ["Гасанов Камиль Мурадович", "Оператор", "male"],
-  ["Магомедова Зарина Рашидовна", "Специалист по учёту", "female"],
-  ["Керимов Рустам Алиевич", "Кладовщик", "male"],
-  ["Алиева Мадина Руслановна", "Лаборант", "female"],
-  ["Ахмедов Тимур Заурович", "Мастер смены", "male"],
-  ["Ибрагимова Диана Магомедовна", "Бухгалтер", "female"],
-  ["Османов Мурад Шамильевич", "Оператор", "male"],
-  ["Абдуллаева Амина Рамазановна", "Специалист по персоналу", "female"],
-  ["Мусаев Арсен Магомедович", "Грузчик", "male"],
+  ["Сотрудник-1", "Оператор", "female"],
+  ["Сотрудник-2", "Оператор", "male"],
+  ["Сотрудник-3", "Специалист по учёту", "female"],
+  ["Сотрудник-4", "Кладовщик", "male"],
+  ["Сотрудник-5", "Лаборант", "female"],
+  ["Сотрудник-6", "Мастер смены", "male"],
+  ["Сотрудник-7", "Бухгалтер", "female"],
+  ["Сотрудник-8", "Оператор", "male"],
+  ["Сотрудник-9", "Специалист по персоналу", "female"],
+  ["Сотрудник-10", "Грузчик", "male"],
 ];
 
 const elements = {
@@ -136,7 +148,19 @@ function requiredCell(day, row, value) {
   return { day, row, value };
 }
 
-function createEmployee({ person, modeKey, instruction, target, tolerance = 0, requiredCells = [], rule = "day", minLongShifts = 0 }) {
+function createEmployee({
+  person,
+  modeKey,
+  instruction,
+  target,
+  tolerance = 0,
+  requiredCells = [],
+  initialCells = [],
+  rule = "day",
+  minLongShifts = 0,
+  maxRegularDayShifts = Infinity,
+  hideTargetDelta = false,
+}) {
   const mode = modeByKey(modeKey);
   return {
     id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
@@ -147,8 +171,11 @@ function createEmployee({ person, modeKey, instruction, target, tolerance = 0, r
     target,
     tolerance,
     requiredCells,
+    initialCells,
     rule,
     minLongShifts,
+    maxRegularDayShifts,
+    hideTargetDelta,
   };
 }
 
@@ -166,19 +193,22 @@ function personalNormFromRequirements(employee, requiredMarks, requiredCells) {
 function buildExactPlan() {
   const mode = modeFromControl();
   const person = shuffledPeople(1, mode.key)[0];
-  const missedDays = randomInt(1, 3);
-  const target = mode.regularDay * (20 - missedDays);
+  const requiredCells = [22, 23, 24].map((day) => requiredCell(day, "day", "У"));
+  const target = personalNormFromRequirements({ modeKey: mode.key }, [], requiredCells);
   return {
     id: "exact-plan",
     title: "Индивидуальный план часов",
     shortTitle: "План часов",
-    description: "Составьте сотруднику дневной график на учебный месяц. Можно использовать смены с 8:00 до 17:00 и с 8:00 до 20:00; выходные заполнять нельзя.",
+    description: "Составьте сотруднику дневной график. Можно использовать смены с 8:00 до 17:00 и с 8:00 до 20:00; выходные заполнять нельзя.",
+    allowedMarks: [],
     requiredMarks: [],
     employees: [createEmployee({
       person,
       modeKey: mode.key,
       target,
-      instruction: `Необходимо отработать ровно ${formatHours(target)} ч. Полную месячную норму ${formatHours(monthNorm(mode, []))} ч набирать не нужно.`,
+      requiredCells,
+      initialCells: requiredCells,
+      instruction: `22, 23 и 24 числа сотрудник находится на оплачиваемой учебной сессии. В остальные рабочие дни необходимо набрать ровно ${formatHours(target)} ч.`,
       rule: "day",
     })],
   };
@@ -211,21 +241,20 @@ function buildNearestNorm() {
   const mode = modeFromControl();
   const person = shuffledPeople(1, mode.key)[0];
   const target = monthNorm(mode, []);
-  const minLongShifts = randomInt(3, 5);
   return {
     id: "nearest-norm",
     title: "Максимально близко к норме",
     shortTitle: "Близко к норме",
-    description: "Иногда обязательные длинные смены не позволяют попасть в норму идеально. Найдите наиболее близкий допустимый результат.",
+    description: "Найдите наиболее близкий допустимый результат: одну смену можно поставить с 8:00 до 17:00, остальные — только длинные дневные смены или ночные связки.",
     requiredMarks: [],
     employees: [createEmployee({
       person,
       modeKey: mode.key,
       target,
       tolerance: 3,
-      minLongShifts,
-      instruction: `Норма ${formatHours(target)} ч. Используйте не менее ${minLongShifts} длинных смен; итог допускается в диапазоне ±3 ч.`,
-      rule: "day",
+      maxRegularDayShifts: 1,
+      instruction: `Норма ${formatHours(target)} ч. ${formatHours(mode.regularDay)}-часовую смену можно использовать только один раз; остальные смены должны быть ${formatHours(mode.longDay)} ч или ночной связкой 2/2 — ${formatHours(mode.nightCloseDay)}/5.`,
+      rule: "nearest-norm",
     })],
   };
 }
@@ -250,6 +279,7 @@ function buildSickLeave() {
       requiredCells,
       instruction: `Больничный: ${sickDays.join(", ")} числа. После его учёта личная норма составит ${formatHours(target)} ч — её нужно отработать полностью.`,
       rule: "day",
+      hideTargetDelta: true,
     })],
   };
 }
@@ -270,13 +300,15 @@ function buildAbsenceMix() {
     shortTitle: "Коды отсутствий",
     description: "Правильно расставьте разные коды отсутствий и затем доведите фактические часы до уменьшенной личной нормы.",
     requiredMarks: [],
+    reference: ABSENCE_CODE_REFERENCE,
     employees: [createEmployee({
       person,
       modeKey: mode.key,
       target,
       requiredCells,
-      instruction: `ОТ: 8–9 числа; ОД: 10 числа; У: 15 числа. После учёта отсутствий личная норма — ${formatHours(target)} ч.`,
+      instruction: "8-9 числа сотрудник в запланированном отпуске. 10 числа отпросился по личным делам. 14 числа сотруднику пришла выплата, потому что 15 числа его вызвали на сессию.",
       rule: "day",
+      hideTargetDelta: true,
     })],
   };
 }
@@ -297,7 +329,7 @@ function buildCarryover() {
       modeKey: mode.key,
       target,
       tolerance: 3,
-      instruction: `Норма ${formatHours(monthNorm(mode, []))} ч, забытая переработка ${carry} ч. Цель ${formatHours(target)} ч, допустимое отклонение ±3 ч.`,
+      instruction: `Норма ${formatHours(monthNorm(mode, []))} ч, забытая переработка ${carry} ч. Допустимое отклонение ±3 ч.`,
       rule: "day",
     })],
   };
@@ -335,21 +367,23 @@ function buildEmployment() {
   const person = shuffledPeople(1, mode.key)[0];
   const requiredCells = [
     requiredCell(1, "day", "НТ"), requiredCell(2, "day", "НТ"), requiredCell(3, "day", "НТ"),
-    requiredCell(4, "day", mode.regularDay), requiredCell(5, "day", mode.longDay), requiredCell(8, "day", "УВ"),
+    requiredCell(4, "day", mode.regularDay), requiredCell(5, "day", mode.longDay),
+    ...Array.from({ length: MONTH_DAYS - 7 }, (_, index) => requiredCell(index + 8, "day", "УВ")),
   ];
   const target = mode.regularDay + mode.longDay;
   return {
     id: "employment",
     title: "Приём и увольнение",
     shortTitle: "НТ и УВ",
-    description: "Покажите период до трудоустройства, две фактические смены и увольнение. После кода «УВ» табель должен оставаться пустым.",
+    description: "Покажите период до трудоустройства, две фактические смены и увольнение. После кода «УВ» дальнейшие дни заполняются автоматически.",
     requiredMarks: [],
+    reference: EMPLOYMENT_CODE_REFERENCE,
     employees: [createEmployee({
       person,
       modeKey: mode.key,
       target,
       requiredCells,
-      instruction: `НТ: 1–3 числа; обычная смена 4 числа; длинная смена 5 числа; УВ: 8 числа.`,
+      instruction: "Сотрудник трудоустроился 4 числа, отработав смену до 5-ти, а на следующий день задержался до 8-ми. В понедельник следующей недели решил уволиться.",
       rule: "exact",
     })],
   };
@@ -436,7 +470,7 @@ function valuesMatch(actual, expected) {
 }
 
 function createState(employee) {
-  return {
+  const state = {
     employee,
     dayValues: new Array(MONTH_DAYS).fill(""),
     nightValues: new Array(MONTH_DAYS).fill(""),
@@ -444,6 +478,11 @@ function createState(employee) {
     nightInputs: [],
     summaryCell: null,
   };
+  for (const cell of employee.initialCells ?? []) {
+    const values = cell.row === "day" ? state.dayValues : state.nightValues;
+    values[cell.day - 1] = typeof cell.value === "number" ? formatHours(cell.value).replace(",", ".") : cell.value;
+  }
+  return state;
 }
 
 function currentWorked(state) {
@@ -473,11 +512,14 @@ function renderSummary(state) {
   const personalNorm = currentPersonalNorm(state);
   const target = state.employee.target;
   const delta = worked - target;
+  const deltaLine = state.employee.hideTargetDelta
+    ? ""
+    : `<div class="text-[11px] ${Math.abs(delta) <= state.employee.tolerance ? "text-emerald-300" : "text-amber-300"}">До цели: ${delta > 0 ? "+" : ""}${formatHours(delta)}</div>`;
   state.summaryCell.innerHTML = `
     <div class="text-[10px] font-semibold uppercase text-slate-500">Отработано</div>
     <div class="mt-1 text-lg font-bold text-slate-100">${formatHours(worked)} ч</div>
     <div class="mt-1 text-[11px] text-slate-400">Норма: ${formatHours(personalNorm)}</div>
-    <div class="text-[11px] ${Math.abs(delta) <= state.employee.tolerance ? "text-emerald-300" : "text-amber-300"}">До цели: ${delta > 0 ? "+" : ""}${formatHours(delta)}</div>
+    ${deltaLine}
   `;
 }
 
@@ -508,6 +550,9 @@ function setSelectedDay(index) {
   elements.selectedDay.textContent = `${day.dow}, ${day.date} число`;
   headerCells.forEach((cell, cellIndex) => cell.classList.toggle("is-selected", cellIndex === selectedDayIndex));
   elements.markButtons.forEach((button) => {
+    const allowed = !Array.isArray(scenario?.allowedMarks) || scenario.allowedMarks.includes(button.dataset.managerMark);
+    button.disabled = !allowed;
+    button.title = allowed ? "" : "В этом задании календарные отметки не используются";
     button.setAttribute("aria-pressed", String(sharedMarks[selectedDayIndex] === button.dataset.managerMark));
   });
 }
@@ -538,7 +583,11 @@ function clearEvaluation() {
 }
 
 function normalizeInput(input, state, row, index) {
+  const wasDismissedCell = row === "day" && parseValue(state.dayValues[index], "day").value === "УВ";
   const parsed = parseValue(input.value, row);
+  if (wasDismissedCell && !(parsed.kind === "code" && parsed.value === "УВ")) {
+    clearDismissalTail(state, index);
+  }
   if (parsed.kind === "number") input.value = formatHours(parsed.value).replace(",", ".");
   else if (parsed.kind === "code") input.value = parsed.value;
   else if (parsed.kind === "blank") input.value = "";
@@ -551,16 +600,30 @@ function normalizeInput(input, state, row, index) {
     state.nightValues[index] = "";
     if (state.nightInputs[index]) state.nightInputs[index].value = "";
     if (parsed.value === "УВ") {
-      for (let day = index + 1; day < MONTH_DAYS; day += 1) {
-        state.dayValues[day] = "";
-        state.nightValues[day] = "";
-        state.dayInputs[day].value = "";
-        state.nightInputs[day].value = "";
-      }
+      fillDismissalTail(state, index + 1);
     }
   }
   applyInputLocks(state);
   renderSummary(state);
+}
+
+function clearDismissalTail(state, startIndex) {
+  for (let day = startIndex; day < MONTH_DAYS; day += 1) {
+    if (parseValue(state.dayValues[day], "day").value !== "УВ") continue;
+    state.dayValues[day] = "";
+    state.nightValues[day] = "";
+    if (state.dayInputs[day]) state.dayInputs[day].value = "";
+    if (state.nightInputs[day]) state.nightInputs[day].value = "";
+  }
+}
+
+function fillDismissalTail(state, startIndex) {
+  for (let day = startIndex; day < MONTH_DAYS; day += 1) {
+    state.dayValues[day] = "УВ";
+    state.nightValues[day] = "";
+    if (state.dayInputs[day]) state.dayInputs[day].value = "УВ";
+    if (state.nightInputs[day]) state.nightInputs[day].value = "";
+  }
 }
 
 function applyInputLocks(state) {
@@ -595,10 +658,25 @@ function createManagerInput(state, row, index) {
   input.setAttribute("aria-label", `${state.employee.name}, ${row === "day" ? "день" : "ночь"}, ${index + 1} число`);
   input.addEventListener("focus", () => setSelectedDay(index));
   input.addEventListener("input", () => {
+    const previousValue = row === "day" ? state.dayValues[index] : state.nightValues[index];
     if (row === "night") input.value = input.value.replace(/[^0-9.,]/g, "");
     else input.value = input.value.toUpperCase().replace(/\s+/g, "");
     if (row === "day") state.dayValues[index] = input.value;
     else state.nightValues[index] = input.value;
+    if (row === "day") {
+      const previousWasDismissed = parseValue(previousValue, "day").value === "УВ";
+      const currentCode = normalizeLetters(input.value);
+      if (previousWasDismissed && currentCode !== "УВ") {
+        clearDismissalTail(state, index + 1);
+      }
+      if (currentCode === "УВ") {
+        input.value = "УВ";
+        state.dayValues[index] = "УВ";
+        state.nightValues[index] = "";
+        if (state.nightInputs[index]) state.nightInputs[index].value = "";
+        fillDismissalTail(state, index + 1);
+      }
+    }
     missionPassed = false;
     elements.check.textContent = "Проверить отдел";
     clearEvaluation();
@@ -673,6 +751,13 @@ function renderTable() {
       state.nightInputs.push(nightInput);
     });
 
+    state.dayInputs.forEach((input, index) => {
+      input.value = state.dayValues[index] || "";
+    });
+    state.nightInputs.forEach((input, index) => {
+      input.value = state.nightValues[index] || "";
+    });
+
     const summaryCell = document.createElement("td");
     summaryCell.className = "manager-summary-cell";
     summaryCell.rowSpan = 2;
@@ -695,6 +780,27 @@ function renderBriefings() {
     item.innerHTML = `<div class="text-sm font-bold text-slate-100">${employee.name}</div><div class="mt-1 text-xs leading-5 text-slate-300/85">${employee.instruction}</div>`;
     elements.briefings.appendChild(item);
   });
+
+  if (Array.isArray(scenario.reference) && scenario.reference.length) {
+    const reference = document.createElement("div");
+    reference.className = "rounded-2xl bg-slate-950/35 p-4 ring-1 ring-white/10 lg:col-span-2";
+
+    const title = document.createElement("div");
+    title.className = "text-xs font-bold uppercase tracking-wide text-indigo-200";
+    title.textContent = "Шпаргалка по кодам";
+
+    const list = document.createElement("div");
+    list.className = "mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3";
+    scenario.reference.forEach(([code, description]) => {
+      const row = document.createElement("div");
+      row.className = "flex min-w-0 items-start gap-2 rounded-xl bg-white/[0.035] px-3 py-2 text-xs ring-1 ring-white/10";
+      row.innerHTML = `<span class="shrink-0 rounded-lg bg-indigo-500/15 px-2 py-1 font-extrabold text-indigo-100 ring-1 ring-indigo-400/20">${code}</span><span class="min-w-0 pt-1 leading-5 text-slate-300">${description}</span>`;
+      list.appendChild(row);
+    });
+
+    reference.append(title, list);
+    elements.briefings.appendChild(reference);
+  }
 }
 
 function renderMissionStrip() {
@@ -742,7 +848,7 @@ function loadMission(index, { keepVariant = false } = {}) {
   renderTable();
   renderMissionStrip();
   renderProgress();
-  setManagerFeedback("Прочитайте условия для каждого сотрудника и заполните учебный месяц.");
+  setManagerFeedback("Прочитайте условия для каждого сотрудника и заполните таблицу.");
   saveManagerProgress();
 }
 
@@ -755,6 +861,7 @@ function validateEmployee(state, errors) {
   const mode = modeByKey(employee.modeKey);
   const required = requiredMap(employee);
   let longShiftCount = 0;
+  let regularDayShiftCount = 0;
 
   for (const cell of employee.requiredCells) {
     const input = cell.row === "day" ? state.dayInputs[cell.day - 1] : state.nightInputs[cell.day - 1];
@@ -772,6 +879,22 @@ function validateEmployee(state, errors) {
     const nightActual = parseValue(state.nightInputs[day.index].value, "night");
     const dayRequired = required.has(`day:${day.index}`);
     const nightRequired = required.has(`night:${day.index}`);
+    const dayCell = state.dayInputs[day.index].closest("td");
+    const nightCell = state.nightInputs[day.index].closest("td");
+
+    if (dayActual.kind === "invalid") {
+      dayCell?.classList.add("is-error");
+      errors.push(`${employee.name}: ${day.date} число, день — некорректное значение.`);
+    }
+    if (nightActual.kind === "invalid") {
+      nightCell?.classList.add("is-error");
+      errors.push(`${employee.name}: ${day.date} число, ночь — некорректное значение.`);
+    }
+    if (dayActual.kind === "number" && nightActual.kind === "number" && dayActual.value + nightActual.value > 24) {
+      dayCell?.classList.add("is-error");
+      nightCell?.classList.add("is-error");
+      errors.push(`${employee.name}: ${day.date} число — в сутки нельзя ставить больше 24 часов.`);
+    }
 
     if (employee.rule === "exact") {
       if (!dayRequired && dayActual.kind !== "blank") {
@@ -781,6 +904,61 @@ function validateEmployee(state, errors) {
       if (!nightRequired && nightActual.kind !== "blank") {
         state.nightInputs[day.index].closest("td")?.classList.add("is-error");
         errors.push(`${employee.name}: лишние ночные часы ${day.date} числа.`);
+      }
+      return;
+    }
+
+    if (employee.rule === "nearest-norm") {
+      if (dayActual.kind === "code" && !dayRequired) {
+        dayCell?.classList.add("is-error");
+        errors.push(`${employee.name}: код ${dayActual.value} ${day.date} числа не указан в условии.`);
+      }
+
+      if (dayActual.kind === "number" || nightActual.kind === "number") {
+        if (day.weekend || sharedMarks[day.index] === "holiday" || sharedMarks[day.index] === "transferred") {
+          dayCell?.classList.add("is-error");
+          nightCell?.classList.add("is-error");
+          errors.push(`${employee.name}: ${day.date} число является нерабочим.`);
+          return;
+        }
+
+        const dayValue = dayActual.kind === "number" ? dayActual.value : 0;
+        const nightValue = nightActual.kind === "number" ? nightActual.value : 0;
+        const isRegularDay = Math.abs(dayValue - mode.regularDay) < 0.001 && nightValue === 0;
+        const isLongDay = Math.abs(dayValue - mode.longDay) < 0.001 && nightValue === 0;
+        const isNightStart = Math.abs(dayValue - 2) < 0.001 && Math.abs(nightValue - 2) < 0.001;
+        const isNightClose = Math.abs(dayValue - mode.nightCloseDay) < 0.001 && Math.abs(nightValue - 5) < 0.001;
+        const previousDayActual = day.index > 0 ? parseValue(state.dayInputs[day.index - 1].value, "day") : { kind: "blank" };
+        const previousNightActual = day.index > 0 ? parseValue(state.nightInputs[day.index - 1].value, "night") : { kind: "blank" };
+        const nextDayActual = day.index < MONTH_DAYS - 1 ? parseValue(state.dayInputs[day.index + 1].value, "day") : { kind: "blank" };
+        const nextNightActual = day.index < MONTH_DAYS - 1 ? parseValue(state.nightInputs[day.index + 1].value, "night") : { kind: "blank" };
+        const previousIsNightStart = previousDayActual.kind === "number"
+          && previousNightActual.kind === "number"
+          && Math.abs(previousDayActual.value - 2) < 0.001
+          && Math.abs(previousNightActual.value - 2) < 0.001;
+        const nextIsNightClose = nextDayActual.kind === "number"
+          && nextNightActual.kind === "number"
+          && Math.abs(nextDayActual.value - mode.nightCloseDay) < 0.001
+          && Math.abs(nextNightActual.value - 5) < 0.001;
+
+        if (isRegularDay) regularDayShiftCount += 1;
+        if (isLongDay) longShiftCount += 1;
+
+        if (!isRegularDay && !isLongDay && !isNightStart && !isNightClose) {
+          dayCell?.classList.add("is-error");
+          nightCell?.classList.add("is-error");
+          errors.push(`${employee.name}: ${day.date} числа допустимы только ${formatHours(mode.regularDay)} ч один раз, ${formatHours(mode.longDay)} ч или ночная связка 2/2 — ${formatHours(mode.nightCloseDay)}/5.`);
+        }
+        if (isNightStart && !nextIsNightClose) {
+          dayCell?.classList.add("is-error");
+          nightCell?.classList.add("is-error");
+          errors.push(`${employee.name}: после 2/2 ${day.date} числа на следующую дату нужно поставить ${formatHours(mode.nightCloseDay)}/5.`);
+        }
+        if (isNightClose && !previousIsNightStart) {
+          dayCell?.classList.add("is-error");
+          nightCell?.classList.add("is-error");
+          errors.push(`${employee.name}: ${formatHours(mode.nightCloseDay)}/5 ${day.date} числа должно закрывать ночную смену 2/2 на предыдущую дату.`);
+        }
       }
       return;
     }
@@ -809,11 +987,15 @@ function validateEmployee(state, errors) {
         errors.push(`${employee.name}: ${day.date} числа используйте допустимую дневную смену (${allowed.map(formatHours).join(" или ")} ч).`);
       }
       if (Math.abs(dayActual.value - mode.longDay) < 0.001) longShiftCount += 1;
+      if (Math.abs(dayActual.value - mode.regularDay) < 0.001) regularDayShiftCount += 1;
     }
   });
 
   if (longShiftCount < employee.minLongShifts) {
     errors.push(`${employee.name}: длинных смен должно быть не меньше ${employee.minLongShifts}, сейчас ${longShiftCount}.`);
+  }
+  if (regularDayShiftCount > employee.maxRegularDayShifts) {
+    errors.push(`${employee.name}: ${formatHours(mode.regularDay)}-часовую смену можно использовать только ${employee.maxRegularDayShifts} раз, сейчас ${regularDayShiftCount}.`);
   }
 
   const worked = currentWorked(state);
@@ -949,7 +1131,9 @@ function bindEvents() {
   });
   elements.markButtons.forEach((button) => {
     button.addEventListener("click", () => {
+      if (button.disabled) return;
       const mark = button.dataset.managerMark;
+      if (Array.isArray(scenario?.allowedMarks) && !scenario.allowedMarks.includes(mark)) return;
       sharedMarks[selectedDayIndex] = sharedMarks[selectedDayIndex] === mark ? null : mark;
       missionPassed = false;
       elements.check.textContent = "Проверить отдел";
