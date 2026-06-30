@@ -223,6 +223,7 @@ export function setupOwnerUserControl({
   const genderSelect = byId("ownerUserGender");
   const tabNumberInput = byId("ownerUserTabNumber");
   const branchSelect = byId("ownerUserBranch");
+  const weeklyHoursSelect = byId("ownerUserWeeklyHours");
   const employmentDateInput = byId("ownerUserEmploymentDate");
   const okladInput = byId("ownerUserOklad");
   const saveBtn = byId("ownerUserSaveBtn");
@@ -309,6 +310,7 @@ export function setupOwnerUserControl({
       summary.append(
         createInfoItem("Email", row.email || "—"),
         createInfoItem("Оклад", formatMoney(row.oklad)),
+        createInfoItem("Норма недели", `${Number(row.weekly_hours) === 35 ? 35 : 40} ч`),
         createInfoItem("Отдел", row.department_name || "Без отдела", row.department_key ? "ok" : "warn"),
         createInfoItem("Последний вход", formatDate(row.last_sign_in_at, true)),
         createInfoItem("Активные сессии", String(row.active_session_count ?? 0)),
@@ -324,6 +326,7 @@ export function setupOwnerUserControl({
     if (genderSelect) genderSelect.value = row.gender || "";
     if (tabNumberInput) tabNumberInput.value = row.tab_number || "";
     if (branchSelect) branchSelect.value = row.branch || "";
+    if (weeklyHoursSelect) weeklyHoursSelect.value = Number(row.weekly_hours) === 35 ? "35" : "40";
     if (employmentDateInput) employmentDateInput.value = row.employment_date || "";
     if (okladInput) okladInput.value = row.oklad == null ? "" : String(row.oklad);
 
@@ -567,6 +570,7 @@ export function setupOwnerUserControl({
         gender: "пол",
         tab_number: "табельный номер",
         branch: "филиал",
+        weekly_hours: "норма недели",
         employment_date: "дата трудоустройства",
         oklad: "оклад",
       };
@@ -716,6 +720,7 @@ export function setupOwnerUserControl({
         gender: genderSelect?.value || null,
         tabNumber: tabNumberInput?.value?.trim() || null,
         branch: branchSelect?.value || null,
+        weeklyHours: weeklyHoursSelect?.value || 40,
         employmentDate: employmentDateInput?.value || null,
         oklad: parsedOklad,
       });

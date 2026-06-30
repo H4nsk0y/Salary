@@ -98,6 +98,20 @@ function isMissingHideCalculatorNavColumnError(error) {
   );
 }
 
+function isMissingWeeklyHoursColumnError(error) {
+  const text = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].filter(Boolean).join(" ");
+
+  return (
+    /weekly_hours/i.test(text) &&
+    /(column|schema cache|does not exist|could not find|42703|PGRST204)/i.test(text)
+  );
+}
+
 function assertValidYearMonth(year, month) {
   const y = Number(year);
   const m = Number(month);
@@ -154,12 +168,12 @@ export async function getMyProfile() {
 
       if (!fallbackError) {
         return fallbackData
-          ? {
+          ? attachWeeklyHours({
               ...fallbackData,
               egais_file_reminders_enabled:
                 fallbackData.egais_file_reminders_enabled === true,
               hide_calculator_nav: false,
-            }
+            }, userId)
           : null;
       }
 
@@ -186,11 +200,11 @@ export async function getMyProfile() {
 
       if (!fallbackError) {
         return fallbackData
-          ? {
+          ? attachWeeklyHours({
               ...fallbackData,
               egais_file_reminders_enabled: false,
               hide_calculator_nav: fallbackData.hide_calculator_nav === true,
-            }
+            }, userId)
           : null;
       }
 
@@ -206,7 +220,7 @@ export async function getMyProfile() {
         .maybeSingle();
 
       if (!withBranchError) {
-        return withBranchData ? { ...withBranchData, employment_date: null } : null;
+        return withBranchData ? attachWeeklyHours({ ...withBranchData, employment_date: null }, userId) : null;
       }
 
       if (!isMissingBranchColumnError(withBranchError)) {
@@ -227,13 +241,13 @@ export async function getMyProfile() {
         throw legacyError;
       }
 
-      return legacyData ? { ...legacyData, branch: null, employment_date: null } : null;
+      return legacyData ? attachWeeklyHours({ ...legacyData, branch: null, employment_date: null }, userId) : null;
     }
 
     throw error;
   }
 
-  return data ?? null;
+  return data ? attachWeeklyHours(data, userId) : null;
 }
 
 export async function updateMyOklad(oklad) {
@@ -256,6 +270,7 @@ export async function updateMyProfile({
   tabNumber,
   branch,
   employmentDate,
+  weeklyHours,
 }) {
   const userId = await requireUserId();
 
@@ -269,6 +284,7 @@ export async function updateMyProfile({
   if (tabNumber !== undefined) patch.tab_number = tabNumber;
   if (branch !== undefined) patch.branch = branch;
   if (employmentDate !== undefined) patch.employment_date = employmentDate;
+  if (weeklyHours !== undefined) patch.weekly_hours = normalizeWeeklyHours(weeklyHours);
 
   const { error } = await supabase
     .from("profiles")
@@ -281,6 +297,10 @@ export async function updateMyProfile({
 
     if (branch !== undefined && isMissingBranchColumnError(error)) {
       throw new Error("В базе пока нет поля филиала. Запусти supabase-sql/004_profile_branch.sql в Supabase SQL Editor.");
+    }
+
+    if (weeklyHours !== undefined && isMissingWeeklyHoursColumnError(error)) {
+      throw new Error("В базе пока нет поля нормы недели. Запусти supabase-sql/021_weekly_hours.sql в Supabase SQL Editor.");
     }
 
     throw error;
@@ -305,6 +325,40 @@ export async function updateMyProfileFields(fields) {
 
     throw error;
   }
+}
+
+function normalizeWeeklyHours(value) {
+  const n = Number(value);
+  if (n === 35) return 35;
+  if (n === 40) return 40;
+  return null;
+}
+
+async function fetchWeeklyHoursMap(userIds = []) {
+  const ids = [...new Set(
+    (Array.isArray(userIds) ? userIds : [])
+      .map((id) => String(id || "").trim())
+      .filter(Boolean)
+  )];
+  if (!ids.length) return new Map();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("user_id, weekly_hours")
+    .in("user_id", ids);
+
+  if (error) {
+    if (isMissingWeeklyHoursColumnError(error)) return new Map();
+    throw error;
+  }
+
+  return new Map((data ?? []).map((row) => [row.user_id, normalizeWeeklyHours(row.weekly_hours)]));
+}
+
+async function attachWeeklyHours(profile, userId) {
+  if (!profile) return profile;
+  const weeklyMap = await fetchWeeklyHoursMap([userId ?? profile.user_id]);
+  return { ...profile, weekly_hours: weeklyMap.get(userId ?? profile.user_id) ?? null };
 }
 
 export async function updateMyMoneyPin({
@@ -571,6 +625,7 @@ export async function listManagedDepartmentMembers(departmentKey) {
   if (profilesError) throw profilesError;
 
   const profileMap = new Map((profiles ?? []).map((row) => [row.user_id, row]));
+  const weeklyHoursMap = await fetchWeeklyHoursMap(userIds);
 
  return userIds.map((userId) => {
     const profile = profileMap.get(userId) ?? null;
@@ -583,6 +638,7 @@ export async function listManagedDepartmentMembers(departmentKey) {
       role: profile?.role ?? "user",
       oklad: profile?.oklad ?? null,
       gender: profile?.gender ?? null,
+      weekly_hours: weeklyHoursMap.get(userId) ?? null,
       branch: profile?.branch ?? null,
       position: profile?.position ?? "",
       tab_number: profile?.tab_number ?? "",
@@ -1110,6 +1166,21 @@ export async function upsertMyPresence(pageName = "") {
 }
 
 export async function ownerListUsers() {
+  const newest = await supabase.rpc("owner_list_users_v3");
+
+  if (!newest.error) return newest.data ?? [];
+
+  const newestErrorText = [
+    newest.error?.message,
+    newest.error?.details,
+    newest.error?.hint,
+    newest.error?.code,
+  ].filter(Boolean).join(" ");
+
+  if (!/owner_list_users_v3|PGRST202|schema cache|could not find/i.test(newestErrorText)) {
+    throw newest.error;
+  }
+
   const modern = await supabase.rpc("owner_list_users_v2");
 
   if (!modern.error) return modern.data ?? [];
@@ -1139,10 +1210,41 @@ export async function ownerUpdateUserProfile({
   tabNumber = null,
   branch = null,
   employmentDate = null,
+  weeklyHours = null,
   oklad = null,
 } = {}) {
   const uid = String(userId ?? "").trim();
   if (!uid) throw new Error("Не указан пользователь.");
+
+  const weekly = normalizeWeeklyHours(weeklyHours);
+  const next = await supabase.rpc("owner_update_user_profile_v2", {
+    p_user_id: uid,
+    p_display_name: displayName || null,
+    p_position: position || null,
+    p_gender: gender || null,
+    p_tab_number: tabNumber || null,
+    p_branch: branch || null,
+    p_employment_date: employmentDate || null,
+    p_weekly_hours: weekly,
+    p_oklad: oklad === "" || oklad == null ? null : Number(oklad),
+  });
+
+  if (!next.error) return;
+
+  const nextErrorText = [
+    next.error?.message,
+    next.error?.details,
+    next.error?.hint,
+    next.error?.code,
+  ].filter(Boolean).join(" ");
+
+  if (!/owner_update_user_profile_v2|PGRST202|schema cache|could not find/i.test(nextErrorText)) {
+    throw next.error;
+  }
+
+  if (weekly === 35) {
+    throw new Error("В базе пока нет поля нормы недели. Запусти supabase-sql/021_weekly_hours.sql в Supabase SQL Editor.");
+  }
 
   const { error } = await supabase.rpc("owner_update_user_profile", {
     p_user_id: uid,
@@ -1215,7 +1317,7 @@ export async function ownerRunAccountAction({
   }
 
   if (data?.error) throw new Error(String(data.error));
-  return data ?? null;
+  return data ? attachWeeklyHours(data, userId) : null;
 }
 
 export async function ownerListPayrollAnalytics({ year = null, departmentKey = null } = {}) {

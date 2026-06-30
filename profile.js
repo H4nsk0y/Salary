@@ -59,6 +59,8 @@ const DISMISSED_LEAVE_TYPE = "dismissed";
 
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
+const DEFAULT_WEEKLY_HOURS = 40;
+const REDUCED_WEEKLY_HOURS = 35;
 let BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
 
 let currentProfile = null;
@@ -84,6 +86,7 @@ const okladInput = document.getElementById("okladInput");
 const genderSelect = document.getElementById("genderSelect");
 const tabNumberInput = document.getElementById("tabNumberInput");
 const branchSelect = document.getElementById("branchSelect");
+const weeklyHoursSelect = document.getElementById("weeklyHoursSelect");
 const employmentDateInput = document.getElementById("employmentDateInput");
 const okladPeekBtnInitial = document.getElementById("okladInputPeekBtn");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
@@ -214,6 +217,7 @@ function getProfileAutofillFields() {
     genderSelect,
     tabNumberInput,
     branchSelect,
+    weeklyHoursSelect,
     employmentDateInput,
     okladInput,
   ].filter(Boolean);
@@ -238,6 +242,7 @@ function getExpectedProfileFieldValues(profile) {
     gender: profile?.gender ?? "",
     tabNumber: profile?.tab_number ?? "",
     branch: profile?.branch ?? "",
+    weeklyHours: String(normalizeWeeklyHours(profile?.weekly_hours) ?? DEFAULT_WEEKLY_HOURS),
     employmentDate: profile?.employment_date ?? "",
     oklad: profile?.oklad != null ? String(profile.oklad) : "",
   };
@@ -249,6 +254,7 @@ function applyExpectedProfileFieldValues(values) {
   if (genderSelect) genderSelect.value = values.gender;
   if (tabNumberInput) tabNumberInput.value = values.tabNumber;
   if (branchSelect) branchSelect.value = values.branch;
+  if (weeklyHoursSelect) weeklyHoursSelect.value = values.weeklyHours;
   if (employmentDateInput) {
     employmentDateInput.value = values.employmentDate;
     updateEmploymentDateHint();
@@ -622,10 +628,39 @@ function normalizeMoneyNumber(value) {
   return Number.isFinite(n) ? Number(n.toFixed(2)) : null;
 }
 
+function normalizeWeeklyHours(value) {
+  const n = Number(value);
+  if (n === REDUCED_WEEKLY_HOURS) return REDUCED_WEEKLY_HOURS;
+  if (n === DEFAULT_WEEKLY_HOURS) return DEFAULT_WEEKLY_HOURS;
+  return null;
+}
+
+function getWeeklyHoursByProfile(profile) {
+  return normalizeWeeklyHours(profile?.weekly_hours) ?? DEFAULT_WEEKLY_HOURS;
+}
+
 function getBaseDayHoursByProfile(profile) {
+  if (getWeeklyHoursByProfile(profile) === REDUCED_WEEKLY_HOURS) {
+    return REDUCED_WEEKLY_HOURS / 5;
+  }
+
   return profile?.gender === "female" && profile?.branch === CHATEAU_ALVISA_BRANCH
     ? FEMALE_DAY_HOURS
     : DEFAULT_DAY_HOURS;
+}
+
+function resolveBaseDayHoursForPayload(payload, profile = currentProfile) {
+  if (normalizeWeeklyHours(profile?.weekly_hours) !== null) {
+    return getBaseDayHoursByProfile(profile);
+  }
+
+  const snapshotBase = Number(payload?.normSnapshot?.baseDayHours);
+  if (Number.isFinite(snapshotBase) && snapshotBase > 0) return snapshotBase;
+
+  const snapshotWeekly = normalizeWeeklyHours(payload?.normSnapshot?.weeklyHours);
+  if (snapshotWeekly === REDUCED_WEEKLY_HOURS) return REDUCED_WEEKLY_HOURS / 5;
+
+  return getBaseDayHoursByProfile(profile);
 }
 
 function getHazardRateByPosition(position) {
@@ -1099,7 +1134,7 @@ function resolveMoneySummaryFromPayload(payload, profile) {
       ? Number(moneySnapshot.effectiveOkladSnapshot)
       : baseOklad * (1 + hazardRate);
 
-  const baseDayHours = getBaseDayHoursByProfile(profile);
+  const baseDayHours = resolveBaseDayHoursForPayload(payload, profile);
   const monthNorm = computeCalendarNormFromPayload(payload, baseDayHours);
 
   if (!(monthNorm > 0)) {
@@ -1158,6 +1193,7 @@ function computeCompensatoryLeaveHours(payload) {
   const y = safeNum(payload.year);
   const m = safeNum(payload.month);
   const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const baseDayHours = resolveBaseDayHoursForPayload(payload);
 
   const isHoliday = Array.isArray(payload.isHoliday) ? payload.isHoliday : new Array(daysInMonth).fill(false);
   const isTransferredOff = Array.isArray(payload.isTransferredOff) ? payload.isTransferredOff : new Array(daysInMonth).fill(false);
@@ -1171,7 +1207,7 @@ function computeCompensatoryLeaveHours(payload) {
       y,
       m,
       index: i,
-      baseDayHours: BASE_DAY_HOURS,
+      baseDayHours,
       isHoliday,
       isTransferredOff,
       isShortDay,
@@ -1194,6 +1230,7 @@ function computeMonthOvertimeSigned(payload) {
   const dayHours = Array.isArray(payload.dayHours) ? payload.dayHours : new Array(daysInMonth).fill(0);
   const nightHours = Array.isArray(payload.nightHours) ? payload.nightHours : new Array(daysInMonth).fill(0);
   const leaveType = Array.isArray(payload.leaveType) ? payload.leaveType : new Array(daysInMonth).fill(null);
+  const baseDayHours = resolveBaseDayHoursForPayload(payload);
 
   let weekdays = 0;
   let holidayWeekdays = 0;
@@ -1210,9 +1247,9 @@ function computeMonthOvertimeSigned(payload) {
   }
 
   const monthNorm =
-    weekdays * BASE_DAY_HOURS -
-    holidayWeekdays * BASE_DAY_HOURS -
-    transferredWeekdays * BASE_DAY_HOURS -
+    weekdays * baseDayHours -
+    holidayWeekdays * baseDayHours -
+    transferredWeekdays * baseDayHours -
     shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
 
   let leaveEffectiveHours = 0;
@@ -1224,7 +1261,7 @@ function computeMonthOvertimeSigned(payload) {
       y,
       m,
       index: i,
-      baseDayHours: BASE_DAY_HOURS,
+      baseDayHours,
       isHoliday,
       isTransferredOff,
       isShortDay,
@@ -1617,6 +1654,7 @@ async function refreshProfile() {
     gender: "",
     tab_number: "",
     branch: "",
+    weekly_hours: DEFAULT_WEEKLY_HOURS,
     employment_date: "",
     oklad: null,
     role: "user",
@@ -1636,6 +1674,7 @@ async function refreshProfile() {
   if (!requireDom(displayNameInput, "displayNameInput")) return;
   if (!requireDom(tabNumberInput, "tabNumberInput")) return;
   if (!requireDom(branchSelect, "branchSelect")) return;
+  if (!requireDom(weeklyHoursSelect, "weeklyHoursSelect")) return;
   if (!requireDom(employmentDateInput, "employmentDateInput")) return;
   if (!requireDom(okladInput, "okladInput")) return;
   if (!requireDom(positionSelect, "positionSelect")) return;
@@ -2011,6 +2050,7 @@ async function saveProfile() {
   const displayName = displayNameInput.value.trim();
   const tabNumber = String(tabNumberInput.value || "").trim();
   const branch = branchSelect ? String(branchSelect.value || "") : "";
+  const weeklyHours = normalizeWeeklyHours(weeklyHoursSelect?.value);
   const employmentDate = String(employmentDateInput?.value || "").trim();
   const oklad = parseNumber(okladInput.value);
   const position = positionSelect ? String(positionSelect.value || "") : "";
@@ -2034,6 +2074,10 @@ async function saveProfile() {
   }
   if (!BRANCH_VALUES.has(branch)) {
     setError("Некорректный филиал.");
+    return;
+  }
+  if (!weeklyHours) {
+    setError("Некорректная норма недели.");
     return;
   }
   if (employmentDate && !/^\d{4}-\d{2}-\d{2}$/.test(employmentDate)) {
@@ -2066,13 +2110,14 @@ async function saveProfile() {
       displayName: displayName || null,
       tabNumber: tabNumber || null,
       branch: branch || null,
+      weeklyHours,
       employmentDate: employmentDate || null,
       oklad: okladInput.value.trim() ? oklad : null,
       position: position || null,
       gender: gender || null,
     });
 
-    BASE_DAY_HOURS = getBaseDayHoursByProfile({ gender, branch });
+    BASE_DAY_HOURS = getBaseDayHoursByProfile({ gender, branch, weekly_hours: weeklyHours });
 
     await refreshProfile();
     await refreshTimesheets();
@@ -2224,7 +2269,7 @@ for (const field of [displayNameInput, tabNumberInput, okladInput].filter(Boolea
   field.addEventListener("drop", markProfileFieldsTouched);
   field.addEventListener("compositionstart", markProfileFieldsTouched);
 }
-for (const field of [positionSelect, genderSelect, branchSelect, employmentDateInput].filter(Boolean)) {
+for (const field of [positionSelect, genderSelect, branchSelect, weeklyHoursSelect, employmentDateInput].filter(Boolean)) {
   field.addEventListener("pointerdown", markProfileFieldsTouched);
   field.addEventListener("keydown", markProfileFieldsTouched);
   field.addEventListener("change", markProfileFieldsTouched);

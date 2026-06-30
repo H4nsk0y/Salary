@@ -24,6 +24,8 @@ const prefersReducedMotion =
 
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
+const DEFAULT_WEEKLY_HOURS = 40;
+const REDUCED_WEEKLY_HOURS = 35;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const HAZARD_POSITION_RATE = 0.04;
 
@@ -280,10 +282,74 @@ function getHazardRateByPosition(position) {
   return 0;
 }
 
+function normalizeWeeklyHours(value) {
+  const n = Number(value);
+  if (n === REDUCED_WEEKLY_HOURS) return REDUCED_WEEKLY_HOURS;
+  if (n === DEFAULT_WEEKLY_HOURS) return DEFAULT_WEEKLY_HOURS;
+  return null;
+}
+
+function getWeeklyHoursByProfile(profile) {
+  return normalizeWeeklyHours(profile?.weekly_hours) ?? DEFAULT_WEEKLY_HOURS;
+}
+
 function getBaseDayHoursByProfile(profile) {
+  if (getWeeklyHoursByProfile(profile) === REDUCED_WEEKLY_HOURS) {
+    return REDUCED_WEEKLY_HOURS / 5;
+  }
+
   return profile?.gender === "female" && profile?.branch === CHATEAU_ALVISA_BRANCH
     ? FEMALE_DAY_HOURS
     : DEFAULT_DAY_HOURS;
+}
+
+function normalizeNormSnapshot(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const baseDayHours = Number(raw.baseDayHours);
+  if (!(Number.isFinite(baseDayHours) && baseDayHours > 0)) return null;
+
+  return {
+    weeklyHours: normalizeWeeklyHours(raw.weeklyHours),
+    baseDayHours,
+    gender: raw.gender ?? null,
+    branch: raw.branch ?? null,
+  };
+}
+
+function currentNormProfile() {
+  return {
+    gender: profileGender,
+    branch: profileBranch,
+    weekly_hours: profileWeeklyHours,
+  };
+}
+
+function createNormSnapshot(profile = currentNormProfile(), baseDayHours = null) {
+  const existing = normalizeNormSnapshot(currentLoadedPayload?.normSnapshot);
+  const resolvedBaseDayHours = Number(baseDayHours ?? getBaseDayHoursByProfile(profile));
+  if (existing && Math.abs(existing.baseDayHours - resolvedBaseDayHours) < 0.001) {
+    return existing;
+  }
+
+  const weeklyHours = getWeeklyHoursByProfile(profile);
+  return {
+    weeklyHours,
+    baseDayHours: Number(resolvedBaseDayHours.toFixed(2)),
+    gender: profile?.gender ?? null,
+    branch: profile?.branch ?? null,
+  };
+}
+
+function applyNormContextFromPayload(payload) {
+  if (normalizeWeeklyHours(profileWeeklyHours) !== null) {
+    BASE_DAY_HOURS = getBaseDayHoursByProfile(currentNormProfile());
+    LEAVE_HOURS_PER_DAY = BASE_DAY_HOURS;
+    return;
+  }
+
+  const snapshot = normalizeNormSnapshot(payload?.normSnapshot);
+  BASE_DAY_HOURS = snapshot?.baseDayHours ?? getBaseDayHoursByProfile(currentNormProfile());
+  LEAVE_HOURS_PER_DAY = BASE_DAY_HOURS;
 }
 
 function setError(msg) {
@@ -595,6 +661,9 @@ let leaveType = [];
 let profileRole = "user";
 let profileOklad = null;
 let profilePosition = "";
+let profileGender = null;
+let profileBranch = null;
+let profileWeeklyHours = null;
 let profileEmploymentDate = null;
 let ensureTableMoneyAccess = async () => true;
 let okladVisible = true;
@@ -816,6 +885,7 @@ function hasConfirmedActual(actual) {
 
 function buildCurrentMonthSignature() {
   const snapshot = normalizeMoneySnapshot(currentMoneySnapshot);
+  const normSnapshot = createNormSnapshot(currentNormProfile(), BASE_DAY_HOURS);
   return JSON.stringify({
     year,
     month,
@@ -825,6 +895,7 @@ function buildCurrentMonthSignature() {
     dayHours: dayHours.map((x) => Number.isFinite(Number(x)) ? Number(Number(x).toFixed(2)) : 0),
     nightHours: nightHours.map((x) => Number.isFinite(Number(x)) ? Number(Number(x).toFixed(2)) : 0),
     leaveType: leaveType.map((x) => normalizeLeaveTypeLegacy(x)),
+    normSnapshot,
     moneySnapshot: snapshot
       ? {
           okladSnapshot: snapshot.okladSnapshot,
@@ -1965,6 +2036,7 @@ function currentPayload() {
     dayHours,
     nightHours,
     leaveType,
+    normSnapshot: createNormSnapshot(currentNormProfile(), BASE_DAY_HOURS),
     moneySnapshot: normalizeMoneySnapshot(currentMoneySnapshot),
     paySummary: {
       calculated: cloneCalculatedSummary(currentPaySummary.calculated),
@@ -2461,6 +2533,7 @@ function renderInputsFromState() {
 function applyPayload(payload) {
   currentLoadedPayload = payload ?? null;
   personalSharedMarksChanged = false;
+  applyNormContextFromPayload(payload);
 
   if (!payload || typeof payload !== "object") {
     currentPaySummary = createEmptyPaySummary();
@@ -2797,6 +2870,9 @@ applyAutoCollapsedPanels(profile);
   profileRole = profile?.role ?? "user";
   profileOklad = profile?.oklad ?? null;
   profilePosition = profile?.position ?? "";
+  profileGender = profile?.gender ?? null;
+  profileBranch = profile?.branch ?? null;
+  profileWeeklyHours = profile?.weekly_hours ?? null;
   profileEmploymentDate = profile?.employment_date ?? null;
 
   const managedDepartment = await getMyManagedDepartment().catch(() => null);
@@ -2819,7 +2895,7 @@ applyAutoCollapsedPanels(profile);
   syncTableMoneyUi();
   syncOkladActionState();
 
-  BASE_DAY_HOURS = getBaseDayHoursByProfile(profile);
+  BASE_DAY_HOURS = getBaseDayHoursByProfile(currentNormProfile());
   LEAVE_HOURS_PER_DAY = BASE_DAY_HOURS;
 
 

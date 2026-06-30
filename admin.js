@@ -22,6 +22,8 @@ document.body.classList.add("is-loaded");
 
 const DEFAULT_DAY_HOURS = 8;
 const FEMALE_DAY_HOURS = 7.2;
+const DEFAULT_WEEKLY_HOURS = 40;
+const REDUCED_WEEKLY_HOURS = 35;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const MAX_HOURS_PER_DAY = 24;
 const MINOR_OVERTIME_LIMIT_HOURS = 10;
@@ -43,6 +45,7 @@ const DOW_SHORT = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 const errorBox = document.getElementById("errorBox");
 const logoutBtn = document.getElementById("logoutBtn");
 const saveBtn = document.getElementById("saveBtn");
+const saveSilentBtn = document.getElementById("saveSilentBtn");
 const reloadBtn = document.getElementById("reloadBtn");
 const saveStatus = document.getElementById("saveStatus");
 
@@ -294,10 +297,63 @@ function isWeekendByIndex(y, m, dayIndex0) {
   return d === 0 || d === 6;
 }
 
-function getBaseDayHours(gender, branch) {
+function normalizeWeeklyHours(value) {
+  const n = Number(value);
+  if (n === REDUCED_WEEKLY_HOURS) return REDUCED_WEEKLY_HOURS;
+  if (n === DEFAULT_WEEKLY_HOURS) return DEFAULT_WEEKLY_HOURS;
+  return null;
+}
+
+function getBaseDayHours(gender, branch, weeklyHours = null) {
+  if (normalizeWeeklyHours(weeklyHours) === REDUCED_WEEKLY_HOURS) {
+    return REDUCED_WEEKLY_HOURS / 5;
+  }
+
   return gender === "female" && branch === CHATEAU_ALVISA_BRANCH
     ? FEMALE_DAY_HOURS
     : DEFAULT_DAY_HOURS;
+}
+
+function normalizeNormSnapshot(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const baseDayHours = Number(raw.baseDayHours);
+  if (!(Number.isFinite(baseDayHours) && baseDayHours > 0)) return null;
+
+  return {
+    weeklyHours: normalizeWeeklyHours(raw.weeklyHours),
+    baseDayHours,
+    gender: raw.gender ?? null,
+    branch: raw.branch ?? null,
+  };
+}
+
+function getBaseDayHoursForState(state) {
+  if (normalizeWeeklyHours(state?.weeklyHours) !== null) {
+    return getBaseDayHours(state?.gender, state?.branch, state?.weeklyHours);
+  }
+
+  const snapshot = normalizeNormSnapshot(state?.normSnapshot);
+  if (snapshot) return snapshot.baseDayHours;
+  return getBaseDayHours(state?.gender, state?.branch, state?.weeklyHours);
+}
+
+function createNormSnapshotForState(state) {
+  const snapshot = normalizeNormSnapshot(state?.normSnapshot);
+  const explicitWeeklyHours = normalizeWeeklyHours(state?.weeklyHours);
+  const currentBaseDayHours = Number(
+    getBaseDayHours(state?.gender, state?.branch, state?.weeklyHours).toFixed(2)
+  );
+
+  if (snapshot && explicitWeeklyHours === null) return snapshot;
+  if (snapshot && Math.abs(snapshot.baseDayHours - currentBaseDayHours) < 0.001) return snapshot;
+
+  const weeklyHours = explicitWeeklyHours ?? DEFAULT_WEEKLY_HOURS;
+  return {
+    weeklyHours,
+    baseDayHours: currentBaseDayHours,
+    gender: state?.gender ?? null,
+    branch: state?.branch ?? null,
+  };
 }
 
 function normHoursForDay(index, baseDayHours) {
@@ -324,7 +380,7 @@ function applyEmploymentDateDefaultsToState(state) {
   const employmentDate = parseIsoDateLocal(state?.employmentDate);
   if (!employmentDate) return;
 
-  const baseDayHours = getBaseDayHours(state.gender, state.branch);
+  const baseDayHours = getBaseDayHoursForState(state);
 
   for (let i = 0; i < daysInMonth; i += 1) {
     const date = new Date(year, month, i + 1);
@@ -537,6 +593,8 @@ function createState(member) {
     name: buildMemberLabel(member),
     gender: member?.gender ?? null,
     branch: member?.branch ?? null,
+    weeklyHours: member?.weekly_hours ?? null,
+    normSnapshot: null,
     employmentDate: member?.employment_date ?? null,
     dismissedBeforeMonth: false,
     position: member?.position ?? "",
@@ -684,6 +742,7 @@ function applyLoadedPayloads(payloadsByUserId) {
     if (payload?.leaveType?.length === daysInMonth) {
       state.leaveType = payload.leaveType.map((x) => normalizeLeaveTypeLegacy(x));
     }
+    state.normSnapshot = normalizeNormSnapshot(payload?.normSnapshot);
 
     applyEmploymentDateDefaultsToState(state);
   }
@@ -866,6 +925,7 @@ function currentPayloadForState(state) {
     dayHours: [...state.dayHours],
     nightHours: [...state.nightHours],
     leaveType: [...state.leaveType],
+    normSnapshot: createNormSnapshotForState(state),
   };
 }
 
@@ -1720,7 +1780,7 @@ function calendarFirstHalfNormForBase(baseDayHours) {
 }
 
 function personalNormHours(state) {
-  const baseDayHours = getBaseDayHours(state.gender, state.branch);
+  const baseDayHours = getBaseDayHoursForState(state);
   const monthNorm = calendarNormHoursForBase(baseDayHours);
 
   let effectiveLeaveHours = 0;
@@ -1734,7 +1794,7 @@ function personalNormHours(state) {
 }
 
 function firstHalfStats(state) {
-  const baseDayHours = getBaseDayHours(state.gender, state.branch);
+  const baseDayHours = getBaseDayHoursForState(state);
   const endIdx = Math.min(14, daysInMonth - 1);
 
   let weekdays = 0;
@@ -2027,7 +2087,7 @@ async function doSaveAll({ notify = false } = {}) {
   setError(null);
 
   try {
-    if (notify && saveTimer) {
+    if (saveTimer) {
       clearTimeout(saveTimer);
       saveTimer = null;
     }
@@ -2116,6 +2176,7 @@ function scheduleSave() {
 async function resolveManagedDepartment() {
   currentProfile = await getMyProfile();
   const isOwner = currentProfile?.role === "owner";
+  saveSilentBtn?.classList.toggle("hidden", !isOwner);
 
   if (isOwner) {
     if (!requestedDepartmentKey) {
@@ -2271,6 +2332,10 @@ logoutBtn?.addEventListener("click", async () => {
 
 saveBtn?.addEventListener("click", async () => {
   await doSaveAll({ notify: true });
+});
+
+saveSilentBtn?.addEventListener("click", async () => {
+  await doSaveAll({ notify: false });
 });
 
 exportExcelBtn?.addEventListener("click", async () => {
