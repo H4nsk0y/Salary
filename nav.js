@@ -1,6 +1,7 @@
 import {
   deleteAllMyNotifications,
   deleteMyNotification,
+  getMyDepartmentMembershipKey,
   getMyProfile,
   listMyNotifications,
   markMyNotificationsRead,
@@ -19,6 +20,8 @@ const MAIN_LINKS = [
   { key: "tasks", href: "tasks.html", label: "Мои задачи" },
   { key: "profile", href: "profile.html", label: "Профиль" },
 ];
+
+const EGAIS_LINK = { key: "instructions", href: "instructions.html", label: "Инструкции" };
 
 const OWNER_LINKS = [
   { key: "owner-users", href: "owner-users.html", label: "Пользователи" },
@@ -501,6 +504,19 @@ function renderLink(link, activeKey, variant = "desktop") {
   a.dataset.navKey = link.key;
   a.textContent = link.label;
   return a;
+}
+
+function appendLinkAfter(container, link, activeKey, afterKey, variant = "desktop") {
+  if (!container || container.querySelector(`[data-nav-key="${link.key}"]`)) return;
+
+  const rendered = renderLink(link, activeKey, variant);
+  const anchor = container.querySelector(`[data-nav-key="${afterKey}"]`);
+  if (anchor?.nextSibling) {
+    container.insertBefore(rendered, anchor.nextSibling);
+    return;
+  }
+
+  container.appendChild(rendered);
 }
 
 function createMenuIcon() {
@@ -992,13 +1008,20 @@ async function enhanceNavForProfile(header) {
   try {
     const profile = await getMyProfile();
     applyProfileNavPreferences(header, profile);
-    if (header.dataset.ownerNavMode === "false") return;
-    if (header.dataset.ownerNavEnhanced === "true") return;
-    if (profile?.role !== "owner") return;
 
     const activeKey = header.dataset.activeKey || detectActiveKey();
     const desktopNav = header.querySelector('[data-nav-slot="desktop"]');
     const mobileNav = header.querySelector('[data-nav-slot="mobile"]');
+    const departmentKey = await getMyDepartmentMembershipKey().catch(() => null);
+
+    if (departmentKey === "egais") {
+      appendLinkAfter(desktopNav, EGAIS_LINK, activeKey, "tasks", "desktop");
+      appendLinkAfter(mobileNav, EGAIS_LINK, activeKey, "tasks", "mobile");
+    }
+
+    if (header.dataset.ownerNavMode === "false") return;
+    if (header.dataset.ownerNavEnhanced === "true") return;
+    if (profile?.role !== "owner") return;
 
     desktopNav?.append(...OWNER_LINKS.map((link) => renderLink(link, activeKey, "desktop")));
     mobileNav?.append(...OWNER_LINKS.map((link) => renderLink(link, activeKey, "mobile")));

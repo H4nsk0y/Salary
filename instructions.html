@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover" />
+  <title>Инструкции ЕГАИС — Alvisa</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon-32.png?v=4" />
+  <link rel="icon" type="image/png" sizes="48x48" href="./images/favicon-48.png?v=4" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon-180.png?v=4" />
+  <link rel="shortcut icon" href="./images/favicon-64.png?v=4" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#020617" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Alvisa" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    html, body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      scroll-behavior: smooth;
+    }
+
+    :root {
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-bg: rgba(15, 23, 42, 0.62);
+      --card-shadow: 0 25px 50px -20px rgba(0, 0, 0, 0.72), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      --card-shadow-hover: 0 35px 70px -30px rgba(56, 189, 248, 0.34), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+
+    body {
+      position: relative;
+      overflow-x: hidden;
+      background: #020617;
+      background-image:
+        radial-gradient(900px 520px at 12% 10%, rgba(14, 165, 233, 0.18), transparent 62%),
+        radial-gradient(760px 460px at 86% 16%, rgba(99, 102, 241, 0.17), transparent 58%),
+        radial-gradient(860px 520px at 54% 92%, rgba(16, 185, 129, 0.10), transparent 62%);
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image: radial-gradient(rgba(148, 163, 184, 0.11) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.18;
+      mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 80%);
+    }
+
+    .glass-card {
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--card-shadow);
+      transition: box-shadow 0.22s ease, border-color 0.22s ease, transform 0.22s ease;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(56, 189, 248, 0.24);
+      box-shadow: var(--card-shadow-hover);
+    }
+
+    .pt-safe { padding-top: 7rem; }
+
+    .instruction-input {
+      width: 100%;
+      border-radius: 1.25rem;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      background: rgba(2, 6, 23, 0.72);
+      color: rgb(226 232 240);
+      padding: 0.82rem 1rem;
+      outline: none;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+    }
+
+    .instruction-input:focus {
+      border-color: rgba(56, 189, 248, 0.58);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+      background: rgba(2, 6, 23, 0.88);
+    }
+
+    .quick-chip {
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      background: rgba(255, 255, 255, 0.055);
+      padding: 0.55rem 0.9rem;
+      color: rgb(203 213 225);
+      font-size: 0.82rem;
+      font-weight: 700;
+      transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+    }
+
+    .quick-chip:hover,
+    .quick-chip.is-active {
+      color: rgb(224 242 254);
+      background: rgba(14, 165, 233, 0.14);
+      border-color: rgba(56, 189, 248, 0.34);
+    }
+
+    .quick-chip:active {
+      transform: scale(0.98);
+    }
+
+    .instruction-card {
+      display: flex;
+      min-height: 100%;
+      flex-direction: column;
+      gap: 1rem;
+      border-radius: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      background: rgba(15, 23, 42, 0.58);
+      padding: 1.15rem;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .instruction-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.26);
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .severity-pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 0.28rem 0.62rem;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .severity-common { background: rgba(16, 185, 129, 0.12); color: rgb(167 243 208); border: 1px solid rgba(52, 211, 153, 0.22); }
+    .severity-rare { background: rgba(56, 189, 248, 0.12); color: rgb(186 230 253); border: 1px solid rgba(56, 189, 248, 0.22); }
+    .severity-epic { background: rgba(168, 85, 247, 0.13); color: rgb(233 213 255); border: 1px solid rgba(192, 132, 252, 0.22); }
+    .severity-legendary { background: rgba(244, 63, 94, 0.12); color: rgb(254 205 211); border: 1px solid rgba(251, 113, 133, 0.24); }
+
+    .section-anchor {
+      scroll-margin-top: calc(7.5rem + env(safe-area-inset-top, 0px));
+    }
+
+    details.instruction-details > summary {
+      cursor: pointer;
+      list-style: none;
+    }
+
+    details.instruction-details > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .pdf-page {
+      overflow: hidden;
+      border-radius: 1.5rem;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.38);
+    }
+
+    .pdf-page img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    @media (min-width: 768px) {
+      .pt-safe { padding-top: 6rem; }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-sky-500/40 selection:text-white">
+  <div data-app-header data-active="instructions"></div>
+
+  <main class="relative z-10 mx-auto max-w-7xl px-4 pt-safe pb-12 md:pb-16">
+    <section id="loadingState" class="glass-card rounded-3xl p-6 text-sm text-slate-300">
+      Проверяю доступ к инструкциям…
+    </section>
+
+    <section id="accessDeniedState" class="hidden glass-card rounded-3xl p-6 md:p-8">
+      <div class="inline-flex items-center rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200 ring-1 ring-amber-400/20">
+        Только для ЕГАИС
+      </div>
+      <h1 class="mt-4 text-2xl font-bold text-slate-100 md:text-3xl">Раздел доступен сотрудникам отдела ЕГАИС</h1>
+      <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-300/85">
+        Если вам нужен доступ к этим инструкциям, проверьте, что ваш аккаунт добавлен именно в отдел ЕГАИС.
+      </p>
+      <a href="profile.html" class="mt-6 inline-flex rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10">
+        Вернуться в профиль
+      </a>
+    </section>
+
+    <div id="instructionsContent" class="hidden">
+      <header class="mb-6">
+        <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch">
+          <section class="glass-card rounded-3xl p-6 md:p-8">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="inline-flex items-center rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-200 ring-1 ring-sky-400/20">Инструкции ЕГАИС</span>
+              <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20">Палеты и помарочный отчет</span>
+            </div>
+
+            <h1 class="mt-5 max-w-4xl text-3xl font-black tracking-tight text-slate-100 md:text-5xl">
+              Исправление палета без лишней паники
+            </h1>
+            <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-300/88 md:text-base">
+              Быстрый справочник по частым ситуациям: неполный палет, лишний короб, нечетное количество бутылок, большая очередь, перелитый купаж и перекидывание палеты.
+            </p>
+
+            <div class="mt-6 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+              <label>
+                <span class="sr-only">Поиск по инструкциям</span>
+                <input id="instructionSearch" class="instruction-input" type="search" placeholder="Найти: лишний короб, ФСМ, перекидывание, очередь…" autocomplete="off" />
+              </label>
+              <a href="./files/egais-pallet-fix.pdf" download class="inline-flex min-h-[46px] items-center justify-center rounded-2xl bg-sky-500/15 px-4 text-sm font-semibold text-sky-100 ring-1 ring-sky-300/25 transition hover:bg-sky-500/25">
+                Скачать PDF
+              </a>
+            </div>
+          </section>
+
+          <aside class="glass-card rounded-3xl p-5">
+            <div class="text-xs font-semibold uppercase text-slate-400">Если времени мало</div>
+            <div class="mt-4 space-y-3 text-sm leading-6 text-slate-300/90">
+              <p><span class="font-semibold text-slate-100">Больше нормы</span> — чаще всего сразу перекидывать.</p>
+              <p><span class="font-semibold text-slate-100">Не хватает бутылок</span> — найти короб и обновить ФСМ.</p>
+              <p><span class="font-semibold text-slate-100">Лишний короб</span> — проверить через ТСД, отчет или сканер.</p>
+              <p><span class="font-semibold text-slate-100">Большая очередь</span> — искать незакрытый палет или закрывать через штрихкоды.</p>
+            </div>
+          </aside>
+        </div>
+      </header>
+
+      <section class="mb-6 glass-card rounded-3xl p-5">
+        <div class="flex flex-wrap items-center gap-2">
+          <button class="quick-chip is-active" type="button" data-filter="all">Все</button>
+          <button class="quick-chip" type="button" data-filter="short">Закрылся не полностью</button>
+          <button class="quick-chip" type="button" data-filter="extra">Лишний короб</button>
+          <button class="quick-chip" type="button" data-filter="over">Больше нормы</button>
+          <button class="quick-chip" type="button" data-filter="queue">Очередь</button>
+          <button class="quick-chip" type="button" data-filter="rebuild">Перекидывание</button>
+          <button class="quick-chip" type="button" data-filter="terms">Термины</button>
+        </div>
+      </section>
+
+      <section id="cardsGrid" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        <a href="#short-pallet" class="instruction-card" data-card data-tags="short incomplete палет не полностью 612 600">
+          <div class="flex items-start justify-between gap-3">
+            <h2 class="text-lg font-bold text-slate-100">Палет закрылся не полностью</h2>
+            <span class="severity-pill severity-common">Обычный</span>
+          </div>
+          <p class="text-sm leading-6 text-slate-300/86">Нужно найти короб, который фактически есть на палете, но отсутствует в отчете.</p>
+          <div class="text-xs font-semibold text-sky-200">Открыть алгоритм</div>
+        </a>
+
+        <a href="#extra-box" class="instruction-card" data-card data-tags="extra лишний короб палете отчет тсд сканер">
+          <div class="flex items-start justify-between gap-3">
+            <h2 class="text-lg font-bold text-slate-100">Лишний короб на палете</h2>
+            <span class="severity-pill severity-common">Обычный</span>
+          </div>
+          <p class="text-sm leading-6 text-slate-300/86">Если палет закрыт правильно, но сверху есть лишний короб, сначала выясняем, проходил ли он через отчет.</p>
+          <div class="text-xs font-semibold text-sky-200">Открыть алгоритм</div>
+        </a>
+
+        <a href="#over-limit" class="instruction-card" data-card data-tags="over больше нормы 636 648 1048 перекидывать">
+          <div class="flex items-start justify-between gap-3">
+            <h2 class="text-lg font-bold text-slate-100">Палет больше нормы</h2>
+            <span class="severity-pill severity-rare">Редкий</span>
+          </div>
+          <p class="text-sm leading-6 text-slate-300/86">Если бутылок больше нормы, самый надежный путь — не тратить время и перекинуть палет.</p>
+          <div class="text-xs font-semibold text-sky-200">Открыть алгоритм</div>
+        </a>
+
+        <a href="#fsm-refresh" class="instruction-card" data-card data-tags="фсм обновить данные бутылки нечетное 623 620 613">
+          <div class="flex items-start justify-between gap-3">
+            <h2 class="text-lg font-bold text-slate-100">Не все бутылки или нечетное число</h2>
+            <span class="severity-pill severity-common">Обычный</span>
+          </div>
+          <p class="text-sm leading-6 text-slate-300/86">Когда короба есть, но бутылки не сходятся, обычно помогает режим обновления данных ФСМ.</p>
+          <div class="text-xs font-semibold text-sky-200">Открыть алгоритм</div>
+        </a>
+
+        <a href="#large-queue" class="instruction-card" data-card data-tags="queue очередь много коробов 824 1260 штабелька разрыв">
+          <div class="flex items-start justify-between gap-3">
+            <h2 class="text-lg font-bold text-slate-100">Много коробов в очереди</h2>
+            <span class="severity-pill severity-rare">Редкий</span>
+          </div>
+          <p class="text-sm leading-6 text-slate-300/86">Большая очередь часто говорит о незакрытом палете или проблеме с привязкой штабельки.</p>
+          <div class="text-xs font-semibold text-sky-200">Открыть алгоритм</div>
+        </a>
+
+        <a href="#rebuild-pallet" class="instruction-card" data-card data-tags="rebuild перекидывание палеты очистка очередь выход заполнить читать весь короб">
+          <div class="flex items-start justify-between gap-3">
+            <h2 class="text-lg font-bold text-slate-100">Перекидывание палеты</h2>
+            <span class="severity-pill severity-epic">Тяжелая артиллерия</span>
+          </div>
+          <p class="text-sm leading-6 text-slate-300/86">Универсальный способ, когда проще собрать палет заново и не гадать, где именно ошибка.</p>
+          <div class="text-xs font-semibold text-sky-200">Открыть алгоритм</div>
+        </a>
+      </section>
+
+      <section id="emptySearchState" class="hidden mt-5 rounded-3xl bg-slate-950/35 p-6 text-sm text-slate-300 ring-1 ring-white/10">
+        По этому запросу ничего не нашлось. Попробуйте написать проще: "короб", "ФСМ", "очередь", "перекидывание".
+      </section>
+
+      <div class="mt-8">
+        <aside class="hidden">
+          <nav class="sticky top-28 glass-card rounded-3xl p-4 text-sm">
+            <div class="mb-3 px-2 text-xs font-semibold uppercase text-slate-400">Разделы</div>
+            <a class="block rounded-2xl px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-sky-200" href="#terms">Термины</a>
+            <a class="block rounded-2xl px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-sky-200" href="#report">Помарочный отчет</a>
+            <a class="block rounded-2xl px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-sky-200" href="#short-pallet">Неполный палет</a>
+            <a class="block rounded-2xl px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-sky-200" href="#extra-box">Лишний короб</a>
+            <a class="block rounded-2xl px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-sky-200" href="#rebuild-pallet">Перекидывание</a>
+            <a class="block rounded-2xl px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-sky-200" href="#original-pdf">Оригинал PDF</a>
+          </nav>
+        </aside>
+
+        <section class="grid gap-5 lg:grid-cols-2">
+          <article id="terms" class="section-anchor glass-card rounded-3xl p-5 md:p-6 lg:col-span-2" data-section data-tags="terms термины палета короб потеряшка матрешка тсд фсм">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-2xl font-bold text-slate-100">Словарь ЕГАИСника</h2>
+              <span class="rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300 ring-1 ring-white/10">быстрая расшифровка</span>
+            </div>
+            <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><div class="font-semibold text-slate-100">Палета</div><div class="mt-1 text-sm text-slate-400">Поддон.</div></div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><div class="font-semibold text-slate-100">Короб</div><div class="mt-1 text-sm text-slate-400">Коробка со стикером.</div></div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><div class="font-semibold text-slate-100">Потеряшка</div><div class="mt-1 text-sm text-slate-400">Потеря ФСМ.</div></div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><div class="font-semibold text-slate-100">Матрешка</div><div class="mt-1 text-sm text-slate-400">Косяк, который уходит в предыдущую палету.</div></div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><div class="font-semibold text-slate-100">ТСДэшка</div><div class="mt-1 text-sm text-slate-400">Складской TSD-сканер.</div></div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><div class="font-semibold text-slate-100">ФСМ / Акциз</div><div class="mt-1 text-sm text-slate-400">Федеральная специальная марка.</div></div>
+            </div>
+          </article>
+
+          <article id="report" class="section-anchor glass-card rounded-3xl p-5 md:p-6 lg:col-span-2" data-section data-tags="report помарочный отчет очередь штабелька фактическая очередность">
+            <h2 class="text-2xl font-bold text-slate-100">Как читать помарочный отчет</h2>
+            <div class="mt-5 grid gap-4 lg:grid-cols-4">
+              <div class="rounded-2xl bg-slate-950/35 p-4 ring-1 ring-white/10">
+                <div class="text-sm font-semibold text-sky-200">Очередь</div>
+                <p class="mt-2 text-sm leading-6 text-slate-300/86">Все короба и марки, которые уже отсканированы. С момента попадания в очередь они становятся зоной ответственности ЕГАИС.</p>
+              </div>
+              <div class="rounded-2xl bg-slate-950/35 p-4 ring-1 ring-white/10">
+                <div class="text-sm font-semibold text-sky-200">Количество бутылок</div>
+                <p class="mt-2 text-sm leading-6 text-slate-300/86">Если больше нормы — смотрим сценарий “больше нормы”. Если меньше или число странное — идем к обновлению ФСМ.</p>
+              </div>
+              <div class="rounded-2xl bg-slate-950/35 p-4 ring-1 ring-white/10">
+                <div class="text-sm font-semibold text-sky-200">Номер штабельки</div>
+                <p class="mt-2 text-sm leading-6 text-slate-300/86">Ориентироваться лучше на номер штабельки, а не только на фактическую очередность печати.</p>
+              </div>
+              <div class="rounded-2xl bg-slate-950/35 p-4 ring-1 ring-white/10">
+                <div class="text-sm font-semibold text-sky-200">Внутренности палеты</div>
+                <p class="mt-2 text-sm leading-6 text-slate-300/86">Раскрываются через плюсик рядом с палетой. Там видны короба, которые отчет считает находящимися внутри.</p>
+              </div>
+            </div>
+          </article>
+
+          <article id="short-pallet" class="section-anchor glass-card rounded-3xl p-5 md:p-6" data-section data-tags="short incomplete 612 600 палет не полностью">
+            <h2 class="text-2xl font-bold text-slate-100">Палет закрылся не полностью</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-300/86">Цель — найти короб, который физически лежит на палете, но отсутствует в отчете.</p>
+            <ol class="mt-5 grid gap-3 text-sm leading-6 text-slate-300/90">
+              <li class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><span class="font-semibold text-slate-100">1.</span> Распечатайте содержимое палеты или откройте внутренности палеты на ноутбуке.</li>
+              <li class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><span class="font-semibold text-slate-100">2.</span> Быстрый вариант — попросите настроить ТСД на покоробочную проверку.</li>
+              <li class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><span class="font-semibold text-slate-100">3.</span> Отсканируйте штабельку, затем каждый короб. После каждого пика смотрите экран ТСД.</li>
+              <li class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><span class="font-semibold text-slate-100">4.</span> Если “Строка не найдена” — короб нигде не числится, его нужно отправить в текущую очередь.</li>
+              <li class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><span class="font-semibold text-slate-100">5.</span> Если короб числится в другой палете — это матрешка. Ищите лишний короб уже в той палете и повторяйте цепочку.</li>
+            </ol>
+          </article>
+
+          <article id="extra-box" class="section-anchor glass-card rounded-3xl p-5 md:p-6" data-section data-tags="extra лишний короб тсд отчет сканер">
+            <h2 class="text-2xl font-bold text-slate-100">Лишний короб на палете</h2>
+            <div class="mt-5 grid gap-4">
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
+                <div class="font-semibold text-slate-100">Через отчет</div>
+                <p class="mt-2 text-sm leading-6 text-slate-300/86">Сверьте каждый короб с внутренностями палеты. Короб без совпадения проверяйте поиском по помарочному отчету.</p>
+              </div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
+                <div class="font-semibold text-slate-100">Через ТСД</div>
+                <p class="mt-2 text-sm leading-6 text-slate-300/86">Покоробочная проверка быстрее: сканируем штабельку и каждый короб, ошибка покажет лишний.</p>
+              </div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
+                <div class="font-semibold text-slate-100">Через ноутбук и сканер</div>
+                <p class="mt-2 text-sm leading-6 text-slate-300/86">В “Помарочном учете” без режима очистки очереди пикаем короба. Уже прошедшие будут ругаться, не прошедший попросит обновить ФСМ.</p>
+              </div>
+              <div class="rounded-2xl bg-sky-500/10 p-4 text-sm leading-6 text-sky-100 ring-1 ring-sky-300/20">
+                Если номера идут подряд, иногда лишний короб видно по разрыву в последовательности.
+              </div>
+            </div>
+          </article>
+
+          <article id="over-limit" class="section-anchor glass-card rounded-3xl p-5 md:p-6" data-section data-tags="over больше нормы 636 648 1048">
+            <h2 class="text-2xl font-bold text-slate-100">Палет закрылся больше нормы</h2>
+            <p class="mt-3 text-sm leading-6 text-slate-300/90">Если отчет показывает 636, 648 или вообще что-то невероятное, надежнее сразу перекидывать палет. Ошибка редкая, причины могут быть разными, а поиск “легкого” решения часто съедает больше времени.</p>
+          </article>
+
+          <article id="fsm-refresh" class="section-anchor glass-card rounded-3xl p-5 md:p-6" data-section data-tags="фсм обновить данные бутылки нечетное 623 620 613">
+            <h2 class="text-2xl font-bold text-slate-100">Не все бутылки или нечетное число</h2>
+            <p class="mt-3 text-sm leading-6 text-slate-300/90">Если короба в палете есть, но бутылок меньше нормы или число странное, найдите нужный короб и обновите данные ФСМ. Это можно сделать на линии или через ноутбук со сканером, если выбран правильный режим.</p>
+            <div class="mt-4 rounded-2xl bg-emerald-500/10 p-4 text-sm leading-6 text-emerald-100 ring-1 ring-emerald-300/20">После обновления обязательно проверьте отчет. Если палета закрылась правильно, короб возвращается на место.</div>
+          </article>
+
+          <article id="large-queue" class="section-anchor glass-card rounded-3xl p-5 md:p-6" data-section data-tags="queue очередь много коробов незакрытая палета баркод">
+            <h2 class="text-2xl font-bold text-slate-100">Много коробов в очереди</h2>
+            <p class="mt-3 text-sm leading-6 text-slate-300/90">Если очередь в разы больше ожидаемой для текущей продукции, чаще всего палета не закрыта. Ищите разрыв по штабелькам и сверяйте количество бутылок в очереди.</p>
+            <div class="mt-5 grid gap-3">
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><div class="font-semibold text-slate-100">Вариант 1</div><p class="mt-2 text-sm text-slate-400">Перекинуть палет обычным способом.</p></div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><div class="font-semibold text-slate-100">Вариант 2</div><p class="mt-2 text-sm text-slate-400">Если уверены, что все короба прочитаны и нет лишнего, закрывать через генерацию штрихкодов.</p></div>
+            </div>
+          </article>
+
+          <article id="missing-box" class="section-anchor glass-card rounded-3xl p-5 md:p-6" data-section data-tags="не хватает короба правильно закрыта палета">
+            <h2 class="text-2xl font-bold text-slate-100">Палета закрыта правильно, но не хватает короба</h2>
+            <p class="mt-3 text-sm leading-6 text-slate-300/90">Ситуация редкая и неприятная: короб может быть в соседней палете, на розливе или отсутствовать физически. Самый стабильный вариант — очистить и перекидать палету с фактическим количеством коробов.</p>
+          </article>
+
+          <article id="blend-overflow" class="section-anchor glass-card rounded-3xl p-5 md:p-6 lg:col-span-2" data-section data-tags="купаж перелили заменить стикер короба">
+            <h2 class="text-2xl font-bold text-slate-100">Если перелили купаж</h2>
+            <div class="mt-4 grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+              <div class="rounded-2xl bg-rose-500/10 p-4 text-sm font-semibold text-rose-100 ring-1 ring-rose-300/20">Нужно много внимания: ошибка длинная и легко растет от одного неверного действия.</div>
+              <ol class="grid gap-3 text-sm leading-6 text-slate-300/90">
+                <li>1. Подготовьте ноутбук, сканер и стикеры нужного купажа.</li>
+                <li>2. В “Помарочном учете” откройте режим “Заменить стикер короба”.</li>
+                <li>3. Сканируйте старый стикер, снимайте его, клейте новый и сканируйте новый.</li>
+                <li>4. Периодически сверяйтесь с помарочным отчетом: старый купаж должен исчезать, нужный — пополняться.</li>
+              </ol>
+            </div>
+          </article>
+
+          <article id="rebuild-pallet" class="section-anchor glass-card rounded-3xl p-5 md:p-6 lg:col-span-2" data-section data-tags="rebuild перекидывание палеты режим очистки очереди выход заполнить читать весь короб">
+            <h2 class="text-2xl font-bold text-slate-100">Перекидывание палеты</h2>
+            <div class="mt-5 grid gap-3 text-sm leading-6 text-slate-300/90 lg:grid-cols-2">
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><span class="font-semibold text-slate-100">1.</span> Запустите “Помарочный учет”, включите сканер и нажмите “Старт”. Убедитесь, что ручной сканер подключен.</div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><span class="font-semibold text-slate-100">2.</span> В параметрах включите “Режим очистки очереди” и выберите значение под количество бутылок в коробе.</div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><span class="font-semibold text-slate-100">3.</span> Перед сменой режима пикайте “Выход”, затем нужный режим. Обычно используется связка “Выход” -> “Заполнить очередь”.</div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><span class="font-semibold text-slate-100">4.</span> Попросите кладовщика очистить штабельку палета.</div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><span class="font-semibold text-slate-100">5.</span> Сканируйте каждый короб. Запомните первый и последний. Короба с ошибкой ФСМ откладывайте на конец.</div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"><span class="font-semibold text-slate-100">6.</span> После всех коробов позовите кладовщика, покажите первый и последний короб и закрывайте палету.</div>
+            </div>
+
+            <div class="mt-5 rounded-2xl bg-sky-500/10 p-4 ring-1 ring-sky-300/20">
+              <div class="font-semibold text-sky-100">Подбивка по рядам</div>
+              <div class="mt-3 grid gap-2 text-sm text-sky-100/88 sm:grid-cols-2 xl:grid-cols-3">
+                <div>ТПА 1 л — 13 коробов</div>
+                <div>Стекло 0.75 — 18 коробов</div>
+                <div>Стекло 0.7 — 22 короба</div>
+                <div>Sea Seasons 0.75 — 16 коробов</div>
+                <div>Cantiani 0.75 — 19 коробов</div>
+              </div>
+            </div>
+          </article>
+
+          <article id="barcode-rebuild" class="section-anchor glass-card rounded-3xl p-5 md:p-6" data-section data-tags="баркод генерация штрихкодов коробов дистанционно">
+            <h2 class="text-2xl font-bold text-slate-100">Перекидывание через генерацию штрихкодов</h2>
+            <p class="mt-3 text-sm leading-6 text-slate-300/90">Подходит, когда палета есть в очереди, все короба прочитаны, лишних коробов нет, а проблема в привязке к штабельке. Путь: “Производство” -> “Дополнительные обработки” -> “Генерация штрихкодов коробов”.</p>
+            <ol class="mt-5 grid gap-3 text-sm leading-6 text-slate-300/90">
+              <li class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">1. Скопируйте номера коробов.</li>
+              <li class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">2. Вставьте их в генерацию штрихкодов и нажмите “Печать”.</li>
+              <li class="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">3. Работайте как при обычном перекидывании, но подбивайтесь каждые 4 штрихкода.</li>
+            </ol>
+          </article>
+
+          <article id="tips" class="section-anchor glass-card rounded-3xl p-5 md:p-6 lg:col-span-2" data-section data-tags="советы сканер ноутбук рация марка сменщик">
+            <h2 class="text-2xl font-bold text-slate-100">Советы из инструкции</h2>
+            <div class="mt-5 grid gap-3 md:grid-cols-2">
+              <div class="rounded-2xl bg-white/[0.04] p-4 text-sm leading-6 text-slate-300/90 ring-1 ring-white/10">Если сняли больше половины палета, часто легче собрать новую палету, чем возвращать короба обратно.</div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 text-sm leading-6 text-slate-300/90 ring-1 ring-white/10">На старте смены полезно перезапустить рабочий компьютер и поставить рацию на зарядку.</div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 text-sm leading-6 text-slate-300/90 ring-1 ring-white/10">Если сканер “отключен”, переподключите адаптер, пикните штрихкод на адаптере и нажмите “.com” в отчете.</div>
+              <div class="rounded-2xl bg-white/[0.04] p-4 text-sm leading-6 text-slate-300/90 ring-1 ring-white/10">Хороший тон — подготовить марку для сменщика, чтобы линия не встала в самый неприятный момент.</div>
+            </div>
+          </article>
+
+          <article id="original-pdf" class="section-anchor glass-card rounded-3xl p-5 md:p-6 lg:col-span-2">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 class="text-2xl font-bold text-slate-100">Оригинальные страницы</h2>
+                <p class="mt-2 text-sm text-slate-400">Если нужен полный текст или скриншоты из документа, они сохранены ниже.</p>
+              </div>
+              <a href="./files/egais-pallet-fix.pdf" target="_blank" rel="noopener noreferrer" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10">Открыть PDF</a>
+            </div>
+            <div class="mt-5 grid gap-4 md:grid-cols-2">
+              <figure class="pdf-page"><img src="./images/instructions/egais-pallet-fix-page-01.png" alt="Страница 1 инструкции по исправлению палета" loading="lazy" /></figure>
+              <figure class="pdf-page"><img src="./images/instructions/egais-pallet-fix-page-02.png" alt="Страница 2 инструкции по исправлению палета" loading="lazy" /></figure>
+              <figure class="pdf-page"><img src="./images/instructions/egais-pallet-fix-page-03.png" alt="Страница 3 инструкции по исправлению палета" loading="lazy" /></figure>
+              <figure class="pdf-page"><img src="./images/instructions/egais-pallet-fix-page-04.png" alt="Страница 4 инструкции по исправлению палета" loading="lazy" /></figure>
+              <figure class="pdf-page"><img src="./images/instructions/egais-pallet-fix-page-05.png" alt="Страница 5 инструкции по исправлению палета" loading="lazy" /></figure>
+              <figure class="pdf-page"><img src="./images/instructions/egais-pallet-fix-page-06.png" alt="Страница 6 инструкции по исправлению палета" loading="lazy" /></figure>
+              <figure class="pdf-page"><img src="./images/instructions/egais-pallet-fix-page-07.png" alt="Страница 7 инструкции по исправлению палета" loading="lazy" /></figure>
+              <figure class="pdf-page"><img src="./images/instructions/egais-pallet-fix-page-08.png" alt="Страница 8 инструкции по исправлению палета" loading="lazy" /></figure>
+              <figure class="pdf-page"><img src="./images/instructions/egais-pallet-fix-page-09.png" alt="Страница 9 инструкции по исправлению палета" loading="lazy" /></figure>
+              <figure class="pdf-page"><img src="./images/instructions/egais-pallet-fix-page-10.png" alt="Страница 10 инструкции по исправлению палета" loading="lazy" /></figure>
+            </div>
+          </article>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="./nav.js"></script>
+  <script type="module" src="./instructions.js"></script>
+</body>
+</html>
