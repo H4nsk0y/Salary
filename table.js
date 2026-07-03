@@ -38,6 +38,8 @@ const REMAINING_PAYMENT_DAY = 10;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 const DISMISSED_LEAVE_TYPE = "dismissed";
+const VACATION_PAY_MONTHS_REQUIRED = 12;
+const VACATION_PAY_AVERAGE_CALENDAR_DAYS = 29.3;
 
 let focusDayIndex = null;
 let mobileSelectedIdx = 0;
@@ -95,7 +97,8 @@ const grossPayEl = document.getElementById("grossPay");
 const taxPayEl = document.getElementById("taxPay");
 const advancePayEl = document.getElementById("advancePay");
 const remainingPayEl = document.getElementById("remainingPay");
-const leaveDaysEl = document.getElementById("leaveDays");
+const vacationPayEstimateEl = document.getElementById("vacationPayEstimate");
+const vacationPayEstimateHint = document.getElementById("vacationPayEstimateHint");
 
 const totalHoursEl = document.getElementById("totalHours");
 const dayNightHoursEl = document.getElementById("dayNightHours");
@@ -680,6 +683,8 @@ let personalSharedMarksChanged = false;
 let paymentCountdownTimer = null;
 let paymentCountdownRunId = 0;
 const paymentMarksCache = new Map();
+let vacationPayEstimateRunId = 0;
+const vacationPayHistoryCache = new Map();
 
 function replaceElementWithClone(el) {
   if (!el) return null;
@@ -1417,6 +1422,259 @@ function startPaymentCountdownTimer() {
   paymentCountdownTimer = window.setInterval(requestPaymentCountdownUpdate, 60 * 1000);
 }
 
+function getPreviousVacationPayMonths(baseYear, baseMonth) {
+  const months = [];
+  for (let offset = VACATION_PAY_MONTHS_REQUIRED; offset >= 1; offset -= 1) {
+    const dt = new Date(baseYear, baseMonth - offset, 1);
+    months.push({ year: dt.getFullYear(), month: dt.getMonth() });
+  }
+  return months;
+}
+
+function monthKey(y, m) {
+  return `${y}-${String(m).padStart(2, "0")}`;
+}
+
+function formatMonthShort(y, m) {
+  return `${monthNames[m].slice(0, 3).toLowerCase()} ${y}`;
+}
+
+function formatVacationPayPeriod(months) {
+  if (!months.length) return "";
+  const first = months[0];
+  const last = months[months.length - 1];
+  return `${formatMonthShort(first.year, first.month)} — ${formatMonthShort(last.year, last.month)}`;
+}
+
+function buildVacationPayPeriodLabelFromRows(rows) {
+  const months = (rows ?? [])
+    .map((row) => ({ year: Number(row?.year), month: Number(row?.month) }))
+    .filter((item) => Number.isInteger(item.year) && Number.isInteger(item.month))
+    .sort((a, b) => a.year - b.year || a.month - b.month);
+
+  return formatVacationPayPeriod(months);
+}
+
+function formatRuDays(value) {
+  const n = Math.abs(Number(value));
+  const lastTwo = n % 100;
+  const last = n % 10;
+  if (lastTwo >= 11 && lastTwo <= 14) return "дней";
+  if (last === 1) return "день";
+  if (last >= 2 && last <= 4) return "дня";
+  return "дней";
+}
+
+function isVacationCalendarBridgeDay(index) {
+  return isWeekendByIndex(year, month, index) || Boolean(isHoliday[index] || isTransferredOff[index]);
+}
+
+function countCurrentVacationPayDays() {
+  const periods = [];
+  let active = null;
+
+  for (let i = 0; i < daysInMonth; i += 1) {
+    if (normalizeLeaveTypeLegacy(leaveType[i]) !== "vac_paid") continue;
+
+    if (!active) {
+      active = { start: i, end: i };
+      continue;
+    }
+
+    let canBridge = true;
+    for (let gap = active.end + 1; gap < i; gap += 1) {
+      if (!isVacationCalendarBridgeDay(gap)) {
+        canBridge = false;
+        break;
+      }
+    }
+
+    if (canBridge) {
+      active.end = i;
+    } else {
+      periods.push(active);
+      active = { start: i, end: i };
+    }
+  }
+
+  if (active) periods.push(active);
+
+  let payableDays = 0;
+  for (const period of periods) {
+    for (let i = period.start; i <= period.end; i += 1) {
+      if (isHoliday[i]) continue;
+      payableDays += 1;
+    }
+  }
+
+  return payableDays;
+}
+
+function extractConfirmedVacationPayIncome(payload) {
+  const actual = normalizeStoredPaySummary(payload?.paySummary).actual;
+  if (!hasConfirmedActual(actual)) return null;
+
+  const netFromParts = computeActualNetFromParts(actual.advance, actual.remaining);
+  const baseNet = normalizeMoneyNumber(actual.net) ?? netFromParts ?? 0;
+  const paidLeaveNet = normalizeMoneyNumber(actual.paidLeaveNet) ?? 0;
+  const total = Number(baseNet) + Number(paidLeaveNet);
+
+  return total > 0 ? Number(total.toFixed(2)) : null;
+}
+
+async function getVacationPayHistoryRows(baseYear, baseMonth) {
+  const key = monthKey(baseYear, baseMonth);
+  if (!vacationPayHistoryCache.has(key)) {
+    vacationPayHistoryCache.set(
+      key,
+      listMyTimesheetsBefore(baseYear, baseMonth, { withPayload: true }).catch((error) => {
+        vacationPayHistoryCache.delete(key);
+        throw error;
+      })
+    );
+  }
+
+  return vacationPayHistoryCache.get(key);
+}
+
+async function calculateVacationPayEstimate(baseYear, baseMonth, vacationDays) {
+  const months = getPreviousVacationPayMonths(baseYear, baseMonth);
+  const rows = await getVacationPayHistoryRows(baseYear, baseMonth);
+  const rowsByMonth = new Map((rows ?? []).map((row) => [monthKey(row.year, row.month), row]));
+
+  let totalIncome = 0;
+  let confirmedMonths = 0;
+  let fallbackTotalIncome = 0;
+  const fallbackRows = [];
+
+  for (const item of months) {
+    const row = rowsByMonth.get(monthKey(item.year, item.month));
+    const income = extractConfirmedVacationPayIncome(row?.payload);
+    if (!Number.isFinite(income)) continue;
+    totalIncome += income;
+    confirmedMonths += 1;
+  }
+
+  for (const row of rows ?? []) {
+    const income = extractConfirmedVacationPayIncome(row?.payload);
+    if (!Number.isFinite(income)) continue;
+    fallbackRows.push(row);
+    fallbackTotalIncome += income;
+    if (fallbackRows.length >= VACATION_PAY_MONTHS_REQUIRED) break;
+  }
+
+  const requestedPeriodText = formatVacationPayPeriod(months);
+
+  if (confirmedMonths < VACATION_PAY_MONTHS_REQUIRED) {
+    if (fallbackRows.length >= VACATION_PAY_MONTHS_REQUIRED) {
+      const averageDaily = fallbackTotalIncome / (VACATION_PAY_MONTHS_REQUIRED * VACATION_PAY_AVERAGE_CALENDAR_DAYS);
+      return {
+        ok: true,
+        fallback: true,
+        vacationDays,
+        confirmedMonths,
+        periodText: buildVacationPayPeriodLabelFromRows(fallbackRows),
+        requestedPeriodText,
+        averageDaily,
+        amount: averageDaily * vacationDays,
+      };
+    }
+
+    return {
+      ok: false,
+      vacationDays,
+      confirmedMonths,
+      periodText: requestedPeriodText,
+    };
+  }
+
+  // Бета-упрощение: используем подтвержденные суммы "на руки" и среднее 29,3 календарного дня.
+  const averageDaily = totalIncome / (VACATION_PAY_MONTHS_REQUIRED * VACATION_PAY_AVERAGE_CALENDAR_DAYS);
+  return {
+    ok: true,
+    fallback: false,
+    vacationDays,
+    confirmedMonths,
+    periodText: requestedPeriodText,
+    averageDaily,
+    amount: averageDaily * vacationDays,
+  };
+}
+
+function renderVacationPayEstimateIdle() {
+  if (vacationPayEstimateEl) {
+    vacationPayEstimateEl.textContent = "—";
+    vacationPayEstimateEl.dataset.value = "";
+  }
+  if (vacationPayEstimateHint) {
+    vacationPayEstimateHint.textContent = "Поставьте ОТ";
+  }
+}
+
+function renderVacationPayEstimateLoading(vacationDays) {
+  if (vacationPayEstimateEl) {
+    vacationPayEstimateEl.textContent = "Считаю...";
+    vacationPayEstimateEl.dataset.value = "";
+  }
+  if (vacationPayEstimateHint) {
+    vacationPayEstimateHint.textContent = `${vacationDays} ${formatRuDays(vacationDays)} ОТ`;
+  }
+}
+
+function renderVacationPayEstimateResult(result) {
+  if (!result?.ok) {
+    if (vacationPayEstimateEl) {
+      vacationPayEstimateEl.textContent = "Нет 12 мес. факта";
+      vacationPayEstimateEl.dataset.value = "";
+    }
+    if (vacationPayEstimateHint) {
+      vacationPayEstimateHint.textContent =
+        `Нужны: ${result?.periodText || "12 прошлых мес."}, есть ${result?.confirmedMonths ?? 0}/12`;
+    }
+    return;
+  }
+
+  if (vacationPayEstimateEl) {
+    animateNumber(vacationPayEstimateEl, result.amount, (v) => `~ ${formatRub(v, 0)}`, 420);
+  }
+  if (vacationPayEstimateHint) {
+    vacationPayEstimateHint.textContent =
+      result.fallback
+        ? `Бета: по последним 12 фактам, ${result.periodText}`
+        : `Бета: ${result.vacationDays} ${formatRuDays(result.vacationDays)}, ${result.periodText}`;
+  }
+}
+
+function requestVacationPayEstimateUpdate() {
+  if (!vacationPayEstimateEl) return;
+
+  const runId = ++vacationPayEstimateRunId;
+  const vacationDays = countCurrentVacationPayDays();
+
+  if (vacationDays <= 0) {
+    renderVacationPayEstimateIdle();
+    return;
+  }
+
+  renderVacationPayEstimateLoading(vacationDays);
+
+  void calculateVacationPayEstimate(year, month, vacationDays)
+    .then((result) => {
+      if (runId !== vacationPayEstimateRunId) return;
+      renderVacationPayEstimateResult(result);
+    })
+    .catch(() => {
+      if (runId !== vacationPayEstimateRunId) return;
+      if (vacationPayEstimateEl) {
+        vacationPayEstimateEl.textContent = "Ошибка";
+        vacationPayEstimateEl.dataset.value = "";
+      }
+      if (vacationPayEstimateHint) {
+        vacationPayEstimateHint.textContent = "Не удалось проверить прошлые месяцы";
+      }
+    });
+}
+
 function parseIsoDateLocal(value) {
   const match = String(value ?? "").trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
@@ -1879,7 +2137,7 @@ function recalcAll() {
   requestPaymentCountdownUpdate();
 
   const monthNorm = calendarNormHours();
-  const { otTotal, sickTotal, unpaidTotal, eduTotal, notEmployedTotal, personalNorm } = personalNormHours(monthNorm);
+  const { personalNorm } = personalNormHours(monthNorm);
   const totalDay = sumArr(dayHours);
   const totalNight = sumArr(nightHours);
   const workedHours = totalDay + totalNight;
@@ -1892,7 +2150,7 @@ function recalcAll() {
   animateNumber(normMonthEl, monthNorm, (v) => v.toFixed(1), 360);
   animateNumber(normEffectiveEl, personalNorm, (v) => v.toFixed(1), 360);
   animateNumber(overtimeEl, workedHours - personalNorm, (v) => (v >= 0 ? "+" : "") + v.toFixed(1), 360);
-  if (leaveDaysEl) leaveDaysEl.textContent = `ОТ:${otTotal} • Б:${sickTotal} • ОД/ОЗ:${unpaidTotal} • У/УД:${eduTotal} • НТ:${notEmployedTotal}`;
+  requestVacationPayEstimateUpdate();
 
   const { personalHalfNorm, workedFH } = firstHalfStats();
   if (normFirstHalfEl) normFirstHalfEl.textContent = personalHalfNorm.toFixed(1);
@@ -2373,8 +2631,8 @@ function buildTableForMonth() {
       const parsed = parseHoursOrLeave(raw);
 
       if (parsed.kind === "leave") {
-        if (weekend && parsed.leave !== DISMISSED_LEAVE_TYPE) {
-          setError("Коды отсутствия нельзя ставить на выходные (сб/вс).");
+        if (weekend && parsed.leave !== "vac_paid" && parsed.leave !== DISMISSED_LEAVE_TYPE) {
+          setError("На выходные можно ставить только ОТ как календарную отметку отпуска.");
           revertToPrev(dayInput);
           return;
         }

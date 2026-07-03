@@ -1412,8 +1412,8 @@ function handleDayInput(input, state, i) {
   const parsed = parseHoursOrLeave(raw);
 
   if (parsed.kind === "leave") {
-    if (weekend && parsed.leave !== DISMISSED_LEAVE_TYPE) {
-      setError("Коды отсутствия нельзя ставить на выходные (сб/вс).");
+    if (weekend && parsed.leave !== "vac_paid" && parsed.leave !== DISMISSED_LEAVE_TYPE) {
+      setError("На выходные можно ставить только ОТ как календарную отметку отпуска.");
       revertToPrev(input);
       return;
     }

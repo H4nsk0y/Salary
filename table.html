@@ -708,6 +708,7 @@
         </div>
         <div class="mt-2 text-slate-300/80">
           ОТ, Б, ОД, ОЗ, У, УД и НТ вычитаются из личной нормы. УВ только блокирует дальнейшие дни.
+          ОТ можно ставить на сб/вс как календарные дни отпуска — норму часов это не уменьшает.
           <a href="help.html" class="ml-1 inline-flex items-center rounded-full bg-indigo-500/12 px-2.5 py-1 text-[11px] font-semibold text-indigo-200 ring-1 ring-indigo-400/20 transition hover:bg-indigo-500/18 hover:text-indigo-100">Открыть справку</a>
         </div>
       </div>
@@ -828,7 +829,14 @@
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Налог 13%</div><div class="mt-1 text-lg font-semibold" id="taxPay">—</div></div>
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Аванс</div><div class="mt-1 text-lg font-semibold" id="advancePay">—</div></div>
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Остаток</div><div class="mt-1 text-lg font-semibold" id="remainingPay">—</div></div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Отсутствия (дней)</div><div class="mt-1 text-lg font-semibold" id="leaveDays">—</div></div>
+            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10" title="Бета-расчёт по подтверждённым фактическим выплатам за 12 предыдущих месяцев. Обычные выходные внутри отпуска учитываются, отмеченные праздничные дни не оплачиваются как отпуск.">
+              <div class="flex items-center gap-2 text-xs text-slate-400">
+                <span>Предполагаемые отпускные</span>
+                <span class="rounded-full bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200 ring-1 ring-amber-300/20">beta</span>
+              </div>
+              <div class="mt-1 text-lg font-semibold" id="vacationPayEstimate">—</div>
+              <div class="mt-1 text-[11px] leading-4 text-slate-500" id="vacationPayEstimateHint">Поставьте ОТ</div>
+            </div>
             <div id="paymentCountdownCard" class="payment-countdown rounded-2xl p-5"><div class="text-xs text-slate-400">До ближайшей выплаты</div><div class="payment-countdown-value mt-1 text-lg font-semibold" id="paymentCountdownValue">—</div><div id="paymentCountdownHint" class="sr-only">—</div></div>
           </div>
 

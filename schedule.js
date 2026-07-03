@@ -38,6 +38,38 @@ const LEAVE_LABELS = {
   not_employed: "Не трудоустроен",
 };
 
+const POSITION_LABELS = new Map([
+  ["egais_head", "Руководитель отдела ЕГАИС"],
+  ["egais_senior_operator", "Старший оператор ЕГАИС"],
+  ["egais_operator", "Оператор ЕГАИС"],
+  ["warehouse_head", "Руководитель склада"],
+  ["storekeeper", "Кладовщик"],
+  ["loader", "Грузчик"],
+  ["driver", "Водитель"],
+  ["bottling_plant_head", "Руководитель цеха розлива"],
+  ["shift_senior_master", "Старший мастер смены"],
+  ["shift_master", "Мастер смены"],
+  ["filling_line_operator", "Оператор линии розлива"],
+  ["accountant", "Учетчик"],
+  ["laboratory_head", "Руководитель лаборатории"],
+  ["deputy_head_laboratory", "Заместитель руководителя лаборатории"],
+  ["entrance_control_engineer", "Инженер входного контроля"],
+  ["quality_control_engineer", "Инженер контроля качества"],
+  ["chemist", "Химик"],
+  ["microbiologist", "Микробиолог"],
+  ["chief_accountant", "Главный бухгалтер"],
+  ["deputy_chief_accountant", "Заместитель главного бухгалтера"],
+  ["accountant_bookkeeping", "Бухгалтер"],
+  ["system_administrator", "Системный администратор"],
+  ["assistant_system_administrator", "Помощник системного администратора"],
+  ["hr_service_head", "Руководитель службы персонала"],
+  ["hr_specialist", "Специалист по персоналу"],
+  ["director", "Директор"],
+  ["assistant_director", "Помощник директора"],
+  ["procurement_specialist", "Специалист по закупкам"],
+  ["technology_accounting_specialist", "Специалист по учету"],
+]);
+
 function setStatus(text, tone = "neutral") {
   if (!statusPill) return;
 
@@ -113,6 +145,12 @@ function getDisplayName(row) {
     String(row?.position_name ?? "").trim() ||
     `Сотрудник ${String(row?.user_id ?? "").slice(0, 8)}`
   );
+}
+
+function getPositionLabel(row) {
+  const raw = String(row?.position_name ?? row?.position ?? "").trim();
+  if (!raw) return "Сотрудник отдела";
+  return POSITION_LABELS.get(raw) || raw;
 }
 
 function getInitials(name) {
@@ -266,9 +304,7 @@ function createPersonRow(row) {
 
   const meta = document.createElement("div");
   meta.className = "mt-1 min-w-0 max-w-full truncate text-xs text-slate-400";
-  meta.textContent = [row?.position_name, row?.tab_number ? `Таб. № ${row.tab_number}` : ""]
-    .filter(Boolean)
-    .join(" • ") || "Сотрудник отдела";
+  meta.textContent = getPositionLabel(row);
   meta.title = meta.textContent;
 
   body.append(top, meta);
