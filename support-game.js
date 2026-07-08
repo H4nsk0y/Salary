@@ -14,12 +14,13 @@ const GROUND_Y = 294;
 const BACKGROUND_SCROLL_FACTOR = 0.16;
 const HARDCORE_SECRET_OBSTACLE_CHANCE = 0.08;
 const HARDCORE_SECRET_SPEED_MULTIPLIER = 1.85;
+const SLIDE_DURATION = 0.68;
 const GAME_MODES = {
   normal: {
     key: "normal",
     label: "Обычный",
     badge: "NORMAL",
-    intro: "Перепрыгивайте палеты и продержитесь как можно дольше. Каждый обычный прыжок дает +3 очка, каждый 10-й - +10.",
+    intro: "Перепрыгивайте палеты, подкатывайтесь под рич-траки и продержитесь как можно дольше. Подкат: стрелка вниз или S.",
     baseSpeed: 720,
     speedBoost: 92,
     speedStepScore: 200,
@@ -28,14 +29,14 @@ const GAME_MODES = {
     spawnRandom: 0.72,
     spawnPenalty: 0.06,
     minSpawn: 0.68,
-    obstacleWeights: { single: 5, tall: 3, chaos: 2 },
+    obstacleWeights: { single: 5, tall: 3, chaos: 2, richTruck: 2 },
     getPoints: (passed) => (passed % 10 === 0 ? 10 : 3),
   },
   hardcore: {
     key: "hardcore",
     label: "Хардкор",
     badge: "HARD",
-    intro: "Скорость сразу высокая, за каждую палету дается 1 очко, а ускорение включается каждые 15 очков.",
+    intro: "Скорость сразу высокая: прыгайте через палеты и успевайте делать подкат под рич-траки.",
     baseSpeed: 806,
     speedBoost: 93.6,
     speedStepScore: 15,
@@ -44,7 +45,7 @@ const GAME_MODES = {
     spawnRandom: 0.46,
     spawnPenalty: 0.035,
     minSpawn: 0.56,
-    obstacleWeights: { single: 3, tall: 4, chaos: 4 },
+    obstacleWeights: { single: 3, tall: 4, chaos: 4, richTruck: 3 },
     getPoints: () => 1,
   },
 };
@@ -77,6 +78,7 @@ const elements = {
   soundOnIcon: document.getElementById("easterGameSoundOnIcon"),
   soundOffIcon: document.getElementById("easterGameSoundOffIcon"),
   jump: document.getElementById("easterGameJumpBtn"),
+  slide: document.getElementById("easterGameSlideBtn"),
   start: document.getElementById("easterGameStartBtn"),
   score: document.getElementById("easterGameScore"),
   passed: document.getElementById("easterGamePassed"),
@@ -97,16 +99,20 @@ const context = elements.canvas?.getContext("2d");
 const idleRunnerImage = new Image();
 const runRunnerImage = new Image();
 const jumpRunnerImage = new Image();
+const slideRunnerImage = new Image();
 const palletImage = new Image();
 const palletTallImage = new Image();
 const palletChaosImage = new Image();
+const richTruckImage = new Image();
 const warehouseBackgroundImage = new Image();
 idleRunnerImage.src = "./images/easter-runner-idle.png";
 runRunnerImage.src = "./images/easter-runner-run.png";
 jumpRunnerImage.src = "./images/easter-runner-jump.png";
+slideRunnerImage.src = "./images/easter-runner_ride.png";
 palletImage.src = "./images/easter-pallet.png";
 palletTallImage.src = "./images/easter-pallet-tall.png";
 palletChaosImage.src = "./images/easter-pallet-chaos.png";
+richTruckImage.src = "./images/easter-rich-truck.png";
 warehouseBackgroundImage.src = "./images/easter-warehouse-bg.png";
 
 const OBSTACLE_TYPES = {
@@ -136,6 +142,17 @@ const OBSTACLE_TYPES = {
     maxHeight: 104,
     insetX: 8,
     insetTop: 8,
+  },
+  richTruck: {
+    key: "richTruck",
+    image: richTruckImage,
+    fallbackRatio: 1,
+    renderRatio: 0.68,
+    minHeight: 206,
+    maxHeight: 232,
+    insetX: 0,
+    insetTop: 0,
+    airborne: true,
   },
 };
 
@@ -170,6 +187,8 @@ const dino = {
   height: 82,
   velocityY: 0,
   grounded: true,
+  sliding: false,
+  slideTimer: 0,
 };
 
 function getModeConfig(modeKey = currentMode) {
@@ -177,6 +196,7 @@ function getModeConfig(modeKey = currentMode) {
 }
 
 function getObstacleRatio(type) {
+  if (Number.isFinite(type?.renderRatio) && type.renderRatio > 0) return type.renderRatio;
   const image = type.image;
   if (image?.naturalWidth && image?.naturalHeight) {
     return image.naturalWidth / image.naturalHeight;
@@ -238,6 +258,8 @@ function resetRunner() {
   dino.y = GROUND_Y - dino.height;
   dino.velocityY = 0;
   dino.grounded = true;
+  dino.sliding = false;
+  dino.slideTimer = 0;
   elements.score.textContent = "0";
   elements.passed.textContent = "0";
 }
@@ -578,9 +600,11 @@ function jump() {
     startGame();
     return;
   }
-  if (phase !== "running" || !dino.grounded) return;
+  if (phase !== "running" || !dino.grounded || dino.sliding) return;
   dino.velocityY = -790;
   dino.grounded = false;
+  dino.sliding = false;
+  dino.slideTimer = 0;
   playJumpSound();
   for (let index = 0; index < 5; index += 1) {
     particles.push({
@@ -591,6 +615,28 @@ function jump() {
       life: 0.45,
       color: "rgba(148,163,184,.55)",
       size: 3 + Math.random() * 3,
+    });
+  }
+}
+
+function slide() {
+  if (phase === "ready" || phase === "gameover") {
+    startGame();
+    return;
+  }
+  if (phase !== "running" || !dino.grounded || dino.sliding) return;
+  dino.sliding = true;
+  dino.slideTimer = SLIDE_DURATION;
+  playMetalClick({ gain: 0.014 });
+  for (let index = 0; index < 7; index += 1) {
+    particles.push({
+      x: dino.x + 16 + Math.random() * 36,
+      y: GROUND_Y - 7,
+      velocityX: -95 - Math.random() * 130,
+      velocityY: -8 - Math.random() * 18,
+      life: 0.36,
+      color: "rgba(203,213,225,.46)",
+      size: 2 + Math.random() * 4,
     });
   }
 }
@@ -659,30 +705,74 @@ function addScore(obstacle) {
 }
 
 function collisionWith(obstacle) {
-  const insetX = 8;
-  const insetY = 7;
+  const runner = getRunnerHitbox();
+  const hitboxes = getObstacleHitboxes(obstacle, obstacle.x);
+  const previousHitboxes = obstacle.previousX === undefined
+    ? []
+    : getObstacleHitboxes(obstacle, obstacle.previousX);
+
+  return hitboxes.some((box, index) => {
+    const hasVerticalOverlap = runner.top < box.bottom && runner.bottom > box.top;
+    if (!hasVerticalOverlap) return false;
+
+    const hasCurrentOverlap = runner.left < box.right && runner.right > box.left;
+    if (hasCurrentOverlap) return true;
+
+    const previous = previousHitboxes[index];
+    if (!previous) return false;
+
+    const sweptLeft = Math.min(previous.left, box.left);
+    const sweptRight = Math.max(previous.right, box.right);
+    return runner.left < sweptRight && runner.right > sweptLeft;
+  });
+}
+
+function getRunnerHitbox() {
+  if (dino.sliding && dino.grounded) {
+    return {
+      left: dino.x + 2,
+      right: dino.x + 82,
+      top: GROUND_Y - 38,
+      bottom: GROUND_Y - 5,
+    };
+  }
+
+  return {
+    left: dino.x + 8,
+    right: dino.x + dino.width - 8,
+    top: dino.y + 7,
+    bottom: dino.y + dino.height - 4,
+  };
+}
+
+function getObstacleHitboxes(obstacle, x = obstacle.x) {
+  if (obstacle.type?.key === "richTruck") {
+    return [
+      {
+        left: x + obstacle.width * 0.18,
+        right: x + obstacle.width * 0.86,
+        top: Math.max(obstacle.y + 18, GROUND_Y - obstacle.height + 20),
+        bottom: GROUND_Y - 45,
+      },
+      {
+        left: x + obstacle.width * 0.24,
+        right: x + obstacle.width * 0.80,
+        top: GROUND_Y - 88,
+        bottom: GROUND_Y - 52,
+      },
+    ];
+  }
+
   const obstacleInsetX = obstacle.type?.insetX ?? 5;
   const obstacleInsetTop = obstacle.type?.insetTop ?? 6;
-  const dinoLeft = dino.x + insetX;
-  const dinoRight = dino.x + dino.width - insetX;
-  const dinoTop = dino.y + insetY;
-  const dinoBottom = dino.y + dino.height - 4;
-  const obstacleLeft = obstacle.x + obstacleInsetX;
-  const obstacleRight = obstacle.x + obstacle.width - obstacleInsetX;
-  const obstacleTop = obstacle.y + obstacleInsetTop;
-  const obstacleBottom = obstacle.y + obstacle.height;
-  const hasVerticalOverlap = dinoTop < obstacleBottom && dinoBottom > obstacleTop;
-  const hasCurrentOverlap = dinoLeft < obstacleRight && dinoRight > obstacleLeft;
-
-  if (hasVerticalOverlap && hasCurrentOverlap) return true;
-  if (!hasVerticalOverlap || obstacle.previousX === undefined) return false;
-
-  const previousLeft = obstacle.previousX + obstacleInsetX;
-  const previousRight = obstacle.previousX + obstacle.width - obstacleInsetX;
-  const sweptLeft = Math.min(previousLeft, obstacleLeft);
-  const sweptRight = Math.max(previousRight, obstacleRight);
-
-  return dinoLeft < sweptRight && dinoRight > sweptLeft;
+  return [
+    {
+      left: x + obstacleInsetX,
+      right: x + obstacle.width - obstacleInsetX,
+      top: obstacle.y + obstacleInsetTop,
+      bottom: obstacle.y + obstacle.height,
+    },
+  ];
 }
 
 function loseGame() {
@@ -696,7 +786,7 @@ function loseGame() {
   showMessage({
     eyebrow: "Забег окончен",
     title: `${finalScore} очков`,
-    text: `Перепрыгнуто палет: ${finalPassed}. Попробуйте побить общий рекорд.`,
+    text: `Пройдено препятствий: ${finalPassed}. Попробуйте побить общий рекорд.`,
     button: "Ещё раз",
     leaderboard: true,
   });
@@ -762,6 +852,12 @@ function updateGame(delta) {
   const mode = getModeConfig();
   speed = mode.baseSpeed + speedLevel * mode.speedBoost;
   backgroundOffset += speed * BACKGROUND_SCROLL_FACTOR * delta;
+  if (dino.slideTimer > 0) {
+    dino.slideTimer = Math.max(0, dino.slideTimer - delta);
+  }
+  if (!dino.grounded || dino.slideTimer <= 0) {
+    dino.sliding = false;
+  }
   dino.velocityY += 2200 * delta;
   dino.y += dino.velocityY * delta;
   const groundTop = GROUND_Y - dino.height;
@@ -770,6 +866,7 @@ function updateGame(delta) {
     dino.velocityY = 0;
     dino.grounded = true;
   }
+  if (dino.slideTimer > 0 && dino.grounded) dino.sliding = true;
 
   spawnTimer -= delta;
   if (spawnTimer <= 0) {
@@ -814,19 +911,22 @@ function drawBackground() {
 }
 
 function drawRunner() {
-  const image = phase === "running" && !dino.grounded
+  const image = phase === "running" && dino.sliding
+    ? slideRunnerImage
+    : phase === "running" && !dino.grounded
     ? jumpRunnerImage
     : phase === "running"
       ? runRunnerImage
       : idleRunnerImage;
-  const renderHeight = dino.grounded ? 98 : 92;
+
+  const renderHeight = dino.sliding ? 70 : dino.grounded ? 98 : 92;
   const renderWidth = image.naturalWidth && image.naturalHeight
     ? renderHeight * (image.naturalWidth / image.naturalHeight)
-    : 74;
-  const runBob = phase === "running" && dino.grounded
+    : dino.sliding ? 92 : 74;
+  const runBob = phase === "running" && dino.grounded && !dino.sliding
     ? Math.sin(performance.now() / 85) * 1.8
     : 0;
-  const drawX = dino.x - 14;
+  const drawX = dino.sliding ? dino.x - 18 : dino.x - 14;
   const drawY = dino.y + dino.height - renderHeight + runBob;
 
   if (image.complete && image.naturalWidth) {
@@ -841,7 +941,22 @@ function drawObstacles() {
   obstacles.forEach((obstacle) => {
     const image = obstacle.type?.image || palletImage;
     if (image.complete && image.naturalWidth) {
-      context.drawImage(image, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+      const crop = obstacle.type?.crop;
+      if (crop) {
+        context.drawImage(
+          image,
+          crop.sx,
+          crop.sy,
+          crop.sw,
+          crop.sh,
+          obstacle.x,
+          obstacle.y,
+          obstacle.width,
+          obstacle.height
+        );
+      } else {
+        context.drawImage(image, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+      }
     } else {
       context.fillStyle = "#b77932";
       context.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
@@ -898,6 +1013,11 @@ function handleKeydown(event) {
   if (event.code === "Space" || event.key === "ArrowUp") {
     event.preventDefault();
     jump();
+    return;
+  }
+  if (event.key === "ArrowDown" || event.code === "KeyS") {
+    event.preventDefault();
+    if (!event.repeat) slide();
   }
 }
 
@@ -920,6 +1040,7 @@ function bindEvents() {
   });
   elements.start?.addEventListener("click", handleStartButton);
   elements.jump?.addEventListener("click", jump);
+  elements.slide?.addEventListener("click", slide);
   elements.canvas?.addEventListener("pointerdown", jump);
   window.addEventListener("keydown", handleKeydown);
   document.addEventListener("visibilitychange", () => {

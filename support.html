@@ -371,7 +371,7 @@
         <canvas id="easterGameCanvas" width="960" height="360" aria-label="Секретная игра"></canvas>
         <div class="easter-score">
           <span>СЧЁТ <strong id="easterGameScore" class="ml-1 text-amber-200">0</strong></span>
-          <span>ПАЛЕТЫ <strong id="easterGamePassed" class="ml-1 text-emerald-200">0</strong></span>
+          <span>ПРОЙДЕНО <strong id="easterGamePassed" class="ml-1 text-emerald-200">0</strong></span>
         </div>
 
         <div id="easterGameMessage" class="easter-game-message">
@@ -379,15 +379,15 @@
             <div class="easter-game-message-panel">
               <div id="easterGameMessageEyebrow" class="text-xs font-bold uppercase text-amber-200">Пасхалка найдена</div>
               <div id="easterGameMessageTitle" class="mt-2 text-2xl font-black text-slate-50">ЕГАИСные гонки</div>
-              <p id="easterGameMessageText" class="mt-2 text-sm leading-6 text-slate-300">Перепрыгивайте палеты и продержитесь как можно дольше.</p>
+              <p id="easterGameMessageText" class="mt-2 text-sm leading-6 text-slate-300">Перепрыгивайте палеты, подкатывайтесь под рич-траки и продержитесь как можно дольше.</p>
               <div id="easterGameModePicker" class="easter-mode-picker mt-4" aria-label="Режим игры">
                 <button type="button" class="easter-mode-button" data-easter-mode="normal" aria-pressed="true">
                   <span class="easter-mode-title">Обычный</span>
-                  <span class="easter-mode-hint">+3 очка, каждый 10-й +10</span>
+                  <span class="easter-mode-hint">Прыжок и подкат, каждый 10-й +10</span>
                 </button>
                 <button type="button" class="easter-mode-button" data-easter-mode="hardcore" aria-pressed="false">
                   <span class="easter-mode-title">Хардкор</span>
-                  <span class="easter-mode-hint">Очень быстро, ускорение каждые 15</span>
+                  <span class="easter-mode-hint">Быстро, рич-траки, ускорение каждые 15</span>
                 </button>
               </div>
               <button id="easterGameStartBtn" type="button" class="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-500/20 px-5 py-3 text-sm font-bold text-emerald-100 ring-1 ring-emerald-400/30 transition hover:bg-emerald-500/30">
@@ -410,6 +410,9 @@
           </div>
         </div>
 
+        <button id="easterGameSlideBtn" type="button" class="absolute bottom-4 left-4 grid h-14 w-14 place-items-center rounded-2xl bg-sky-400/15 text-sky-100 ring-1 ring-sky-300/30 backdrop-blur-sm sm:hidden" aria-label="Подкат">
+          <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17h16"></path><path d="m8 13 4 4 4-4"></path><path d="M12 6v10"></path></svg>
+        </button>
         <button id="easterGameJumpBtn" type="button" class="absolute bottom-4 right-4 grid h-14 w-14 place-items-center rounded-2xl bg-amber-400/15 text-amber-100 ring-1 ring-amber-300/30 backdrop-blur-sm sm:hidden" aria-label="Прыжок">
           <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>
         </button>
