@@ -256,6 +256,53 @@
   gap: 7px;
 }
 
+.member-draggable-cell {
+  cursor: grab;
+}
+
+.member-draggable-cell:active {
+  cursor: grabbing;
+}
+
+.member-drag-handle {
+  flex: 0 0 auto;
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.08);
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.18em;
+  transition: background 0.18s, color 0.18s, transform 0.18s;
+}
+
+.member-draggable-cell:hover .member-drag-handle {
+  background: rgba(56, 189, 248, 0.16);
+  color: rgba(186, 230, 253, 0.98);
+  transform: translateY(-1px);
+}
+
+.member-draggable-cell.is-drag-source {
+  opacity: 0.52;
+}
+
+.employee-day-row.member-row-dragging > td,
+.employee-night-row.member-row-dragging > td {
+  opacity: 0.5;
+}
+
+.employee-day-row.member-drop-before > td {
+  box-shadow: inset 0 3px 0 rgba(56, 189, 248, 0.95) !important;
+}
+
+.employee-night-row.member-drop-after > td {
+  box-shadow: inset 0 -3px 0 rgba(56, 189, 248, 0.95) !important;
+}
+
 .label-title-row .label-main {
   min-width: 0;
   flex: 1 1 auto;

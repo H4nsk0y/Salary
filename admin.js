@@ -13,6 +13,7 @@ import {
   notifyPersonalTimesheetChanges,
   ownerCreateDepartmentInvite,
   sendPushNotifications,
+  setDepartmentMemberOrder,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 
@@ -91,6 +92,8 @@ let horizontalScrollRaf = 0;
 let resizeRaf = 0;
 let isSyncingHorizontalScroll = false;
 let tableDragState = null;
+let memberDragState = null;
+let memberOrderSaveSeq = 0;
 
 // Mobile toolbar
 let mobileSelectedIdx = 0;
@@ -599,6 +602,7 @@ function createState(member) {
     dismissedBeforeMonth: false,
     position: member?.position ?? "",
     tabNumber: member?.tab_number ?? "",
+    sortOrder: member?.sort_order ?? null,
     dayHours: new Array(daysInMonth).fill(0),
     nightHours: new Array(daysInMonth).fill(0),
     leaveType: new Array(daysInMonth).fill(null),
@@ -763,9 +767,11 @@ function makeInitials(name) {
 
 function makeLabelCell(state) {
   const td = document.createElement("td");
-  td.className = "label-cell";
+  td.className = "label-cell member-draggable-cell";
   td.rowSpan = 2;
-  td.title = state.name || "Сотрудник";
+  td.title = state.name ? `${state.name}. Перетащите, чтобы изменить порядок.` : "Сотрудник";
+  td.draggable = !isMobileNow();
+  td.dataset.userId = state.userId;
 
   const main = document.createElement("span");
   main.className = "label-main";
@@ -777,7 +783,13 @@ function makeLabelCell(state) {
 
   const titleRow = document.createElement("span");
   titleRow.className = "label-title-row";
-  titleRow.append(main, overtimeBadge);
+
+  const dragHandle = document.createElement("span");
+  dragHandle.className = "member-drag-handle";
+  dragHandle.textContent = "⋮⋮";
+  dragHandle.setAttribute("aria-hidden", "true");
+
+  titleRow.append(dragHandle, main, overtimeBadge);
 
   const sub = document.createElement("span");
   sub.className = "label-sub";
@@ -1512,7 +1524,7 @@ function handleMatrixInput(e) {
 
 function isTableDragIgnoredTarget(target) {
   if (!(target instanceof Element)) return true;
-  return Boolean(target.closest("thead, input, textarea, select, button, a, label"));
+  return Boolean(target.closest("thead, input, textarea, select, button, a, label, .member-draggable-cell"));
 }
 
 function startTableDrag(e) {
@@ -1555,6 +1567,181 @@ function endTableDrag(e) {
   tableScrollable.releasePointerCapture?.(tableDragState.pointerId);
   tableScrollable.classList.remove("is-dragging");
   tableDragState = null;
+}
+
+function getMemberDragCell(target) {
+  if (!(target instanceof Element)) return null;
+  return target.closest(".member-draggable-cell");
+}
+
+function getMemberRowFromTarget(target) {
+  if (!(target instanceof Element)) return null;
+  const row = target.closest("tr[data-user-id]");
+  if (!row) return null;
+  const userId = String(row.dataset.userId || "");
+  return teamStates.find((state) => String(state.userId) === userId) ?? null;
+}
+
+function findMemberIndexByUserId(userId) {
+  return teamStates.findIndex((state) => String(state.userId) === String(userId));
+}
+
+function clearMemberDropCue() {
+  for (const state of teamStates) {
+    state.dayRowEl?.classList.remove("member-drop-before");
+    state.nightRowEl?.classList.remove("member-drop-after");
+  }
+}
+
+function setMemberDropCue(targetState, placement) {
+  clearMemberDropCue();
+  if (!targetState) return;
+  if (placement === "before") targetState.dayRowEl?.classList.add("member-drop-before");
+  else targetState.nightRowEl?.classList.add("member-drop-after");
+}
+
+function getMemberDropPlacement(event, targetState) {
+  const dayBox = targetState?.dayRowEl?.getBoundingClientRect();
+  const nightBox = targetState?.nightRowEl?.getBoundingClientRect();
+  if (!dayBox || !nightBox) return "after";
+  const middle = (dayBox.top + nightBox.bottom) / 2;
+  return event.clientY < middle ? "before" : "after";
+}
+
+function clearMemberDragState() {
+  clearMemberDropCue();
+  for (const state of teamStates) {
+    state.labelCell?.classList.remove("is-drag-source");
+    state.dayRowEl?.classList.remove("member-row-dragging");
+    state.nightRowEl?.classList.remove("member-row-dragging");
+  }
+  memberDragState = null;
+}
+
+function handleMemberDragStart(event) {
+  const cell = getMemberDragCell(event.target);
+  if (!cell || isMobileNow() || teamStates.length < 2) {
+    event.preventDefault();
+    return;
+  }
+
+  const userId = String(cell.dataset.userId || "");
+  const sourceIndex = findMemberIndexByUserId(userId);
+  const sourceState = teamStates[sourceIndex];
+  if (!sourceState) {
+    event.preventDefault();
+    return;
+  }
+
+  memberDragState = { userId };
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", userId);
+
+  sourceState.labelCell?.classList.add("is-drag-source");
+  sourceState.dayRowEl?.classList.add("member-row-dragging");
+  sourceState.nightRowEl?.classList.add("member-row-dragging");
+}
+
+function handleMemberDragOver(event) {
+  if (!memberDragState) return;
+
+  const targetState = getMemberRowFromTarget(event.target);
+  if (!targetState || String(targetState.userId) === String(memberDragState.userId)) {
+    clearMemberDropCue();
+    return;
+  }
+
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+  setMemberDropCue(targetState, getMemberDropPlacement(event, targetState));
+}
+
+function moveMemberState(sourceUserId, targetUserId, placement) {
+  const sourceIndex = findMemberIndexByUserId(sourceUserId);
+  if (sourceIndex < 0) return false;
+
+  const sourceState = teamStates[sourceIndex];
+  const nextStates = teamStates.filter((state) => String(state.userId) !== String(sourceUserId));
+  const targetIndex = nextStates.findIndex((state) => String(state.userId) === String(targetUserId));
+  if (targetIndex < 0) return false;
+
+  const insertIndex = targetIndex + (placement === "after" ? 1 : 0);
+  nextStates.splice(insertIndex, 0, sourceState);
+
+  const changed = nextStates.some((state, index) => state !== teamStates[index]);
+  if (!changed) return false;
+
+  teamStates = nextStates;
+  return true;
+}
+
+function mapMemberOrderError(error) {
+  const message = String(error?.message || "");
+
+  if (message.includes("ACCESS_DENIED")) return "Недостаточно прав для изменения порядка сотрудников.";
+  if (message.includes("MEMBER_ORDER_MISMATCH")) return "Список сотрудников изменился. Обновите страницу и попробуйте снова.";
+  if (
+    message.includes("set_department_member_order") ||
+    message.includes("sort_order") ||
+    message.includes("schema cache") ||
+    message.includes("Could not find the function")
+  ) {
+    return "В базе нужно запустить supabase-sql/022_department_member_order.sql.";
+  }
+
+  return message || "Не удалось сохранить порядок сотрудников.";
+}
+
+async function persistMemberOrder({ hadDirtyChanges } = {}) {
+  const seq = ++memberOrderSaveSeq;
+  setSaveStatus("Сохраняю порядок…", "busy");
+  setError(null);
+
+  try {
+    await setDepartmentMemberOrder(
+      managedDepartment?.key,
+      teamStates.map((state) => state.userId)
+    );
+
+    if (seq !== memberOrderSaveSeq) return;
+
+    if (hadDirtyChanges || dirty) {
+      dirty = true;
+      setSaveStatus("Порядок сохранён, есть несохранённые изменения", "neutral");
+    } else {
+      dirty = false;
+      lastSavedSignature = currentSignature();
+      setSaveStatus("Порядок сохранён", "ok");
+    }
+  } catch (error) {
+    if (seq !== memberOrderSaveSeq) return;
+    setSaveStatus("Ошибка порядка", "err");
+    setError(mapMemberOrderError(error));
+  }
+}
+
+function handleMemberDrop(event) {
+  if (!memberDragState) return;
+
+  const targetState = getMemberRowFromTarget(event.target);
+  const sourceUserId = memberDragState.userId;
+  if (!targetState || String(targetState.userId) === String(sourceUserId)) {
+    clearMemberDragState();
+    return;
+  }
+
+  event.preventDefault();
+  const placement = getMemberDropPlacement(event, targetState);
+  const hadDirtyChanges = dirty;
+  clearMemberDragState();
+
+  if (!moveMemberState(sourceUserId, targetState.userId, placement)) return;
+
+  buildTable();
+  syncTopTableScrollWidth();
+  syncHorizontalScrollState();
+  if (!hadDirtyChanges) lastSavedSignature = currentSignature();
+  void persistMemberOrder({ hadDirtyChanges });
 }
 
 function createDayInput(state, i, memberIndex) {
@@ -1637,6 +1824,10 @@ function buildTable() {
 
     dayTr.classList.add("employee-day-row");
     nightTr.classList.add("employee-night-row");
+    dayTr.dataset.userId = state.userId;
+    nightTr.dataset.userId = state.userId;
+    dayTr.dataset.memberIndex = String(idx);
+    nightTr.dataset.memberIndex = String(idx);
 
     if (idx < teamStates.length - 1) {
       nightTr.classList.add("person-divider");
@@ -2381,6 +2572,10 @@ matrixBody?.addEventListener("focusin", handleMatrixFocusIn);
 matrixBody?.addEventListener("focusout", handleMatrixFocusOut);
 matrixBody?.addEventListener("input", handleMatrixInput);
 matrixBody?.addEventListener("keydown", handleMatrixKeyDown);
+matrixBody?.addEventListener("dragstart", handleMemberDragStart);
+matrixBody?.addEventListener("dragover", handleMemberDragOver);
+matrixBody?.addEventListener("drop", handleMemberDrop);
+matrixBody?.addEventListener("dragend", clearMemberDragState);
 
 monthSelect?.addEventListener("change", async () => {
   month = Number(monthSelect.value);

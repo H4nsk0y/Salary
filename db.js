@@ -580,11 +580,23 @@ export async function listManagedDepartmentMembers(departmentKey) {
   const key = String(departmentKey ?? "").trim();
   if (!key) throw new Error("Не указан отдел.");
 
-  const { data: memberRows, error: membersError } = await supabase
+  let { data: memberRows, error: membersError } = await supabase
     .from("department_members")
-    .select("user_id")
+    .select("user_id, sort_order, created_at")
     .eq("department_key", key)
+    .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
+
+  if (membersError && isMissingDepartmentMemberOrderColumnError(membersError)) {
+    const fallback = await supabase
+      .from("department_members")
+      .select("user_id, created_at")
+      .eq("department_key", key)
+      .order("created_at", { ascending: true });
+
+    memberRows = fallback.data;
+    membersError = fallback.error;
+  }
 
   if (membersError) throw membersError;
 
@@ -646,8 +658,40 @@ export async function listManagedDepartmentMembers(departmentKey) {
       avatar_url: profile?.avatar_url ?? null,
       hide_money: profile?.hide_money ?? false,
       created_at: profile?.created_at ?? null,
+      sort_order: memberRows?.find((row) => row.user_id === userId)?.sort_order ?? null,
     };
   });
+}
+
+function isMissingDepartmentMemberOrderColumnError(error) {
+  const text = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].filter(Boolean).join(" ");
+
+  return (
+    /sort_order/i.test(text) &&
+    /(column|schema cache|does not exist|could not find|42703|PGRST204)/i.test(text)
+  );
+}
+
+export async function setDepartmentMemberOrder(departmentKey, userIds) {
+  const key = String(departmentKey ?? "").trim();
+  const ids = (Array.isArray(userIds) ? userIds : [])
+    .map((id) => String(id ?? "").trim())
+    .filter(Boolean);
+
+  if (!key) throw new Error("Не указан отдел.");
+  if (!ids.length) throw new Error("Не указан порядок сотрудников.");
+
+  const { error } = await supabase.rpc("set_department_member_order", {
+    p_department_key: key,
+    p_user_ids: ids,
+  });
+
+  if (error) throw error;
 }
 
 export async function managedLoadTimesheet(userId, year, month) {
