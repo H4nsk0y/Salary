@@ -15,6 +15,7 @@ const BACKGROUND_SCROLL_FACTOR = 0.16;
 const HARDCORE_SECRET_OBSTACLE_CHANCE = 0.08;
 const HARDCORE_SECRET_SPEED_MULTIPLIER = 1.85;
 const SLIDE_DURATION = 0.68;
+const DAMAGE_REVEAL_MS = 900;
 const GAME_MODES = {
   normal: {
     key: "normal",
@@ -100,6 +101,8 @@ const idleRunnerImage = new Image();
 const runRunnerImage = new Image();
 const jumpRunnerImage = new Image();
 const slideRunnerImage = new Image();
+const legDamageRunnerImage = new Image();
+const headDamageRunnerImage = new Image();
 const palletImage = new Image();
 const palletTallImage = new Image();
 const palletChaosImage = new Image();
@@ -109,6 +112,8 @@ idleRunnerImage.src = "./images/easter-runner-idle.png";
 runRunnerImage.src = "./images/easter-runner-run.png";
 jumpRunnerImage.src = "./images/easter-runner-jump.png";
 slideRunnerImage.src = "./images/easter-runner_ride.png";
+legDamageRunnerImage.src = "./images/easter-runner-damage_1.png";
+headDamageRunnerImage.src = "./images/easter-runner-damage_2.png";
 palletImage.src = "./images/easter-pallet.png";
 palletTallImage.src = "./images/easter-pallet-tall.png";
 palletChaosImage.src = "./images/easter-pallet-chaos.png";
@@ -179,6 +184,8 @@ let audioContext = null;
 let musicTimer = 0;
 let musicStep = 0;
 let backgroundOffset = 0;
+let damageType = null;
+let damageStartedAt = 0;
 
 const dino = {
   x: 105,
@@ -255,6 +262,8 @@ function resetRunner() {
   scoreSoundPlayed = false;
   musicStep = 0;
   backgroundOffset = 0;
+  damageType = null;
+  damageStartedAt = 0;
   dino.y = GROUND_Y - dino.height;
   dino.velocityY = 0;
   dino.grounded = true;
@@ -775,21 +784,27 @@ function getObstacleHitboxes(obstacle, x = obstacle.x) {
   ];
 }
 
-function loseGame() {
+function loseGame(obstacle) {
   const finishedMode = currentMode;
   const finalScore = score;
   const finalPassed = passedObstacles;
+  damageType = obstacle?.type?.key === "richTruck" ? "head" : "leg";
+  damageStartedAt = performance.now();
   phase = "gameover";
   syncPauseButton();
   stopBackgroundMusic();
   playDefeatSound();
-  showMessage({
-    eyebrow: "Забег окончен",
-    title: `${finalScore} очков`,
-    text: `Пройдено препятствий: ${finalPassed}. Попробуйте побить общий рекорд.`,
-    button: "Ещё раз",
-    leaderboard: true,
-  });
+  const collisionStartedAt = damageStartedAt;
+  setTimeout(() => {
+    if (phase !== "gameover" || damageStartedAt !== collisionStartedAt) return;
+    showMessage({
+      eyebrow: "Забег окончен",
+      title: `${finalScore} очков`,
+      text: `Пройдено препятствий: ${finalPassed}. Попробуйте побить общий рекорд.`,
+      button: "Ещё раз",
+      leaderboard: true,
+    });
+  }, DAMAGE_REVEAL_MS);
   void saveAndRenderLeaderboard({
     modeKey: finishedMode,
     finalScore,
@@ -879,7 +894,7 @@ function updateGame(delta) {
     obstacle.previousX = obstacle.x;
     obstacle.x -= obstacleSpeed * delta;
     if (phase === "running" && collisionWith(obstacle)) {
-      loseGame();
+      loseGame(obstacle);
       break;
     }
     if (phase === "running") addScore(obstacle);
@@ -911,7 +926,10 @@ function drawBackground() {
 }
 
 function drawRunner() {
-  const image = phase === "running" && dino.sliding
+  const damageImage = damageType === "head" ? headDamageRunnerImage : legDamageRunnerImage;
+  const image = phase === "gameover" && damageType
+    ? damageImage
+    : phase === "running" && dino.sliding
     ? slideRunnerImage
     : phase === "running" && !dino.grounded
     ? jumpRunnerImage
@@ -919,14 +937,26 @@ function drawRunner() {
       ? runRunnerImage
       : idleRunnerImage;
 
-  const renderHeight = dino.sliding ? 70 : dino.grounded ? 98 : 92;
+  const isDamageFrame = phase === "gameover" && Boolean(damageType);
+  const impactElapsed = isDamageFrame ? Math.max(0, performance.now() - damageStartedAt) : 0;
+  const impactProgress = Math.min(1, impactElapsed / 260);
+  const impactScale = isDamageFrame
+    ? impactProgress < 0.55
+      ? 0.82 + (impactProgress / 0.55) * 0.28
+      : 1.1 - ((impactProgress - 0.55) / 0.45) * 0.1
+    : 1;
+  const baseRenderHeight = isDamageFrame ? 112 : dino.sliding ? 70 : dino.grounded ? 98 : 92;
+  const renderHeight = baseRenderHeight * impactScale;
   const renderWidth = image.naturalWidth && image.naturalHeight
     ? renderHeight * (image.naturalWidth / image.naturalHeight)
     : dino.sliding ? 92 : 74;
   const runBob = phase === "running" && dino.grounded && !dino.sliding
     ? Math.sin(performance.now() / 85) * 1.8
     : 0;
-  const drawX = dino.sliding ? dino.x - 18 : dino.x - 14;
+  const impactShake = isDamageFrame && impactElapsed < 220
+    ? Math.sin(impactElapsed / 18) * 4 * (1 - impactElapsed / 220)
+    : 0;
+  const drawX = (dino.sliding ? dino.x - 18 : dino.x - 14) + impactShake;
   const drawY = dino.y + dino.height - renderHeight + runBob;
 
   if (image.complete && image.naturalWidth) {
