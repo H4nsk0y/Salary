@@ -260,6 +260,57 @@
   cursor: grab;
 }
 
+td.shift-comment-cell {
+  position: relative;
+}
+
+td.shift-comment-cell.has-shift-comment::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 0;
+  height: 0;
+  border-top: 10px solid rgb(56 189 248);
+  border-left: 10px solid transparent;
+  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.55));
+  pointer-events: none;
+  z-index: 3;
+}
+
+.shift-comment-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(2, 6, 23, 0.42);
+}
+
+.shift-comment-dialog {
+  position: fixed;
+  width: min(340px, calc(100vw - 24px));
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  background: rgba(8, 15, 35, 0.98);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+  padding: 16px;
+  color: #e2e8f0;
+}
+
+.shift-comment-title { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
+.shift-comment-input { width: 100%; resize: vertical; border: 1px solid rgba(148,163,184,.22); border-radius: 12px; background: rgba(15,23,42,.9); padding: 10px 12px; color: #f1f5f9; outline: none; }
+.shift-comment-input:focus { border-color: rgba(56,189,248,.65); box-shadow: 0 0 0 3px rgba(56,189,248,.12); }
+.shift-comment-counter { margin-top: 5px; text-align: right; font-size: 11px; color: #64748b; }
+.shift-comment-message { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: #cbd5e1; line-height: 1.55; }
+.shift-comment-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.shift-comment-button { border: 0; border-radius: 10px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.shift-comment-button-secondary { background: rgba(255,255,255,.07); color: #cbd5e1; }
+.shift-comment-button-primary { background: rgba(14,165,233,.2); color: #bae6fd; }
+.shift-comment-button-danger { margin-right: auto; background: rgba(244,63,94,.14); color: #fecdd3; }
+
+@media (max-width: 700px) {
+  .shift-comment-dialog { left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: auto; }
+}
+
 .member-draggable-cell:active {
   cursor: grabbing;
 }
@@ -796,12 +847,30 @@
     }
 
     .mbar-employee-name {
+      flex: 1 1 auto;
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       font-size: 0.82rem;
       color: rgba(226, 232, 240, 0.98);
+    }
+
+    .mbar-comment-button {
+      flex: 0 0 auto;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 10px;
+      background: rgba(14, 165, 233, 0.1);
+      padding: 6px 9px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #bae6fd;
+    }
+
+    .mbar-comment-button.is-active {
+      background: rgba(14, 165, 233, 0.24);
+      border-color: rgba(56, 189, 248, 0.48);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.08);
     }
 
     #mHolidayBtn.is-active {
@@ -1106,6 +1175,7 @@
           <div class="mbar-employee-row">
             <span class="mbar-employee-caption">Сотрудник</span>
             <strong id="mEmployeeName" class="mbar-employee-name">—</strong>
+            <button id="mCommentBtn" type="button" class="mbar-comment-button">Комментарий</button>
           </div>
         </div>
 

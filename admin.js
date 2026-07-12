@@ -16,6 +16,11 @@ import {
   setDepartmentMemberOrder,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
+import {
+  normalizeShiftComments,
+  openShiftCommentDialog,
+  updateShiftCommentCell,
+} from "./shiftComments.js";
 
 import { exportDepartmentTimesheetXlsx } from "./excelExport.js";
 
@@ -97,6 +102,7 @@ let memberOrderSaveSeq = 0;
 
 // Mobile toolbar
 let mobileSelectedIdx = 0;
+let mobileActiveState = null;
 const mPrevDay = document.getElementById("mPrevDay");
 const mNextDay = document.getElementById("mNextDay");
 const mToday = document.getElementById("mToday");
@@ -105,6 +111,7 @@ const mTransferredBtn = document.getElementById("mTransferredBtn");
 const mShortBtn = document.getElementById("mShortBtn");
 const mDayLabel = document.getElementById("mDayLabel");
 const mEmployeeName = document.getElementById("mEmployeeName");
+const mCommentBtn = document.getElementById("mCommentBtn");
 
 let dirty = false;
 let lastSavedSignature = "";
@@ -226,6 +233,9 @@ function updateMobileToolbar() {
   mHolidayBtn?.classList.toggle("is-active", Boolean(sharedHoliday[idx]));
   mTransferredBtn?.classList.toggle("is-active", Boolean(sharedTransferredOff[idx]));
   mShortBtn?.classList.toggle("is-active", Boolean(sharedShortDay[idx]));
+  const hasComment = Boolean(String(mobileActiveState?.shiftComments?.[idx] ?? "").trim());
+  mCommentBtn?.classList.toggle("is-active", hasComment);
+  if (mCommentBtn) mCommentBtn.textContent = hasComment ? "Есть комментарий" : "Комментарий";
 }
 
 function setMobileDay(dayIdx0, options = {}) {
@@ -241,12 +251,14 @@ function setMobileDay(dayIdx0, options = {}) {
 }
 
 function setMobileEmployee(activeState) {
+  mobileActiveState = activeState ?? null;
   if (!mEmployeeName) return;
   mEmployeeName.textContent = activeState?.name || "—";
 
   for (const state of teamStates) {
     state.labelCell?.classList.toggle("is-mobile-active", state === activeState);
   }
+  updateMobileToolbar();
 }
 
 function setSaveStatus(text, tone = "neutral") {
@@ -606,6 +618,7 @@ function createState(member) {
     dayHours: new Array(daysInMonth).fill(0),
     nightHours: new Array(daysInMonth).fill(0),
     leaveType: new Array(daysInMonth).fill(null),
+    shiftComments: new Array(daysInMonth).fill(""),
     dayInputs: [],
     nightInputs: [],
     summaryEl: null,
@@ -746,6 +759,7 @@ function applyLoadedPayloads(payloadsByUserId) {
     if (payload?.leaveType?.length === daysInMonth) {
       state.leaveType = payload.leaveType.map((x) => normalizeLeaveTypeLegacy(x));
     }
+    state.shiftComments = normalizeShiftComments(payload?.shiftComments, daysInMonth);
     state.normSnapshot = normalizeNormSnapshot(payload?.normSnapshot);
 
     applyEmploymentDateDefaultsToState(state);
@@ -937,6 +951,7 @@ function currentPayloadForState(state) {
     dayHours: [...state.dayHours],
     nightHours: [...state.nightHours],
     leaveType: [...state.leaveType],
+    shiftComments: [...state.shiftComments],
     normSnapshot: createNormSnapshotForState(state),
   };
 }
@@ -962,6 +977,7 @@ function notificationSnapshotForState(state) {
     dayHours: state.dayHours.map((value) => sanitizeHourNumber(Number(value))),
     nightHours: state.nightHours.map((value) => sanitizeHourNumber(Number(value))),
     leaveType: state.leaveType.map((value) => normalizeLeaveTypeLegacy(value)),
+    shiftComments: normalizeShiftComments(state.shiftComments, daysInMonth),
   };
 }
 
@@ -1021,13 +1037,15 @@ function collectPersonalTimesheetChanges() {
         notificationNumberChanged(previous.nightHours?.[index], current.nightHours?.[index]) ||
         normalizeLeaveTypeLegacy(previous.leaveType?.[index]) !==
           normalizeLeaveTypeLegacy(current.leaveType?.[index]);
+      const commentChanged =
+        String(previous.shiftComments?.[index] ?? "") !== String(current.shiftComments?.[index] ?? "");
 
       const markChanged =
         Boolean(previous.isHoliday?.[index]) !== Boolean(current.isHoliday?.[index]) ||
         Boolean(previous.isTransferredOff?.[index]) !== Boolean(current.isTransferredOff?.[index]) ||
         Boolean(previous.isShortDay?.[index]) !== Boolean(current.isShortDay?.[index]);
 
-      if (!cellChanged && !markChanged) continue;
+      if (!cellChanged && !markChanged && !commentChanged) continue;
 
       const details = [];
       if (cellChanged) {
@@ -1040,6 +1058,7 @@ function collectPersonalTimesheetChanges() {
           `${notificationDayMarkLabel(previous, index)} → ${notificationDayMarkLabel(current, index)}`
         );
       }
+      if (commentChanged) details.push("изменён комментарий к смене");
 
       dayChanges.push(`${index + 1} ${monthNamesGenitive[month]}: ${details.join(", ")}`);
     }
@@ -1746,6 +1765,7 @@ function handleMemberDrop(event) {
 
 function createDayInput(state, i, memberIndex) {
   const td = document.createElement("td");
+  td.classList.add("shift-comment-cell");
   td.dataset.dayIndex = String(i);
 
   const input = document.createElement("input");
@@ -1765,7 +1785,7 @@ function createDayInput(state, i, memberIndex) {
 
 function createNightInput(state, i, memberIndex) {
   const td = document.createElement("td");
-  td.className = "night-cell";
+  td.className = "night-cell shift-comment-cell";
   td.dataset.dayIndex = String(i);
 
   const input = document.createElement("input");
@@ -1878,6 +1898,7 @@ function applyStateToDom() {
 
       state.dayInputs[i].dataset.prev = state.dayInputs[i].value ?? "";
       state.nightInputs[i].dataset.prev = state.nightInputs[i].value ?? "";
+      updateStateShiftCommentCells(state, i);
     }
 
     applyDismissalLockToState(state, { clearFuture: true });
@@ -1921,6 +1942,73 @@ function countLeaves(state) {
   }
 
   return { ot, sick, nt, other };
+}
+
+function updateStateShiftCommentCells(state, index) {
+  const comment = String(state.shiftComments?.[index] ?? "").trim();
+  updateShiftCommentCell(state.dayInputs[index]?.closest("td"), comment);
+  updateShiftCommentCell(state.nightInputs[index]?.closest("td"), comment);
+}
+
+function openStateShiftComment(state, index, anchor) {
+  if (!state || index < 0 || index >= daysInMonth) return;
+  openShiftCommentDialog({
+    anchor,
+    editable: true,
+    title: `${state.name}, ${index + 1} ${monthNamesGenitive[month]}`,
+    comment: state.shiftComments[index],
+    onSave: (comment) => {
+      state.shiftComments[index] = comment;
+      updateStateShiftCommentCells(state, index);
+      updateMobileToolbar();
+      scheduleSave();
+    },
+  });
+}
+
+let shiftCommentLongPress = null;
+
+function clearShiftCommentLongPress() {
+  if (!shiftCommentLongPress) return;
+  clearTimeout(shiftCommentLongPress.timer);
+  shiftCommentLongPress = null;
+}
+
+function getShiftCommentContext(target) {
+  const input = getMatrixInput(target) || target?.closest?.("td.shift-comment-cell")?.querySelector("input.input-hour");
+  if (!input) return null;
+  const context = getInputContext(input);
+  return context ? { ...context, cell: input.closest("td") } : null;
+}
+
+function handleShiftCommentContextMenu(event) {
+  const context = getShiftCommentContext(event.target);
+  if (!context) return;
+  event.preventDefault();
+  openStateShiftComment(context.state, context.index, context.cell);
+}
+
+function handleShiftCommentPointerDown(event) {
+  if (!isMobileNow() || event.pointerType === "mouse") return;
+  const context = getShiftCommentContext(event.target);
+  if (!context) return;
+  clearShiftCommentLongPress();
+  shiftCommentLongPress = {
+    pointerId: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    timer: setTimeout(() => {
+      openStateShiftComment(context.state, context.index, context.cell);
+      shiftCommentLongPress = null;
+    }, 600),
+  };
+}
+
+function handleShiftCommentPointerMove(event) {
+  if (!shiftCommentLongPress || event.pointerId !== shiftCommentLongPress.pointerId) return;
+  if (Math.hypot(event.clientX - shiftCommentLongPress.x, event.clientY - shiftCommentLongPress.y) > 10) {
+    clearShiftCommentLongPress();
+  }
 }
 
 function calendarNormHoursForBase(baseDayHours) {
@@ -2513,6 +2601,11 @@ mShortBtn?.addEventListener("click", () => {
   updateMobileToolbar();
 });
 
+mCommentBtn?.addEventListener("click", () => {
+  if (!mobileActiveState) return;
+  openStateShiftComment(mobileActiveState, mobileSelectedIdx, mCommentBtn);
+});
+
 logoutBtn?.addEventListener("click", async () => {
   try {
     await signOut();
@@ -2572,6 +2665,11 @@ matrixBody?.addEventListener("focusin", handleMatrixFocusIn);
 matrixBody?.addEventListener("focusout", handleMatrixFocusOut);
 matrixBody?.addEventListener("input", handleMatrixInput);
 matrixBody?.addEventListener("keydown", handleMatrixKeyDown);
+matrixBody?.addEventListener("contextmenu", handleShiftCommentContextMenu);
+matrixBody?.addEventListener("pointerdown", handleShiftCommentPointerDown);
+matrixBody?.addEventListener("pointerup", clearShiftCommentLongPress);
+matrixBody?.addEventListener("pointercancel", clearShiftCommentLongPress);
+matrixBody?.addEventListener("pointermove", handleShiftCommentPointerMove);
 matrixBody?.addEventListener("dragstart", handleMemberDragStart);
 matrixBody?.addEventListener("dragover", handleMemberDragOver);
 matrixBody?.addEventListener("drop", handleMemberDrop);

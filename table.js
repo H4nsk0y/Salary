@@ -4,6 +4,11 @@ import { requireSession, signOut } from "./auth.js";
 import { getMyProfile, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, saveTimesheet } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import {
+  normalizeShiftComments,
+  openShiftCommentDialog,
+  updateShiftCommentCell,
+} from "./shiftComments.js";
+import {
   buildProfileCompletionUrl,
   getMissingRequiredProfileFields,
   getMissingRequiredProfileLabels,
@@ -660,6 +665,7 @@ let isShortDay = [];
 let dayHours = [];
 let nightHours = [];
 let leaveType = [];
+let shiftComments = [];
 
 let profileRole = "user";
 let profileOklad = null;
@@ -2294,6 +2300,7 @@ function currentPayload() {
     dayHours,
     nightHours,
     leaveType,
+    shiftComments,
     normSnapshot: createNormSnapshot(currentNormProfile(), BASE_DAY_HOURS),
     moneySnapshot: normalizeMoneySnapshot(currentMoneySnapshot),
     paySummary: {
@@ -2472,6 +2479,7 @@ function buildTableForMonth() {
   dayHours = new Array(daysInMonth).fill(0);
   nightHours = new Array(daysInMonth).fill(0);
   leaveType = new Array(daysInMonth).fill(null);
+  shiftComments = new Array(daysInMonth).fill("");
 
   currentLoadedPayload = null;
   personalSharedMarksChanged = false;
@@ -2568,6 +2576,7 @@ function buildTableForMonth() {
     const weekend = isWeekendByIndex(year, month, i);
 
     const dayTd = document.createElement("td");
+    dayTd.classList.add("shift-comment-cell");
     if (weekend) dayTd.classList.add("weekend-col");
 
     const dayInput = document.createElement("input");
@@ -2682,7 +2691,7 @@ function buildTableForMonth() {
     dayInputs.push(dayInput);
 
     const nightTd = document.createElement("td");
-    nightTd.classList.add("night-cell");
+    nightTd.classList.add("night-cell", "shift-comment-cell");
     if (weekend) nightTd.classList.add("weekend-col");
 
     const nightInput = document.createElement("input");
@@ -2783,6 +2792,9 @@ function renderInputsFromState() {
 
     dayInputs[i].dataset.prev = dayInputs[i].value ?? "";
     nightInputs[i].dataset.prev = nightInputs[i].value ?? "";
+    const comment = String(shiftComments[i] ?? "").trim();
+    updateShiftCommentCell(dayInputs[i]?.closest("td"), comment);
+    updateShiftCommentCell(nightInputs[i]?.closest("td"), comment);
   }
 
   applyDismissalLock({ clearFuture: true });
@@ -2818,6 +2830,7 @@ function applyPayload(payload) {
   if (Array.isArray(payload.leaveType) && payload.leaveType.length === daysInMonth) {
     leaveType = payload.leaveType.map((x) => normalizeLeaveTypeLegacy(x));
   }
+  shiftComments = normalizeShiftComments(payload.shiftComments, daysInMonth);
 
   currentPaySummary = normalizeStoredPaySummary(payload.paySummary);
   applyMonthMoneyContext(payload);
@@ -2830,6 +2843,59 @@ function applyPayload(payload) {
   syncPaidLeaveControls();
   updateMobileToolbar();
 
+}
+
+function openMyShiftComment(target) {
+  const cell = target?.closest?.("td.shift-comment-cell");
+  if (!cell?.classList.contains("has-shift-comment")) return;
+  const input = cell.querySelector("input.input-hour");
+  const index = Number(input?.dataset.idx);
+  if (!Number.isInteger(index) || !shiftComments[index]) return;
+  openShiftCommentDialog({
+    anchor: cell,
+    title: `${index + 1} ${monthNames[month].toLowerCase()}`,
+    comment: shiftComments[index],
+  });
+}
+
+let myShiftCommentLongPress = null;
+
+function clearMyShiftCommentLongPress() {
+  if (!myShiftCommentLongPress) return;
+  clearTimeout(myShiftCommentLongPress.timer);
+  myShiftCommentLongPress = null;
+}
+
+function handleMyShiftCommentClick(event) {
+  const cell = event.target?.closest?.("td.shift-comment-cell.has-shift-comment");
+  if (!cell) return;
+  const rect = cell.getBoundingClientRect();
+  if (event.clientX < rect.right - 24 || event.clientY > rect.top + 24) return;
+  event.preventDefault();
+  openMyShiftComment(cell);
+}
+
+function handleMyShiftCommentPointerDown(event) {
+  if (event.pointerType === "mouse") return;
+  const cell = event.target?.closest?.("td.shift-comment-cell.has-shift-comment");
+  if (!cell) return;
+  clearMyShiftCommentLongPress();
+  myShiftCommentLongPress = {
+    pointerId: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    timer: setTimeout(() => {
+      openMyShiftComment(cell);
+      myShiftCommentLongPress = null;
+    }, 600),
+  };
+}
+
+function handleMyShiftCommentPointerMove(event) {
+  if (!myShiftCommentLongPress || event.pointerId !== myShiftCommentLongPress.pointerId) return;
+  if (Math.hypot(event.clientX - myShiftCommentLongPress.x, event.clientY - myShiftCommentLongPress.y) > 10) {
+    clearMyShiftCommentLongPress();
+  }
 }
 
 function setFromQueryOrNow() {
@@ -2966,7 +3032,6 @@ mHolidayBtn?.addEventListener("click", () => {
   if (!next) {
     isHoliday[idx] = false;
   }
-
   personalSharedMarksChanged = true;
   updateDayMarkClasses(idx);
   recalcAll();
@@ -3085,6 +3150,18 @@ yearSelect?.addEventListener("change", async () => {
 
 setupTableMoneyControls();
 setupActualMoneyControls();
+
+tableScrollable?.addEventListener("click", handleMyShiftCommentClick);
+tableScrollable?.addEventListener("contextmenu", (event) => {
+  const cell = event.target?.closest?.("td.shift-comment-cell.has-shift-comment");
+  if (!cell) return;
+  event.preventDefault();
+  openMyShiftComment(cell);
+});
+tableScrollable?.addEventListener("pointerdown", handleMyShiftCommentPointerDown);
+tableScrollable?.addEventListener("pointerup", clearMyShiftCommentLongPress);
+tableScrollable?.addEventListener("pointercancel", clearMyShiftCommentLongPress);
+tableScrollable?.addEventListener("pointermove", handleMyShiftCommentPointerMove);
 
 (async () => {
   try {
