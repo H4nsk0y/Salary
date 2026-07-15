@@ -21,7 +21,7 @@ const GAME_MODES = {
     key: "normal",
     label: "Обычный",
     badge: "NORMAL",
-    intro: "Перепрыгивайте палеты, подкатывайтесь под рич-траки и продержитесь как можно дольше. Подкат: стрелка вниз или S.",
+    intro: "Перепрыгивайте палеты, подкатывайтесь под рич-траки и продержитесь как можно дольше. Прыжок: W, пробел или стрелка вверх. Подкат: S или стрелка вниз.",
     baseSpeed: 720,
     speedBoost: 92,
     speedStepScore: 200,
@@ -37,7 +37,7 @@ const GAME_MODES = {
     key: "hardcore",
     label: "Хардкор",
     badge: "HARD",
-    intro: "Скорость сразу высокая: прыгайте через палеты и успевайте делать подкат под рич-траки.",
+    intro: "Скорость сразу высокая: прыгайте через палеты и успевайте делать подкат под рич-траки. Прыжок: W, пробел или стрелка вверх. Подкат: S или стрелка вниз.",
     baseSpeed: 806,
     speedBoost: 93.6,
     speedStepScore: 15,
@@ -1040,7 +1040,7 @@ function handleKeydown(event) {
     togglePause();
     return;
   }
-  if (event.code === "Space" || event.key === "ArrowUp") {
+  if (event.code === "Space" || event.code === "KeyW" || event.key === "ArrowUp") {
     event.preventDefault();
     jump();
     return;
