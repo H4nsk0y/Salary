@@ -150,7 +150,7 @@
 
     .easter-mode-picker {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: .55rem;
     }
 
@@ -170,6 +170,21 @@
       transform: translateY(-1px);
     }
 
+    .easter-mode-button:disabled {
+      cursor: not-allowed;
+    }
+
+    .easter-mode-button:disabled:hover {
+      transform: none;
+    }
+
+    .easter-mode-button.is-locked {
+      border-style: dashed;
+      border-color: rgba(148, 163, 184, .24);
+      background: rgba(15, 23, 42, .48);
+      opacity: .72;
+    }
+
     .easter-mode-button[aria-pressed="true"] {
       border-color: rgba(52, 211, 153, .45);
       background: rgba(16, 185, 129, .13);
@@ -180,6 +195,12 @@
       border-color: rgba(248, 113, 113, .5);
       background: rgba(239, 68, 68, .13);
       box-shadow: inset 0 0 0 1px rgba(239, 68, 68, .08);
+    }
+
+    .easter-mode-button[data-easter-mode="bossfight"][aria-pressed="true"] {
+      border-color: rgba(251, 191, 36, .5);
+      background: rgba(245, 158, 11, .13);
+      box-shadow: inset 0 0 0 1px rgba(245, 158, 11, .08);
     }
 
     .easter-mode-title {
@@ -387,7 +408,11 @@
                 </button>
                 <button type="button" class="easter-mode-button" data-easter-mode="hardcore" aria-pressed="false">
                   <span class="easter-mode-title">Хардкор</span>
-                  <span class="easter-mode-hint">Быстро, рич-траки, ускорение каждые 15</span>
+                  <span class="easter-mode-hint">Быстро, каждый 10-й палет +10</span>
+                </button>
+                <button type="button" class="easter-mode-button is-locked" data-easter-mode="bossfight" aria-pressed="false" disabled>
+                  <span class="easter-mode-title">Секретный уровень</span>
+                  <span class="easter-mode-hint">Условие открытия неизвестно</span>
                 </button>
               </div>
               <button id="easterGameStartBtn" type="button" class="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-500/20 px-5 py-3 text-sm font-bold text-emerald-100 ring-1 ring-emerald-400/30 transition hover:bg-emerald-500/30">

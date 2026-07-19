@@ -5,6 +5,8 @@ const REWARD_KEY_PREFIX = "alvisa.easterRunner.reward.v1";
 const PENDING_REWARD_KEY = "alvisa.easterRunner.pendingReward.v1";
 const SOUND_SETTING_KEY = "alvisa.easterRunner.soundEnabled.v1";
 const MODE_SETTING_KEY = "alvisa.easterRunner.mode.v1";
+const BOSS_FIGHT_UNLOCK_KEY_PREFIX = "alvisa.easterRunner.bossFightUnlocked.v1";
+const PENDING_BOSS_FIGHT_UNLOCK_KEY = "alvisa.easterRunner.pendingBossFightUnlock.v1";
 const LEADERBOARD_LIMIT = 5;
 const REWARD_SCORE = 350;
 const SCORE_SOUND_THRESHOLD = 300;
@@ -12,10 +14,60 @@ const MUSIC_STEP_MS = 150;
 const WORLD_HEIGHT = 360;
 const GROUND_Y = 294;
 const BACKGROUND_SCROLL_FACTOR = 0.16;
-const HARDCORE_SECRET_OBSTACLE_CHANCE = 0.08;
+const HARDCORE_SECRET_OBSTACLE_CHANCE = 0.05;
 const HARDCORE_SECRET_SPEED_MULTIPLIER = 1.85;
+const HARDCORE_EVENT_START_AT = Date.parse("2026-07-19T00:00:00+03:00");
+const HARDCORE_EVENT_END_AT = Date.parse("2026-07-27T00:00:00+03:00");
 const SLIDE_DURATION = 0.68;
 const DAMAGE_REVEAL_MS = 900;
+const BOSS_SCORE_THRESHOLDS = [300, 600, 1000];
+const BOSS_DIFFICULTY_MULTIPLIERS = [1, 2, 4];
+const BOSS_ENTRANCE_DURATION = 1.45;
+const BOSS_INITIAL_ATTACK_DELAY = 1.6;
+const BOSS_ATTACK_POSE_DURATION = 0.5;
+const BOSS_WAVE_COUNT = 4;
+const BOSS_WAVE_BREAK = 1.067;
+const BOSS_VICTORY_POSE_DURATION = 3.2;
+const BOSS_TURBO_SPEED_MULTIPLIER = 2.2275;
+const BOSS_FIGHT_WAVE_SPEED_MULTIPLIER = 1.15;
+const BOSS_WAVES = [
+  {
+    duration: 32,
+    projectileSpeed: 480,
+    attackInterval: 1.85,
+    highAttackChance: 0.18,
+    burstChance: 0,
+    burstGap: 1.12,
+    turboChance: 0,
+  },
+  {
+    duration: 36,
+    projectileSpeed: 624,
+    attackInterval: 1.58,
+    highAttackChance: 0.32,
+    burstChance: 0.14,
+    burstGap: 1.02,
+    turboChance: 0.025,
+  },
+  {
+    duration: 40,
+    projectileSpeed: 811,
+    attackInterval: 1.32,
+    highAttackChance: 0.46,
+    burstChance: 0.24,
+    burstGap: 0.9,
+    turboChance: 0.045,
+  },
+  {
+    duration: 44,
+    projectileSpeed: 1055,
+    attackInterval: 1.08,
+    highAttackChance: 0.6,
+    burstChance: 0.34,
+    burstGap: 0.78,
+    turboChance: 0.07,
+  },
+];
 const GAME_MODES = {
   normal: {
     key: "normal",
@@ -47,7 +99,23 @@ const GAME_MODES = {
     spawnPenalty: 0.035,
     minSpawn: 0.56,
     obstacleWeights: { single: 3, tall: 4, chaos: 4, richTruck: 3 },
-    getPoints: () => 1,
+    getPoints: (passed) => (passed % 10 === 0 ? 10 : 3),
+  },
+  bossfight: {
+    key: "bossfight",
+    label: "Босс-файт",
+    badge: "BOSS",
+    intro: "Бесконечная тренировка против босса. После каждой волны снаряды становятся быстрее. Прыжок: W, пробел или стрелка вверх. Подкат: S или стрелка вниз.",
+    baseSpeed: 0,
+    speedBoost: 0,
+    speedStepScore: Number.POSITIVE_INFINITY,
+    initialSpawn: Number.POSITIVE_INFINITY,
+    spawnBase: Number.POSITIVE_INFINITY,
+    spawnRandom: 0,
+    spawnPenalty: 0,
+    minSpawn: Number.POSITIVE_INFINITY,
+    obstacleWeights: {},
+    getPoints: () => 0,
   },
 };
 const MUSIC_BARS = [
@@ -108,6 +176,37 @@ const palletTallImage = new Image();
 const palletChaosImage = new Image();
 const richTruckImage = new Image();
 const warehouseBackgroundImage = new Image();
+const bossImage = new Image();
+const bossAttackImage = new Image();
+const bossHighAttackImage = new Image();
+const bossWinImage = new Image();
+const bossLossImage = new Image();
+const acidImage = new Image();
+const acidPuddleImage = new Image();
+const bossMusic = new Audio("./audio/easter-boss-theme.mp3");
+const gameImages = [
+  idleRunnerImage,
+  runRunnerImage,
+  jumpRunnerImage,
+  slideRunnerImage,
+  legDamageRunnerImage,
+  headDamageRunnerImage,
+  palletImage,
+  palletTallImage,
+  palletChaosImage,
+  richTruckImage,
+  warehouseBackgroundImage,
+  bossImage,
+  bossAttackImage,
+  bossHighAttackImage,
+  bossWinImage,
+  bossLossImage,
+  acidImage,
+  acidPuddleImage,
+];
+gameImages.forEach((image) => {
+  image.decoding = "async";
+});
 idleRunnerImage.src = "./images/easter-runner-idle.png";
 runRunnerImage.src = "./images/easter-runner-run.png";
 jumpRunnerImage.src = "./images/easter-runner-jump.png";
@@ -119,6 +218,40 @@ palletTallImage.src = "./images/easter-pallet-tall.png";
 palletChaosImage.src = "./images/easter-pallet-chaos.png";
 richTruckImage.src = "./images/easter-rich-truck.png";
 warehouseBackgroundImage.src = "./images/easter-warehouse-bg.png";
+bossImage.src = "./images/boss.png";
+bossAttackImage.src = "./images/boss_attack.png";
+bossHighAttackImage.src = "./images/boss_attack_2.png";
+bossWinImage.src = "./images/boss_win.png";
+bossLossImage.src = "./images/boss_loss.png";
+acidImage.src = "./images/sliz.png";
+acidPuddleImage.src = "./images/luja.png";
+bossMusic.loop = true;
+bossMusic.preload = "auto";
+bossMusic.volume = 0.22;
+
+async function prepareGameAssets() {
+  await Promise.allSettled(gameImages.map(async (image) => {
+    if (!image.complete) {
+      await new Promise((resolve) => {
+        image.addEventListener("load", resolve, { once: true });
+        image.addEventListener("error", resolve, { once: true });
+      });
+    }
+    if (image.complete && image.naturalWidth && typeof image.decode === "function") {
+      await image.decode().catch(() => {});
+    }
+  }));
+
+  const warmupCanvas = document.createElement("canvas");
+  warmupCanvas.width = 2;
+  warmupCanvas.height = 2;
+  const warmupContext = warmupCanvas.getContext("2d");
+  gameImages.forEach((image) => {
+    if (warmupContext && image.complete && image.naturalWidth) {
+      warmupContext.drawImage(image, 0, 0, 1, 1);
+    }
+  });
+}
 
 const OBSTACLE_TYPES = {
   single: {
@@ -171,6 +304,7 @@ let worldWidth = 960;
 let phase = "ready";
 let score = 0;
 let passedObstacles = 0;
+let passedPallets = 0;
 let speed = GAME_MODES.normal.baseSpeed;
 let speedLevel = 0;
 let spawnTimer = 1.1;
@@ -186,6 +320,10 @@ let musicStep = 0;
 let backgroundOffset = 0;
 let damageType = null;
 let damageStartedAt = 0;
+let acidProjectiles = [];
+let bossFight = createBossFightState();
+let defeatedBosses = 0;
+let bossFightModeUnlocked = false;
 
 const dino = {
   x: 105,
@@ -198,8 +336,49 @@ const dino = {
   slideTimer: 0,
 };
 
+function createBossFightState() {
+  return {
+    active: false,
+    stage: "none",
+    encounter: 0,
+    difficultyMultiplier: 1,
+    endless: false,
+    x: 0,
+    targetX: 0,
+    entranceElapsed: 0,
+    attackTimer: BOSS_INITIAL_ATTACK_DELAY,
+    attackPoseTimer: 0,
+    attackState: "idle",
+    currentAttack: null,
+    attackQueue: [],
+    wave: 1,
+    waveElapsed: 0,
+    waveBreakTimer: 0,
+    waveEnding: false,
+    victoryTimer: 0,
+    shotsFired: 0,
+  };
+}
+
 function getModeConfig(modeKey = currentMode) {
   return GAME_MODES[modeKey] || GAME_MODES.normal;
+}
+
+function isHardcoreEventActive(now = Date.now()) {
+  return now >= HARDCORE_EVENT_START_AT && now < HARDCORE_EVENT_END_AT;
+}
+
+function getHardcoreSecretObstacleChance() {
+  return isHardcoreEventActive()
+    ? HARDCORE_SECRET_OBSTACLE_CHANCE / 2
+    : HARDCORE_SECRET_OBSTACLE_CHANCE;
+}
+
+function getModeIntro(mode = getModeConfig()) {
+  if (mode.key === "hardcore" && isHardcoreEventActive()) {
+    return `${mode.intro} Ивент до конца 26 июля: палета +5, каждая 5-я +10, каждая 10-я +20, сверхбыстрое препятствие +80 очков.`;
+  }
+  return mode.intro;
 }
 
 function getObstacleRatio(type) {
@@ -214,27 +393,85 @@ function getObstacleRatio(type) {
 function syncModeControls() {
   const mode = getModeConfig();
   elements.modeButtons.forEach((button) => {
-    const selected = button.dataset.easterMode === mode.key;
+    const modeKey = button.dataset.easterMode;
+    const locked = button.dataset.easterMode === "bossfight" && !bossFightModeUnlocked;
+    const title = button.querySelector(".easter-mode-title");
+    const hint = button.querySelector(".easter-mode-hint");
+    button.classList.toggle("is-locked", locked);
+    button.disabled = locked || phase === "running" || phase === "paused";
+    if (modeKey === "bossfight") {
+      if (title) title.textContent = locked ? "Секретный уровень" : "Босс-файт";
+      if (hint) {
+        hint.textContent = locked
+          ? "Условие открытия неизвестно"
+          : "Бесконечные волны для тренировки";
+      }
+    }
+    if (modeKey === "hardcore" && hint) {
+      hint.textContent = isHardcoreEventActive()
+        ? "Ивент: палеты +5/+10/+20, быстрое +80"
+        : "Быстро, каждый 10-й палет +10";
+    }
+    const selected = modeKey === mode.key;
     button.setAttribute("aria-pressed", String(selected));
-    button.disabled = phase === "running" || phase === "paused";
   });
   if (elements.leaderboardTitle) elements.leaderboardTitle.textContent = `Топ-5: ${mode.label}`;
   if (elements.leaderboardBadge) elements.leaderboardBadge.textContent = mode.badge;
 }
 
 function setGameMode(modeKey) {
-  if (!GAME_MODES[modeKey] || phase === "running" || phase === "paused") return;
+  if (
+    !GAME_MODES[modeKey]
+    || (modeKey === "bossfight" && !bossFightModeUnlocked)
+    || phase === "running"
+    || phase === "paused"
+  ) return;
   currentMode = modeKey;
   localStorage.setItem(MODE_SETTING_KEY, currentMode);
   syncModeControls();
 
   if (phase === "ready") {
-    elements.messageText.textContent = getModeConfig().intro;
+    elements.messageText.textContent = getModeIntro();
   }
 
   if (phase === "gameover" && !elements.leaderboard?.classList.contains("hidden")) {
     void renderLeaderboard(null, currentMode);
   }
+}
+
+function getBossFightUnlockKey(userId = currentUserId) {
+  return userId
+    ? `${BOSS_FIGHT_UNLOCK_KEY_PREFIX}:${userId}`
+    : PENDING_BOSS_FIGHT_UNLOCK_KEY;
+}
+
+function refreshBossFightModeAccess() {
+  const pendingUnlock = localStorage.getItem(PENDING_BOSS_FIGHT_UNLOCK_KEY) === "true";
+  const accountUnlock = currentUserId
+    ? localStorage.getItem(getBossFightUnlockKey(currentUserId)) === "true"
+    : false;
+  const previousVictory = currentUserId
+    ? Boolean(localStorage.getItem(`${REWARD_KEY_PREFIX}:${currentUserId}`))
+    : Boolean(localStorage.getItem(PENDING_REWARD_KEY));
+
+  if (currentUserId && (pendingUnlock || previousVictory)) {
+    localStorage.setItem(getBossFightUnlockKey(currentUserId), "true");
+    localStorage.removeItem(PENDING_BOSS_FIGHT_UNLOCK_KEY);
+  }
+
+  bossFightModeUnlocked = pendingUnlock || accountUnlock || previousVictory;
+  if (currentMode === "bossfight" && !bossFightModeUnlocked) {
+    currentMode = "normal";
+    localStorage.setItem(MODE_SETTING_KEY, currentMode);
+  }
+  syncModeControls();
+}
+
+function unlockBossFightMode() {
+  if (bossFightModeUnlocked) return;
+  bossFightModeUnlocked = true;
+  localStorage.setItem(getBossFightUnlockKey(), "true");
+  syncModeControls();
 }
 
 function resizeCanvas() {
@@ -250,8 +487,10 @@ function resizeCanvas() {
 
 function resetRunner() {
   const mode = getModeConfig();
+  stopBossMusic({ rewind: true });
   score = 0;
   passedObstacles = 0;
+  passedPallets = 0;
   speed = mode.baseSpeed;
   speedLevel = 0;
   spawnTimer = mode.initialSpawn;
@@ -264,6 +503,9 @@ function resetRunner() {
   backgroundOffset = 0;
   damageType = null;
   damageStartedAt = 0;
+  acidProjectiles = [];
+  bossFight = createBossFightState();
+  defeatedBosses = 0;
   dino.y = GROUND_Y - dino.height;
   dino.velocityY = 0;
   dino.grounded = true;
@@ -361,8 +603,20 @@ function stopBackgroundMusic() {
   musicTimer = 0;
 }
 
+function stopBossMusic({ rewind = false } = {}) {
+  bossMusic.pause();
+  if (rewind) bossMusic.currentTime = 0;
+}
+
+function startBossMusic({ restart = false } = {}) {
+  if (!soundEnabled || phase !== "running" || document.hidden || !bossFight.active) return;
+  stopBackgroundMusic();
+  if (restart) bossMusic.currentTime = 0;
+  void bossMusic.play().catch(() => {});
+}
+
 function playBackgroundMusicStep() {
-  if (!soundEnabled || phase !== "running" || document.hidden) {
+  if (!soundEnabled || phase !== "running" || document.hidden || bossFight.active) {
     stopBackgroundMusic();
     return;
   }
@@ -396,7 +650,7 @@ function playBackgroundMusicStep() {
 
 function startBackgroundMusic() {
   stopBackgroundMusic();
-  if (!soundEnabled || phase !== "running" || document.hidden) return;
+  if (!soundEnabled || phase !== "running" || document.hidden || bossFight.active) return;
   playBackgroundMusicStep();
 }
 
@@ -430,9 +684,13 @@ function toggleSound() {
   syncSoundButton();
   if (soundEnabled) {
     getAudioContext();
-    if (phase === "running") startBackgroundMusic();
+    if (phase === "running") {
+      if (bossFight.active) startBossMusic();
+      else startBackgroundMusic();
+    }
   } else {
     stopBackgroundMusic();
+    stopBossMusic();
     if (audioContext?.state === "running") void audioContext.suspend();
   }
 }
@@ -537,7 +795,7 @@ function openGame() {
   showMessage({
     eyebrow: "Пасхалка найдена",
     title: "ЕГАИСные гонки",
-    text: getModeConfig().intro,
+    text: getModeIntro(),
     button: "Начать",
   });
   requestAnimationFrame(() => {
@@ -550,6 +808,7 @@ function openGame() {
 
 function closeGame() {
   stopBackgroundMusic();
+  stopBossMusic({ rewind: true });
   elements.overlay.classList.add("hidden");
   elements.overlay.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
@@ -567,13 +826,15 @@ function startGame() {
   syncPauseButton();
   hideMessage();
   lastFrameTime = performance.now();
-  startBackgroundMusic();
+  if (currentMode === "bossfight") beginBossFight();
+  else startBackgroundMusic();
 }
 
 function pauseGame({ focusControl = true } = {}) {
   if (phase !== "running") return;
   phase = "paused";
   stopBackgroundMusic();
+  stopBossMusic();
   syncPauseButton();
   showMessage({
     eyebrow: "Забег приостановлен",
@@ -591,7 +852,8 @@ function resumeGame() {
   syncPauseButton();
   hideMessage();
   lastFrameTime = performance.now();
-  startBackgroundMusic();
+  if (bossFight.active) startBossMusic();
+  else startBackgroundMusic();
 }
 
 function togglePause() {
@@ -669,7 +931,7 @@ function spawnObstacle() {
   const height = type.minHeight + Math.random() * (type.maxHeight - type.minHeight);
   const width = height * getObstacleRatio(type);
   const mode = getModeConfig();
-  const secretSpeed = mode.key === "hardcore" && Math.random() < HARDCORE_SECRET_OBSTACLE_CHANCE
+  const secretSpeed = mode.key === "hardcore" && Math.random() < getHardcoreSecretObstacleChance()
     ? mode.baseSpeed * HARDCORE_SECRET_SPEED_MULTIPLIER
     : null;
 
@@ -685,19 +947,85 @@ function spawnObstacle() {
   });
 }
 
+function beginBossFight() {
+  const endless = currentMode === "bossfight";
+  if (bossFight.active || (!endless && currentMode !== "hardcore")) return;
+
+  const encounter = endless ? 1 : defeatedBosses + 1;
+  if (encounter > BOSS_SCORE_THRESHOLDS.length) return;
+  const bossHeight = 255;
+  const bossWidth = bossImage.naturalWidth && bossImage.naturalHeight
+    ? bossHeight * (bossImage.naturalWidth / bossImage.naturalHeight)
+    : 150;
+
+  obstacles = [];
+  spawnTimer = Number.POSITIVE_INFINITY;
+  bossFight = {
+    ...createBossFightState(),
+    active: true,
+    stage: "entering",
+    encounter,
+    difficultyMultiplier: BOSS_DIFFICULTY_MULTIPLIERS[encounter - 1],
+    endless,
+    x: worldWidth + bossWidth + 24,
+    targetX: worldWidth - bossWidth - 28,
+  };
+  stopBackgroundMusic();
+  startBossMusic({ restart: true });
+  scorePopups.push({
+    x: worldWidth / 2,
+    y: 122,
+    text: "БОСС-ФАЙТ!",
+    life: 2,
+    large: true,
+  });
+  playTone({ frequency: 130, endFrequency: 65, duration: 0.42, type: "sawtooth", gain: 0.045 });
+}
+
+function getObstaclePoints(mode, obstacle) {
+  const isPallet = obstacle.type?.key !== "richTruck";
+  if (isPallet) passedPallets += 1;
+
+  if (mode.key !== "hardcore" || !isHardcoreEventActive()) {
+    return mode.getPoints(passedObstacles);
+  }
+  if (obstacle.secretSpeed) return 80;
+  if (!isPallet) return 3;
+  if (passedPallets % 10 === 0) return 20;
+  if (passedPallets % 5 === 0) return 10;
+  return 5;
+}
+
 function addScore(obstacle) {
   if (obstacle.counted || obstacle.x + obstacle.width >= dino.x) return;
   obstacle.counted = true;
   passedObstacles += 1;
   const mode = getModeConfig();
-  const points = mode.getPoints(passedObstacles);
+  const points = getObstaclePoints(mode, obstacle);
   const previousScore = score;
   score += points;
   elements.score.textContent = String(score);
   elements.passed.textContent = String(passedObstacles);
   scorePopups.push({ x: dino.x + 28, y: dino.y - 8, text: `+${points}`, life: 0.8 });
 
-  const nextSpeedLevel = Math.floor(score / mode.speedStepScore);
+  const nextBossScore = BOSS_SCORE_THRESHOLDS[defeatedBosses];
+  if (
+    mode.key === "hardcore"
+    && Number.isFinite(nextBossScore)
+    && score >= nextBossScore
+    && !bossFight.active
+  ) {
+    beginBossFight();
+    if (!scoreSoundPlayed) {
+      scoreSoundPlayed = true;
+      playScoreSound();
+    }
+    return;
+  }
+
+  const nextSpeedLevel = mode.key === "hardcore"
+    ? Math.floor(passedObstacles / mode.speedStepScore)
+    : Math.floor(score / mode.speedStepScore);
   if (nextSpeedLevel > speedLevel) {
     speedLevel = nextSpeedLevel;
     scorePopups.push({ x: worldWidth / 2, y: 95, text: "УСКОРЕНИЕ!", life: 1.25, large: true });
@@ -711,6 +1039,314 @@ function addScore(obstacle) {
   }
 
   if (!rewardUnlockedThisRun && score >= REWARD_SCORE) unlockReward();
+}
+
+function getBossWaveConfig() {
+  return BOSS_WAVES[Math.min(BOSS_WAVES.length - 1, Math.max(0, bossFight.wave - 1))];
+}
+
+function getBossDifficultyMultiplier() {
+  return Math.max(1, bossFight.difficultyMultiplier || 1);
+}
+
+function getBossWaveSpeedMultiplier() {
+  return bossFight.endless
+    ? Math.pow(BOSS_FIGHT_WAVE_SPEED_MULTIPLIER, Math.max(0, bossFight.wave - 1))
+    : 1;
+}
+
+function chooseBossAttackType(config, previousType = null) {
+  if (previousType) return previousType === "low" ? "high" : "low";
+  return Math.random() < config.highAttackChance ? "high" : "low";
+}
+
+function buildBossAttackSequence() {
+  const config = getBossWaveConfig();
+  const difficulty = getBossDifficultyMultiplier();
+  const burstChance = Math.min(0.85, config.burstChance * difficulty);
+  const tripleBurstChance = Math.min(0.8, 0.28 * difficulty);
+  const turboChance = Math.min(0.45, config.turboChance * difficulty);
+  const isBurst = bossFight.wave > 1 && Math.random() < burstChance;
+  const burstCount = isBurst && bossFight.wave >= BOSS_WAVE_COUNT && Math.random() < tripleBurstChance
+    ? 3
+    : isBurst ? 2 : 1;
+  const sequence = [];
+  let previousType = null;
+
+  for (let index = 0; index < burstCount; index += 1) {
+    const type = chooseBossAttackType(config, previousType);
+    sequence.push({
+      type,
+      turbo: !isBurst && Math.random() < turboChance,
+    });
+    previousType = type;
+  }
+
+  return sequence;
+}
+
+function beginBossCharge(attack) {
+  bossFight.currentAttack = attack;
+  bossFight.attackState = "charging";
+  bossFight.attackPoseTimer = attack.turbo
+    ? BOSS_ATTACK_POSE_DURATION * (2 / 3)
+    : BOSS_ATTACK_POSE_DURATION;
+  const isHigh = attack.type === "high";
+  const isTurbo = attack.turbo;
+  playTone({
+    frequency: isTurbo ? 245 : isHigh ? 175 : 105,
+    endFrequency: isTurbo ? 390 : isHigh ? 110 : 155,
+    duration: isTurbo ? 0.32 : 0.22,
+    type: "sawtooth",
+    gain: isTurbo ? 0.028 : 0.018,
+  });
+  if (isTurbo) {
+    scorePopups.push({
+      x: worldWidth * 0.72,
+      y: 78,
+      text: "БЫСТРАЯ АТАКА!",
+      life: 0.9,
+      large: true,
+    });
+  }
+}
+
+function spawnAcidProjectile(attack) {
+  const isHigh = attack.type === "high";
+  const projectileImage = isHigh ? acidImage : acidPuddleImage;
+  const width = isHigh ? 136 : 132;
+  const ratio = projectileImage.naturalWidth && projectileImage.naturalHeight
+    ? projectileImage.naturalHeight / projectileImage.naturalWidth
+    : isHigh ? 0.72 : 0.25;
+  const height = width * ratio;
+  const config = getBossWaveConfig();
+  const speed = config.projectileSpeed
+    * getBossDifficultyMultiplier()
+    * getBossWaveSpeedMultiplier()
+    * (attack.turbo ? BOSS_TURBO_SPEED_MULTIPLIER : 1);
+  const y = isHigh
+    ? GROUND_Y - height - 63
+    : GROUND_Y - height - 2;
+
+  acidProjectiles.push({
+    x: bossFight.x - 8,
+    previousX: bossFight.x - 8,
+    y,
+    width,
+    height,
+    speed,
+    type: attack.type,
+    turbo: attack.turbo,
+    counted: false,
+    hitInsetX: isHigh ? 0.18 : 0.12,
+    hitInsetY: isHigh ? 0.12 : 0.15,
+    hitTop: isHigh ? GROUND_Y - 164 : null,
+    hitBottom: isHigh ? GROUND_Y - 56 : null,
+  });
+  bossFight.shotsFired += 1;
+  playTone({
+    frequency: isHigh ? 260 : 180,
+    endFrequency: isHigh ? 105 : 78,
+    duration: 0.18,
+    type: "sawtooth",
+    gain: attack.turbo ? 0.035 : 0.025,
+  });
+}
+
+function beginBossDefeat() {
+  if (["defeated", "final-victory", "retreating"].includes(bossFight.stage)) return;
+  const isFinalEncounter = bossFight.encounter === BOSS_SCORE_THRESHOLDS.length;
+  defeatedBosses = Math.max(defeatedBosses, bossFight.encounter);
+  if (bossFight.encounter === 1) unlockBossFightMode();
+  bossFight.stage = isFinalEncounter ? "final-victory" : "defeated";
+  bossFight.attackState = "idle";
+  bossFight.currentAttack = null;
+  bossFight.attackQueue = [];
+  bossFight.victoryTimer = BOSS_VICTORY_POSE_DURATION;
+  stopBossMusic({ rewind: true });
+  scorePopups.push({
+    x: worldWidth / 2,
+    y: 122,
+    text: isFinalEncounter ? "ВЫ СПАСЛИ АЛВИСУ!" : "ОНА ЕЩЁ ВЕРНЁТСЯ",
+    life: 2.4,
+    large: true,
+  });
+  createVictoryParticles();
+  playScoreSound();
+}
+
+function finishFinalBossVictory() {
+  if (phase !== "running") return;
+  const finishedMode = currentMode;
+  const finalScore = score;
+  const finalPassed = passedObstacles;
+  phase = "gameover";
+  syncPauseButton();
+  stopBackgroundMusic();
+  stopBossMusic({ rewind: true });
+  showMessage({
+    eyebrow: "АЛВИСА СПАСЕНА",
+    title: "Вы спасли АЛВИСУ",
+    text: `Все три босса побеждены. Итоговый результат: ${finalScore} очков.`,
+    button: "Сыграть ещё раз",
+    leaderboard: true,
+  });
+  void saveAndRenderLeaderboard({
+    modeKey: finishedMode,
+    finalScore,
+    finalPassed,
+  });
+}
+
+function beginBossRetreat() {
+  if (bossFight.stage === "retreating") return;
+  bossFight.stage = "retreating";
+  bossFight.attackState = "idle";
+  bossFight.currentAttack = null;
+  bossFight.attackPoseTimer = 0;
+}
+
+function collisionWithAcid(projectile) {
+  const runner = getRunnerHitbox();
+  const insetX = projectile.width * projectile.hitInsetX;
+  const insetY = projectile.height * projectile.hitInsetY;
+  const left = projectile.x + insetX;
+  const right = projectile.x + projectile.width - insetX;
+  const previousLeft = projectile.previousX + insetX;
+  const previousRight = projectile.previousX + projectile.width - insetX;
+  const sweptLeft = Math.min(left, previousLeft);
+  const sweptRight = Math.max(right, previousRight);
+  const top = projectile.hitTop ?? projectile.y + insetY;
+  const bottom = projectile.hitBottom ?? projectile.y + projectile.height - insetY;
+
+  return (
+    runner.left < sweptRight &&
+    runner.right > sweptLeft &&
+    runner.top < bottom &&
+    runner.bottom > top
+  );
+}
+
+function updateBossFight(delta) {
+  if (!bossFight.active) return;
+
+  if (bossFight.stage === "entering") {
+    bossFight.entranceElapsed += delta;
+    const progress = Math.min(1, bossFight.entranceElapsed / BOSS_ENTRANCE_DURATION);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    bossFight.x += (bossFight.targetX - bossFight.x) * Math.min(1, eased * 0.12 + delta * 4);
+
+    if (progress >= 1 || Math.abs(bossFight.x - bossFight.targetX) < 1) {
+      bossFight.x = bossFight.targetX;
+      bossFight.stage = "fighting";
+      bossFight.attackTimer = Math.max(0.45, BOSS_INITIAL_ATTACK_DELAY / getBossDifficultyMultiplier());
+    }
+    return;
+  }
+
+  if (bossFight.stage === "player-lost") return;
+
+  if (bossFight.stage === "defeated" || bossFight.stage === "final-victory") {
+    bossFight.victoryTimer = Math.max(0, bossFight.victoryTimer - delta);
+    if (bossFight.victoryTimer <= 0) {
+      if (bossFight.stage === "final-victory") finishFinalBossVictory();
+      else beginBossRetreat();
+    }
+    return;
+  }
+
+  if (bossFight.stage === "retreating") {
+    bossFight.x += Math.max(360, worldWidth * 0.48) * delta;
+    if (bossFight.x > worldWidth + 260) {
+      bossFight = createBossFightState();
+      acidProjectiles = [];
+      spawnTimer = 0.9;
+      startBackgroundMusic();
+    }
+    return;
+  }
+
+  if (bossFight.stage === "wave-break" && acidProjectiles.length === 0) {
+    bossFight.waveBreakTimer = Math.max(0, bossFight.waveBreakTimer - delta);
+    if (bossFight.waveBreakTimer <= 0) {
+      bossFight.wave += 1;
+      bossFight.waveElapsed = 0;
+      bossFight.waveEnding = false;
+      bossFight.attackTimer = Math.max(0.4, 1.15 / getBossDifficultyMultiplier());
+      bossFight.stage = "fighting";
+      scorePopups.push({
+        x: worldWidth / 2,
+        y: 122,
+        text: `ВОЛНА ${bossFight.wave}`,
+        life: 1.5,
+        large: true,
+      });
+    }
+  }
+
+  if (bossFight.stage === "fighting") {
+    const config = getBossWaveConfig();
+    bossFight.waveElapsed += delta;
+    if (bossFight.waveElapsed >= config.duration) bossFight.waveEnding = true;
+
+    if (bossFight.attackState === "charging") {
+      bossFight.attackPoseTimer = Math.max(0, bossFight.attackPoseTimer - delta);
+      if (bossFight.attackPoseTimer <= 0) {
+        spawnAcidProjectile(bossFight.currentAttack);
+        bossFight.attackState = "idle";
+        bossFight.currentAttack = null;
+        const difficulty = getBossDifficultyMultiplier();
+        bossFight.attackTimer = bossFight.attackQueue.length
+          ? Math.max(0.26, config.burstGap / difficulty)
+          : Math.max(0.3, config.attackInterval / difficulty) + Math.random() * (0.28 / difficulty);
+      }
+    } else {
+      bossFight.attackTimer -= delta;
+      if (bossFight.attackTimer <= 0) {
+        if (!bossFight.attackQueue.length && !bossFight.waveEnding) {
+          bossFight.attackQueue = buildBossAttackSequence();
+        }
+        const nextAttack = bossFight.attackQueue.shift();
+        if (nextAttack) beginBossCharge(nextAttack);
+      }
+    }
+
+    if (
+      bossFight.waveEnding
+      && bossFight.attackState === "idle"
+      && bossFight.attackQueue.length === 0
+    ) {
+      if (!bossFight.endless && bossFight.wave >= BOSS_WAVE_COUNT) {
+        bossFight.stage = "clearing";
+      } else {
+        bossFight.stage = "wave-break";
+        bossFight.waveBreakTimer = BOSS_WAVE_BREAK;
+      }
+    }
+  }
+
+  for (const projectile of acidProjectiles) {
+    projectile.previousX = projectile.x;
+    projectile.x -= projectile.speed * delta;
+    if (
+      bossFight.endless
+      && !projectile.counted
+      && projectile.x + projectile.width < dino.x
+    ) {
+      projectile.counted = true;
+      score += 1;
+      passedObstacles += 1;
+      elements.score.textContent = String(score);
+      elements.passed.textContent = String(passedObstacles);
+      playPointSound(1);
+    }
+    if (phase === "running" && collisionWithAcid(projectile)) {
+      loseGame({ type: { key: projectile.type === "high" ? "acidHigh" : "acidLow" } });
+      break;
+    }
+  }
+  acidProjectiles = acidProjectiles.filter((projectile) => projectile.x + projectile.width > -30);
+  if (bossFight.stage === "clearing" && acidProjectiles.length === 0) beginBossDefeat();
 }
 
 function collisionWith(obstacle) {
@@ -788,28 +1424,45 @@ function loseGame(obstacle) {
   const finishedMode = currentMode;
   const finalScore = score;
   const finalPassed = passedObstacles;
-  damageType = obstacle?.type?.key === "richTruck" ? "head" : "leg";
+  const finalBossWave = bossFight.wave;
+  const bossTraining = finishedMode === "bossfight";
+  const collisionType = obstacle?.type?.key;
+  const lostDuringBossFight = bossFight.active
+    && !["defeated", "final-victory", "retreating", "player-lost"].includes(bossFight.stage);
+  damageType = collisionType === "richTruck" || collisionType === "acidHigh" ? "head" : "leg";
   damageStartedAt = performance.now();
+  if (lostDuringBossFight) {
+    bossFight.stage = "player-lost";
+    bossFight.attackState = "idle";
+    bossFight.currentAttack = null;
+    bossFight.attackQueue = [];
+    acidProjectiles = [];
+  }
   phase = "gameover";
   syncPauseButton();
   stopBackgroundMusic();
+  stopBossMusic({ rewind: true });
   playDefeatSound();
   const collisionStartedAt = damageStartedAt;
   setTimeout(() => {
     if (phase !== "gameover" || damageStartedAt !== collisionStartedAt) return;
     showMessage({
-      eyebrow: "Забег окончен",
-      title: `${finalScore} очков`,
-      text: `Пройдено препятствий: ${finalPassed}. Попробуйте побить общий рекорд.`,
+      eyebrow: bossTraining ? "Тренировка окончена" : "Забег окончен",
+      title: bossTraining ? `Волна ${finalBossWave}` : `${finalScore} очков`,
+      text: bossTraining
+        ? `Успешно отражено снарядов: ${finalPassed}. Следующая попытка начнётся с первой волны.`
+        : `Пройдено препятствий: ${finalPassed}. Попробуйте побить общий рекорд.`,
       button: "Ещё раз",
-      leaderboard: true,
+      leaderboard: !bossTraining,
     });
   }, DAMAGE_REVEAL_MS);
-  void saveAndRenderLeaderboard({
-    modeKey: finishedMode,
-    finalScore,
-    finalPassed,
-  });
+  if (!bossTraining) {
+    void saveAndRenderLeaderboard({
+      modeKey: finishedMode,
+      finalScore,
+      finalPassed,
+    });
+  }
 }
 
 function saveReward() {
@@ -865,8 +1518,8 @@ function updateParticles(delta) {
 
 function updateGame(delta) {
   const mode = getModeConfig();
-  speed = mode.baseSpeed + speedLevel * mode.speedBoost;
-  backgroundOffset += speed * BACKGROUND_SCROLL_FACTOR * delta;
+  speed = bossFight.active ? 0 : mode.baseSpeed + speedLevel * mode.speedBoost;
+  if (!bossFight.active) backgroundOffset += speed * BACKGROUND_SCROLL_FACTOR * delta;
   if (dino.slideTimer > 0) {
     dino.slideTimer = Math.max(0, dino.slideTimer - delta);
   }
@@ -883,8 +1536,8 @@ function updateGame(delta) {
   }
   if (dino.slideTimer > 0 && dino.grounded) dino.sliding = true;
 
-  spawnTimer -= delta;
-  if (spawnTimer <= 0) {
+  if (!bossFight.active) spawnTimer -= delta;
+  if (!bossFight.active && spawnTimer <= 0) {
     spawnObstacle();
     spawnTimer = Math.max(mode.minSpawn, mode.spawnBase + Math.random() * mode.spawnRandom - speedLevel * mode.spawnPenalty);
   }
@@ -900,6 +1553,7 @@ function updateGame(delta) {
     if (phase === "running") addScore(obstacle);
   }
   obstacles = obstacles.filter((obstacle) => obstacle.x + obstacle.width > -30);
+  updateBossFight(delta);
   updateParticles(delta);
 }
 
@@ -933,7 +1587,7 @@ function drawRunner() {
     ? slideRunnerImage
     : phase === "running" && !dino.grounded
     ? jumpRunnerImage
-    : phase === "running"
+    : phase === "running" && !bossFight.active
       ? runRunnerImage
       : idleRunnerImage;
 
@@ -965,6 +1619,86 @@ function drawRunner() {
   }
   context.fillStyle = "#1e3a5f";
   context.fillRect(dino.x, dino.y, dino.width, dino.height);
+}
+
+function drawBoss() {
+  if (!bossFight.active) return;
+
+  const attacking = bossFight.attackState === "charging";
+  let image = bossImage;
+  if (bossFight.stage === "player-lost") image = bossLossImage;
+  else if (["defeated", "final-victory", "retreating"].includes(bossFight.stage)) image = bossWinImage;
+  else if (attacking && bossFight.currentAttack?.type === "high") image = bossHighAttackImage;
+  else if (attacking) image = bossAttackImage;
+  const renderHeight = 255;
+  const renderWidth = image.naturalWidth && image.naturalHeight
+    ? renderHeight * (image.naturalWidth / image.naturalHeight)
+    : attacking ? 228 : 150;
+  const idleWidth = bossImage.naturalWidth && bossImage.naturalHeight
+    ? renderHeight * (bossImage.naturalWidth / bossImage.naturalHeight)
+    : 150;
+  const bossRight = bossFight.x + idleWidth;
+  const drawX = image === bossImage ? bossFight.x : bossRight - renderWidth;
+  const canBob = !["player-lost", "defeated", "final-victory"].includes(bossFight.stage);
+  const bossBob = canBob ? Math.sin(performance.now() / 180) * 3 : 0;
+  const drawY = GROUND_Y - renderHeight + 7 + bossBob;
+
+  if (image.complete && image.naturalWidth) {
+    context.drawImage(image, drawX, drawY, renderWidth, renderHeight);
+  }
+
+  context.save();
+  context.textAlign = "center";
+  context.font = "900 14px Inter, sans-serif";
+  context.fillStyle = "#fecaca";
+  let bossStatus = bossFight.endless
+    ? `ВОЛНА ${bossFight.wave}`
+    : `ВОЛНА ${bossFight.wave}/${BOSS_WAVE_COUNT}`;
+  if (bossFight.stage === "entering") bossStatus = "БОСС ПРИБЛИЖАЕТСЯ";
+  if (bossFight.stage === "wave-break") bossStatus = "ПЕРЕДЫШКА";
+  if (bossFight.stage === "clearing") bossStatus = "ПОСЛЕДНЯЯ АТАКА";
+  if (bossFight.stage === "defeated") bossStatus = "ОНА ЕЩЁ ВЕРНЁТСЯ";
+  if (bossFight.stage === "final-victory") bossStatus = "ВЫ СПАСЛИ АЛВИСУ!";
+  if (bossFight.stage === "player-lost") bossStatus = "БОСС ПОБЕДИЛ";
+  if (bossFight.stage === "retreating") bossStatus = "ОНА ЕЩЁ ВЕРНЁТСЯ";
+  context.fillText(
+    bossStatus,
+    Math.max(worldWidth * 0.55, bossRight - idleWidth / 2),
+    38
+  );
+  context.restore();
+}
+
+function drawAcidProjectiles() {
+  for (const projectile of acidProjectiles) {
+    const projectileImage = projectile.type === "low" ? acidPuddleImage : acidImage;
+    context.save();
+    if (projectile.turbo) {
+      context.shadowColor = "#facc15";
+      context.shadowBlur = 18;
+    }
+    if (projectileImage.complete && projectileImage.naturalWidth) {
+      context.drawImage(
+        projectileImage,
+        projectile.x,
+        projectile.y,
+        projectile.width,
+        projectile.height
+      );
+    } else {
+      context.fillStyle = "#84cc16";
+      context.beginPath();
+      context.arc(
+        projectile.x + projectile.width / 2,
+        projectile.y + projectile.height / 2,
+        projectile.height / 2,
+        0,
+        Math.PI * 2
+      );
+      context.fill();
+    }
+    context.restore();
+  }
 }
 
 function drawObstacles() {
@@ -1015,6 +1749,8 @@ function drawEffects() {
 function drawGame() {
   drawBackground();
   drawObstacles();
+  drawBoss();
+  drawAcidProjectiles();
   drawRunner();
   drawEffects();
 }
@@ -1082,6 +1818,8 @@ function bindEvents() {
 }
 
 async function initialize() {
+  void prepareGameAssets();
+  bossMusic.load();
   syncSoundButton();
   syncPauseButton();
   syncModeControls();
@@ -1092,6 +1830,7 @@ async function initialize() {
   } catch {
     currentUserId = null;
   }
+  refreshBossFightModeAccess();
 }
 
 void initialize();
