@@ -146,6 +146,9 @@ const elements = {
   sound: document.getElementById("easterGameSoundBtn"),
   soundOnIcon: document.getElementById("easterGameSoundOnIcon"),
   soundOffIcon: document.getElementById("easterGameSoundOffIcon"),
+  fullscreen: document.getElementById("easterGameFullscreenBtn"),
+  enterFullscreenIcon: document.getElementById("easterGameEnterFullscreenIcon"),
+  exitFullscreenIcon: document.getElementById("easterGameExitFullscreenIcon"),
   jump: document.getElementById("easterGameJumpBtn"),
   slide: document.getElementById("easterGameSlideBtn"),
   start: document.getElementById("easterGameStartBtn"),
@@ -806,9 +809,82 @@ function openGame() {
   });
 }
 
+function nativeFullscreenElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement || null;
+}
+
+function isGameFullscreen() {
+  return elements.overlay?.classList.contains("is-game-fullscreen") || false;
+}
+
+function syncFullscreenButton() {
+  const expanded = isGameFullscreen();
+  elements.fullscreen?.setAttribute("aria-pressed", String(expanded));
+  elements.fullscreen?.setAttribute("aria-label", expanded ? "Выйти из полноэкранного режима" : "На весь экран");
+  elements.fullscreen?.setAttribute("title", expanded ? "Свернуть" : "На весь экран");
+  elements.enterFullscreenIcon?.classList.toggle("hidden", expanded);
+  elements.exitFullscreenIcon?.classList.toggle("hidden", !expanded);
+}
+
+function refreshFullscreenLayout() {
+  requestAnimationFrame(() => {
+    resizeCanvas();
+    requestAnimationFrame(resizeCanvas);
+  });
+}
+
+async function enterGameFullscreen() {
+  if (!elements.overlay) return;
+  elements.overlay.classList.add("is-game-fullscreen");
+  syncFullscreenButton();
+  refreshFullscreenLayout();
+
+  const requestFullscreen = elements.overlay.requestFullscreen
+    || elements.overlay.webkitRequestFullscreen;
+  if (!requestFullscreen || nativeFullscreenElement()) return;
+
+  try {
+    await requestFullscreen.call(elements.overlay);
+  } catch {
+    // CSS expansion remains available on browsers without element fullscreen.
+  }
+}
+
+async function exitGameFullscreen() {
+  const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
+  if (nativeFullscreenElement() && exitFullscreen) {
+    try {
+      await exitFullscreen.call(document);
+    } catch {
+      // The CSS state is still cleared below.
+    }
+  }
+  elements.overlay?.classList.remove("is-game-fullscreen");
+  syncFullscreenButton();
+  refreshFullscreenLayout();
+}
+
+function toggleGameFullscreen() {
+  if (isGameFullscreen()) void exitGameFullscreen();
+  else void enterGameFullscreen();
+}
+
 function closeGame() {
   stopBackgroundMusic();
   stopBossMusic({ rewind: true });
+  if (nativeFullscreenElement()) {
+    const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exitFullscreen) {
+      try {
+        const exitResult = exitFullscreen.call(document);
+        if (exitResult?.catch) void exitResult.catch(() => {});
+      } catch {
+        // Closing the overlay still restores the regular page state.
+      }
+    }
+  }
+  elements.overlay.classList.remove("is-game-fullscreen");
+  syncFullscreenButton();
   elements.overlay.classList.add("hidden");
   elements.overlay.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
@@ -1768,7 +1844,8 @@ function gameLoop(now) {
 function handleKeydown(event) {
   if (elements.overlay.classList.contains("hidden")) return;
   if (event.key === "Escape") {
-    closeGame();
+    if (isGameFullscreen()) void exitGameFullscreen();
+    else closeGame();
     return;
   }
   if (event.code === "KeyP") {
@@ -1801,6 +1878,7 @@ function bindEvents() {
   elements.close?.addEventListener("click", closeGame);
   elements.pause?.addEventListener("click", togglePause);
   elements.sound?.addEventListener("click", toggleSound);
+  elements.fullscreen?.addEventListener("click", toggleGameFullscreen);
   elements.modeButtons.forEach((button) => {
     button.addEventListener("click", () => setGameMode(button.dataset.easterMode));
   });
@@ -1809,6 +1887,15 @@ function bindEvents() {
   elements.slide?.addEventListener("click", slide);
   elements.canvas?.addEventListener("pointerdown", jump);
   window.addEventListener("keydown", handleKeydown);
+  const handleFullscreenChange = () => {
+    if (!nativeFullscreenElement()) {
+      elements.overlay?.classList.remove("is-game-fullscreen");
+    }
+    syncFullscreenButton();
+    refreshFullscreenLayout();
+  };
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && phase === "running") pauseGame({ focusControl: false });
   });
@@ -1822,6 +1909,7 @@ async function initialize() {
   bossMusic.load();
   syncSoundButton();
   syncPauseButton();
+  syncFullscreenButton();
   syncModeControls();
   bindEvents();
   try {

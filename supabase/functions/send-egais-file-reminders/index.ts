@@ -66,7 +66,47 @@ function isExpectedTime(kind: string, parts: ReturnType<typeof moscowDateParts>)
     return parts.hour === 13 && parts.minute <= 20;
   }
 
-  return parts.hour === 0 && parts.minute >= 25;
+  return validationPhase(parts) !== null;
+}
+
+function validationPhase(parts: ReturnType<typeof moscowDateParts>) {
+  if (parts.hour === 0 && parts.minute >= 10 && parts.minute <= 30) {
+    return "night";
+  }
+  if (parts.hour === 8 && parts.minute >= 25 && parts.minute <= 50) {
+    return "day_fallback";
+  }
+  return null;
+}
+
+function hourAt(values: unknown, index: number) {
+  if (!Array.isArray(values)) return 0;
+  const value = Number(values[index]);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function shiftForDate(payload: any, dayIndex: number) {
+  return {
+    day: hourAt(payload?.dayHours, dayIndex),
+    night: hourAt(payload?.nightHours, dayIndex),
+  };
+}
+
+function isFullNightShift(shift: { day: number; night: number }) {
+  const tolerance = 0.05;
+  return (
+    Math.abs(shift.day - 2) <= tolerance && Math.abs(shift.night - 5) <= tolerance
+  ) || (
+    Math.abs(shift.day - 4) <= tolerance && Math.abs(shift.night - 7) <= tolerance
+  );
+}
+
+function hasAnyShift(shift: { day: number; night: number }) {
+  return shift.day > 0 || shift.night > 0;
+}
+
+function isDayShift(shift: { day: number; night: number }) {
+  return shift.day > 0 && shift.night === 0;
 }
 
 function reminderContent(kind: string) {
@@ -137,17 +177,79 @@ serve(async (req) => {
       return jsonResponse({ ok: true, kind, members: 0, sent: 0 });
     }
 
+    const { data: timesheets, error: timesheetsError } = await serviceClient
+      .from("timesheets")
+      .select("user_id, payload")
+      .in("user_id", memberUserIds)
+      .eq("year", nowParts.year)
+      .eq("month", nowParts.month - 1);
+
+    if (timesheetsError) throw timesheetsError;
+
+    const dayIndex = nowParts.day - 1;
+    const shiftsByUserId = new Map<string, { day: number; night: number }>();
+    for (const row of timesheets ?? []) {
+      shiftsByUserId.set(String(row.user_id), shiftForDate(row.payload, dayIndex));
+    }
+
+    const fullNightUserIds = memberUserIds
+      .map(String)
+      .filter((userId) => isFullNightShift(shiftsByUserId.get(userId) ?? { day: 0, night: 0 }));
+    const phase = kind === "validation_check" ? validationPhase(nowParts) : "departure";
+
+    let scheduledUserIds: string[] = [];
+    if (kind === "departure_check") {
+      scheduledUserIds = memberUserIds
+        .map(String)
+        .filter((userId) => hasAnyShift(shiftsByUserId.get(userId) ?? { day: 0, night: 0 }));
+    } else if (phase === "night") {
+      scheduledUserIds = fullNightUserIds;
+    } else if (phase === "day_fallback") {
+      if (fullNightUserIds.length) {
+        return jsonResponse({
+          ok: true,
+          kind,
+          phase,
+          skipped: "FULL_NIGHT_SHIFT_EXISTS",
+          fullNightWorkers: fullNightUserIds.length,
+          sent: 0,
+        });
+      }
+      scheduledUserIds = memberUserIds
+        .map(String)
+        .filter((userId) => isDayShift(shiftsByUserId.get(userId) ?? { day: 0, night: 0 }));
+    }
+
+    if (!scheduledUserIds.length) {
+      return jsonResponse({
+        ok: true,
+        kind,
+        phase,
+        members: memberUserIds.length,
+        scheduled: 0,
+        sent: 0,
+      });
+    }
+
     const { data: profiles, error: profilesError } = await serviceClient
       .from("profiles")
       .select("user_id")
-      .in("user_id", memberUserIds)
+      .in("user_id", scheduledUserIds)
       .eq("egais_file_reminders_enabled", true);
 
     if (profilesError) throw profilesError;
 
     const enabledUserIds = (profiles ?? []).map((row: any) => row.user_id).filter(Boolean);
     if (!enabledUserIds.length) {
-      return jsonResponse({ ok: true, kind, members: memberUserIds.length, enabled: 0, sent: 0 });
+      return jsonResponse({
+        ok: true,
+        kind,
+        phase,
+        members: memberUserIds.length,
+        scheduled: scheduledUserIds.length,
+        enabled: 0,
+        sent: 0,
+      });
     }
 
     const [{ data: subscriptions, error: subscriptionsError }, { data: deliveries, error: deliveriesError }] =
@@ -250,7 +352,9 @@ serve(async (req) => {
     return jsonResponse({
       ok: true,
       kind,
+      phase,
       members: memberUserIds.length,
+      scheduled: scheduledUserIds.length,
       enabled: enabledUserIds.length,
       sentUsers,
       sent,
