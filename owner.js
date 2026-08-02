@@ -104,7 +104,7 @@ function renderDepartments(departments) {
 
   if (!departments.length) {
     const empty = document.createElement("div");
-    empty.className = "rounded-3xl bg-slate-950/25 p-4 ring-1 ring-white/10 text-sm text-slate-300/90";
+    empty.className = "owner-empty p-4 text-sm text-slate-300/90";
     empty.textContent = "Отделы не найдены.";
     departmentsGrid.appendChild(empty);
     if (departmentsCount) departmentsCount.textContent = "0 отделов";
@@ -117,7 +117,7 @@ function renderDepartments(departments) {
 
   for (const department of departments) {
     const card = document.createElement("article");
-    card.className = "glass-card rounded-3xl p-5 ring-1 ring-white/10";
+    card.className = "owner-department-card p-5";
 
     const title = document.createElement("div");
     title.className = "text-lg font-semibold text-slate-100";
@@ -133,13 +133,13 @@ function renderDepartments(departments) {
     const openBtn = document.createElement("a");
     openBtn.href = `admin.html?department=${encodeURIComponent(department.key)}`;
     openBtn.className =
-      "rounded-2xl bg-indigo-500/15 px-4 py-2.5 text-sm font-semibold text-indigo-200 ring-1 ring-indigo-400/30 transition-all hover:bg-indigo-500/20 hover:ring-indigo-300/50";
+      "owner-button-primary px-4 py-2.5 text-sm font-semibold transition";
     openBtn.textContent = "Открыть табель";
 
     const manageBtn = document.createElement("button");
     manageBtn.type = "button";
     manageBtn.className =
-      "rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition-all hover:bg-white/10";
+      "owner-button px-4 py-2.5 text-sm font-semibold ring-1 ring-white/10 transition";
     manageBtn.textContent = "Управлять составом";
     manageBtn.addEventListener("click", async () => {
       await openDepartmentManager(department);
@@ -163,7 +163,7 @@ function renderDepartmentMembers(rows) {
 
   if (!list.length) {
     const empty = document.createElement("div");
-    empty.className = "rounded-2xl bg-slate-950/30 p-4 text-sm text-slate-300 ring-1 ring-white/10";
+    empty.className = "owner-empty p-4 text-sm text-slate-300";
     empty.textContent = "В этом отделе пока нет сотрудников.";
     departmentMembersList.appendChild(empty);
     return;
@@ -171,7 +171,7 @@ function renderDepartmentMembers(rows) {
 
   for (const row of list) {
     const item = document.createElement("div");
-    item.className = "rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10";
+    item.className = "owner-list-item p-4";
 
     const label = buildPersonLabel(row);
 
@@ -194,7 +194,7 @@ function renderDepartmentMembers(rows) {
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className =
-      "rounded-2xl bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-500/20 transition-all hover:bg-rose-500/15";
+      "owner-button-danger rounded-md bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-500/20 transition hover:bg-rose-500/15";
     removeBtn.textContent = "Убрать из отдела";
     removeBtn.addEventListener("click", async () => {
       if (!selectedDepartment?.key) return;
@@ -298,7 +298,7 @@ function renderDepartmentEditors(rows) {
 
   if (!list.length) {
     const empty = document.createElement("div");
-    empty.className = "rounded-2xl bg-slate-950/30 p-4 text-sm text-slate-300 ring-1 ring-white/10";
+    empty.className = "owner-empty p-4 text-sm text-slate-300";
     empty.textContent = "Редакторы ещё не назначены.";
     departmentEditorsList.appendChild(empty);
     return;
@@ -306,7 +306,7 @@ function renderDepartmentEditors(rows) {
 
   for (const row of list) {
     const item = document.createElement("div");
-    item.className = "rounded-2xl bg-slate-950/30 p-4 ring-1 ring-white/10";
+    item.className = "owner-list-item p-4";
 
     const label = buildPersonLabel(row);
 
@@ -329,7 +329,7 @@ function renderDepartmentEditors(rows) {
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className =
-      "rounded-2xl bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-200 ring-1 ring-amber-500/20 transition-all hover:bg-amber-500/15";
+      "owner-button-danger rounded-md bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-200 ring-1 ring-amber-500/20 transition hover:bg-amber-500/15";
     removeBtn.textContent = "Снять права";
     removeBtn.addEventListener("click", async () => {
       if (!selectedDepartment?.key) return;

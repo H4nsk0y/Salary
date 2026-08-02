@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon-180.png?v=4" />
   <link rel="shortcut icon" href="./images/favicon-64.png?v=4" />
   <link rel="manifest" href="./manifest.webmanifest" />
-  <meta name="theme-color" content="#020617" />
+  <meta name="theme-color" content="#0b0d0f" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Alvisa" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
@@ -85,25 +85,144 @@
         padding-top: 6rem;
       }
     }
+    @font-face {
+      font-family: "Anticva";
+      src: url("./fonts/Anticva-Regular.otf") format("opentype");
+      font-display: swap;
+    }
+
+    :root {
+      --alvisa-ink: #0b0d0f;
+      --alvisa-graphite: #15191d;
+      --alvisa-line: rgba(241, 238, 232, 0.11);
+      --alvisa-muted: #9ca3ab;
+      --alvisa-porcelain: #f1eee8;
+      --alvisa-wine: #7a1638;
+      --alvisa-steel: #6ea8e8;
+      --alvisa-gold: #c6a15b;
+    }
+
+    body.updates-page { background: var(--alvisa-ink); background-image: none; color: var(--alvisa-porcelain); }
+    body.updates-page::after { display: none; }
+    .updates-shell { max-width: 1120px; }
+    .updates-header {
+      margin-bottom: 22px;
+      padding: 0 0 24px !important;
+      border: 0;
+      border-bottom: 1px solid var(--alvisa-line);
+      border-radius: 0 !important;
+      background: transparent;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .updates-header::before { display: none; }
+    .updates-kicker {
+      border-radius: 5px !important;
+      background: rgba(122, 22, 56, 0.16) !important;
+      color: #d2aebe !important;
+      border-color: rgba(122, 22, 56, 0.42) !important;
+    }
+    .updates-title {
+      margin-top: 13px !important;
+      font-family: "Anticva", Georgia, serif;
+      font-size: clamp(40px, 5.5vw, 62px) !important;
+      font-weight: 400 !important;
+      line-height: 1;
+      letter-spacing: 0;
+      color: var(--alvisa-porcelain);
+    }
+    .updates-title span { background: none !important; color: inherit !important; -webkit-text-fill-color: currentColor; }
+    .updates-intro { color: var(--alvisa-muted) !important; }
+    .updates-idea-button {
+      border-radius: 6px !important;
+      background: rgba(241, 238, 232, 0.05) !important;
+      color: var(--alvisa-porcelain) !important;
+    }
+    .updates-idea-button:hover { background: rgba(241, 238, 232, 0.09) !important; }
+    .updates-audience-grid {
+      gap: 0 !important;
+      border-top: 1px solid var(--alvisa-line);
+      border-bottom: 1px solid var(--alvisa-line);
+    }
+    .updates-audience {
+      border: 0 !important;
+      border-right: 1px solid var(--alvisa-line) !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      padding: 18px 22px !important;
+    }
+    .updates-audience:last-child { border-right: 0 !important; }
+    .updates-audience:hover { transform: none; box-shadow: none; }
+    .updates-audience > div { color: #c8a56a !important; letter-spacing: 0; }
+    .updates-audience p { color: var(--alvisa-muted) !important; }
+    .updates-list { margin-top: 22px !important; gap: 14px !important; }
+    .updates-list > article {
+      overflow: visible;
+      border-radius: 8px !important;
+      border-color: var(--alvisa-line);
+      background: rgba(21, 25, 29, 0.72);
+      box-shadow: none;
+      padding: 24px !important;
+    }
+    .updates-list > article::before { display: none; }
+    .updates-list > article:hover { transform: none; border-color: rgba(241, 238, 232, 0.18); box-shadow: none; }
+    .updates-list > article > div:first-child > span:first-child {
+      border-radius: 5px !important;
+      background: rgba(241, 238, 232, 0.045) !important;
+      color: #d7d3cd !important;
+      border-color: var(--alvisa-line) !important;
+    }
+    .updates-release-latest {
+      border-color: rgba(198, 161, 91, 0.28) !important;
+      box-shadow: inset 3px 0 0 rgba(198, 161, 91, 0.62) !important;
+    }
+    .updates-release-latest > div:first-child > span:first-child {
+      background: rgba(198, 161, 91, 0.11) !important;
+      color: #dfc48d !important;
+      border-color: rgba(198, 161, 91, 0.24) !important;
+    }
+    .updates-list h2 {
+      font-size: 17px !important;
+      font-weight: 700 !important;
+      color: var(--alvisa-porcelain) !important;
+      letter-spacing: 0;
+    }
+    .updates-list p, .updates-list .text-slate-300\/90 { color: #aaa6a0 !important; }
+    .timeline-dot {
+      width: 8px !important;
+      height: 8px !important;
+      top: 8px !important;
+      background: var(--alvisa-gold) !important;
+      box-shadow: 0 0 0 4px rgba(198, 161, 91, 0.10);
+    }
+    @media (max-width: 767px) {
+      .updates-header { padding-bottom: 20px !important; }
+      .updates-title { font-size: 42px !important; }
+      .updates-audience-grid { grid-template-columns: 1fr; }
+      .updates-audience { border-right: 0 !important; border-bottom: 1px solid var(--alvisa-line) !important; padding: 16px 0 !important; }
+      .updates-audience:last-child { border-bottom: 0 !important; }
+      .updates-list > article { padding: 20px 18px !important; }
+    }
   </style>
 </head>
 
-<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+<body class="updates-page min-h-screen antialiased selection:bg-rose-900/50 selection:text-white">
   <div data-app-header data-active="updates"></div>
 
-  <main class="relative z-10 mx-auto max-w-6xl px-4 pt-safe pb-12 md:pb-16">
-    <header class="mb-6 glass-card rounded-3xl p-6 md:p-8">
+  <main class="updates-shell relative z-10 mx-auto px-4 pt-safe pb-12 sm:px-6 md:pb-16">
+    <header class="updates-header">
       <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div class="inline-flex items-center rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400/20">
+          <div class="updates-kicker inline-flex items-center px-3 py-1 text-xs font-semibold ring-1">
             Журнал обновлений
           </div>
-          <h1 class="mt-4 text-3xl font-bold tracking-tight md:text-4xl">
+          <h1 class="updates-title">
             <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
               Что нового в Alvisa
             </span>
           </h1>
-          <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-300/85">
+          <p class="updates-intro mt-3 max-w-3xl text-sm leading-7">
             Здесь собраны изменения, которые реально влияют на работу сотрудников и руководителей: табель, профиль, график смен, безопасность и удобство.
           </p>
         </div>
@@ -112,29 +231,72 @@
           href="https://t.me/Hanskoy"
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex items-center justify-center rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition-all hover:bg-white/10"
+          class="updates-idea-button inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold ring-1 ring-white/15 transition"
         >
           Предложить идею
         </a>
       </div>
     </header>
 
-    <section class="grid gap-4 md:grid-cols-3">
-      <article class="glass-card rounded-3xl p-5">
+    <section class="updates-audience-grid grid md:grid-cols-3">
+      <article class="updates-audience">
         <div class="text-xs font-semibold uppercase text-slate-400">Сотрудникам</div>
         <p class="mt-2 text-sm leading-6 text-slate-300">Быстрее смотреть свои смены, табель, выплаты и обновления проекта.</p>
       </article>
-      <article class="glass-card rounded-3xl p-5">
+      <article class="updates-audience">
         <div class="text-xs font-semibold uppercase text-slate-400">Руководителям</div>
         <p class="mt-2 text-sm leading-6 text-slate-300">Проще подключать людей, вести отдел и проверять состояние табелей.</p>
       </article>
-      <article class="glass-card rounded-3xl p-5">
+      <article class="updates-audience">
         <div class="text-xs font-semibold uppercase text-slate-400">Безопасность</div>
         <p class="mt-2 text-sm leading-6 text-slate-300">Денежные данные, роли и доступы развиваются без лишнего раскрытия информации.</p>
       </article>
     </section>
 
-    <section class="mt-6 grid gap-5">
+    <section class="updates-list grid">
+      <article class="updates-release-latest glass-card">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="inline-flex items-center px-3 py-1 text-xs font-semibold ring-1">
+            Обновление 25.0
+          </span>
+          <span class="text-xs text-slate-400">02.08.2026</span>
+        </div>
+
+        <div class="mt-6 grid gap-5">
+          <div class="relative pl-7">
+            <span class="timeline-dot absolute left-0"></span>
+            <h2>Alvisa получила новый дизайн</h2>
+            <p class="mt-2 text-sm leading-6">
+              Основные страницы оформлены в едином стиле: интерфейс стал спокойнее, контрастнее и аккуратнее, а важные данные легче находить с первого взгляда.
+            </p>
+          </div>
+
+          <div class="relative pl-7">
+            <span class="timeline-dot absolute left-0"></span>
+            <h2>Навигация стала удобнее на компьютере и телефоне</h2>
+            <p class="mt-2 text-sm leading-6">
+              Обновлены общая шапка и нижняя часть страниц. На мобильных устройствах разделы собраны в понятное меню, которое больше не нужно прокручивать по горизонтали.
+            </p>
+          </div>
+
+          <div class="relative pl-7">
+            <span class="timeline-dot absolute left-0"></span>
+            <h2>Формы и предупреждения приведены к единому виду</h2>
+            <p class="mt-2 text-sm leading-6">
+              Поля, кнопки, настройки и всплывающие окна теперь выглядят одинаково во всех основных разделах, включая предупреждение о долгой загрузке данных.
+            </p>
+          </div>
+
+          <div class="relative pl-7">
+            <span class="timeline-dot absolute left-0"></span>
+            <h2>Калькулятор зарплаты стал нагляднее</h2>
+            <p class="mt-2 text-sm leading-6">
+              Ввод данных и результат расчета разделены понятнее, расшифровку выплаты стало легче читать, а мобильная версия занимает меньше лишнего места.
+            </p>
+          </div>
+        </div>
+      </article>
+
       <article class="glass-card rounded-3xl p-6 md:p-7">
         <div class="flex flex-wrap items-center gap-3">
           <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20">
@@ -488,6 +650,8 @@
     </section>
   </main>
 
-  <script type="module" src="./nav.js"></script>
+  <div data-app-footer></div>
+
+<script type="module" src="./nav.js?v=20260802-3"></script>
 </body>
 </html>

@@ -142,6 +142,64 @@ function ensureNoticeStyles() {
         border-radius: 14px;
       }
     }
+
+    .alvisa-connection-notice {
+      grid-template-columns: 36px minmax(0, 1fr) auto;
+      border-radius: 8px;
+      border-color: rgba(198, 161, 91, 0.32);
+      background: #15191d;
+      color: #f1eee8;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .alvisa-connection-notice.is-danger { border-color: rgba(164, 70, 100, 0.58); }
+    .alvisa-connection-notice-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 5px;
+      color: #dfc48d;
+      background: rgba(198, 161, 91, 0.12);
+      border-color: rgba(198, 161, 91, 0.24);
+    }
+
+    .alvisa-connection-notice.is-danger .alvisa-connection-notice-icon {
+      color: #efb4c5;
+      background: rgba(122, 22, 56, 0.24);
+      border-color: rgba(164, 70, 100, 0.35);
+    }
+
+    .alvisa-connection-notice-title { color: #f1eee8; font-size: 0.92rem; }
+    .alvisa-connection-notice-message { color: #aaa6a0; line-height: 1.55; }
+    .alvisa-connection-notice-action {
+      border-radius: 5px;
+      border-color: #7a1638;
+      background: #7a1638;
+      color: #fff7f8;
+    }
+    .alvisa-connection-notice-action:hover { border-color: #8c1b42; background: #8c1b42; }
+    .alvisa-connection-notice-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      border-color: rgba(241, 238, 232, 0.10);
+      background: rgba(241, 238, 232, 0.04);
+      color: #b9b5af;
+    }
+
+    @media (max-width: 520px) {
+      .alvisa-connection-notice {
+        left: 10px;
+        right: 10px;
+        bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        width: auto;
+        grid-template-columns: 34px minmax(0, 1fr) auto;
+        border-radius: 7px;
+        padding: 12px;
+      }
+      .alvisa-connection-notice-icon { width: 34px; height: 34px; border-radius: 5px; }
+    }
   `;
   document.head.appendChild(style);
 }

@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon-180.png?v=4" />
   <link rel="shortcut icon" href="./images/favicon-64.png?v=4" />
   <link rel="manifest" href="./manifest.webmanifest" />
-  <meta name="theme-color" content="#020617" />
+  <meta name="theme-color" content="#0b0d0f" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Alvisa" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
@@ -142,48 +142,83 @@
       60% { transform: translateX(-3px); }
       80% { transform: translateX(3px); }
     }
+    @font-face {
+      font-family: "Anticva";
+      src: url("./fonts/Anticva-Regular.otf") format("opentype");
+      font-display: swap;
+    }
+
+    :root {
+      --alvisa-ink: #0b0d0f;
+      --alvisa-graphite: #15191d;
+      --alvisa-line: rgba(241, 238, 232, 0.11);
+      --alvisa-muted: #9ca3ab;
+      --alvisa-porcelain: #f1eee8;
+      --alvisa-wine: #7a1638;
+      --alvisa-gold: #c6a15b;
+    }
+
+    body.settings-page { background: var(--alvisa-ink); background-image: none; color: var(--alvisa-porcelain); }
+    body.settings-page::before { display: none; }
+    .pt-safe { padding-top: 7rem; }
+    .settings-shell { max-width: 1040px; }
+    .settings-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding-bottom: 22px; border-bottom: 1px solid var(--alvisa-line); }
+    .settings-kicker { color: #d2aebe; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .settings-title { margin-top: 9px; font-family: "Anticva", Georgia, serif; font-size: clamp(34px, 5vw, 52px); font-weight: 400; line-height: 1; letter-spacing: 0; }
+    .settings-intro { margin-top: 12px; max-width: 560px; color: var(--alvisa-muted); font-size: 14px; line-height: 1.6; }
+    .status-pill { border-radius: 5px; background: rgba(241, 238, 232, 0.04); color: #c9c5be; }
+    .settings-panel { margin-top: 24px; overflow: visible; border-radius: 9px !important; background: rgba(21, 25, 29, 0.82); border-color: var(--alvisa-line); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24); }
+    .settings-section-label { margin-bottom: 10px; color: #c8a56a; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .setting-row { border: 1px solid var(--alvisa-line) !important; border-radius: 7px !important; background: rgba(11, 13, 15, 0.38) !important; padding: 16px !important; }
+    .setting-row:hover { background: rgba(241, 238, 232, 0.045) !important; }
+    .setting-row-title { color: var(--alvisa-porcelain) !important; }
+    .setting-row-copy { color: var(--alvisa-muted) !important; }
+    .switch { width: 48px; height: 26px; }
+    .switch-slider { border-radius: 4px; background: #24292e; }
+    .switch-slider::after { width: 18px; height: 18px; border-radius: 3px; }
+    .switch input:checked + .switch-slider { background: rgba(122, 22, 56, 0.72); border-color: rgba(211, 133, 162, 0.52); }
+    .switch input:checked + .switch-slider::after { transform: translateX(22px); }
+    .settings-button { border-radius: 6px !important; background: rgba(241, 238, 232, 0.05) !important; color: var(--alvisa-porcelain) !important; box-shadow: none !important; }
+    .settings-button:hover { background: rgba(241, 238, 232, 0.09) !important; }
+    .settings-button-primary { border-radius: 6px !important; background: var(--alvisa-wine) !important; color: #fff7f8 !important; box-shadow: none !important; }
+    .settings-button-primary:hover { background: #8c1b42 !important; }
+    @media (min-width: 768px) { .pt-safe { padding-top: 6rem; } }
+    @media (max-width: 640px) {
+      .settings-header { align-items: flex-start; flex-direction: column; gap: 14px; }
+      .settings-panel { padding: 18px !important; }
+      .setting-row { gap: 14px !important; }
+      .settings-actions > * { width: 100%; justify-content: center; text-align: center; }
+    }
   </style>
 </head>
 
-<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
-  <div class="relative z-10 mx-auto max-w-3xl px-4 py-8 md:py-10">
-    <div class="mb-6">
-      <a
-        href="profile.html"
-        class="inline-flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10 hover:ring-indigo-400/30"
-      >
-        ← Назад в профиль
-      </a>
-    </div>
-
-    <section class="glass-card rounded-3xl p-6 md:p-7">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
-            <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
-              Настройки аккаунта
-            </span>
-          </h1>
-          <p class="mt-2 text-sm text-slate-300/80">
-            Персональные параметры отображения.
-          </p>
-        </div>
-
-        <span id="statusPill" class="status-pill">—</span>
+<body class="settings-page min-h-screen antialiased selection:bg-rose-900/50 selection:text-white">
+  <div data-app-header data-active="profile"></div>
+  <main class="settings-shell relative z-10 mx-auto px-4 pt-safe pb-12 sm:px-6 md:pb-16">
+    <header class="settings-header">
+      <div>
+        <div class="settings-kicker">Личный кабинет</div>
+        <h1 class="settings-title">Настройки</h1>
+        <p class="settings-intro">Управляйте отображением данных, поведением табеля и уведомлениями.</p>
       </div>
+      <span id="statusPill" class="status-pill">—</span>
+    </header>
+
+    <section class="settings-panel glass-card p-6 md:p-7">
 
       <div id="errorBox" class="hidden mt-5 rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25"></div>
 
-      <div class="mt-6 grid gap-4">
+      <div class="settings-section-label">Интерфейс и приватность</div>
+      <div class="grid gap-3">
         <label
           for="hideMoneyToggle"
-          class="flex items-start justify-between gap-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 transition hover:bg-white/10 cursor-pointer"
+          class="setting-row flex cursor-pointer items-start justify-between gap-4 transition"
         >
           <div>
-            <div class="text-sm font-semibold text-slate-100">
+            <div class="setting-row-title text-sm font-semibold">
               Автоматически скрывать оклад и выплаты
             </div>
-            <p class="mt-1 text-xs text-slate-400/80 leading-5">
+            <p class="setting-row-copy mt-1 text-xs leading-5">
               Если включено, оклад в профиле и блок выплат в табеле будут скрыты при открытии страницы.
             </p>
           </div>
@@ -196,13 +231,13 @@
 
         <label
           for="autoCollapseTablePanelsToggle"
-          class="flex items-start justify-between gap-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 transition hover:bg-white/10 cursor-pointer"
+          class="setting-row flex cursor-pointer items-start justify-between gap-4 transition"
         >
           <div>
-            <div class="text-sm font-semibold text-slate-100">
+            <div class="setting-row-title text-sm font-semibold">
               Автоматически сворачивать вспомогательные блоки в табеле
             </div>
-            <p class="mt-1 text-xs text-slate-400/80 leading-5">
+            <p class="setting-row-copy mt-1 text-xs leading-5">
               При открытии табеля будут автоматически свёрнуты блоки «Оклад и коды» и «Как ставить смены».
             </p>
           </div>
@@ -215,13 +250,13 @@
 
         <label
           for="hideCalculatorNavToggle"
-          class="flex items-start justify-between gap-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 transition hover:bg-white/10 cursor-pointer"
+          class="setting-row flex cursor-pointer items-start justify-between gap-4 transition"
         >
           <div>
-            <div class="text-sm font-semibold text-slate-100">
+            <div class="setting-row-title text-sm font-semibold">
               Скрывать калькулятор из шапки
             </div>
-            <p class="mt-1 text-xs text-slate-400/80 leading-5">
+            <p class="setting-row-copy mt-1 text-xs leading-5">
               Если калькулятор уже не нужен, ссылка исчезнет из верхнего меню. Открыть его всё равно можно напрямую.
             </p>
           </div>
@@ -235,13 +270,13 @@
         <label
           id="egaisFileRemindersRow"
           for="egaisFileRemindersToggle"
-          class="hidden flex items-start justify-between gap-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 transition hover:bg-white/10 cursor-pointer"
+          class="setting-row hidden flex cursor-pointer items-start justify-between gap-4 transition"
         >
           <div>
-            <div class="text-sm font-semibold text-slate-100">
+            <div class="setting-row-title text-sm font-semibold">
               Уведомлять о проверках суточных файлов
             </div>
-            <p class="mt-1 text-xs text-slate-400/80 leading-5">
+            <p class="setting-row-copy mt-1 text-xs leading-5">
               Для сотрудников ЕГАИС на смене: в 13:00 — проверка отправки суточных. В 00:15 проверка правильности приходит ночной смене 2/5 или 4/7, а если её нет — в 08:30 дневной смене.
             </p>
           </div>
@@ -252,10 +287,10 @@
           </span>
         </label>
 
-        <div class="flex flex-col gap-3 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 sm:flex-row sm:items-center sm:justify-between">
+        <div class="setting-row flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div class="text-sm font-semibold text-slate-100">Уведомления на телефон</div>
-            <p id="pushNotificationsHint" class="mt-1 text-xs text-slate-400/80 leading-5">
+            <div class="setting-row-title text-sm font-semibold">Уведомления на телефон</div>
+            <p id="pushNotificationsHint" class="setting-row-copy mt-1 text-xs leading-5">
               Можно включить системные уведомления браузера. Они начнут приходить после подключения серверной отправки.
             </p>
           </div>
@@ -263,31 +298,35 @@
           <button
             id="pushNotificationsBtn"
             type="button"
-            class="shrink-0 rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/10 transition hover:bg-white/10 hover:ring-indigo-400/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:text-slate-400 disabled:opacity-70 disabled:hover:bg-white/5 disabled:hover:ring-white/10"
+            class="settings-button shrink-0 px-4 py-2.5 text-sm font-semibold ring-1 ring-white/10 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
             Проверяю…
           </button>
         </div>
       </div>
 
-      <div class="mt-6 flex flex-wrap gap-3">
+      <div class="settings-actions mt-6 flex flex-wrap gap-3 border-t border-white/10 pt-5">
         <button
           id="saveSettingsBtn"
-          class="rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-5 py-3 text-sm font-semibold text-slate-100 ring-1 ring-white/10 transition hover:shadow-[0_0_20px_rgba(99,102,241,0.45)] active:scale-[0.98]"
+          class="settings-button-primary inline-flex px-5 py-3 text-sm font-semibold transition active:scale-[0.98]"
         >
           Сохранить настройки
         </button>
 
         <a
           href="profile.html"
-          class="rounded-2xl bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 ring-1 ring-white/10 transition hover:bg-white/10 active:scale-[0.98]"
+          class="settings-button inline-flex px-5 py-3 text-sm font-semibold ring-1 ring-white/10 transition active:scale-[0.98]"
         >
           Отмена
         </a>
       </div>
     </section>
-  </div>
+  </main>
 
+  <div data-app-footer></div>
+
+  <script type="module" src="./nav.js?v=20260802-3"></script>
   <script type="module" src="./settings.js"></script>
+  <script type="module" src="./footer.js?v=20260802-2"></script>
 </body>
 </html>

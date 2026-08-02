@@ -510,6 +510,636 @@
         animation: none;
       }
     }
+
+    /* Premium profile surface */
+    @font-face {
+      font-family: "Anticva";
+      src: url("./fonts/Anticva-Regular.otf") format("opentype");
+      font-display: swap;
+    }
+
+    :root {
+      --profile-ink: #0b0d0f;
+      --profile-panel: #15191d;
+      --profile-panel-soft: #111417;
+      --profile-porcelain: #f1eee8;
+      --profile-muted: #969ca2;
+      --profile-border: rgba(241, 238, 232, 0.13);
+      --profile-border-strong: rgba(241, 238, 232, 0.22);
+      --profile-wine: #7a1638;
+      --profile-wine-light: #a62a52;
+      --profile-steel: #6ea8e8;
+      --profile-gold: #c6a15b;
+    }
+
+    body {
+      background: var(--profile-ink) !important;
+      color: var(--profile-porcelain);
+      letter-spacing: 0;
+    }
+
+    body::before,
+    body::after {
+      display: none !important;
+    }
+
+    .app-top-safe-area-cover {
+      background: rgba(11, 13, 15, 0.96) !important;
+    }
+
+    .app-top-header {
+      background: rgba(11, 13, 15, 0.9) !important;
+      border-color: var(--profile-border) !important;
+    }
+
+    .app-top-header > div {
+      max-width: 1440px !important;
+    }
+
+    .app-top-header > div > a.group > span:first-child {
+      background: none !important;
+      color: var(--profile-porcelain) !important;
+      font-family: Anticva, Georgia, serif;
+      font-size: 1.25rem !important;
+      font-weight: 400 !important;
+    }
+
+    .app-top-header .nav-link::after {
+      left: 1rem !important;
+      right: 1rem !important;
+      height: 1px !important;
+      background: var(--profile-steel) !important;
+      border-radius: 0 !important;
+    }
+
+    .app-top-header .app-notification-button,
+    .app-top-header .app-menu-button {
+      border-radius: 8px !important;
+      background: rgba(241, 238, 232, 0.04) !important;
+      border-color: var(--profile-border) !important;
+    }
+
+    .profile-page {
+      width: min(1440px, 100%);
+    }
+
+    .profile-header {
+      margin-bottom: 26px !important;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--profile-border);
+    }
+
+    .profile-header > div:first-child {
+      align-items: flex-start;
+    }
+
+    .profile-header h1 {
+      margin: 0;
+      color: var(--profile-porcelain);
+      font-family: Anticva, Georgia, serif;
+      font-size: clamp(2.25rem, 4vw, 3.5rem);
+      font-weight: 400;
+      line-height: 1;
+    }
+
+    .profile-updates-link {
+      width: auto !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      margin-top: 18px !important;
+      display: inline-flex !important;
+      padding: 8px 10px !important;
+      gap: 10px !important;
+      border: 1px solid rgba(198, 161, 91, 0.24) !important;
+      border-radius: 8px !important;
+      background: rgba(198, 161, 91, 0.06) !important;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    .profile-updates-link:hover {
+      border-color: rgba(198, 161, 91, 0.48) !important;
+      background: rgba(198, 161, 91, 0.1) !important;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    .profile-updates-link > span:first-child {
+      width: 32px !important;
+      height: 32px !important;
+      border-radius: 6px !important;
+      background: rgba(198, 161, 91, 0.1) !important;
+      color: var(--profile-gold) !important;
+      box-shadow: none !important;
+    }
+
+    .profile-updates-link .text-sm {
+      color: var(--profile-porcelain) !important;
+      font-size: 0.78rem !important;
+      font-weight: 700 !important;
+    }
+
+    .profile-updates-badge {
+      border-radius: 3px !important;
+      background: var(--profile-wine) !important;
+      animation: none !important;
+    }
+
+    .profile-updates-arrow {
+      color: var(--profile-gold) !important;
+      animation: none !important;
+    }
+
+    .profile-actions {
+      justify-content: flex-end;
+    }
+
+    .profile-actions > a,
+    .profile-actions > button {
+      min-height: 40px;
+      border: 1px solid var(--profile-border) !important;
+      border-radius: 7px !important;
+      background: rgba(241, 238, 232, 0.04) !important;
+      color: rgba(241, 238, 232, 0.78) !important;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    .profile-actions > a:hover,
+    .profile-actions > button:hover {
+      border-color: var(--profile-border-strong) !important;
+      background: rgba(241, 238, 232, 0.08) !important;
+      color: var(--profile-porcelain) !important;
+      transform: none !important;
+    }
+
+    .profile-actions > a:first-child > span:first-child {
+      border-radius: 5px !important;
+      background: transparent !important;
+      color: var(--profile-steel) !important;
+      box-shadow: none !important;
+    }
+
+    #ownerLink {
+      border-color: rgba(110, 168, 232, 0.26) !important;
+      color: #cbe4ff !important;
+    }
+
+    #logoutBtn {
+      border-color: rgba(166, 42, 82, 0.28) !important;
+      color: #f1b7c9 !important;
+    }
+
+    #statusPill {
+      min-height: 26px;
+      border: 1px solid var(--profile-border) !important;
+      border-radius: 4px !important;
+      background: transparent !important;
+      padding: 4px 8px !important;
+      color: var(--profile-muted) !important;
+      box-shadow: none !important;
+    }
+
+    #errorBox,
+    #profileRequiredNotice {
+      border-radius: 8px !important;
+      box-shadow: none !important;
+    }
+
+    .profile-layout {
+      gap: 18px !important;
+    }
+
+    .glass-card {
+      border: 1px solid var(--profile-border) !important;
+      border-radius: 10px !important;
+      background: var(--profile-panel) !important;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      transform: none !important;
+    }
+
+    .glass-card::before {
+      display: none !important;
+    }
+
+    .glass-card:hover {
+      border-color: var(--profile-border-strong) !important;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18) !important;
+      transform: none !important;
+    }
+
+    .profile-editor,
+    .profile-overview {
+      padding: 24px !important;
+    }
+
+    .profile-editor > div:first-child {
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--profile-border);
+    }
+
+    .profile-editor > div:first-child .h-16 {
+      width: 72px !important;
+      height: 72px !important;
+    }
+
+    .profile-editor > div:first-child .rounded-2xl {
+      border-radius: 8px !important;
+      background: var(--profile-panel-soft) !important;
+      box-shadow: none !important;
+    }
+
+    #displayName {
+      color: var(--profile-porcelain);
+      font-family: Anticva, Georgia, serif;
+      font-size: 1.4rem !important;
+      font-weight: 400 !important;
+    }
+
+    #trainingAchievement {
+      color: var(--profile-muted) !important;
+    }
+
+    #avatarUploadBtn,
+    #avatarRemoveBtn {
+      min-height: 34px;
+      border: 1px solid var(--profile-border) !important;
+      border-radius: 6px !important;
+      background: rgba(241, 238, 232, 0.04) !important;
+      color: rgba(241, 238, 232, 0.72) !important;
+      box-shadow: none !important;
+    }
+
+    #avatarRemoveBtn {
+      color: #e6a3b8 !important;
+    }
+
+    .profile-training {
+      border-color: var(--profile-border) !important;
+    }
+
+    .profile-training > label {
+      color: var(--profile-porcelain) !important;
+      font-family: Anticva, Georgia, serif;
+      font-size: 1.08rem !important;
+      font-weight: 400 !important;
+    }
+
+    .profile-training a,
+    .profile-training button {
+      min-height: 34px;
+      border: 1px solid var(--profile-border) !important;
+      border-radius: 6px !important;
+      background: rgba(241, 238, 232, 0.035) !important;
+      color: rgba(241, 238, 232, 0.72) !important;
+      box-shadow: none !important;
+    }
+
+    .profile-training a:first-child {
+      border-color: rgba(198, 161, 91, 0.27) !important;
+      color: #e5c98f !important;
+    }
+
+    .profile-training a:hover,
+    .profile-training button:hover {
+      border-color: var(--profile-border-strong) !important;
+      background: rgba(241, 238, 232, 0.07) !important;
+    }
+
+    .profile-fields {
+      gap: 16px !important;
+    }
+
+    .profile-fields label {
+      color: rgba(241, 238, 232, 0.8) !important;
+      font-size: 0.78rem !important;
+      font-weight: 600 !important;
+    }
+
+    .profile-fields p {
+      color: #7f858a !important;
+      font-size: 0.7rem !important;
+      line-height: 1.5;
+    }
+
+    .input-glass,
+    select.ui-select {
+      min-height: 48px;
+      border: 1px solid var(--profile-border) !important;
+      border-radius: 7px !important;
+      background: var(--profile-panel-soft) !important;
+      color: var(--profile-porcelain) !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      transform: none !important;
+    }
+
+    .input-glass:hover,
+    select.ui-select:hover {
+      border-color: var(--profile-border-strong) !important;
+      background: #0f1214 !important;
+    }
+
+    .input-glass:focus,
+    select.ui-select:focus {
+      border-color: var(--profile-steel) !important;
+      background: #0f1214 !important;
+      box-shadow: 0 0 0 3px rgba(110, 168, 232, 0.12) !important;
+      transform: none !important;
+    }
+
+    select.ui-select option,
+    select.ui-select optgroup,
+    select.ui-select optgroup option {
+      background: #111417 !important;
+      color: var(--profile-porcelain) !important;
+    }
+
+    select.ui-select optgroup {
+      color: #cbe4ff !important;
+    }
+
+    .select-wrap::after {
+      color: var(--profile-muted) !important;
+    }
+
+    #okladInputPeekBtn {
+      border: 0 !important;
+      border-radius: 5px !important;
+      color: var(--profile-muted) !important;
+      box-shadow: none !important;
+    }
+
+    #saveProfileBtn,
+    #refreshBtn {
+      min-height: 48px;
+      border: 1px solid var(--profile-border) !important;
+      border-radius: 7px !important;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    #saveProfileBtn {
+      border-color: rgba(166, 42, 82, 0.55) !important;
+      background: var(--profile-wine) !important;
+      color: white !important;
+    }
+
+    #saveProfileBtn:hover {
+      background: var(--profile-wine-light) !important;
+    }
+
+    #refreshBtn {
+      background: rgba(241, 238, 232, 0.04) !important;
+      color: rgba(241, 238, 232, 0.75) !important;
+    }
+
+    .profile-overtime-head {
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--profile-border);
+    }
+
+    .profile-overtime-head h2 {
+      margin: 0;
+      color: var(--profile-porcelain);
+      font-family: Anticva, Georgia, serif;
+      font-size: 1.8rem;
+      font-weight: 400;
+      line-height: 1.1;
+    }
+
+    .profile-overtime-head p {
+      color: var(--profile-muted) !important;
+    }
+
+    .profile-overtime-head a,
+    #overtimeLimitLabel {
+      color: var(--profile-steel) !important;
+    }
+
+    .profile-overtime-head > div:last-child {
+      border: 1px solid var(--profile-border) !important;
+      border-radius: 7px !important;
+      background: var(--profile-panel-soft) !important;
+      box-shadow: none !important;
+    }
+
+    .profile-overtime-head #yearSelect {
+      min-height: 34px;
+      border: 0 !important;
+      background: transparent !important;
+    }
+
+    .profile-progress {
+      border: 1px solid var(--profile-border) !important;
+      border-radius: 8px !important;
+      background: var(--profile-panel-soft) !important;
+      box-shadow: none !important;
+    }
+
+    .profile-progress > div:last-child {
+      height: 7px !important;
+      border: 0 !important;
+      border-radius: 2px !important;
+      background: rgba(241, 238, 232, 0.07) !important;
+      box-shadow: none !important;
+    }
+
+    #overtimeBarFill {
+      border-radius: 2px !important;
+    }
+
+    .profile-summary-grid {
+      gap: 10px !important;
+    }
+
+    .profile-summary-grid > .glass-card {
+      min-height: 118px;
+      padding: 18px !important;
+      border-radius: 8px !important;
+      background: var(--profile-panel-soft) !important;
+      box-shadow: none !important;
+    }
+
+    .profile-summary-grid .text-xs,
+    .profile-summary-grid .text-\[11px\] {
+      color: var(--profile-muted) !important;
+    }
+
+    .profile-summary-grid #overtimeYear,
+    .profile-summary-grid #overtimeRemaining,
+    .profile-summary-grid #yearNetIncome,
+    .profile-summary-grid #yearTaxPaid {
+      color: var(--profile-porcelain) !important;
+      font-family: Anticva, Georgia, serif;
+      font-weight: 400 !important;
+    }
+
+    #profileYearPeekBtn {
+      border: 1px solid var(--profile-border) !important;
+      border-radius: 6px !important;
+      background: rgba(241, 238, 232, 0.04) !important;
+      color: var(--profile-muted) !important;
+      box-shadow: none !important;
+    }
+
+    .profile-months-grid {
+      gap: 18px !important;
+    }
+
+    .profile-months-grid h3,
+    .profile-calendar .text-sm.font-semibold {
+      color: var(--profile-porcelain) !important;
+      font-family: Anticva, Georgia, serif;
+      font-size: 1.15rem !important;
+      font-weight: 400 !important;
+    }
+
+    #timesheetsList {
+      gap: 10px !important;
+    }
+
+    #timesheetsList > .glass-card {
+      border-radius: 8px !important;
+      background: var(--profile-panel-soft) !important;
+      box-shadow: none !important;
+    }
+
+    #timesheetsList a,
+    #timesheetsList button {
+      border: 1px solid var(--profile-border) !important;
+      border-radius: 6px !important;
+      background: rgba(241, 238, 232, 0.04) !important;
+      color: rgba(241, 238, 232, 0.75) !important;
+      box-shadow: none !important;
+    }
+
+    .profile-calendar {
+      padding: 18px !important;
+      border-radius: 8px !important;
+      background: var(--profile-panel-soft) !important;
+      box-shadow: none !important;
+    }
+
+    .profile-calendar > div:first-child {
+      align-items: flex-start !important;
+      flex-direction: column !important;
+      gap: 12px !important;
+    }
+
+    #calPrevBtn,
+    #calNextBtn,
+    #calTodayBtn {
+      min-height: 32px;
+      border: 1px solid var(--profile-border) !important;
+      border-radius: 5px !important;
+      background: rgba(241, 238, 232, 0.04) !important;
+      color: rgba(241, 238, 232, 0.72) !important;
+      box-shadow: none !important;
+    }
+
+    .cal-grid {
+      gap: 5px !important;
+    }
+
+    .cal-cell {
+      height: 40px;
+      border-color: var(--profile-border) !important;
+      border-radius: 6px !important;
+      background: #0e1113 !important;
+      transform: none !important;
+    }
+
+    .cal-cell::after {
+      border-radius: 6px !important;
+    }
+
+    .cal-empty {
+      background: transparent !important;
+    }
+
+    .cal-tag {
+      border-radius: 3px !important;
+      background: rgba(11, 13, 15, 0.8) !important;
+    }
+
+    .cal-legend {
+      color: var(--profile-muted) !important;
+    }
+
+    @media (min-width: 1024px) {
+      .profile-layout {
+        grid-template-columns: minmax(330px, 0.88fr) minmax(0, 2.12fr) !important;
+      }
+
+      .profile-overview {
+        grid-column: auto !important;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .profile-page {
+        padding-inline: 14px !important;
+      }
+
+      .profile-header {
+        margin-bottom: 18px !important;
+        padding-bottom: 18px;
+      }
+
+      .profile-header h1 {
+        font-size: 2.35rem;
+      }
+
+      .profile-actions {
+        width: 100%;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .profile-actions > a,
+      .profile-actions > button {
+        justify-content: center;
+        padding-inline: 10px !important;
+      }
+
+      .profile-editor,
+      .profile-overview {
+        padding: 18px !important;
+      }
+
+      .profile-summary-grid > .glass-card {
+        min-height: 0;
+      }
+
+      .profile-calendar {
+        padding: 14px !important;
+      }
+
+      .profile-calendar > div:first-child {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .cal-grid {
+        gap: 4px !important;
+      }
+
+      .cal-cell {
+        height: 38px;
+      }
+
+      .cal-daynum {
+        left: 6px;
+      }
+
+      .cal-tags {
+        left: 5px;
+        gap: 3px;
+      }
+    }
   </style>
 </head>
 
@@ -518,16 +1148,11 @@
 
 <div data-app-header data-active="profile"></div>
 
-  <div class="relative z-10 mx-auto max-w-8xl px-4 pt-safe pb-12 md:pb-16">
-    <header class="mb-8 reveal">
+  <div class="profile-page relative z-10 mx-auto max-w-8xl px-4 pt-safe pb-12 md:pb-16">
+    <header class="profile-header mb-8 reveal">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div class="min-w-0 flex-1">
-          <div>
-            <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
-              <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">Личный кабинет</span>
-            </h1>
-            <p class="mt-1 text-sm text-slate-300/80">Табели, переработка и настройки.</p>
-          </div>
+          <h1>Личный кабинет</h1>
 
           <a
             href="updates.html"
@@ -552,7 +1177,6 @@
                 <span class="text-sm font-bold text-slate-100">Новости и обновления</span>
                 <span class="profile-updates-badge rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-extrabold leading-none text-white">NEW</span>
               </span>
-              <span class="mt-0.5 block text-xs text-slate-400 group-hover:text-slate-300">Посмотреть, что изменилось</span>
             </span>
 
             <span class="profile-updates-arrow shrink-0 text-sky-200 transition-transform" aria-hidden="true">
@@ -564,7 +1188,7 @@
           </a>
         </div>
 
-       <div class="flex flex-wrap items-center gap-2">
+       <div class="profile-actions flex flex-wrap items-center gap-2">
           <a
             href="settings.html"
             class="group inline-flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:bg-white/10 hover:text-white hover:ring-sky-400/35 active:translate-y-0"
@@ -623,8 +1247,8 @@
       </div>
     </div>
 
-    <main class="grid items-start gap-6 lg:grid-cols-3 reveal">
-      <section class="glass-card hover-lift rounded-3xl p-6 md:p-7">
+    <main class="profile-layout grid items-start gap-6 lg:grid-cols-3 reveal">
+      <section class="profile-editor glass-card rounded-3xl p-6 md:p-7">
         <div class="flex items-center gap-4">
           <div class="relative h-16 w-16 shrink-0">
             <div class="absolute inset-0 overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
@@ -648,7 +1272,7 @@
           <button id="avatarRemoveBtn" type="button" class="rounded-xl bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-500/20 hover:bg-rose-500/15" disabled>Удалить</button>
           <span id="avatarHint" class="text-[11px] text-slate-400/80"></span>
 
-          <div class="mt-4 border-t border-white/10 pt-4 w-full">
+          <div class="profile-training mt-4 border-t border-white/10 pt-4 w-full">
             <label class="mb-2 block text-sm font-medium text-slate-200">Обучение</label>
             <div class="flex flex-wrap gap-2">
               <a href="timesheet-training.html" class="group inline-flex items-center gap-2 rounded-xl bg-emerald-500/15 px-4 py-2 text-xs font-bold text-emerald-100 ring-1 ring-emerald-400/30 transition-all hover:bg-emerald-500/25 hover:ring-emerald-300/45">
@@ -663,18 +1287,10 @@
               <button id="tourProfileBtn" class="rounded-xl bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10 transition-all">Обзор профиля</button>
               <a href="help.html" class="rounded-xl bg-indigo-500/15 px-4 py-2 text-xs font-semibold text-indigo-100 ring-1 ring-indigo-400/30 shadow-[0_0_18px_rgba(99,102,241,0.14)] hover:bg-indigo-500/22 hover:ring-indigo-300/45 transition-all">Открыть справку</a>
             </div>
-            <p class="mt-2 text-[11px] text-slate-400/70">Практические задания по сменам, кодам отсутствий и особым дням календаря</p>
-            <div id="trainingMastery" class="mt-3 hidden border-t border-white/10 pt-3">
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-[11px] font-bold uppercase text-emerald-200">Освоенные темы</span>
-                <span id="trainingMasteryCount" class="text-[11px] font-semibold text-slate-500"></span>
-              </div>
-              <div id="trainingMasteryList" class="mt-2 flex flex-wrap gap-1.5"></div>
-            </div>
           </div>
         </div>
 
-        <div class="mt-5 grid gap-4">
+        <div class="profile-fields mt-5 grid gap-4">
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="displayNameInput">ФИО</label>
             <input
@@ -755,9 +1371,6 @@
                 </optgroup>
               </select>
             </span>
-            <p class="mt-1.5 text-xs text-slate-400/80">
-              Выберите вашу должность.
-            </p>
           </div>
 
           <div>
@@ -769,7 +1382,6 @@
                 <option value="female">Женский</option>
               </select>
             </span>
-            <p class="mt-1.5 text-xs text-slate-400/80">Нужен для вычислений нормы.</p>
           </div>
 
           <div>
@@ -803,7 +1415,6 @@
                 <option value="kin_wine_cognac_factory">Винно-коньячный завод «КиН»</option>
               </select>
             </span>
-            <p class="mt-1.5 text-xs text-slate-400/80">Нужен для правил нормы по филиалам.</p>
           </div>
 
           <div>
@@ -831,7 +1442,6 @@
               data-1p-ignore="true"
               data-form-type="other"
             />
-            <p class="mt-1.5 text-xs text-slate-400/80">Необязательно. В будущем поможет точнее считать норму новичков.</p>
           </div>
 
           <div>
@@ -860,10 +1470,10 @@
         </div>
       </section>
 
-      <section class="glass-card hover-lift rounded-3xl p-6 md:p-7 lg:col-span-2">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <section class="profile-overview glass-card rounded-3xl p-6 md:p-7 lg:col-span-2">
+        <div class="profile-overtime-head flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 class="text-lg font-semibold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Переработки</h2>
+            <h2>Переработки</h2>
             <p class="mt-1 text-sm text-slate-300/80">
               Лимит по закону: <span id="overtimeLimitLabel" class="font-semibold text-indigo-300">120 часов в год</span>.
               <span id="overtimeLimitNote" class="text-xs text-slate-400/90">С 01.09.2026 лимит может быть до 240 ч при наличии основания.</span>
@@ -878,7 +1488,7 @@
           </div>
         </div>
 
-        <div class="mt-5 rounded-3xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+        <div class="profile-progress mt-5 rounded-3xl bg-slate-950/30 p-5 ring-1 ring-white/10">
           <div class="flex items-center justify-between gap-3">
             <div class="text-xs text-slate-400">Прогресс лимита</div>
             <div id="overtimeBarText" class="text-xs font-semibold text-slate-200">—</div>
@@ -890,7 +1500,7 @@
 
         <div id="overtimeAdjustment" class="mt-3 text-xs text-slate-300/80 hidden"></div>
 
-        <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div class="profile-summary-grid mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
             <div class="text-xs text-slate-400">Баланс за год (±)</div>
             <div id="overtimeYear" class="mt-1 text-2xl font-semibold tracking-tight">—</div>
@@ -916,13 +1526,13 @@
           </div>
         </div>
 
-        <div class="mt-6 grid gap-4 lg:grid-cols-3">
+        <div class="profile-months-grid mt-6 grid gap-4 lg:grid-cols-3">
           <div class="lg:col-span-2">
             <h3 class="text-sm font-semibold text-slate-200">Табели по месяцам</h3>
             <div id="timesheetsList" class="mt-3 grid gap-3 sm:grid-cols-2"></div>
           </div>
 
-          <aside class="glass-card rounded-3xl bg-slate-950/25 p-5 ring-1 ring-white/10">
+          <aside class="profile-calendar glass-card rounded-3xl bg-slate-950/25 p-5 ring-1 ring-white/10">
             <div class="flex items-center justify-between gap-2">
               <div class="min-w-0">
                 <div class="text-sm font-semibold text-slate-200">Календарь</div>
@@ -953,7 +1563,7 @@
     <div data-app-footer></div>
   </div>
 
-  <script type="module" src="./footer.js"></script>
+  <script type="module" src="./footer.js?v=20260802-2"></script>
   <script>
     (function() {
       const bar = document.getElementById('overtimeBarFill');
@@ -977,7 +1587,7 @@
     })();
   </script>
 
-  <script type="module" src="./nav.js"></script>
+<script type="module" src="./nav.js?v=20260802-3"></script>
   <script type="module" src="./profile.js"></script>
 
   <script type="module">

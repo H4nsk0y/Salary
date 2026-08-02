@@ -2,255 +2,625 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover" />
-    <title>Вход — Alvisa</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover"
+    />
+    <title>Вход - ALVISA</title>
     <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon-32.png?v=4" />
     <link rel="icon" type="image/png" sizes="48x48" href="./images/favicon-48.png?v=4" />
     <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon-180.png?v=4" />
     <link rel="shortcut icon" href="./images/favicon-64.png?v=4" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <meta name="theme-color" content="#020617" />
+    <meta name="theme-color" content="#0b0d0f" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Alvisa" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-
+    <meta name="apple-mobile-web-app-title" content="ALVISA" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
     <script src="https://cdn.tailwindcss.com"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
 
     <style>
-      html, body {
-        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-        scroll-behavior: smooth;
+      @font-face {
+        font-family: "Anticva";
+        src: url("./fonts/Anticva-Regular.otf") format("opentype");
+        font-display: swap;
       }
 
       :root {
-        --glow: rgba(99, 102, 241, 0.35);
-        --glow2: rgba(56, 189, 248, 0.25);
+        --ink: #0b0d0f;
+        --graphite: #15191d;
+        --porcelain: #f1eee8;
+        --muted: #a8adb2;
+        --wine: #7a1638;
+        --wine-light: #a62a52;
+        --steel: #6ea8e8;
+        --gold: #c6a15b;
+      }
+
+      * { box-sizing: border-box; }
+
+      html {
+        min-height: 100%;
+        background: var(--ink);
+        scroll-behavior: smooth;
       }
 
       body {
-        position: relative;
+        min-height: 100vh;
+        min-height: 100svh;
+        margin: 0;
         overflow-x: hidden;
-        background:
-          radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.12), transparent 60%),
-          radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.10), transparent 60%),
-          radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.08), transparent 60%),
-          #020617;
+        background: var(--ink);
+        color: var(--porcelain);
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: 0;
       }
 
-      body::before {
-        content: "";
+      button,
+      input { font: inherit; }
+
+      .auth-page {
+        position: relative;
+        display: grid;
+        min-height: 100vh;
+        min-height: 100svh;
+        grid-template-rows: auto 1fr auto;
+        isolation: isolate;
+        overflow: hidden;
+      }
+
+      .auth-background {
         position: fixed;
-        inset: -25%;
-        pointer-events: none;
-        z-index: 0;
-        background:
-          radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.28), transparent 45%),
-          radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.22), transparent 45%),
-          radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.14), transparent 45%);
-        filter: blur(60px);
-        opacity: 0.7;
-        transform: translate3d(0, 0, 0);
-        animation: bgFloat 12s ease-in-out infinite alternate;
+        inset: 0;
+        z-index: -3;
+        background-image: url("./images/alvisa-home-production.webp");
+        background-position: center;
+        background-size: cover;
+        transform: scale(1.035);
+        animation: backgroundSettle 1400ms cubic-bezier(.2, .75, .2, 1) forwards;
       }
 
-      body::after {
+      .auth-page::before {
         content: "";
         position: fixed;
         inset: 0;
+        z-index: -2;
+        background: rgba(5, 7, 8, .67);
         pointer-events: none;
-        z-index: 0;
-        background-image: radial-gradient(rgba(148, 163, 184, 0.11) 1px, transparent 1px);
-        background-size: 24px 24px;
-        opacity: 0.25;
-        mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 72%);
       }
 
-      @keyframes bgFloat {
-        0% { transform: translate3d(-2%, -2%, 0) scale(1); }
-        100% { transform: translate3d(2%, 2%, 0) scale(1.05); }
+      .auth-page::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background: rgba(5, 7, 8, .12);
+        pointer-events: none;
       }
 
-      .reveal {
+      @keyframes backgroundSettle {
+        from { opacity: .55; transform: scale(1.08); }
+        to { opacity: 1; transform: scale(1.035); }
+      }
+
+      .auth-header,
+      .auth-shell,
+      .auth-footer {
+        width: min(1180px, calc(100% - 40px));
+        margin-inline: auto;
+      }
+
+      .auth-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 88px;
+        padding-top: env(safe-area-inset-top, 0px);
+        border-bottom: 1px solid rgba(241, 238, 232, .15);
+      }
+
+      .brand {
+        color: var(--porcelain);
+        font-family: Anticva, Georgia, serif;
+        font-size: 30px;
+        line-height: 1;
+        text-decoration: none;
+      }
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+
+      .header-link {
+        color: rgba(241, 238, 232, .72);
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: color 180ms ease;
+      }
+
+      .header-link:hover { color: var(--porcelain); }
+
+      #authPageMarker {
+        border-left: 1px solid rgba(241, 238, 232, .18);
+        color: var(--steel);
+        font-size: 13px;
+        font-weight: 700;
+        padding-left: 22px;
+      }
+
+      .auth-shell {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(380px, 470px);
+        align-items: center;
+        gap: clamp(48px, 8vw, 120px);
+        padding-block: 44px;
+      }
+
+      .auth-intro {
+        max-width: 610px;
+        opacity: 0;
+        transform: translateY(16px);
+        animation: reveal 700ms 100ms cubic-bezier(.2, .8, .2, 1) forwards;
+      }
+
+      .auth-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 20px;
+        color: var(--gold);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+      }
+
+      .auth-kicker::before {
+        content: "";
+        width: 32px;
+        height: 1px;
+        background: currentColor;
+      }
+
+      .auth-intro h1 {
+        max-width: 580px;
+        margin: 0;
+        color: var(--porcelain);
+        font-family: Anticva, Georgia, serif;
+        font-size: clamp(48px, 6vw, 82px);
+        font-weight: 400;
+        line-height: .98;
+        letter-spacing: 0;
+      }
+
+      .auth-intro p:last-child {
+        max-width: 470px;
+        margin: 24px 0 0;
+        color: rgba(241, 238, 232, .7);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      .auth-card {
+        width: 100%;
+        padding: 28px;
+        border: 1px solid rgba(241, 238, 232, .17);
+        border-radius: 12px;
+        background: rgba(15, 18, 21, .88);
+        box-shadow: 0 28px 80px rgba(0, 0, 0, .38);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
         opacity: 0;
         transform: translateY(18px);
-        filter: blur(6px);
-        transition:
-          opacity 700ms cubic-bezier(.2, .8, .2, 1),
-          transform 700ms cubic-bezier(.2, .8, .2, 1),
-          filter 700ms cubic-bezier(.2, .8, .2, 1);
-        will-change: opacity, transform, filter;
+        animation: reveal 700ms 180ms cubic-bezier(.2, .8, .2, 1) forwards;
       }
 
-      body.is-loaded .reveal {
-        opacity: 1;
-        transform: translateY(0);
-        filter: blur(0);
+      @keyframes reveal {
+        to { opacity: 1; transform: translateY(0); }
       }
 
-      .glass-card {
-        position: relative;
-        overflow: hidden;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
+      .auth-tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        padding: 4px;
+        border: 1px solid rgba(241, 238, 232, .1);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .035);
       }
 
-      .glass-card::before {
-        content: "";
+      .auth-tab {
+        min-height: 42px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 700;
+        transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+      }
+
+      .auth-tab:hover { color: var(--porcelain); }
+
+      .auth-tab.tab-active {
+        border-color: rgba(198, 161, 91, .26);
+        background: rgba(198, 161, 91, .1);
+        color: var(--porcelain);
+      }
+
+      .auth-form { margin-top: 26px; }
+
+      .form-heading { margin-bottom: 24px; }
+
+      #formTitle {
+        margin: 0;
+        color: var(--porcelain);
+        font-family: Anticva, Georgia, serif;
+        font-size: 32px;
+        font-weight: 400;
+        line-height: 1.15;
+      }
+
+      #formSubtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .field { margin-top: 18px; }
+
+      .field label {
+        display: block;
+        margin-bottom: 8px;
+        color: rgba(241, 238, 232, .82);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .password-control { position: relative; }
+
+      .auth-input {
+        width: 100%;
+        height: 50px;
+        border: 1px solid rgba(241, 238, 232, .16);
+        border-radius: 7px;
+        outline: 0;
+        background: rgba(5, 7, 8, .58);
+        color: var(--porcelain);
+        padding: 0 14px;
+        transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+      }
+
+      .auth-input::placeholder { color: #686e73; }
+
+      .auth-input:hover { border-color: rgba(241, 238, 232, .28); }
+
+      .auth-input:focus {
+        border-color: var(--steel);
+        background: rgba(5, 7, 8, .78);
+        box-shadow: 0 0 0 3px rgba(110, 168, 232, .13);
+      }
+
+      .auth-input:disabled { cursor: wait; opacity: .55; }
+
+      .password-control .auth-input { padding-right: 92px; }
+
+      .password-toggle {
         position: absolute;
-        inset: 0;
-        pointer-events: none;
-        opacity: 0;
-        background:
-          radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.35), transparent 60%),
-          radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
-        transition: opacity 350ms ease;
+        top: 7px;
+        right: 7px;
+        height: 36px;
+        border: 0;
+        border-radius: 5px;
+        background: rgba(241, 238, 232, .07);
+        color: rgba(241, 238, 232, .76);
+        cursor: pointer;
+        padding: 0 10px;
+        font-size: 12px;
+        font-weight: 700;
+        transition: background-color 180ms ease, color 180ms ease;
       }
 
-      .glass-card:hover::before {
-        opacity: 1;
+      .password-toggle:hover {
+        background: rgba(241, 238, 232, .12);
+        color: var(--porcelain);
       }
 
-      .hover-lift {
-        transition:
-          transform 250ms cubic-bezier(.2, .8, .2, 1),
-          box-shadow 250ms cubic-bezier(.2, .8, .2, 1),
-          border-color 250ms ease;
+      #pwHint,
+      #formFootnote {
+        color: #858b90;
+        font-size: 12px;
+        line-height: 1.55;
       }
 
-      .hover-lift:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 20px 60px -40px var(--glow), 0 14px 40px -28px rgba(0, 0, 0, .7);
+      #pwHint { margin: 8px 0 0; }
+
+      .form-options {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 20px;
       }
 
-      .input-glass {
-        transition:
-          transform 180ms cubic-bezier(.2, .8, .2, 1),
-          box-shadow 180ms cubic-bezier(.2, .8, .2, 1),
-          border-color 180ms ease,
-          background-color 180ms ease;
-      }
-
-      .input-glass:focus {
-        transform: translateY(-1px);
-        box-shadow:
-          0 0 0 1px rgba(99, 102, 241, 0.35),
-          0 10px 40px -30px rgba(99, 102, 241, 0.55);
-      }
-
-      .shake {
-        animation: shake 320ms ease-in-out;
-      }
-
-      @keyframes shake {
-        0% { transform: translateX(0); }
-        25% { transform: translateX(-6px); }
-        50% { transform: translateX(6px); }
-        75% { transform: translateX(-4px); }
-        100% { transform: translateX(0); }
-      }
-
-      .tab-active {
-        background: linear-gradient(to bottom, rgba(30, 41, 59, .8), rgba(15, 23, 42, .8));
-        border-color: rgba(99, 102, 241, .35);
-        color: rgba(224, 231, 255, .95);
+      .remember-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        color: rgba(241, 238, 232, .7);
+        cursor: pointer;
+        font-size: 13px;
       }
 
       .custom-checkbox {
         appearance: none;
-        width: 1.15rem;
-        height: 1.15rem;
-        background: rgba(2, 6, 23, 0.65);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 0.375rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+        display: grid;
+        width: 18px;
+        height: 18px;
+        flex: 0 0 18px;
+        place-items: center;
+        border: 1px solid rgba(241, 238, 232, .3);
+        border-radius: 4px;
+        background: rgba(5, 7, 8, .55);
         cursor: pointer;
-        transition: all 0.2s;
-        flex-shrink: 0;
+      }
+
+      .custom-checkbox::after {
+        content: "";
+        width: 8px;
+        height: 5px;
+        border-bottom: 2px solid white;
+        border-left: 2px solid white;
+        opacity: 0;
+        transform: translateY(-1px) rotate(-45deg) scale(.7);
+        transition: opacity 150ms ease, transform 150ms ease;
       }
 
       .custom-checkbox:checked {
-        background: linear-gradient(145deg, #4f46e5, #6366f1);
-        border-color: #818cf8;
-        box-shadow: 0 0 10px rgba(99, 102, 241, 0.45);
+        border-color: var(--wine-light);
+        background: var(--wine);
       }
 
       .custom-checkbox:checked::after {
-        content: "✓";
-        color: white;
-        font-size: 0.8rem;
-        font-weight: bold;
+        opacity: 1;
+        transform: translateY(-1px) rotate(-45deg) scale(1);
       }
 
-      .custom-checkbox:focus-visible {
-        outline: 2px solid rgba(99, 102, 241, 0.55);
-        outline-offset: 2px;
+      .text-action {
+        border: 0;
+        background: transparent;
+        color: var(--steel);
+        cursor: pointer;
+        padding: 0;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .text-action:hover { color: #9bc6f4; }
+
+      .back-row {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 18px;
+      }
+
+      .message {
+        margin-top: 18px;
+        border: 1px solid;
+        border-radius: 7px;
+        padding: 11px 12px;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      #errorBox {
+        border-color: rgba(251, 113, 133, .28);
+        background: rgba(127, 29, 29, .2);
+        color: #fecdd3;
+      }
+
+      #infoBox {
+        border-color: rgba(110, 168, 232, .26);
+        background: rgba(30, 64, 94, .25);
+        color: #d6eaff;
+      }
+
+      .submit-button {
+        width: 100%;
+        min-height: 50px;
+        margin-top: 20px;
+        border: 1px solid rgba(255, 255, 255, .1);
+        border-radius: 7px;
+        background: var(--wine);
+        color: white;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 700;
+        box-shadow: 0 14px 34px rgba(64, 8, 28, .28);
+        transition: background-color 180ms ease, transform 150ms ease, box-shadow 180ms ease;
+      }
+
+      .submit-button:hover {
+        background: var(--wine-light);
+        box-shadow: 0 17px 38px rgba(64, 8, 28, .36);
+      }
+
+      .submit-button:active { transform: translateY(1px); }
+
+      .submit-button:disabled { cursor: wait; opacity: .62; }
+
+      #formFootnote { margin: 15px 0 0; }
+
+      .auth-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 58px;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        border-top: 1px solid rgba(241, 238, 232, .12);
+        color: rgba(241, 238, 232, .48);
+        font-size: 11px;
+      }
+
+      .auth-footer a {
+        color: rgba(241, 238, 232, .62);
+        text-decoration: none;
+      }
+
+      .auth-footer a:hover { color: var(--porcelain); }
+
+      .shake { animation: shake 320ms ease-in-out; }
+
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        50% { transform: translateX(5px); }
+        75% { transform: translateX(-3px); }
       }
 
       button:focus-visible,
-      a:focus-visible {
-        outline: 2px solid rgba(99, 102, 241, 0.75);
-        outline-offset: 2px;
+      a:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--steel);
+        outline-offset: 3px;
+      }
+
+      @media (max-width: 820px) {
+        .auth-page::after { background: rgba(5, 7, 8, .22); }
+
+        .auth-background { background-position: 32% center; }
+
+        .auth-shell {
+          grid-template-columns: 1fr;
+          gap: 30px;
+          padding-block: 36px;
+        }
+
+        .auth-intro { max-width: 520px; }
+
+        .auth-intro h1 { font-size: clamp(45px, 12vw, 66px); }
+
+        .auth-intro p:last-child { margin-top: 16px; }
+
+        .auth-card { max-width: 560px; }
+      }
+
+      @media (max-width: 560px) {
+        .auth-header,
+        .auth-shell,
+        .auth-footer {
+          width: min(100% - 28px, 1180px);
+        }
+
+        .auth-header { min-height: 72px; }
+
+        .brand { font-size: 27px; }
+
+        .header-actions { gap: 14px; }
+
+        .header-actions .header-link:nth-child(2),
+        #authPageMarker { display: none; }
+
+        .auth-shell {
+          align-items: start;
+          gap: 24px;
+          padding-block: 26px 34px;
+        }
+
+        .auth-kicker { margin-bottom: 12px; }
+
+        .auth-intro h1 {
+          max-width: 340px;
+          font-size: clamp(32px, 10vw, 42px);
+        }
+
+        .auth-intro p:last-child {
+          max-width: 350px;
+          font-size: 14px;
+          line-height: 1.55;
+        }
+
+        .auth-card {
+          padding: 20px;
+          border-radius: 10px;
+        }
+
+        #formTitle { font-size: 28px; }
+
+        .form-options {
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .auth-footer {
+          align-items: flex-start;
+          flex-direction: column;
+          justify-content: center;
+          gap: 4px;
+          min-height: 72px;
+        }
+      }
+
+      @media (max-height: 760px) and (min-width: 821px) {
+        .auth-header { min-height: 72px; }
+        .auth-shell { padding-block: 24px; }
+        .auth-intro h1 { font-size: 60px; }
+        .auth-card { padding: 22px 26px; }
+        .field { margin-top: 14px; }
+        .form-heading { margin-bottom: 18px; }
       }
 
       @media (prefers-reduced-motion: reduce) {
-        * {
-          animation: none !important;
-          transition-duration: 0.01ms !important;
+        *, *::before, *::after {
+          animation-duration: .01ms !important;
+          animation-iteration-count: 1 !important;
           scroll-behavior: auto !important;
         }
       }
     </style>
   </head>
 
-  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-white">
-    <div class="relative z-10 mx-auto max-w-5xl px-4 py-10">
-      <header class="mb-8 reveal">
-        <div class="inline-flex items-center gap-3">
-          <span
-            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/30 to-sky-400/10 ring-1 ring-white/10 shadow-[0_20px_60px_-40px_rgba(99,102,241,0.6)] text-lg font-semibold text-slate-100/90"
-            aria-hidden="true"
-          >A</span>
+  <body>
+    <div class="auth-page">
+      <div class="auth-background" aria-hidden="true"></div>
 
-          <div>
-            <h1 class="text-3xl font-semibold tracking-tight">
-              <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
-                Alvisa — аккаунт
-              </span>
-            </h1>
-          </div>
-        </div>
+      <header class="auth-header">
+        <a class="brand" href="index.html" aria-label="ALVISA - главная">ALVISA</a>
+
+        <nav class="header-actions" aria-label="Основная навигация">
+          <a class="header-link" href="index.html">Главная</a>
+          <a class="header-link" href="calculator.html">Калькулятор</a>
+          <span id="authPageMarker">Вход</span>
+        </nav>
       </header>
 
-      <div class="mb-6 flex flex-wrap items-center gap-4 border-b border-white/10 pb-4 reveal">
-        <a href="index.html" class="text-slate-300 transition hover:text-indigo-200">Главная</a>
-        <a href="calculator.html" class="text-slate-300 transition hover:text-indigo-200">Калькулятор зарплаты</a>
-        <span id="authPageMarker" class="ml-auto text-indigo-300 font-medium">Вход</span>
-      </div>
+      <main class="auth-shell">
+        <section class="auth-intro" aria-labelledby="authIntroTitle">
+          <p class="auth-kicker">Личный кабинет</p>
+          <h1 id="authIntroTitle">Ваше рабочее пространство</h1>
+        </section>
 
-      <main class="reveal">
-        <section class="glass-card hover-lift mx-auto max-w-xl rounded-3xl bg-slate-900/35 p-6 ring-1 ring-white/10 shadow-[0_20px_80px_-50px_rgba(99,102,241,0.45)]">
-          <div
-            class="flex gap-2"
-            role="tablist"
-            aria-label="Режимы авторизации"
-          >
+        <section class="auth-card" aria-label="Авторизация">
+          <div class="auth-tabs" role="tablist" aria-label="Режимы авторизации">
             <button
               id="tabSignIn"
               type="button"
               role="tab"
               aria-selected="true"
               aria-controls="authForm"
-              class="tab-active flex-1 rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-slate-100 transition"
+              class="auth-tab tab-active"
             >
               Вход
             </button>
@@ -261,22 +631,20 @@
               role="tab"
               aria-selected="false"
               aria-controls="authForm"
-              class="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10"
+              class="auth-tab"
             >
               Регистрация
             </button>
           </div>
 
-          <form id="authForm" class="mt-5 space-y-4" novalidate>
-            <div>
-              <h2 id="formTitle" class="text-xl font-semibold text-slate-100">Вход</h2>
-              <p id="formSubtitle" class="mt-1 text-sm text-slate-400">
-                Введите email и пароль.
-              </p>
+          <form id="authForm" class="auth-form" novalidate>
+            <div class="form-heading">
+              <h2 id="formTitle">Вход</h2>
+              <p id="formSubtitle">Введите email и пароль.</p>
             </div>
 
-            <div id="emailFieldWrap">
-              <label class="mb-1 block text-sm font-medium text-slate-200" for="email">Email</label>
+            <div id="emailFieldWrap" class="field">
+              <label for="email">Email</label>
               <input
                 id="email"
                 name="email"
@@ -284,21 +652,21 @@
                 autocomplete="email"
                 inputmode="email"
                 placeholder="you@example.com"
-                class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                class="auth-input"
               />
             </div>
 
-            <div id="passwordFieldWrap">
-              <label class="mb-1 block text-sm font-medium text-slate-200" for="password">Пароль</label>
+            <div id="passwordFieldWrap" class="field">
+              <label for="password">Пароль</label>
 
-              <div class="relative">
+              <div class="password-control">
                 <input
                   id="password"
                   name="password"
                   type="password"
                   autocomplete="current-password"
-                  placeholder="••••••••••"
-                  class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 pr-24 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                  placeholder="Введите пароль"
+                  class="auth-input"
                 />
 
                 <button
@@ -306,93 +674,63 @@
                   type="button"
                   aria-label="Показать пароль"
                   aria-pressed="false"
-                  class="absolute inset-y-0 right-2 my-auto rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-200 ring-1 ring-white/10 transition hover:bg-white/10"
+                  class="password-toggle"
                 >
                   Показать
                 </button>
               </div>
 
-              <p id="pwHint" class="mt-1 text-xs text-slate-400/90 hidden">
-                Минимум 10 символов, верхний/нижний регистр, цифра и символ.
+              <p id="pwHint" class="hidden">
+                Минимум 10 символов, верхний и нижний регистр, цифра и специальный символ.
               </p>
             </div>
 
-            <div id="confirmWrap" class="hidden">
-              <label class="mb-1 block text-sm font-medium text-slate-200" for="confirmPassword">Повторите пароль</label>
+            <div id="confirmWrap" class="field hidden">
+              <label for="confirmPassword">Повторите пароль</label>
               <input
                 id="confirmPassword"
                 name="confirmPassword"
                 type="password"
                 autocomplete="new-password"
-                placeholder="••••••••••"
+                placeholder="Введите пароль еще раз"
                 disabled
-                class="input-glass w-full rounded-2xl bg-slate-950/45 px-4 py-3 text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500/80 focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
+                class="auth-input"
               />
             </div>
 
-            <div id="rememberMeWrap" class="flex items-center justify-between gap-3">
-              <label for="rememberMe" class="inline-flex cursor-pointer items-center gap-3 text-sm text-slate-300">
+            <div id="rememberMeWrap" class="form-options">
+              <label for="rememberMe" class="remember-label">
                 <input id="rememberMe" type="checkbox" class="custom-checkbox" />
                 <span>Запомнить меня</span>
               </label>
 
-              <button
-                id="forgotPasswordBtn"
-                type="button"
-                class="text-sm text-sky-300 transition hover:text-sky-200"
-              >
+              <button id="forgotPasswordBtn" type="button" class="text-action">
                 Забыли пароль?
               </button>
             </div>
 
-            <div class="flex items-center justify-end gap-3">
-              <button
-                id="backToLoginBtn"
-                type="button"
-                class="hidden text-sm text-slate-300 transition hover:text-slate-100"
-              >
+            <div class="back-row">
+              <button id="backToLoginBtn" type="button" class="text-action hidden">
                 Назад ко входу
               </button>
             </div>
 
-            <div
-              id="errorBox"
-              role="alert"
-              aria-live="assertive"
-              class="hidden rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-200 ring-1 ring-rose-500/20"
-            ></div>
+            <div id="errorBox" role="alert" aria-live="assertive" class="message hidden"></div>
+            <div id="infoBox" role="status" aria-live="polite" class="message hidden"></div>
 
-            <div
-              id="infoBox"
-              role="status"
-              aria-live="polite"
-              class="hidden rounded-2xl bg-sky-500/10 p-3 text-sm text-sky-200 ring-1 ring-sky-500/20"
-            ></div>
+            <button id="submitBtn" type="submit" class="submit-button">Войти</button>
 
-            <button
-              id="submitBtn"
-              type="submit"
-              class="w-full rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-4 py-3 font-semibold text-slate-100 ring-1 ring-white/10 shadow-[0_18px_60px_-45px_rgba(99,102,241,0.6)] transition-transform duration-150 hover:shadow-[0_22px_70px_-45px_rgba(56,189,248,0.55)] hover:ring-indigo-400/30 active:scale-[0.985] focus:outline-none focus:ring-2 focus:ring-indigo-400/80"
-            >
-              Войти
-            </button>
-
-            <p id="formFootnote" class="text-xs leading-5 text-slate-400/80">
-              После входа табель будет сохраняться в аккаунте.
+            <p id="formFootnote">
+              После входа табель будет сохраняться в вашем аккаунте.
             </p>
           </form>
         </section>
       </main>
+
+      <div data-app-footer></div>
     </div>
 
-    <script>
-      window.addEventListener("load", () => {
-        requestAnimationFrame(() => {
-          document.body.classList.add("is-loaded");
-        });
-      });
-    </script>
-
     <script type="module" src="./login.js"></script>
+    <script type="module" src="./footer.js?v=20260802-2"></script>
   </body>
 </html>

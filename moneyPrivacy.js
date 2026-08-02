@@ -227,6 +227,70 @@ function ensureModalStyles() {
       color: white;
       box-shadow: 0 12px 28px rgba(99, 102, 241, 0.22);
     }
+
+    @font-face {
+      font-family: "Anticva";
+      src: url("./fonts/Anticva-Regular.otf") format("opentype");
+      font-display: swap;
+    }
+
+    .money-pin-modal-overlay {
+      padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+      background: rgba(5, 6, 7, 0.84);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .money-pin-modal {
+      max-width: 440px;
+      border-radius: 9px;
+      background: #15191d;
+      border-color: rgba(241, 238, 232, 0.14);
+      box-shadow: 0 32px 100px rgba(0, 0, 0, 0.58);
+      padding: 24px;
+      color: #f1eee8;
+    }
+
+    .money-pin-modal h3 {
+      font-family: "Anticva", Georgia, serif;
+      font-size: 1.55rem;
+      font-weight: 400;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .money-pin-modal p { color: #aaa6a0; line-height: 1.6; }
+    .money-pin-modal .money-pin-label { color: #d7d3cd; }
+    .money-pin-modal .money-pin-input {
+      border-radius: 6px;
+      background: #0f1215;
+      border-color: rgba(241, 238, 232, 0.12);
+      color: #f1eee8;
+    }
+    .money-pin-modal .money-pin-input:focus {
+      border-color: rgba(198, 161, 91, 0.62);
+      box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.12);
+      background: #111417;
+    }
+    .money-pin-modal .money-pin-link { color: #d3b574; }
+    .money-pin-modal .money-pin-link:hover { color: #e2c98f; }
+    .money-pin-modal .money-pin-btn { border-radius: 6px; box-shadow: none; }
+    .money-pin-modal .money-pin-btn-secondary {
+      background: rgba(241, 238, 232, 0.05);
+      color: #d7d3cd;
+      border-color: rgba(241, 238, 232, 0.11);
+    }
+    .money-pin-modal .money-pin-btn-primary {
+      background: #7a1638;
+      color: #fff7f8;
+      box-shadow: none;
+    }
+
+    @media (max-width: 420px) {
+      .money-pin-modal { padding: 20px 18px; }
+      .money-pin-modal .money-pin-actions { align-items: stretch; flex-direction: column-reverse; }
+      .money-pin-modal .money-pin-btn { width: 100%; }
+    }
   `;
   document.head.appendChild(style);
 }

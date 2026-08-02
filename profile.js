@@ -43,17 +43,8 @@ const SHORT_DAY_REDUCTION_HOURS = 1;
 const HAZARD_POSITION_RATE = 0.04;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const TRAINING_ACHIEVEMENT_KEY_PREFIX = "alvisa.timesheetTraining.completedOnce.v1";
-const TRAINING_RESULT_KEY_PREFIX = "alvisa.timesheetTraining.result.v2";
 const EASTER_REWARD_KEY_PREFIX = "alvisa.easterRunner.reward.v1";
 const EASTER_PENDING_REWARD_KEY = "alvisa.easterRunner.pendingReward.v1";
-const TRAINING_TOPICS = [
-  { label: "Дневные смены", lessons: ["basics", "five-day"] },
-  { label: "Ночные смены", lessons: ["day-night-rest", "continuous-nights"] },
-  { label: "Коды отсутствий", lessons: ["absence-codes"] },
-  { label: "Особые дни", lessons: ["calendar-marks"] },
-  { label: "Приём и увольнение", lessons: ["employment-codes"] },
-  { label: "Итоговый экзамен", lessons: ["final-exam"] },
-];
 const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 const DISMISSED_LEAVE_TYPE = "dismissed";
 
@@ -76,9 +67,6 @@ const avatarFallback = document.getElementById("avatarFallback");
 const displayNameEl = document.getElementById("displayName");
 const trainingAchievementEl = document.getElementById("trainingAchievement");
 const easterEggBadgeEl = document.getElementById("easterEggBadge");
-const trainingMasteryEl = document.getElementById("trainingMastery");
-const trainingMasteryCountEl = document.getElementById("trainingMasteryCount");
-const trainingMasteryListEl = document.getElementById("trainingMasteryList");
 
 const displayNameInput = document.getElementById("displayNameInput");
 const positionSelect = document.getElementById("positionSelect");
@@ -607,7 +595,7 @@ function formatMoney(value) {
   if (!Number.isFinite(n)) return "—";
   return `${n.toLocaleString("ru-RU", {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   })} ₽`;
 }
 
@@ -2305,55 +2293,6 @@ function renderTrainingAchievement(userId) {
   }
 }
 
-function renderTrainingMastery(userId) {
-  if (!trainingMasteryEl || !trainingMasteryCountEl || !trainingMasteryListEl) return;
-
-  let masteredLessons = new Set();
-  let bestExamScore = 0;
-  let managerCompletedMissions = [];
-  let managerCourseCompleted = false;
-  try {
-    const result = JSON.parse(localStorage.getItem(`${TRAINING_RESULT_KEY_PREFIX}:${userId}`) || "null");
-    masteredLessons = new Set(Array.isArray(result?.masteredLessons) ? result.masteredLessons : []);
-    bestExamScore = Number.isFinite(Number(result?.bestExamScore)) ? Number(result.bestExamScore) : 0;
-    managerCompletedMissions = Array.isArray(result?.managerCompletedMissions) ? result.managerCompletedMissions : [];
-    managerCourseCompleted = result?.managerCourseCompleted === true;
-  } catch {
-    masteredLessons = new Set();
-    bestExamScore = 0;
-    managerCompletedMissions = [];
-    managerCourseCompleted = false;
-  }
-
-  const masteredTopics = TRAINING_TOPICS.filter((topic) =>
-    topic.lessons.every((lessonId) => masteredLessons.has(lessonId))
-  );
-
-  trainingMasteryEl.classList.toggle("hidden", masteredTopics.length === 0 && bestExamScore === 0 && managerCompletedMissions.length === 0);
-  trainingMasteryCountEl.textContent = bestExamScore > 0
-    ? `${masteredTopics.length} из ${TRAINING_TOPICS.length} · экзамен ${bestExamScore}%`
-    : `${masteredTopics.length} из ${TRAINING_TOPICS.length}`;
-  trainingMasteryListEl.replaceChildren();
-
-  for (const topic of masteredTopics) {
-    const badge = document.createElement("span");
-    badge.className = "inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-200 ring-1 ring-emerald-400/20";
-    badge.textContent = `✓ ${topic.label}`;
-    trainingMasteryListEl.appendChild(badge);
-  }
-
-  if (managerCompletedMissions.length > 0) {
-    const managerBadge = document.createElement("span");
-    managerBadge.className = managerCourseCompleted
-      ? "inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold text-sky-200 ring-1 ring-sky-400/25"
-      : "inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-slate-300 ring-1 ring-white/10";
-    managerBadge.textContent = managerCourseCompleted
-      ? "✓ Курс руководителя"
-      : `Курс руководителя: ${managerCompletedMissions.length} из 9`;
-    trainingMasteryListEl.appendChild(managerBadge);
-  }
-}
-
 function renderEasterEggReward(userId) {
   if (!easterEggBadgeEl || !userId) return;
 
@@ -2384,7 +2323,6 @@ function renderEasterEggReward(userId) {
   }
 
   renderTrainingAchievement(session?.user?.id);
-  renderTrainingMastery(session?.user?.id);
   renderEasterEggReward(session?.user?.id);
   startPresenceHeartbeat("Профиль");
 

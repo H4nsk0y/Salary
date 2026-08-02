@@ -23,6 +23,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
     <style>
+      @font-face {
+        font-family: "Anticva";
+        src: url("./fonts/Anticva-Regular.otf") format("opentype");
+        font-display: swap;
+      }
+
       html, body {
         font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       }
@@ -989,32 +995,547 @@ td.shift-comment-cell.has-shift-comment::after {
   }
 }
 
+      /* ALVISA admin workspace */
+      :root {
+        --alvisa-ink: #0b0d0f;
+        --alvisa-graphite: #15191d;
+        --alvisa-panel: #1a1f24;
+        --alvisa-line: rgba(241, 238, 232, 0.11);
+        --alvisa-muted: #9ca3ab;
+        --alvisa-porcelain: #f1eee8;
+        --alvisa-wine: #7a1638;
+        --alvisa-steel: #6ea8e8;
+        --alvisa-gold: #c6a15b;
+      }
+
+      body.admin-page {
+        background: var(--alvisa-ink);
+        background-image: none;
+        color: var(--alvisa-porcelain);
+      }
+
+      body.admin-page::before,
+      body.admin-page::after {
+        display: none;
+      }
+
+      .admin-shell {
+        max-width: 1680px;
+      }
+
+      .admin-page-header {
+        margin-bottom: 18px;
+      }
+
+      .admin-header-surface {
+        min-height: 86px;
+        border: 0;
+        border-bottom: 1px solid var(--alvisa-line);
+        border-radius: 0 !important;
+        background: transparent;
+        padding: 10px 0 18px !important;
+      }
+
+      .admin-page-heading,
+      .admin-section-heading {
+        font-family: "Anticva", Georgia, serif;
+        font-weight: 400 !important;
+        letter-spacing: 0;
+        color: var(--alvisa-porcelain);
+      }
+
+      .admin-page-heading {
+        font-size: 34px !important;
+        line-height: 1.05;
+      }
+
+      .admin-page-heading span {
+        background: none !important;
+        color: inherit !important;
+        -webkit-text-fill-color: currentColor;
+      }
+
+      .admin-header-links a,
+      .admin-header-links button {
+        min-height: 40px;
+        border: 1px solid var(--alvisa-line);
+        border-radius: 7px !important;
+        background: #111519 !important;
+        color: #c5cbd1;
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+
+      .admin-header-links a:hover,
+      .admin-header-links button:hover {
+        border-color: rgba(110, 168, 232, 0.34);
+        background: #191f24 !important;
+        color: var(--alvisa-porcelain);
+      }
+
+      .admin-action-panel {
+        top: calc(70px + env(safe-area-inset-top, 0px));
+        margin-bottom: 14px;
+        border: 1px solid rgba(110, 168, 232, 0.18);
+        border-radius: 9px !important;
+        background: rgba(17, 21, 25, 0.97);
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.24);
+        backdrop-filter: none;
+      }
+
+      .admin-action-panel::before {
+        display: none;
+      }
+
+      .admin-period-control {
+        min-height: 42px;
+        border: 1px solid var(--alvisa-line);
+        border-radius: 7px !important;
+        background: #0d1114 !important;
+      }
+
+      select.ui-select {
+        min-height: 32px;
+        border: 0;
+        border-radius: 6px;
+        background-color: #1c2228;
+        color: var(--alvisa-porcelain);
+        backdrop-filter: none;
+      }
+
+      select.ui-select:hover,
+      select.ui-select:focus {
+        border-color: transparent;
+        background-color: #252c33;
+        box-shadow: none;
+      }
+
+      .admin-action-panel #saveStatus {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        padding-left: 6px;
+        padding-right: 6px;
+        box-shadow: none;
+      }
+
+      .admin-action-buttons button {
+        min-height: 40px;
+        border-radius: 7px !important;
+        padding: 9px 14px;
+        box-shadow: none !important;
+      }
+
+      #reloadBtn {
+        border: 1px solid var(--alvisa-line) !important;
+        background: transparent !important;
+        color: #b9c0c7 !important;
+      }
+
+      #saveBtn {
+        border: 1px solid rgba(198, 161, 91, 0.48) !important;
+        background: rgba(198, 161, 91, 0.13) !important;
+        color: #ead3a5 !important;
+      }
+
+      #saveSilentBtn {
+        border: 1px solid rgba(198, 161, 91, 0.25) !important;
+        background: rgba(198, 161, 91, 0.07) !important;
+        color: #cfbc96 !important;
+      }
+
+      #exportExcelBtn {
+        border: 1px solid rgba(94, 187, 151, 0.28) !important;
+        background: rgba(94, 187, 151, 0.09) !important;
+        color: #a9ddc9 !important;
+      }
+
+      #createInviteBtn {
+        border: 1px solid rgba(110, 168, 232, 0.28) !important;
+        background: rgba(110, 168, 232, 0.09) !important;
+        color: #bcd8f6 !important;
+      }
+
+      .admin-action-buttons button:hover {
+        filter: brightness(1.16);
+      }
+
+      .admin-invite-box {
+        border-color: rgba(110, 168, 232, 0.2) !important;
+        border-radius: 8px !important;
+        background: #111519 !important;
+        backdrop-filter: none;
+      }
+
+      .admin-invite-box input,
+      .admin-invite-box button {
+        border-radius: 6px !important;
+      }
+
+      .admin-stats {
+        gap: 0 !important;
+        overflow: hidden;
+        margin-bottom: 14px;
+        border: 1px solid var(--alvisa-line);
+        border-radius: 9px;
+        background: var(--alvisa-graphite);
+      }
+
+      .admin-stats > .glass-card {
+        min-height: 96px;
+        border: 0;
+        border-right: 1px solid var(--alvisa-line);
+        border-radius: 0 !important;
+        background: transparent;
+        padding: 17px 20px !important;
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+
+      .admin-stats > .glass-card:last-child {
+        border-right: 0;
+      }
+
+      .admin-stats > .glass-card > div:first-child {
+        color: var(--alvisa-muted);
+        font-size: 12px;
+      }
+
+      .admin-stats > .glass-card > div[id] {
+        margin-top: 8px;
+        color: var(--alvisa-porcelain);
+        font-size: 28px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .glass-card.admin-table-card {
+        overflow: visible;
+        border: 1px solid rgba(110, 168, 232, 0.17);
+        border-radius: 10px !important;
+        background: #101418;
+        box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+        backdrop-filter: none;
+      }
+
+      .admin-matrix-intro {
+        margin-bottom: 14px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--alvisa-line);
+      }
+
+      .admin-section-heading {
+        font-size: 25px !important;
+        line-height: 1.15;
+      }
+
+      .admin-legend > div:first-child {
+        color: #929aa2;
+      }
+
+      .admin-legend span.rounded-full {
+        border-radius: 6px;
+      }
+
+      .top-table-scroll {
+        top: calc(142px + env(safe-area-inset-top, 0px));
+        height: 14px;
+        margin-bottom: 8px;
+        border-color: rgba(110, 168, 232, 0.16);
+        border-radius: 6px;
+        background: #0b0f12;
+        scrollbar-color: rgba(110, 168, 232, 0.64) #111519;
+      }
+
+      .scrollable {
+        border: 1px solid var(--alvisa-line);
+        border-radius: 8px;
+        background: #111519;
+      }
+
+      .admin-matrix {
+        border-radius: 0;
+        background: #111519;
+      }
+
+      .admin-matrix th {
+        height: 48px;
+        border-color: var(--alvisa-line);
+        background: #191e23;
+        color: #b8c0c8;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .admin-matrix td {
+        height: 54px;
+        border-color: rgba(241, 238, 232, 0.065);
+      }
+
+      .label-cell,
+      .summary-head {
+        background: #191e23 !important;
+        border-color: rgba(110, 168, 232, 0.2) !important;
+        box-shadow: 10px 0 20px -17px rgba(0, 0, 0, 0.9);
+      }
+
+      .label-main {
+        color: var(--alvisa-porcelain);
+      }
+
+      .label-sub {
+        color: #7f8992;
+      }
+
+      .member-drag-handle {
+        border-radius: 5px;
+        background: rgba(110, 168, 232, 0.08);
+        color: #8192a2;
+      }
+
+      .summary-cell {
+        border-color: rgba(110, 168, 232, 0.18) !important;
+        background: #14191e;
+      }
+
+      .summary-main strong,
+      .summary-line strong {
+        font-variant-numeric: tabular-nums;
+      }
+
+      .summary-line.muted strong {
+        color: #bcd8f6;
+      }
+
+      .employee-day-row td {
+        background-color: #12171b;
+      }
+
+      .employee-night-row td {
+        background-color: #151a1f;
+      }
+
+      .person-divider td,
+      .person-divider .summary-cell,
+      .person-divider .label-cell {
+        border-bottom-color: rgba(110, 168, 232, 0.23) !important;
+      }
+
+      .input-hour {
+        width: 52px;
+        min-width: 52px;
+        min-height: 38px;
+        border: 1px solid rgba(241, 238, 232, 0.11);
+        border-radius: 6px;
+        background: #0b0f12;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .input-hour:hover {
+        border-color: rgba(110, 168, 232, 0.28);
+      }
+
+      .input-hour:focus {
+        border-color: var(--alvisa-steel);
+        background: #10171d;
+        box-shadow: 0 0 0 3px rgba(110, 168, 232, 0.13);
+      }
+
+      td.night-cell .input-hour {
+        color: #bcd8f6;
+      }
+
+      .weekend-col { background-color: rgba(122, 22, 56, 0.18) !important; }
+      .holiday-col { background-color: rgba(198, 161, 91, 0.18) !important; }
+      .transferred-col { background-color: rgba(110, 168, 232, 0.15) !important; }
+      .short-col { background-color: rgba(94, 187, 151, 0.13) !important; }
+      .admin-matrix th.weekend-col { background-color: rgba(122, 22, 56, 0.28) !important; }
+      .admin-matrix th.holiday-col { background-color: rgba(198, 161, 91, 0.24) !important; }
+      .admin-matrix th.transferred-col { background-color: rgba(110, 168, 232, 0.22) !important; }
+      .admin-matrix th.short-col { background-color: rgba(94, 187, 151, 0.2) !important; }
+
+      #mobileBar {
+        border: 1px solid rgba(110, 168, 232, 0.16);
+        border-radius: 8px;
+        background: #111519;
+      }
+
+      #mobileBar button,
+      .mbar-employee-row,
+      .mbar-comment-button {
+        border-radius: 6px;
+      }
+
+      .mbar-employee-row {
+        background: #0d1114;
+      }
+
+      .shift-comment-dialog {
+        border-radius: 8px;
+        background: #111519;
+      }
+
+      .shift-comment-input,
+      .shift-comment-button {
+        border-radius: 6px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #111519;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(110, 168, 232, 0.52);
+        border-color: #111519;
+      }
+
+      * {
+        scrollbar-color: rgba(110, 168, 232, 0.52) #111519;
+      }
+
+      @media (max-width: 1023px) {
+        .admin-action-panel {
+          position: static;
+        }
+
+        .admin-action-buttons {
+          width: 100%;
+        }
+      }
+
+      @media (max-width: 767px) {
+        .admin-shell {
+          padding-left: 12px;
+          padding-right: 12px;
+        }
+
+        .admin-page-header {
+          margin-bottom: 12px;
+        }
+
+        .admin-header-surface {
+          padding-bottom: 14px !important;
+        }
+
+        .admin-page-heading {
+          font-size: 28px !important;
+        }
+
+        .admin-header-links {
+          width: 100%;
+        }
+
+        .admin-header-links > * {
+          flex: 1 1 calc(50% - 4px);
+          text-align: center;
+        }
+
+        .admin-action-panel {
+          padding: 10px !important;
+        }
+
+        .admin-action-primary {
+          width: 100%;
+        }
+
+        .admin-period-control {
+          width: 100%;
+          justify-content: center;
+        }
+
+        .admin-action-panel #saveStatus {
+          width: 100%;
+          justify-content: center;
+          min-height: 26px;
+        }
+
+        .admin-action-buttons button {
+          flex: 1 1 calc(50% - 4px);
+          padding-left: 10px;
+          padding-right: 10px;
+          font-size: 12px;
+        }
+
+        #saveSilentBtn {
+          flex-basis: 100%;
+        }
+
+        .admin-stats {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .admin-stats > .glass-card {
+          min-height: 88px;
+          padding: 14px !important;
+          border-right: 1px solid var(--alvisa-line);
+          border-bottom: 1px solid var(--alvisa-line);
+        }
+
+        .admin-stats > .glass-card:nth-child(2) {
+          border-right: 0;
+        }
+
+        .admin-stats > .glass-card:last-child {
+          grid-column: span 2;
+          border-bottom: 0;
+        }
+
+        .admin-stats > .glass-card > div[id] {
+          font-size: 23px;
+        }
+
+        .glass-card.admin-table-card {
+          padding: 10px !important;
+        }
+
+        .admin-matrix-intro {
+          padding: 2px 2px 12px;
+        }
+
+        .admin-section-heading {
+          font-size: 21px !important;
+        }
+
+        #mobileBar {
+          top: calc(env(safe-area-inset-top, 0px) + 72px);
+          padding: 8px;
+        }
+
+        .admin-matrix .label-cell,
+        .scrollable.is-scrolled-x .admin-matrix .label-cell {
+          background: #191e23 !important;
+        }
+
+        .label-avatar {
+          border-radius: 7px;
+          background: rgba(122, 22, 56, 0.32);
+          border-color: rgba(182, 71, 107, 0.3);
+          color: #f0dce3;
+        }
+      }
+
     </style>
 
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 
   </head>
 
-  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+  <body class="admin-page min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
     <div data-app-header data-active="table"></div>
 
-    <div class="app-header-offset relative z-10 mx-auto max-w-[1600px] px-4 pb-8 md:pb-10">
-      <header class="mb-6">
-        <div class="flex flex-col gap-4 rounded-3xl border border-white/10 bg-slate-950/70 p-4 md:p-5">
+    <div class="admin-shell app-header-offset relative z-10 mx-auto max-w-[1600px] px-4 pb-8 md:pb-10">
+      <header class="admin-page-header mb-6">
+        <div class="admin-header-surface flex flex-col gap-4 rounded-3xl border border-white/10 bg-slate-950/70 p-4 md:p-5">
           <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div class="flex items-center gap-3">
-              <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 text-lg font-bold text-slate-100">A</span>
-              <div>
-                <h1 class="text-2xl md:text-3xl font-bold tracking-tight">
-                  <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
-                    Табель команды
-                  </span>
-                </h1>
-                <p id="monthYearDisplay" class="mt-1 text-sm text-slate-300/80">—</p>
-              </div>
+            <div class="min-w-0 flex-1">
+              <h1 class="admin-page-heading text-2xl md:text-3xl font-bold tracking-tight">
+                <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
+                  Табель команды
+                </span>
+              </h1>
+              <p id="monthYearDisplay" class="mt-1 text-sm text-slate-300/80">—</p>
             </div>
 
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="admin-header-links flex flex-wrap items-center gap-2">
               <a
                 id="backToTableLink"
                 href="table.html"
@@ -1032,8 +1553,8 @@ td.shift-comment-cell.has-shift-comment::after {
 
       <section class="admin-action-panel mb-6 rounded-3xl p-3 md:p-4">
         <div class="relative flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
+          <div class="admin-action-primary flex flex-wrap items-center gap-2">
+            <div class="admin-period-control flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
               <label class="text-xs text-slate-300" for="monthSelect">Месяц</label>
               <span class="select-wrap">
                 <select id="monthSelect" class="ui-select">
@@ -1061,7 +1582,7 @@ td.shift-comment-cell.has-shift-comment::after {
             <span id="saveStatus" class="inline-flex items-center rounded-full bg-white/5 px-4 py-1.5 text-xs text-slate-300 ring-1 ring-white/10">—</span>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="admin-action-buttons flex flex-wrap items-center gap-2">
             <button
               id="reloadBtn"
               class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10"
@@ -1095,7 +1616,7 @@ td.shift-comment-cell.has-shift-comment::after {
 
       <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
 
-      <section id="inviteBox" class="hidden mb-6 rounded-3xl border border-white/10 bg-slate-950/65 p-4 backdrop-blur-sm">
+      <section id="inviteBox" class="admin-invite-box hidden mb-6 rounded-3xl border border-white/10 bg-slate-950/65 p-4 backdrop-blur-sm">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div class="text-sm font-semibold text-slate-100">Ссылка приглашения в отдел</div>
@@ -1110,7 +1631,7 @@ td.shift-comment-cell.has-shift-comment::after {
         <input id="inviteLinkInput" class="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-200 outline-none" readonly />
       </section>
 
-      <section class="mb-6 grid gap-4 md:grid-cols-3">
+      <section class="admin-stats mb-6 grid gap-4 md:grid-cols-3">
         <div class="glass-card rounded-3xl p-5">
           <div class="text-sm text-slate-400">Сотрудников в табеле</div>
           <div id="teamCount" class="mt-2 text-3xl font-bold text-slate-100">4</div>
@@ -1129,15 +1650,15 @@ td.shift-comment-cell.has-shift-comment::after {
       </section>
 
       <section class="glass-card admin-table-card rounded-3xl p-5 md:p-6">
-        <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div class="admin-matrix-intro mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 class="text-xl font-semibold text-slate-100">Матрица табеля</h2>
+            <h2 class="admin-section-heading text-xl font-semibold text-slate-100">Матрица табеля</h2>
             <p class="mt-1 text-sm text-slate-400">
               Справа по каждому сотруднику: <span class="text-slate-200">часы 1-я половина / месяц</span> и <span class="text-slate-200">норма 1-я половина / месяц</span>.
             </p>
           </div>
 
-          <div class="text-xs text-slate-400">
+          <div class="admin-legend text-xs text-slate-400">
             Коды: <span class="text-slate-200">ОТ</span>, <span class="text-slate-200">ОД</span>, <span class="text-slate-200">ОЗ</span>, <span class="text-slate-200">У</span>, <span class="text-slate-200">УД</span>, <span class="text-slate-200">Б</span>, <span class="text-slate-200">НТ</span>, <span class="text-slate-200">УВ</span>
             <div class="mt-1 text-[11px] text-slate-500">ОТ можно ставить на сб/вс для календарного отпуска.</div>
             <div class="mt-2 flex flex-wrap items-center gap-2">
@@ -1166,11 +1687,11 @@ td.shift-comment-cell.has-shift-comment::after {
           </div>
           <div class="mbar-row">
             <button id="mHolidayBtn" type="button"
-              class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">🎉 Праздник</button>
+              class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">Праздник</button>
             <button id="mTransferredBtn" type="button"
-              class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">🔁 Перенос</button>
+              class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">Перенос</button>
             <button id="mShortBtn" type="button"
-              class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">✂️ Сокращ.</button>
+              class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">Сокращ.</button>
           </div>
           <div class="mbar-employee-row">
             <span class="mbar-employee-caption">Сотрудник</span>
@@ -1194,7 +1715,7 @@ td.shift-comment-cell.has-shift-comment::after {
       </section>
     </div>
 
-    <script type="module" src="./nav.js"></script>
+<script type="module" src="./nav.js?v=20260802-3"></script>
     <script type="module" src="./admin.js"></script>
   </body>
 </html>

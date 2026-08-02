@@ -1,499 +1,662 @@
-<!-- FILE: /index.html -->
 <!doctype html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover" />
   <title>Alvisa — табель, зарплата и работа отдела</title>
+  <meta name="description" content="Внутренняя система Alvisa для табеля, смен, расчётов и работы отдела." />
   <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon-32.png?v=4" />
   <link rel="icon" type="image/png" sizes="48x48" href="./images/favicon-48.png?v=4" />
   <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon-180.png?v=4" />
   <link rel="shortcut icon" href="./images/favicon-64.png?v=4" />
   <link rel="manifest" href="./manifest.webmanifest" />
-  <meta name="theme-color" content="#020617" />
+  <meta name="theme-color" content="#0b0d0f" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Alvisa" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
 
-
   <script src="https://cdn.tailwindcss.com"></script>
-
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
-    rel="stylesheet"
-  />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <style>
-    html, body {
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      scroll-behavior: smooth;
+    @font-face {
+      font-family: "Anticva";
+      src: url("./fonts/Anticva-Regular.otf") format("opentype");
+      font-display: swap;
+      font-style: normal;
+      font-weight: 400;
     }
 
     :root {
-      --glow-primary: rgba(99, 102, 241, 0.5);
-      --glow-secondary: rgba(56, 189, 248, 0.4);
-      --glow-accent: rgba(168, 85, 247, 0.3);
-      --glass-border: rgba(255, 255, 255, 0.08);
-      --glass-bg: rgba(15, 23, 42, 0.6);
-      --card-shadow: 0 25px 50px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
-      --card-shadow-hover: 0 35px 70px -30px var(--glow-primary), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      color-scheme: dark;
+      --ink: #0b0d0f;
+      --graphite: #15191d;
+      --graphite-soft: #1c2126;
+      --porcelain: #f1eee8;
+      --muted: #a8adb2;
+      --wine: #7a1638;
+      --wine-light: #a62a52;
+      --steel: #6ea8e8;
+      --gold: #c6a15b;
+      --line: rgba(241, 238, 232, .12);
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--ink);
     }
 
     body {
-      position: relative;
+      margin: 0;
       overflow-x: hidden;
-      background: #020617;
-      background-image:
-        radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.18), transparent 60%),
-        radial-gradient(700px 420px at 85% 20%, rgba(56, 189, 248, 0.15), transparent 60%),
-        radial-gradient(900px 520px at 50% 90%, rgba(168, 85, 247, 0.12), transparent 60%);
+      background: var(--ink);
+      color: var(--porcelain);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
 
-    body::before {
-      content: "";
-      position: fixed;
-      inset: -25%;
-      pointer-events: none;
-      z-index: 0;
-      background:
-        radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.4), transparent 45%),
-        radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.3), transparent 45%),
-        radial-gradient(circle at 55% 85%, rgba(168, 85, 247, 0.2), transparent 45%);
-      filter: blur(70px);
-      opacity: 0.6;
-      animation: bgFloat 18s ease-in-out infinite alternate;
+    ::selection {
+      background: rgba(122, 22, 56, .72);
+      color: #fff;
     }
 
-    body::after {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      background-image: radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px);
-      background-size: 28px 28px;
-      opacity: 0.2;
-      mask-image: radial-gradient(circle at 50% 20%, #000 30%, transparent 80%);
+    * {
+      scrollbar-color: rgba(110, 168, 232, .38) var(--ink);
+      scrollbar-width: thin;
     }
 
-    @keyframes bgFloat {
-      0% { transform: translate3d(-2%, -2%, 0) scale(1); }
-      100% { transform: translate3d(3%, 3%, 0) scale(1.08); }
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-track { background: var(--ink); }
+    *::-webkit-scrollbar-thumb {
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: rgba(110, 168, 232, .38);
     }
 
-    .reveal {
-      opacity: 0;
-      transform: translateY(28px);
-      filter: blur(10px);
-      transition:
-        opacity 800ms cubic-bezier(0.2, 0.9, 0.3, 1),
-        transform 800ms cubic-bezier(0.2, 0.9, 0.3, 1),
-        filter 800ms cubic-bezier(0.2, 0.9, 0.3, 1);
-      will-change: opacity, transform, filter;
+    .display-font {
+      font-family: Anticva, Georgia, serif;
+      font-weight: 400;
+      letter-spacing: 0;
     }
 
-    body.is-loaded .reveal {
-      opacity: 1;
-      transform: translateY(0);
-      filter: blur(0);
-    }
-
-    .reveal-delay-1 { transition-delay: 0.05s; }
-    .reveal-delay-2 { transition-delay: 0.15s; }
-    .reveal-delay-3 { transition-delay: 0.25s; }
-    .reveal-delay-4 { transition-delay: 0.35s; }
-
-    .glass-card {
+    .home-hero {
       position: relative;
+      display: flex;
+      min-height: min(720px, calc(100svh - 1.5rem));
+      align-items: center;
       overflow: hidden;
-      backdrop-filter: blur(16px) saturate(180%);
-      -webkit-backdrop-filter: blur(16px) saturate(180%);
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      box-shadow: var(--card-shadow);
-      transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+      isolation: isolate;
+      background-color: #101316;
     }
 
-    .glass-card::before {
+    .home-hero::before {
       content: "";
       position: absolute;
       inset: 0;
-      pointer-events: none;
-      opacity: 0;
-      background:
-        radial-gradient(600px 200px at 20% 0%, rgba(99, 102, 241, 0.3), transparent 60%),
-        radial-gradient(500px 220px at 80% 10%, rgba(56, 189, 248, 0.25), transparent 60%);
-      transition: opacity 0.5s ease;
+      z-index: -1;
+      background: rgba(5, 7, 8, .26);
     }
 
-    .glass-card:hover {
-      border-color: rgba(99, 102, 241, 0.3);
-      box-shadow: var(--card-shadow-hover);
-      transform: translateY(-4px);
-    }
-
-    .glass-card:hover::before {
-      opacity: 1;
-    }
-
-    .nav-link {
-      position: relative;
-      transition: color 0.2s;
-      white-space: nowrap;
-    }
-
-    .nav-link::after {
+    .home-hero::after {
       content: "";
       position: absolute;
-      bottom: 0;
-      left: 1rem;
-      right: 1rem;
-      height: 2px;
-      background: linear-gradient(90deg, #6366f1, #38bdf8);
-      border-radius: 2px;
-      opacity: 0;
-      transform: scaleX(0.7);
-      transition: opacity 0.2s, transform 0.2s;
+      inset: auto 0 0;
+      height: 1px;
+      background: rgba(241, 238, 232, .18);
     }
 
-    .nav-link.active::after,
-    .nav-link:hover::after {
-      opacity: 1;
+    .hero-image-motion {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background-image: url("./images/alvisa-home-production.webp");
+      background-position: center;
+      background-size: cover;
+      transform: scale(1.035);
+      animation: heroSettle 1400ms cubic-bezier(.2, .75, .2, 1) forwards;
+    }
+
+    @keyframes heroSettle {
+      to { transform: scale(1); }
+    }
+
+    .hero-copy {
+      width: min(100%, 760px);
+      padding-top: max(8.5rem, calc(6.5rem + env(safe-area-inset-top)));
+      padding-bottom: 5.5rem;
+      text-shadow: 0 2px 28px rgba(0, 0, 0, .64);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: .75rem;
+      color: rgba(241, 238, 232, .78);
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 38px;
+      height: 1px;
+      background: var(--gold);
+    }
+
+    .brand-title {
+      margin: 1rem 0 0;
+      color: var(--porcelain);
+      font-size: 7rem;
+      line-height: .92;
+      letter-spacing: 0;
+    }
+
+    .hero-subtitle {
+      max-width: 650px;
+      margin-top: 1.5rem;
+      color: rgba(241, 238, 232, .84);
+      font-size: 1.12rem;
+      line-height: 1.75;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-top: 2rem;
+    }
+
+    .button-primary,
+    .button-secondary {
+      display: inline-flex;
+      min-height: 48px;
+      align-items: center;
+      justify-content: center;
+      gap: .75rem;
+      border-radius: 10px;
+      padding: 0 1.25rem;
+      font-size: .88rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease;
+    }
+
+    .button-primary {
+      border: 1px solid rgba(255, 255, 255, .12);
+      background: var(--wine);
+      color: #fff;
+      box-shadow: 0 16px 34px rgba(54, 5, 23, .34);
+    }
+
+    .button-primary:hover {
+      background: var(--wine-light);
+      transform: translateY(-2px);
+    }
+
+    .button-secondary {
+      border: 1px solid rgba(241, 238, 232, .28);
+      background: rgba(11, 13, 15, .58);
+      color: var(--porcelain);
+      backdrop-filter: blur(10px);
+    }
+
+    .button-secondary:hover {
+      border-color: rgba(110, 168, 232, .68);
+      background: rgba(21, 25, 29, .84);
+      transform: translateY(-2px);
+    }
+
+    .button-arrow {
+      font-size: 1rem;
+      transition: transform 180ms ease;
+    }
+
+    .button-primary:hover .button-arrow,
+    .button-secondary:hover .button-arrow {
+      transform: translateX(3px);
+    }
+
+    .page-band {
+      border-bottom: 1px solid var(--line);
+      background: var(--ink);
+    }
+
+    .section-wrap {
+      width: min(100% - 2rem, 1240px);
+      margin-inline: auto;
+    }
+
+    .section-heading {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 430px);
+      gap: 2rem;
+      align-items: end;
+      padding: 5.5rem 0 2.25rem;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-size: 3.35rem;
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    .section-heading p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .94rem;
+      line-height: 1.75;
+    }
+
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border-top: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+    }
+
+    .workspace-link {
+      position: relative;
+      min-height: 240px;
+      overflow: hidden;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: var(--graphite);
+      padding: 1.55rem;
+      color: inherit;
+      text-decoration: none;
+      transition: background-color 220ms ease;
+    }
+
+    .workspace-link::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: var(--accent, var(--steel));
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 260ms cubic-bezier(.2, .75, .2, 1);
+    }
+
+    .workspace-link:hover {
+      background: var(--graphite-soft);
+    }
+
+    .workspace-link:hover::after {
       transform: scaleX(1);
     }
 
-    .hero-orb {
+    .workspace-index {
+      color: var(--accent, var(--steel));
+      font-size: .72rem;
+      font-weight: 800;
+    }
+
+    .workspace-title {
+      margin-top: 3.7rem;
+      color: var(--porcelain);
+      font-size: 1.32rem;
+      font-weight: 700;
+    }
+
+    .workspace-copy {
+      max-width: 310px;
+      margin-top: .75rem;
+      color: var(--muted);
+      font-size: .84rem;
+      line-height: 1.7;
+    }
+
+    .workspace-arrow {
       position: absolute;
-      border-radius: 999px;
-      filter: blur(28px);
-      opacity: 0.55;
-      pointer-events: none;
+      top: 1.35rem;
+      right: 1.45rem;
+      color: rgba(241, 238, 232, .52);
+      font-size: 1.2rem;
+      transition: color 180ms ease, transform 180ms ease;
     }
 
-    .feature-icon {
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.08),
-        0 16px 30px -18px rgba(99, 102, 241, 0.55);
+    .workspace-link:hover .workspace-arrow {
+      color: var(--porcelain);
+      transform: translate(2px, -2px);
     }
 
-    .cta-primary {
-      background: linear-gradient(135deg, rgba(99,102,241,0.96), rgba(59,130,246,0.92));
-      box-shadow: 0 20px 40px -22px rgba(99, 102, 241, 0.75);
+    .principles {
+      display: grid;
+      grid-template-columns: .9fr 1.1fr;
+      gap: 4rem;
+      padding: 6rem 0;
     }
 
-    .cta-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 24px 48px -24px rgba(99, 102, 241, 0.9);
+    .principles-lead h2 {
+      margin: 0;
+      max-width: 480px;
+      font-size: 3.4rem;
+      line-height: 1.04;
+      letter-spacing: 0;
     }
 
-    .cta-secondary:hover {
-      transform: translateY(-1px);
+    .principles-lead p {
+      max-width: 470px;
+      margin-top: 1.5rem;
+      color: var(--muted);
+      font-size: .94rem;
+      line-height: 1.8;
     }
 
-    .section-title {
-      background: linear-gradient(90deg, #e2e8f0, #cbd5e1);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
+    .principle-list {
+      border-top: 1px solid var(--line);
     }
 
-    .mobile-top-nav {
+    .principle-row {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      gap: 1rem;
+      padding: 1.45rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .principle-number {
+      color: var(--gold);
+      font-size: .72rem;
+      font-weight: 800;
+    }
+
+    .principle-row h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .principle-row p {
+      margin: .45rem 0 0;
+      color: var(--muted);
+      font-size: .84rem;
+      line-height: 1.7;
+    }
+
+    .home-cta {
+      position: relative;
+      overflow: hidden;
+      border-top: 1px solid rgba(241, 238, 232, .14);
+      border-bottom: 1px solid rgba(241, 238, 232, .14);
+      background: #171114;
+    }
+
+    .home-cta-inner {
+      display: flex;
+      min-height: 260px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2rem;
+      padding-block: 3.5rem;
+    }
+
+    .home-cta h2 {
+      margin: 0;
+      max-width: 700px;
+      font-size: 3rem;
+      line-height: 1.06;
+      letter-spacing: 0;
+    }
+
+    .home-footer {
       display: flex;
       align-items: center;
-      justify-content: flex-end;
-      gap: 0.125rem;
+      justify-content: space-between;
+      gap: 1.5rem;
+      padding-block: 2rem;
+      color: #777d82;
+      font-size: .72rem;
+      line-height: 1.6;
     }
 
-    .mobile-top-nav a {
-      white-space: nowrap;
+    .home-footer a {
+      color: var(--porcelain);
+      text-decoration: none;
+      transition: color 180ms ease;
     }
 
-    .pt-safe {
-      padding-top: 7rem;
+    .home-footer a:hover { color: var(--steel); }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 520ms ease, transform 520ms cubic-bezier(.2, .75, .2, 1);
     }
 
-    @media (min-width: 768px) {
-      .pt-safe {
-        padding-top: 6rem;
-      }
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 900px) {
+      .brand-title { font-size: 5.5rem; }
+      .section-heading,
+      .principles { grid-template-columns: 1fr; }
+      .section-heading { gap: 1.2rem; }
+      .workspace-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .principles { gap: 2.5rem; }
+      .home-cta-inner { align-items: flex-start; flex-direction: column; }
     }
 
     @media (max-width: 640px) {
-      .mobile-top-nav {
-        flex-wrap: nowrap !important;
-        justify-content: flex-start !important;
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-        max-width: calc(100vw - 92px);
-        white-space: nowrap;
-        touch-action: pan-x;
+      .home-hero {
+        min-height: 690px;
+        align-items: flex-end;
       }
 
-      .mobile-top-nav::-webkit-scrollbar {
-        display: none;
+      .hero-image-motion { background-position: 32% center; }
+
+      .home-hero::before { background: rgba(5, 7, 8, .42); }
+
+      .hero-copy {
+        width: 100%;
+        padding-top: max(7.5rem, calc(5.5rem + env(safe-area-inset-top)));
+        padding-bottom: 3.5rem;
       }
 
-      .mobile-top-nav a {
-        flex: 0 0 auto;
-        font-size: 0.72rem !important;
-        padding: 5px 7px !important;
+      .brand-title {
+        margin-top: .85rem;
+        font-size: 4rem;
+        line-height: .95;
       }
+
+      .hero-subtitle {
+        margin-top: 1.1rem;
+        font-size: .96rem;
+        line-height: 1.65;
+      }
+
+      .hero-actions { display: grid; grid-template-columns: 1fr; }
+      .button-primary, .button-secondary { width: 100%; }
+      .section-wrap { width: min(100% - 1.25rem, 1240px); }
+
+      .section-heading { padding: 4rem 0 1.75rem; }
+      .section-heading h2,
+      .principles-lead h2 { font-size: 2.45rem; }
+
+      .workspace-grid { grid-template-columns: 1fr; }
+      .workspace-link { min-height: 200px; padding: 1.3rem; }
+      .workspace-title { margin-top: 2.8rem; }
+
+      .principles { padding: 4.25rem 0; }
+
+      .home-cta-inner { min-height: 0; padding-block: 3.5rem; }
+      .home-cta h2 { font-size: 2.35rem; }
+      .home-footer { align-items: flex-start; flex-direction: column; }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      * {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
       }
+      .reveal { opacity: 1; transform: none; }
     }
   </style>
 </head>
 
-<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
-<script>
-  document.body.classList.add("is-loaded");
-</script>
+<body class="antialiased">
+  <div data-app-header data-active="index"></div>
 
-<div data-app-header data-active="index"></div>
+  <main>
+    <section class="home-hero" aria-labelledby="homeTitle">
+      <div class="hero-image-motion" aria-hidden="true"></div>
+      <div class="section-wrap">
+        <div class="hero-copy">
+          <h1 id="homeTitle" class="brand-title display-font">ALVISA</h1>
+          <p class="hero-subtitle">
+            Табель, смены, выплаты и задачи отдела в едином рабочем пространстве.
+            Точно, спокойно и всегда под рукой.
+          </p>
 
-<div class="relative z-10 mx-auto max-w-7xl px-4 pt-safe pb-14 md:pb-20">
-  <section class="reveal reveal-delay-1 relative overflow-hidden rounded-[2rem] glass-card px-6 py-8 md:px-10 md:py-12">
-    <div class="hero-orb h-40 w-40 bg-indigo-500/40 left-[-20px] top-[-10px]"></div>
-    <div class="hero-orb h-48 w-48 bg-sky-400/30 right-[-20px] top-[20px]"></div>
-    <div class="hero-orb h-40 w-40 bg-violet-500/30 left-[35%] bottom-[-25px]"></div>
+          <div class="hero-actions">
+            <a href="table.html" class="button-primary">
+              Открыть табель <span class="button-arrow" aria-hidden="true">→</span>
+            </a>
+            <a href="calculator.html" class="button-secondary">
+              Рассчитать зарплату <span class="button-arrow" aria-hidden="true">→</span>
+            </a>
+            <a href="profile.html" class="button-secondary">
+              Личный кабинет
+            </a>
+          </div>
 
-    <div class="relative grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-      <div>
-        <div class="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-xs text-slate-300 ring-1 ring-white/10 backdrop-blur-sm">
-          <span class="h-2 w-2 rounded-full bg-emerald-400/80"></span>
-          Табель, расчёты, профиль и работа отдела в одной системе
-        </div>
-
-        <h1 class="mt-5 text-4xl font-black tracking-tight text-slate-50 md:text-6xl md:leading-[1.05]">
-          <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
-            Avisa Salary
-          </span>
-        </h1>
-
-        <p class="mt-4 max-w-2xl text-base leading-7 text-slate-300/85 md:text-lg">
-          Удобное рабочее пространство для сотрудников и руководителей:
-          калькулятор зарплаты, личный табель, общий табель отдела, чат и профиль —
-          всё в одном аккуратном интерфейсе.
-        </p>
-
-        <div class="mt-7 flex flex-wrap gap-3">
-          <a
-            href="calculator.html"
-            class="cta-primary rounded-2xl px-5 py-3 text-sm font-semibold text-white transition-all"
-          >
-            Открыть калькулятор
-          </a>
-
-          <a
-            href="table.html"
-            class="cta-secondary rounded-2xl bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30"
-          >
-            Открыть табель
-          </a>
-
-          <a
-            href="profile.html"
-            class="cta-secondary rounded-2xl bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30"
-          >
-            Перейти в профиль
-          </a>
-        </div>
-
-        <div class="mt-7 flex flex-wrap gap-2 text-xs text-slate-400/85">
-          <span class="rounded-full bg-white/5 px-3 py-1.5 ring-1 ring-white/10">Калькулятор</span>
-          <span class="rounded-full bg-white/5 px-3 py-1.5 ring-1 ring-white/10">Личный табель</span>
-          <span class="rounded-full bg-white/5 px-3 py-1.5 ring-1 ring-white/10">Чат отдела</span>
-          <span class="rounded-full bg-white/5 px-3 py-1.5 ring-1 ring-white/10">Профиль</span>
-          <span class="rounded-full bg-white/5 px-3 py-1.5 ring-1 ring-white/10">Справка</span>
         </div>
       </div>
+    </section>
 
-      <div class="grid gap-4">
-        <div class="glass-card rounded-3xl p-5">
-          <div class="text-xs text-slate-400">Что внутри</div>
-
-          <div class="mt-4 grid gap-3">
-            <div class="rounded-2xl bg-slate-950/35 p-4 ring-1 ring-white/10">
-              <div class="flex items-center justify-between gap-3">
-                <div class="text-sm font-semibold text-slate-100">Калькулятор зарплаты</div>
-                <span class="rounded-full bg-indigo-500/10 px-2.5 py-1 text-[10px] font-semibold text-indigo-200 ring-1 ring-indigo-400/20">быстро</span>
-              </div>
-              <div class="mt-1 text-xs leading-6 text-slate-400">
-                Расчёт по окладу, норме, ночным и первой половине месяца.
-              </div>
-            </div>
-
-            <div class="rounded-2xl bg-slate-950/35 p-4 ring-1 ring-white/10">
-              <div class="flex items-center justify-between gap-3">
-                <div class="text-sm font-semibold text-slate-100">Табель и календарь</div>
-                <span class="rounded-full bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold text-sky-200 ring-1 ring-sky-400/20">удобно</span>
-              </div>
-              <div class="mt-1 text-xs leading-6 text-slate-400">
-                Учёт часов, отпусков, больничных и отметок по дням.
-              </div>
-            </div>
-
-            <div class="rounded-2xl bg-slate-950/35 p-4 ring-1 ring-white/10">
-              <div class="flex items-center justify-between gap-3">
-                <div class="text-sm font-semibold text-slate-100">Профиль и чат</div>
-                <span class="rounded-full bg-violet-500/10 px-2.5 py-1 text-[10px] font-semibold text-violet-200 ring-1 ring-violet-400/20">вместе</span>
-              </div>
-              <div class="mt-1 text-xs leading-6 text-slate-400">
-                Аватар, данные сотрудника, приватность сумм и общение внутри отдела.
-              </div>
-            </div>
+    <section class="page-band">
+      <div class="section-wrap">
+        <div class="section-heading reveal">
+          <div>
+            <div class="eyebrow">Рабочее пространство</div>
+            <h2 class="display-font">Все важное рядом</h2>
           </div>
         </div>
 
-        <!-- <div class="grid gap-4 sm:grid-cols-3">
-          <div class="glass-card rounded-2xl p-4 text-center">
-            <div class="text-xs text-slate-400">Разделов</div>
-            <div class="mt-2 text-2xl font-bold text-slate-100">5</div>
-          </div>
-          <div class="glass-card rounded-2xl p-4 text-center">
-            <div class="text-xs text-slate-400">Интерфейс</div>
-            <div class="mt-2 text-2xl font-bold text-slate-100">1</div>
-          </div>
-          <div class="glass-card rounded-2xl p-4 text-center">
-            <div class="text-xs text-slate-400">Цель</div>
-            <div class="mt-2 text-2xl font-bold text-slate-100">Удобство</div>
-          </div>
-        </div> -->
+        <nav class="workspace-grid reveal" aria-label="Основные разделы">
+          <a href="table.html" class="workspace-link" style="--accent: var(--wine-light)">
+            <span class="workspace-index">01</span>
+            <span class="workspace-arrow" aria-hidden="true">↗</span>
+            <div class="workspace-title">Табель</div>
+            <p class="workspace-copy">Часы, норма месяца, выплаты и сохранённая история.</p>
+          </a>
+
+          <a href="schedule.html" class="workspace-link" style="--accent: var(--steel)">
+            <span class="workspace-index">02</span>
+            <span class="workspace-arrow" aria-hidden="true">↗</span>
+            <div class="workspace-title">Смены</div>
+            <p class="workspace-copy">Кто работает сегодня и кто заступает завтра.</p>
+          </a>
+
+          <a href="tasks.html" class="workspace-link" style="--accent: var(--gold)">
+            <span class="workspace-index">03</span>
+            <span class="workspace-arrow" aria-hidden="true">↗</span>
+            <div class="workspace-title">Мои задачи</div>
+            <p class="workspace-copy">Актуальные поручения для сотрудника и отдела.</p>
+          </a>
+
+          <a href="calculator.html" class="workspace-link" style="--accent: var(--steel)">
+            <span class="workspace-index">04</span>
+            <span class="workspace-arrow" aria-hidden="true">↗</span>
+            <div class="workspace-title">Калькулятор</div>
+            <p class="workspace-copy">Быстрый расчёт зарплаты без обязательной регистрации.</p>
+          </a>
+
+          <a href="profile.html" class="workspace-link" style="--accent: var(--wine-light)">
+            <span class="workspace-index">05</span>
+            <span class="workspace-arrow" aria-hidden="true">↗</span>
+            <div class="workspace-title">Профиль</div>
+            <p class="workspace-copy">Личные данные, история, настройки и управление.</p>
+          </a>
+
+          <a href="timesheet-training.html" class="workspace-link" style="--accent: var(--gold)">
+            <span class="workspace-index">06</span>
+            <span class="workspace-arrow" aria-hidden="true">↗</span>
+            <div class="workspace-title">Обучение</div>
+            <p class="workspace-copy">Интерактивная практика работы с табелем.</p>
+          </a>
+        </nav>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="reveal reveal-delay-2 mt-8">
-    <div class="mb-4">
-      <h2 class="section-title text-2xl font-bold tracking-tight">Быстрый доступ</h2>
-      <p class="mt-1 text-sm text-slate-400">Основные разделы, которые нужны каждый день.</p>
-    </div>
-
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-      <a href="calculator.html" class="glass-card rounded-3xl p-5 xl:col-span-2">
-        <div class="feature-icon inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-200 ring-1 ring-indigo-400/25">
-          🧮
+    <section class="page-band">
+      <div class="section-wrap principles reveal">
+        <div class="principles-lead">
+          <div class="eyebrow">ALVISA внутри</div>
+          <h2 class="display-font">Порядок в каждой смене</h2>
+          <p>
+            Система помогает видеть реальную картину месяца и принимать решения на основе сохранённых данных.
+          </p>
         </div>
-        <div class="mt-4 text-lg font-semibold text-slate-100">Калькулятор</div>
-        <p class="mt-2 text-sm leading-6 text-slate-400">
-          Рассчитайте зарплату по окладу, норме часов, ночным и авансу.
-        </p>
-      </a>
 
-      <a href="table.html" class="glass-card rounded-3xl p-5 xl:col-span-2">
-        <div class="feature-icon inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/15 text-sky-200 ring-1 ring-sky-400/25">
-          📅
+        <div class="principle-list">
+          <div class="principle-row">
+            <div class="principle-number">01</div>
+            <div>
+              <h3>Для сотрудника</h3>
+              <p>Свой график, часы, выплаты и задачи без постоянных уточнений.</p>
+            </div>
+          </div>
+          <div class="principle-row">
+            <div class="principle-number">02</div>
+            <div>
+              <h3>Для руководителя</h3>
+              <p>Общий табель отдела, сотрудники, приглашения и выгрузка в Excel.</p>
+            </div>
+          </div>
+          <div class="principle-row">
+            <div class="principle-number">03</div>
+            <div>
+              <h3>Для точности</h3>
+              <p>Сравнение расчётных и фактических данных с сохранением истории.</p>
+            </div>
+          </div>
         </div>
-        <div class="mt-4 text-lg font-semibold text-slate-100">Табель</div>
-        <p class="mt-2 text-sm leading-6 text-slate-400">
-          Ведите рабочие часы, отпуска, больничные и календарные отметки.
-        </p>
-      </a>
+      </div>
+    </section>
 
-      <a href="profile.html" class="glass-card rounded-3xl p-5 xl:col-span-2">
-        <div class="feature-icon inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/15 text-violet-200 ring-1 ring-violet-400/25">
-          👤
+    <section class="home-cta">
+      <div class="section-wrap home-cta-inner reveal">
+        <div>
+          <div class="eyebrow">Продолжить работу</div>
+          <h2 class="display-font">Ваш рабочий месяц начинается здесь</h2>
         </div>
-        <div class="mt-4 text-lg font-semibold text-slate-100">Профиль</div>
-        <p class="mt-2 text-sm leading-6 text-slate-400">
-          Управляйте личными данными, окладом, аватаром и настройками приватности.
-        </p>
-      </a>
-
-      <a href="chat.html" class="glass-card rounded-3xl p-5 xl:col-span-3">
-        <div class="feature-icon inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/25">
-          💬
-        </div>
-        <div class="mt-4 text-lg font-semibold text-slate-100">Чат отдела</div>
-        <p class="mt-2 text-sm leading-6 text-slate-400">
-          Общение сотрудников внутри отдела в реальном времени, без лишних переходов и путаницы.
-        </p>
-      </a>
-
-      <a href="help.html" class="glass-card rounded-3xl p-5 xl:col-span-3">
-        <div class="feature-icon inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-200 ring-1 ring-amber-400/25">
-          📖
-        </div>
-        <div class="mt-4 text-lg font-semibold text-slate-100">Справка</div>
-        <p class="mt-2 text-sm leading-6 text-slate-400">
-          Подсказки по отпускам, переработке, нормам часов и логике расчётов системы.
-        </p>
-      </a>
-    </div>
-  </section>
-
-  <section class="reveal reveal-delay-3 mt-8 grid gap-4 lg:grid-cols-3">
-    <div class="glass-card rounded-3xl p-5">
-      <div class="text-sm font-semibold text-slate-100">Единый стиль</div>
-      <p class="mt-2 text-sm leading-6 text-slate-400">
-        Все страницы оформлены как одна цельная система, без ощущения разрозненных разделов.
-      </p>
-    </div>
-
-    <div class="glass-card rounded-3xl p-5">
-      <div class="text-sm font-semibold text-slate-100">Рабочий фокус</div>
-      <p class="mt-2 text-sm leading-6 text-slate-400">
-        Ничего лишнего на главной: только основные действия, которые реально нужны в работе.
-      </p>
-    </div>
-
-    <div class="glass-card rounded-3xl p-5">
-      <div class="text-sm font-semibold text-slate-100">Мобильная адаптация</div>
-      <p class="mt-2 text-sm leading-6 text-slate-400">
-        Навигация и карточки остаются удобными и на телефоне, и на большом экране.
-      </p>
-    </div>
-  </section>
-
-  <section class="reveal reveal-delay-4 mt-8">
-    <div class="glass-card rounded-[2rem] p-7 md:p-9 text-center">
-      <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-100">
-        Начать работу в Alvisa
-      </h2>
-      <p class="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-400">
-        Откройте нужный раздел и продолжайте работу без лишних шагов.
-      </p>
-
-      <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
-        <a
-          href="calculator.html"
-          class="cta-primary rounded-2xl px-5 py-3 text-sm font-semibold text-white transition-all"
-        >
-          Перейти в калькулятор
-        </a>
-        <a
-          href="table.html"
-          class="rounded-2xl bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30"
-        >
-          Открыть табель
-        </a>
-        <a
-          href="profile.html"
-          class="rounded-2xl bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30"
-        >
-          Открыть профиль
+        <a href="login.html" class="button-primary">
+          Войти в систему <span class="button-arrow" aria-hidden="true">→</span>
         </a>
       </div>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <!-- <footer class="mt-12 text-center text-xs text-slate-400/60 border-t border-white/10 pt-6">
-    <span class="font-bold text-rose-400">ВНИМАНИЕ:</span> Проект находится в стадии разработки. Пожалуйста, уточняйте информацию.
-    <br>Поддержать автора — пару <span class="text-amber-400 font-bold">ништяков</span> в кабинет <span class="text-amber-400 font-bold">ЕГАИС =)</span>
-    <br>Created by H4nSk0y
-  </footer> -->
-</div>
-<script type="module" src="./nav.js"></script>
+  <div data-app-footer></div>
+
+<script type="module" src="./nav.js?v=20260802-3"></script>
+  <script>
+    const revealElements = document.querySelectorAll(".reveal");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (reduceMotion || !("IntersectionObserver" in window)) {
+      revealElements.forEach((element) => element.classList.add("is-visible"));
+    } else {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      }, { threshold: 0.12 });
+
+      revealElements.forEach((element) => observer.observe(element));
+    }
+  </script>
 </body>
 </html>

@@ -25,6 +25,12 @@
   <script src="https://unpkg.com/driver.js@0.9.8/dist/driver.min.js"></script>
 
   <style>
+    @font-face {
+      font-family: "Anticva";
+      src: url("./fonts/Anticva-Regular.otf") format("opentype");
+      font-display: swap;
+    }
+
     html, body {
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       scroll-behavior: smooth;
@@ -556,29 +562,528 @@
     .help-toggle[open] .help-toggle-arrow {
       transform: rotate(180deg);
     }
+
+    /* Premium timesheet workspace */
+    :root {
+      --alvisa-ink: #0b0d0f;
+      --alvisa-graphite: #15191d;
+      --alvisa-panel: #1a1f24;
+      --alvisa-line: rgba(241, 238, 232, 0.11);
+      --alvisa-muted: #9ca3ab;
+      --alvisa-porcelain: #f1eee8;
+      --alvisa-wine: #7a1638;
+      --alvisa-steel: #6ea8e8;
+      --alvisa-gold: #c6a15b;
+    }
+
+    body.timesheet-page {
+      background: var(--alvisa-ink);
+      background-image: none;
+      color: var(--alvisa-porcelain);
+    }
+
+    body.timesheet-page::before,
+    body.timesheet-page::after {
+      display: none;
+    }
+
+    .timesheet-shell {
+      max-width: 1440px;
+    }
+
+    .timesheet-heading {
+      font-family: "Anticva", Georgia, serif;
+      font-weight: 400;
+      letter-spacing: 0;
+      color: var(--alvisa-porcelain);
+    }
+
+    .timesheet-header {
+      margin-bottom: 22px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--alvisa-line);
+    }
+
+    .timesheet-header-actions {
+      align-items: stretch;
+    }
+
+    .timesheet-period-control {
+      min-height: 44px;
+      border: 1px solid var(--alvisa-line);
+      border-radius: 8px;
+      background: #111519;
+      padding: 5px 7px 5px 12px;
+      backdrop-filter: none;
+    }
+
+    select.ui-select {
+      min-height: 32px;
+      border: 0;
+      border-radius: 6px;
+      background-color: #1c2228;
+      padding-top: 6px;
+      padding-bottom: 6px;
+      color: var(--alvisa-porcelain);
+      backdrop-filter: none;
+    }
+
+    select.ui-select:hover,
+    select.ui-select:focus {
+      border-color: transparent;
+      background-color: #252c33;
+      box-shadow: none;
+    }
+
+    .timesheet-header #saveBtn,
+    .timesheet-header #departmentTableLink,
+    .timesheet-header #adminLink,
+    .timesheet-header #logoutBtn {
+      min-height: 44px;
+      border-radius: 8px;
+      padding: 10px 16px;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .timesheet-header #saveBtn {
+      border: 1px solid rgba(198, 161, 91, 0.48);
+      background: rgba(198, 161, 91, 0.12);
+      color: #ead3a5;
+    }
+
+    .timesheet-header #saveBtn:hover {
+      background: rgba(198, 161, 91, 0.2);
+      border-color: rgba(198, 161, 91, 0.72);
+    }
+
+    .timesheet-header #departmentTableLink,
+    .timesheet-header #adminLink {
+      border: 1px solid rgba(110, 168, 232, 0.32);
+      background: rgba(110, 168, 232, 0.1);
+      color: #bcd8f6;
+    }
+
+    .timesheet-header #logoutBtn {
+      border: 1px solid rgba(241, 238, 232, 0.12);
+      background: transparent;
+      color: #b8bec5;
+    }
+
+    .timesheet-save-line {
+      margin-top: 10px;
+    }
+
+    .timesheet-save-line #saveStatus {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      padding: 0;
+      color: var(--alvisa-muted);
+      backdrop-filter: none;
+    }
+
+    .glass-card {
+      overflow: visible;
+      border: 1px solid var(--alvisa-line);
+      border-radius: 10px !important;
+      background: var(--alvisa-graphite);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      transition: border-color 180ms ease, background-color 180ms ease;
+    }
+
+    .glass-card::before {
+      display: none;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(241, 238, 232, 0.17);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2);
+    }
+
+    .hover-lift:hover {
+      transform: none;
+    }
+
+    .timesheet-guide-grid {
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .timesheet-guide-grid > * {
+      padding: 18px !important;
+    }
+
+    .timesheet-guide-grid summary {
+      min-height: 46px;
+      border: 0;
+      border-radius: 7px;
+      background: #111519;
+      box-shadow: inset 3px 0 0 rgba(110, 168, 232, 0.72);
+    }
+
+    .timesheet-guide-grid h2 {
+      background: none !important;
+      color: var(--alvisa-porcelain) !important;
+      -webkit-text-fill-color: currentColor;
+    }
+
+    .timesheet-guide-heading {
+      font-family: "Anticva", Georgia, serif;
+      font-size: 20px !important;
+      font-weight: 400 !important;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .timesheet-guide-copy {
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      letter-spacing: 0;
+      color: #c8c5bf;
+    }
+
+    .timesheet-guide-copy strong {
+      font-family: inherit;
+      font-size: inherit;
+    }
+
+    #leaveCodesHint > .grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 5px 14px;
+    }
+
+    #leaveCodesHint a,
+    #helpPanel a {
+      border-radius: 6px;
+    }
+
+    .input-glass {
+      border: 1px solid rgba(241, 238, 232, 0.12);
+      border-radius: 7px !important;
+      background: #0e1215;
+      backdrop-filter: none;
+    }
+
+    .input-glass:hover {
+      border-color: rgba(110, 168, 232, 0.32);
+      background: #11161a;
+    }
+
+    .input-glass:focus {
+      border-color: rgba(110, 168, 232, 0.8);
+      background: #11161a;
+      box-shadow: 0 0 0 3px rgba(110, 168, 232, 0.12);
+      transform: none;
+    }
+
+    .timesheet-grid-wrap {
+      position: relative;
+      margin-bottom: 16px;
+      border: 1px solid rgba(110, 168, 232, 0.18);
+      border-radius: 10px;
+      background: #101418;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    }
+
+    .timesheet-grid-wrap::before {
+      content: "РАБОЧИЙ МЕСЯЦ";
+      display: block;
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--alvisa-line);
+      color: #77818b;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+    }
+
+    .scrollable {
+      border-radius: 0 0 9px 9px;
+      margin-bottom: 0;
+      scrollbar-color: rgba(110, 168, 232, 0.58) #111519;
+    }
+
+    .timesheet-table {
+      min-width: 860px;
+      border-radius: 0;
+      background: #111519;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .timesheet-table th {
+      height: 48px;
+      border-color: var(--alvisa-line);
+      background: #191e23;
+      color: #b8c0c8;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timesheet-table td {
+      height: 58px;
+      border-color: rgba(241, 238, 232, 0.07);
+      background: #12171b;
+    }
+
+    .timesheet-table tbody tr:hover td {
+      background: #151b20;
+    }
+
+    .timesheet-table .label-cell,
+    .timesheet-table thead .label-cell {
+      min-width: 62px;
+      border-right-color: rgba(110, 168, 232, 0.22) !important;
+      background: #191e23;
+      color: var(--alvisa-porcelain);
+    }
+
+    .input-hour {
+      width: 52px;
+      min-height: 38px;
+      border-radius: 6px !important;
+      background: #0b0f12;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .input-hour:focus {
+      border-color: var(--alvisa-steel);
+      background: #10171d;
+      box-shadow: 0 0 0 3px rgba(110, 168, 232, 0.15);
+      transform: none;
+    }
+
+    td.night-cell .input-hour {
+      color: #bcd8f6;
+    }
+
+    .weekend-col { background-color: rgba(122, 22, 56, 0.18) !important; }
+    .holiday-col { background-color: rgba(198, 161, 91, 0.18) !important; }
+    .transferred-col { background-color: rgba(110, 168, 232, 0.15) !important; }
+    .timesheet-table th.weekend-col { background-color: rgba(122, 22, 56, 0.28) !important; }
+    .timesheet-table th.holiday-col { background-color: rgba(198, 161, 91, 0.24) !important; }
+    .timesheet-table th.transferred-col { background-color: rgba(110, 168, 232, 0.22) !important; }
+
+    .timesheet-summary {
+      display: grid;
+      gap: 0 !important;
+      padding: 0 !important;
+      overflow: hidden;
+      background: #15191d;
+    }
+
+    .timesheet-summary > div {
+      min-width: 0;
+      padding: 18px;
+      border-right: 1px solid var(--alvisa-line);
+      border-bottom: 1px solid var(--alvisa-line);
+    }
+
+    .timesheet-summary > div:last-child {
+      border-right: 0;
+    }
+
+    .timesheet-summary > div > div:first-child {
+      min-height: 34px;
+      color: var(--alvisa-muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .timesheet-summary > div > div:last-child {
+      margin-top: 7px;
+      color: var(--alvisa-porcelain);
+      font-size: 24px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timesheet-payments {
+      padding: 22px !important;
+      border-top: 2px solid rgba(198, 161, 91, 0.55);
+    }
+
+    .timesheet-payments > div:first-child > div:first-child {
+      font-family: "Anticva", Georgia, serif;
+      color: var(--alvisa-porcelain);
+      font-size: 25px;
+    }
+
+    #payPeekBtn {
+      border-radius: 7px;
+      background: #101418;
+    }
+
+    #netPay {
+      font-family: "Anticva", Georgia, serif;
+      color: #ead3a5;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pay-results-wrap.is-hidden {
+      max-height: 180px;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    .pay-results-wrap:not(.is-hidden) {
+      max-height: none;
+      overflow: visible;
+    }
+
+    .pay-metrics-grid > .glass-card,
+    #paymentCountdownCard {
+      min-height: 104px;
+      padding: 16px !important;
+      border-radius: 8px !important;
+      background: #111519 !important;
+      box-shadow: none;
+    }
+
+    .pay-metrics-grid > .glass-card:nth-child(9),
+    .pay-metrics-grid > .glass-card:nth-child(10) {
+      border-color: rgba(198, 161, 91, 0.3);
+    }
+
+    .payment-countdown::before {
+      display: none;
+    }
+
+    .actual-payments-panel {
+      border: 1px solid var(--alvisa-line) !important;
+      border-radius: 8px !important;
+      background: #101418 !important;
+    }
+
+    .actual-payments-panel button {
+      border-radius: 6px !important;
+    }
+
+    #mobileBar {
+      border-radius: 8px;
+      background: rgba(11, 13, 15, 0.96);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(12px);
+    }
+
+    #mobileBar button {
+      border-radius: 6px;
+    }
+
+    @media (min-width: 1280px) {
+      .timesheet-summary {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+      }
+      .timesheet-summary > div {
+        border-bottom: 0;
+      }
+    }
+
+    @media (max-width: 1023px) {
+      .timesheet-header-actions {
+        width: 100%;
+      }
+
+      .timesheet-period-control {
+        flex: 1 1 100%;
+        justify-content: center;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .timesheet-shell {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .timesheet-header {
+        margin-bottom: 14px;
+        padding-bottom: 16px;
+      }
+
+      .timesheet-heading {
+        font-size: 29px !important;
+      }
+
+      .timesheet-header-actions > a,
+      .timesheet-header-actions > button {
+        flex: 1 1 calc(50% - 4px);
+        justify-content: center;
+        text-align: center;
+      }
+
+      .timesheet-guide-grid > * {
+        padding: 12px !important;
+      }
+
+      #leaveCodesHint > .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .timesheet-grid-wrap::before {
+        padding: 9px 11px;
+      }
+
+      .timesheet-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .timesheet-summary > div:nth-child(2n) {
+        border-right: 0;
+      }
+
+      .timesheet-summary > div:last-child {
+        grid-column: span 2;
+      }
+
+      .timesheet-summary > div > div:first-child {
+        min-height: 31px;
+        font-size: 11px;
+      }
+
+      .timesheet-summary > div > div:last-child {
+        font-size: 20px;
+      }
+
+      .timesheet-payments {
+        padding: 16px !important;
+      }
+
+      .timesheet-payments > div:first-child > div:first-child {
+        font-size: 22px;
+      }
+
+      #netPay {
+        font-size: 36px !important;
+      }
+
+      .pay-metrics-grid > .glass-card,
+      #paymentCountdownCard {
+        min-height: 94px;
+      }
+    }
   </style>
 </head>
 
-<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+<body class="timesheet-page min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
   <script>document.body.classList.add("is-loaded");</script>
 
   <div data-app-header data-active="table"></div>
 
-  <div class="relative z-10 mx-auto max-w-7xl px-4 pt-safe pb-12 md:pb-16">
-    <header class="mb-6 reveal">
+  <div class="timesheet-shell relative z-10 mx-auto max-w-7xl px-4 pt-safe pb-12 md:pb-16">
+    <header class="timesheet-header mb-6 reveal">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-3">
-        <div class="flex items-center gap-3 flex-1">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 shadow-xl text-xl font-bold text-slate-100" aria-hidden="true">A</span>
-          <div>
-            <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
-              <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">Табель учёта</span>
-            </h1>
-            <p class="mt-1 text-sm text-slate-300/80" id="monthYearDisplay"></p>
-          </div>
+        <div class="min-w-0 flex-1">
+          <h1 class="timesheet-heading text-3xl md:text-4xl font-bold tracking-tight">
+            <span>Табель учёта</span>
+          </h1>
+          <p class="mt-1 text-sm text-slate-300/80" id="monthYearDisplay"></p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10 backdrop-blur-sm">
+        <div class="timesheet-header-actions flex flex-wrap items-center gap-2">
+          <div class="timesheet-period-control flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10 backdrop-blur-sm">
             <label class="text-xs text-slate-300" for="monthSelect">Месяц</label>
             <span class="select-wrap">
               <select id="monthSelect" class="ui-select text-sm">
@@ -616,7 +1121,7 @@
         </div>
       </div>
 
-      <div class="mt-3 flex items-center gap-2 text-xs">
+      <div class="timesheet-save-line mt-3 flex items-center gap-2 text-xs">
         <span id="saveStatus" class="inline-flex items-center rounded-full bg-white/5 px-4 py-1.5 ring-1 ring-white/10 text-slate-300 backdrop-blur-sm">—</span>
       </div>
     </header>
@@ -643,22 +1148,22 @@
      <div class="mbar-row">
         <button id="mHolidayBtn" type="button"
           class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">
-          🎉 Праздник
+          Праздник
         </button>
         <button id="mTransferredBtn" type="button"
           class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">
-          🔁 Выходной 
+          Выходной
         </button>
         <button id="mShortBtn" type="button"
           class="flex-1 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 hover:bg-white/10 active:scale-95 text-center transition-all">
-          ✂️ Сокращ.
+          Сокращ.
         </button>
       </div>
     </div>
 
     <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
 
-    <div class="grid items-start gap-6 lg:grid-cols-3 reveal mb-6">
+    <div class="timesheet-guide-grid grid items-start gap-6 lg:grid-cols-3 reveal mb-6">
         <details
         id="okladPanel"
         class="glass-card hover-lift help-toggle rounded-3xl p-6 md:p-7"
@@ -666,7 +1171,7 @@
         >
   <summary class="flex cursor-pointer items-center justify-between gap-3 rounded-2xl bg-white/5 px-4 py-3 text-left ring-1 ring-white/10 transition-all hover:bg-white/10">
     <div>
-      <h2 class="text-lg font-semibold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">
+      <h2 class="timesheet-guide-heading text-lg font-semibold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">
         Оклад и коды
       </h2>
     </div>
@@ -734,7 +1239,7 @@
         <details id="helpPanel" class="help-toggle group" open>
           <summary class="flex cursor-pointer items-center justify-between gap-3 rounded-2xl bg-white/5 px-4 py-3 text-left ring-1 ring-white/10 transition-all hover:bg-white/10">
             <div>
-              <h2 class="text-lg font-semibold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">
+              <h2 class="timesheet-guide-heading text-lg font-semibold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">
                 Как ставить смены
               </h2>
             </div>
@@ -744,7 +1249,7 @@
             </svg>
           </summary>
 
-          <div class="mt-4 grid gap-2 text-sm text-slate-300/90 leading-6 text-justify">
+          <div class="timesheet-guide-copy mt-4 grid gap-2 text-sm text-slate-300/90 leading-6 text-justify">
             <div>• <strong><span class="font-bold text-red-400">Дневная смена</span></strong> — количество отработанных часов в день проставляются в ячейках строки «День». Смена с 8 до 5 - у мужчин проставляется 8 часов, у женщин - 7,2 часа. Смена с 8 до 8 у мужчин проставляется 11 часов, у женщин - 10,2 часа.</div>
             <div>• <strong><span class="font-bold text-blue-400">Ночная смена</span></strong> — вводится раздельно в «День» и «Ночь»: напр. если вы вышли в ночную смену с <strong>10</strong> по <strong>11</strong>, то в день 10-ого числа вы проставляете <strong>2</strong>, ночь <strong>2</strong>, а уже в 11 число в день вы проставляете <strong>2</strong>, а в ночь <strong>5</strong>. У женщин смены проставляются <strong>2/2</strong>, но уже <strong>1/5 в переходящей дате</strong>.</div>
             <div>• <strong><span class="font-bold text-violet-300">Из ночи в ночь</span></strong> — в промежуточную дату ставится <strong>4/7</strong>, а при женской норме CHATEAU ALVISA — <strong>3/7</strong>. В последнюю дату серии ставится обычное окончание ночи: <strong>2/5</strong> или <strong>1/5</strong>.</div>
@@ -763,17 +1268,19 @@
       </section>
     </div>
 
-    <div class="scrollable reveal" id="tableScrollable">
-      <table class="timesheet-table" id="timesheet">
-        <thead><tr id="headerRow"></tr></thead>
-        <tbody>
-          <tr id="dayRow"></tr>
-          <tr id="nightRow"></tr>
-        </tbody>
-      </table>
+    <div class="timesheet-grid-wrap reveal">
+      <div class="scrollable" id="tableScrollable">
+        <table class="timesheet-table" id="timesheet">
+          <thead><tr id="headerRow"></tr></thead>
+          <tbody>
+            <tr id="dayRow"></tr>
+            <tr id="nightRow"></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <div class="glass-card hover-lift rounded-3xl p-6 md:p-7 reveal grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-4 mb-6">
+    <div class="timesheet-summary glass-card hover-lift rounded-3xl p-6 md:p-7 reveal grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-4 mb-6">
       <div>
         <div class="text-sm text-slate-400">Отработано всего</div>
         <div class="text-2xl font-semibold" id="totalHours">0</div>
@@ -804,7 +1311,7 @@
       </div>
     </div>
 
-    <div class="glass-card hover-lift rounded-3xl p-6 md:p-7 reveal">
+    <div class="timesheet-payments glass-card hover-lift rounded-3xl p-6 md:p-7 reveal">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="text-sm text-slate-300/90">К выплате (нетто)</div>
         <button id="payPeekBtn" type="button"
@@ -833,7 +1340,7 @@
           <div class="mt-2 text-4xl md:text-5xl font-semibold tracking-tight" id="netPay">—</div>
           <div class="mt-2 text-sm text-slate-300/80" id="moneySummary"></div>
 
-          <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="pay-metrics-grid mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Часовая (нетто с премией)</div><div class="mt-1 text-lg font-semibold" id="hourRateNet">—</div></div>
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Ночной час (нетто)</div><div class="mt-1 text-lg font-semibold text-rose-200" id="nightHourNet">—</div></div>
             <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10"><div class="text-xs text-slate-400">Праздничные x2 (на руки, доплата)</div><div class="mt-1 text-lg font-semibold" id="holidayExtraGross">—</div></div>
@@ -855,7 +1362,7 @@
             <div id="paymentCountdownCard" class="payment-countdown rounded-2xl p-5"><div class="text-xs text-slate-400">До ближайшей выплаты</div><div class="payment-countdown-value mt-1 text-lg font-semibold" id="paymentCountdownValue">—</div><div id="paymentCountdownHint" class="sr-only">—</div></div>
           </div>
 
-          <section class="mt-6 rounded-3xl bg-slate-950/25 p-5 ring-1 ring-white/10">
+          <section class="actual-payments-panel mt-6 rounded-3xl bg-slate-950/25 p-5 ring-1 ring-white/10">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div class="min-w-0">
                 <h3 class="text-base font-semibold text-slate-100">Фактические суммы</h3>
@@ -943,8 +1450,8 @@
     </div>
   </div>
 
-  <script type="module" src="./footer.js"></script>
-  <script type="module" src="./nav.js"></script>
+  <script type="module" src="./footer.js?v=20260802-2"></script>
+<script type="module" src="./nav.js?v=20260802-3"></script>
   <script type="module" src="./table.js"></script>
 
   <script type="module">

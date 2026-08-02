@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon-180.png?v=4" />
   <link rel="shortcut icon" href="./images/favicon-64.png?v=4" />
   <link rel="manifest" href="./manifest.webmanifest" />
-  <meta name="theme-color" content="#020617" />
+  <meta name="theme-color" content="#0b0d0f" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Alvisa" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
@@ -469,53 +469,192 @@
 #driver-popover-item.alvisa-tour .driver-close-btn:active {
   transform: translateY(0) !important;
 }
+    @font-face {
+      font-family: "Anticva";
+      src: url("./fonts/Anticva-Regular.otf") format("opentype");
+      font-display: swap;
+    }
+
+    :root {
+      --alvisa-ink: #0b0d0f;
+      --alvisa-graphite: #15191d;
+      --alvisa-line: rgba(241, 238, 232, 0.11);
+      --alvisa-muted: #9ca3ab;
+      --alvisa-porcelain: #f1eee8;
+      --alvisa-wine: #7a1638;
+      --alvisa-steel: #6ea8e8;
+      --alvisa-gold: #c6a15b;
+    }
+
+    body.calculator-page { background: var(--alvisa-ink); background-image: none; color: var(--alvisa-porcelain); }
+    body.calculator-page::before, body.calculator-page::after { display: none; }
+    .calculator-shell { max-width: 1180px; }
+    .calculator-header { margin-bottom: 24px; padding-bottom: 22px; border-bottom: 1px solid var(--alvisa-line); }
+    .calculator-kicker { color: #d2aebe; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .calculator-title {
+      margin-top: 9px;
+      font-family: "Anticva", Georgia, serif;
+      font-size: clamp(38px, 5vw, 58px) !important;
+      font-weight: 400 !important;
+      line-height: 1;
+      letter-spacing: 0;
+      color: var(--alvisa-porcelain);
+    }
+    .calculator-title span { background: none !important; color: inherit !important; -webkit-text-fill-color: currentColor; }
+    .calculator-intro { margin-top: 10px !important; max-width: 620px; color: var(--alvisa-muted) !important; line-height: 1.6; }
+    .calculator-layout { gap: 20px; align-items: start; }
+    .calculator-panel {
+      overflow: visible;
+      border-radius: 9px !important;
+      background: rgba(21, 25, 29, 0.82);
+      border-color: var(--alvisa-line);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+    }
+    .calculator-panel::before { display: none; }
+    .calculator-panel:hover { transform: none; border-color: rgba(241, 238, 232, 0.16); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25); }
+    .calculator-section-heading {
+      font-family: "Anticva", Georgia, serif;
+      font-size: 24px !important;
+      font-weight: 400 !important;
+      letter-spacing: 0;
+      background: none !important;
+      color: var(--alvisa-porcelain) !important;
+      -webkit-text-fill-color: currentColor;
+    }
+    .calculator-page label { color: #d7d3cd !important; }
+    .calculator-page .input-glass {
+      border-radius: 6px !important;
+      background: #0f1215;
+      border-color: rgba(241, 238, 232, 0.12);
+      color: var(--alvisa-porcelain);
+      backdrop-filter: none;
+    }
+    .calculator-page .input-glass:hover { background: #111417; border-color: rgba(198, 161, 91, 0.30); }
+    .calculator-page .input-glass:focus {
+      background: #111417;
+      border-color: rgba(198, 161, 91, 0.62);
+      box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.11);
+      transform: none;
+    }
+    .calculator-page .custom-checkbox { border-radius: 4px; background: #0f1215; border-color: rgba(241, 238, 232, 0.16); box-shadow: none; }
+    .calculator-page .custom-checkbox:checked { background: var(--alvisa-wine); border-color: #a44664; box-shadow: none; }
+    .calculator-page .custom-checkbox:focus { outline-color: rgba(198, 161, 91, 0.46); }
+    .calculator-page .btn-reset {
+      border-radius: 6px !important;
+      background: rgba(241, 238, 232, 0.05);
+      border-color: rgba(241, 238, 232, 0.11);
+      box-shadow: none;
+    }
+    .calculator-page .btn-reset:hover { background: rgba(241, 238, 232, 0.09); border-color: rgba(241, 238, 232, 0.18); box-shadow: none; transform: none; }
+    #okladPeekBtn { border-radius: 5px !important; }
+    #errorBox { border-radius: 6px !important; }
+    .calculator-header-button { border-radius: 6px !important; }
+    .calculator-result-panel { position: sticky; top: 92px; }
+    .calculator-toggle { border-radius: 6px !important; background: rgba(241, 238, 232, 0.05) !important; }
+    .calculator-total {
+      padding: 20px 0 22px;
+      border-top: 1px solid var(--alvisa-line);
+      border-bottom: 1px solid var(--alvisa-line);
+    }
+    .calculator-total #net {
+      font-family: "Anticva", Georgia, serif;
+      font-size: clamp(38px, 5vw, 52px) !important;
+      font-weight: 400 !important;
+      letter-spacing: 0;
+      color: var(--alvisa-porcelain);
+      filter: none;
+    }
+    .calculator-badge { border-radius: 5px !important; background: rgba(110, 168, 232, 0.09) !important; color: #b9d4ef !important; }
+    .calculator-metric {
+      border-radius: 6px !important;
+      background: rgba(11, 13, 15, 0.42) !important;
+      border: 1px solid var(--alvisa-line) !important;
+      box-shadow: none !important;
+      padding: 16px !important;
+    }
+    .calculator-metric::before { display: none !important; }
+    .calculator-metric p[id] { color: var(--alvisa-porcelain); }
+    .calculator-beta { border-radius: 4px !important; background: rgba(198, 161, 91, 0.10) !important; color: #ddc18e !important; }
+    .results-wrap .results-mask { border-radius: 7px; background: rgba(11, 13, 15, 0.76); border-color: var(--alvisa-line); }
+    .results-mask .mask-pill { border-radius: 5px; background: #15191d; border-color: rgba(241, 238, 232, 0.14); color: #c9c5be; }
+    .calculator-signup {
+      border-radius: 7px !important;
+      border-color: rgba(198, 161, 91, 0.22) !important;
+      background: rgba(198, 161, 91, 0.06) !important;
+      box-shadow: inset 3px 0 0 rgba(198, 161, 91, 0.55);
+    }
+    .calculator-signup-label { border-radius: 4px !important; background: rgba(241, 238, 232, 0.05) !important; color: #ddc18e !important; }
+    .calculator-signup-title { font-family: "Anticva", Georgia, serif; font-size: 22px !important; font-weight: 400 !important; letter-spacing: 0; }
+    .calculator-signup-primary { border-radius: 6px !important; background: var(--alvisa-wine) !important; color: #fff7f8 !important; }
+    .calculator-signup-secondary { border-radius: 6px !important; }
+
+    #driver-popover-item.alvisa-tour {
+      border-radius: 8px !important;
+      border-color: rgba(241, 238, 232, 0.14) !important;
+      background: #15191d !important;
+      color: var(--alvisa-porcelain) !important;
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.52) !important;
+    }
+    #driver-popover-item.alvisa-tour .driver-popover-title { font-family: "Anticva", Georgia, serif !important; font-size: 1.35rem !important; font-weight: 400 !important; letter-spacing: 0 !important; }
+    #driver-popover-item.alvisa-tour .driver-popover-description { color: #aaa6a0 !important; }
+    #driver-popover-item.alvisa-tour .driver-popover-footer button { border-radius: 5px !important; box-shadow: none !important; }
+    #driver-popover-item.alvisa-tour .driver-next-btn { background: var(--alvisa-wine) !important; }
+    #driver-popover-item.alvisa-tour .driver-next-btn:hover { background: #8c1b42 !important; box-shadow: none !important; }
+    .driver-highlighted-element { border-radius: 7px !important; box-shadow: 0 0 0 2px rgba(198, 161, 91, 0.78), 0 0 0 6px rgba(198, 161, 91, 0.12) !important; }
+
+    @media (max-width: 1023px) { .calculator-result-panel { position: static; } }
+    @media (max-width: 640px) {
+      .calculator-header { margin-bottom: 18px; padding-bottom: 18px; }
+      .calculator-header-row { align-items: flex-start !important; }
+      .calculator-header-actions { align-self: stretch !important; flex-wrap: wrap; }
+      .calculator-header-actions > * { flex: 1 1 auto; text-align: center; }
+      .calculator-panel { padding: 20px !important; }
+      .calculator-layout { gap: 14px; }
+      .calculator-title { font-size: 40px !important; }
+    }
   </style>
 </head>
 
-<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+<body class="calculator-page min-h-screen antialiased selection:bg-rose-900/50 selection:text-white">
 <script>
   document.body.classList.add("is-loaded");
 </script>
 
 <div data-app-header data-active="calculator"></div>
 
-<div class="relative z-10 mx-auto max-w-5xl px-4 pt-safe pb-12 md:pb-16">
-  <header class="mb-8 reveal">
-    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-      <div class="flex items-center gap-3 flex-1">
-        <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/40 to-sky-400/20 ring-1 ring-white/15 shadow-xl text-xl font-bold text-slate-100" aria-hidden="true">
-          А
-        </span>
-        <div>
-          <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
-            <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
+<div class="calculator-shell relative z-10 mx-auto px-4 pt-safe pb-12 sm:px-6 md:pb-16">
+  <header class="calculator-header reveal">
+    <div class="calculator-header-row flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div class="min-w-0 flex-1">
+          <div class="calculator-kicker">Быстрый расчет</div>
+          <h1 class="calculator-title">
+            <span>
               Калькулятор зарплаты
             </span>
           </h1>
-          <p class="mt-1 text-sm text-slate-300/80">Рассчитайте зарплату по текущим данным. <br>После входа оклад подставится из личного кабинета.</p>
-        </div>
+          <p class="calculator-intro text-sm">Рассчитайте выплату по текущим данным. После входа оклад подставится из личного кабинета.</p>
       </div>
 
-      <div class="flex items-center gap-2 self-end sm:self-center">
+      <div class="calculator-header-actions flex items-center gap-2">
         <a id="loginLink" href="login.html?next=calculator.html"
-           class="hidden rounded-2xl bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30">
+           class="calculator-header-button hidden bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10">
           Войти
         </a>
         <a id="adminLink" href="admin.html"
-   class="hidden rounded-2xl bg-purple-600/20 px-5 py-2.5 text-sm font-semibold text-purple-200 ring-1 ring-purple-400/50 backdrop-blur-sm transition-all hover:bg-purple-600/30 hover:ring-purple-300/70">
+   class="calculator-header-button hidden bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10">
   Админка
 </a>
-        <button id="logoutBtn" class="rounded-2xl bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 ring-1 ring-red-500/30 backdrop-blur-sm transition-all hover:bg-red-500/20 hover:ring-red-400/50">
+        <button id="logoutBtn" class="calculator-header-button bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 ring-1 ring-red-500/30 transition hover:bg-red-500/20">
   Выйти
 </button>
       </div>
     </div>
   </header>
 
-  <main class="grid gap-8 lg:grid-cols-2">
-    <section class="reveal glass-card hover-lift rounded-3xl p-6 md:p-7">
+  <main class="calculator-layout grid lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,.92fr)]">
+    <section class="calculator-panel reveal glass-card p-6 md:p-7">
       <div class="flex items-center justify-between">
-        <h2 class="text-xl font-semibold tracking-tight bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Данные</h2>
+        <h2 class="calculator-section-heading">Данные</h2>
       </div>
 
       <form id="salaryForm" class="mt-6 space-y-5" novalidate>
@@ -676,15 +815,15 @@
       </form>
     </section>
 
-    <aside class="reveal glass-card hover-lift rounded-3xl p-6 md:p-7">
+    <aside class="calculator-panel calculator-result-panel reveal glass-card p-6 md:p-7">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-xl font-semibold tracking-tight bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Результат</h2>
+        <h2 class="calculator-section-heading">Результат</h2>
 
         <!-- ✅ toggle button for results -->
         <button
           id="resultsPeekBtn"
           type="button"
-          class="inline-flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
+          class="calculator-toggle inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
           aria-pressed="false"
           aria-label="Показать результаты"
           title="Показать / скрыть результаты"
@@ -711,10 +850,10 @@
         </div>
 
         <div class="results-content space-y-5">
-          <div class="glass-card rounded-3xl bg-gradient-to-b from-indigo-500/20 via-slate-900/50 to-slate-900/30 p-6 ring-1 ring-white/10">
+          <div class="calculator-total">
             <div class="flex items-center justify-between">
               <p class="text-sm text-slate-200/80">К выплате</p>
-              <span class="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300 ring-1 ring-white/10 backdrop-blur-sm">
+              <span class="calculator-badge inline-flex items-center gap-1.5 px-3 py-1 text-xs ring-1 ring-white/10">
                 <span class="h-2 w-2 rounded-full bg-emerald-400/80"></span>
                 нетто
               </span>
@@ -724,36 +863,36 @@
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <div class="calculator-metric">
               <p class="text-xs text-slate-400">Часовая ставка</p>
               <p id="hourRate" class="mt-2 text-xl font-semibold tracking-tight">—</p>
             </div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <div class="calculator-metric">
               <p class="text-xs text-slate-400">Оклад за факт</p>
               <p id="baseFact" class="mt-2 text-xl font-semibold tracking-tight">—</p>
             </div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <div class="calculator-metric">
               <p class="text-xs text-slate-400">Премия 35%</p>
               <p id="bonus" class="mt-2 text-xl font-semibold tracking-tight">—</p>
             </div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <div class="calculator-metric">
               <p class="text-xs text-slate-400">Ночные</p>
               <p id="nightExtra" class="mt-2 text-xl font-semibold tracking-tight">—</p>
             </div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <div class="calculator-metric">
               <div class="flex items-center justify-between">
                 <p class="text-xs text-slate-400">Аванс</p>
-                <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-300 ring-1 ring-white/10">
+                <span class="calculator-beta inline-flex items-center gap-1 px-2 py-0.5 text-[10px] ring-1 ring-white/10">
                   <span class="h-1.5 w-1.5 rounded-full bg-yellow-400/80"></span>
                   бета
                 </span>
               </div>
               <p id="advance" class="mt-2 text-xl font-semibold tracking-tight">—</p>
             </div>
-            <div class="glass-card rounded-2xl bg-slate-950/30 p-5 ring-1 ring-white/10">
+            <div class="calculator-metric">
               <div class="flex items-center justify-between">
                 <p class="text-xs text-slate-400">Остаток</p>
-                <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-300 ring-1 ring-white/10">
+                <span class="calculator-beta inline-flex items-center gap-1 px-2 py-0.5 text-[10px] ring-1 ring-white/10">
                   <span class="h-1.5 w-1.5 rounded-full bg-yellow-400/80"></span>
                   бета
                 </span>
@@ -766,15 +905,15 @@
 
       <div
         id="calculatorSignupPrompt"
-        class="mt-6 hidden overflow-hidden rounded-3xl border border-indigo-300/15 bg-gradient-to-br from-indigo-500/15 via-sky-500/10 to-emerald-500/10 p-5 ring-1 ring-white/10"
+        class="calculator-signup mt-6 hidden overflow-hidden border p-5"
       >
         <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div class="min-w-0">
-            <div class="inline-flex items-center gap-2 rounded-full bg-white/[0.07] px-3 py-1 text-xs font-semibold text-sky-100 ring-1 ring-white/10">
+            <div class="calculator-signup-label inline-flex items-center gap-2 px-3 py-1 text-xs font-semibold ring-1 ring-white/10">
               <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
               Можно без регистрации
             </div>
-            <h3 class="mt-3 text-xl font-bold tracking-tight text-slate-50">
+            <h3 class="calculator-signup-title mt-3 text-slate-50">
               Посчитали зарплату? Сохраните всё в личном кабинете
             </h3>
             <p class="mt-2 max-w-xl text-sm leading-6 text-slate-300/85">
@@ -785,13 +924,13 @@
           <div class="flex shrink-0 flex-col gap-2 sm:w-44">
             <a
               href="login.html?mode=signup&next=calculator.html"
-              class="rounded-2xl bg-indigo-500/25 px-4 py-3 text-center text-sm font-bold text-indigo-50 ring-1 ring-indigo-300/25 transition hover:bg-indigo-500/35 hover:ring-indigo-200/40"
+              class="calculator-signup-primary px-4 py-3 text-center text-sm font-bold transition"
             >
               Зарегистрироваться
             </a>
             <a
               href="login.html?next=calculator.html"
-              class="rounded-2xl bg-white/5 px-4 py-3 text-center text-sm font-semibold text-slate-200 ring-1 ring-white/10 transition hover:bg-white/10"
+              class="calculator-signup-secondary rounded-md bg-white/5 px-4 py-3 text-center text-sm font-semibold text-slate-200 ring-1 ring-white/10 transition hover:bg-white/10"
             >
               Уже есть аккаунт
             </a>
@@ -804,7 +943,7 @@
   <div data-app-footer></div>
 </div>
 
-<script type="module" src="./footer.js"></script>
+<script type="module" src="./footer.js?v=20260802-2"></script>
 
 <!-- ✅ оклад: удержание -->
 <script>
@@ -886,7 +1025,7 @@
   })("resultsWrap", "resultsPeekBtn", "resultsPeekText", "resultsPeekIcon");
 </script>
 
-<script type="module" src="./nav.js"></script>
+<script type="module" src="./nav.js?v=20260802-3"></script>
 <script type="module" src="./app.js"></script>
 
 <script type="module">

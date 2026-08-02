@@ -367,7 +367,7 @@ function renderTasks() {
 
   for (const task of tasks) {
     const card = document.createElement("article");
-    card.className = "glass-card rounded-3xl p-5 md:p-6";
+    card.className = "task-card glass-card rounded-3xl p-5 md:p-6";
     card.dataset.taskId = String(task.id);
 
     const head = document.createElement("div");
@@ -385,16 +385,16 @@ function renderTasks() {
     if (task.can_manage) {
       const remove = document.createElement("button");
       remove.type = "button";
-      remove.className = "shrink-0 self-start rounded-xl bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-400/20 transition hover:bg-rose-500/20";
+      remove.className = "task-remove-button shrink-0 self-start rounded-xl bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-400/20 transition hover:bg-rose-500/20";
       remove.textContent = "Удалить";
       remove.addEventListener("click", () => void handleDeleteTask(task));
       head.appendChild(remove);
     }
 
-    const body = createTextElement("p", "mt-5 whitespace-pre-wrap break-words text-base leading-7 text-slate-100", task.text || "—");
+    const body = createTextElement("p", "task-card-text mt-5 whitespace-pre-wrap break-words text-base leading-7 text-slate-100", task.text || "—");
 
     const details = document.createElement("div");
-    details.className = "mt-5 grid gap-3 border-t border-white/10 pt-4 text-sm sm:grid-cols-2";
+    details.className = "task-card-details mt-5 grid gap-3 border-t border-white/10 pt-4 text-sm sm:grid-cols-2";
 
     const dueBlock = document.createElement("div");
     dueBlock.append(
@@ -411,7 +411,7 @@ function renderTasks() {
 
     const assignees = Array.isArray(task.assignees) ? task.assignees : [];
     const assigneesWrap = document.createElement("div");
-    assigneesWrap.className = "mt-4";
+    assigneesWrap.className = "task-assignees mt-4";
     assigneesWrap.appendChild(createTextElement("div", "text-xs text-slate-500", `Исполнители: ${assignees.length}`));
 
     const assigneeList = document.createElement("div");

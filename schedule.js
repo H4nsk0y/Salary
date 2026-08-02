@@ -18,7 +18,6 @@ const emptyState = document.getElementById("emptyState");
 const todayWorkCount = document.getElementById("todayWorkCount");
 const tomorrowWorkCount = document.getElementById("tomorrowWorkCount");
 const departmentCount = document.getElementById("departmentCount");
-const hideRestCheckbox = document.getElementById("hideRestCheckbox");
 const departmentSelect = document.getElementById("scheduleDepartmentSelect");
 
 let rows = [];
@@ -26,8 +25,6 @@ let departments = [];
 let selectedDepartmentKey = "";
 let currentUserId = "";
 let isLoading = false;
-const HIDE_REST_KEY = "alvisa_schedule_hide_rest_after_night";
-
 const LEAVE_LABELS = {
   vac_paid: "Отпуск",
   vac_unpaid: "Отпуск без оплаты",
@@ -227,7 +224,7 @@ function isWorkingShift(row) {
 
 function createBadge(info) {
   const badge = document.createElement("span");
-  badge.className = "inline-flex w-fit max-w-full items-center rounded-full px-3 py-1 text-xs font-semibold ring-1";
+  badge.className = "schedule-shift-badge inline-flex w-fit max-w-full items-center rounded-full px-3 py-1 text-xs font-semibold ring-1";
   badge.textContent = info.label;
 
   if (info.tone === "ok") {
@@ -251,18 +248,19 @@ function createPersonRow(row) {
   const isCurrentUser = String(row?.user_id || "") === currentUserId;
 
   const item = document.createElement("div");
-  item.className = "flex min-w-0 items-center gap-3 rounded-2xl bg-slate-950/25 p-3 ring-1 ring-white/10";
+  item.className = "schedule-person flex min-w-0 items-center gap-3 rounded-2xl bg-slate-950/25 p-3 ring-1 ring-white/10";
   if (info.kind === "rest" || info.kind === "night-shift") {
-    item.className = "flex min-w-0 items-center gap-3 rounded-2xl bg-rose-500/10 p-3 ring-1 ring-rose-400/20";
+    item.className = "schedule-person is-night flex min-w-0 items-center gap-3 rounded-2xl bg-rose-500/10 p-3 ring-1 ring-rose-400/20";
   }
   if (isCurrentUser) {
     item.classList.remove("ring-1", "ring-white/10", "ring-rose-400/20");
     item.classList.add("ring-2", "ring-indigo-400/60", "shadow-[0_0_24px_rgba(99,102,241,0.12)]");
+    item.classList.add("is-self");
   }
 
   const avatar = document.createElement("div");
   avatar.className =
-    "grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-indigo-500/15 text-sm font-bold text-indigo-100 ring-1 ring-indigo-400/25";
+    "schedule-avatar grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-indigo-500/15 text-sm font-bold text-indigo-100 ring-1 ring-indigo-400/25";
 
   const avatarUrl = String(row?.avatar_url ?? "").trim();
   if (avatarUrl) {
@@ -286,7 +284,7 @@ function createPersonRow(row) {
   top.className = "grid min-w-0 gap-2";
 
   const title = document.createElement("div");
-  title.className = "block min-w-0 flex-1 truncate text-sm font-semibold text-slate-100";
+  title.className = "schedule-person-name block min-w-0 flex-1 truncate text-sm font-semibold text-slate-100";
   title.textContent = name;
   title.title = name;
 
@@ -303,7 +301,7 @@ function createPersonRow(row) {
   top.append(identity, createBadge(info));
 
   const meta = document.createElement("div");
-  meta.className = "mt-1 min-w-0 max-w-full truncate text-xs text-slate-400";
+  meta.className = "schedule-person-meta mt-1 min-w-0 max-w-full truncate text-xs text-slate-400";
   meta.textContent = getPositionLabel(row);
   meta.title = meta.textContent;
 
@@ -326,26 +324,17 @@ function groupRowsByDate(list) {
 function createDayCard(dateText, dateRows, offset) {
   const working = dateRows.filter(isWorkingShift);
   const restCount = dateRows.filter((row) => getShiftInfo(row).kind === "rest").length;
-  const hideRest = hideRestCheckbox?.checked === true;
-  const other = dateRows.filter((row) => {
-    const info = getShiftInfo(row);
-    if (isWorkingShift(row)) return false;
-    if (hideRest && info.kind === "rest") return false;
-    return true;
-  });
-  const hiddenRestCount = hideRest
-    ? dateRows.filter((row) => getShiftInfo(row).kind === "rest").length
-    : 0;
+  const other = dateRows.filter((row) => !isWorkingShift(row));
 
   const card = document.createElement("article");
-  card.className = "glass-card rounded-3xl p-5 md:p-6";
+  card.className = "schedule-day-card glass-card rounded-3xl p-5 md:p-6";
 
   const head = document.createElement("div");
   head.className = "flex flex-wrap items-start justify-between gap-3";
 
   const titleWrap = document.createElement("div");
   const title = document.createElement("h2");
-  title.className = "text-xl font-semibold text-slate-100";
+  title.className = "schedule-day-title text-xl font-semibold text-slate-100";
   title.textContent = formatDayTitle(dateText, offset);
 
   const subtitle = document.createElement("p");
@@ -358,7 +347,7 @@ function createDayCard(dateText, dateRows, offset) {
   titleWrap.append(title, subtitle);
 
   const counter = document.createElement("div");
-  counter.className = "rounded-2xl bg-emerald-500/10 px-4 py-2 text-2xl font-bold text-emerald-200 ring-1 ring-emerald-400/20";
+  counter.className = "schedule-day-count rounded-2xl bg-emerald-500/10 px-4 py-2 text-2xl font-bold text-emerald-200 ring-1 ring-emerald-400/20";
   counter.textContent = String(working.length);
 
   head.append(titleWrap, counter);
@@ -380,13 +369,11 @@ function createDayCard(dateText, dateRows, offset) {
 
   if (other.length) {
     const details = document.createElement("details");
-    details.className = "mt-4 rounded-2xl bg-white/[0.03] p-3 ring-1 ring-white/10";
+    details.className = "schedule-other mt-4 rounded-2xl bg-white/[0.03] p-3 ring-1 ring-white/10";
 
     const summary = document.createElement("summary");
     summary.className = "cursor-pointer text-sm font-semibold text-slate-300";
-    summary.textContent = hiddenRestCount
-      ? `Остальные сотрудники: ${other.length} • отсыпной скрыт: ${hiddenRestCount}`
-      : `Остальные сотрудники: ${other.length}`;
+    summary.textContent = `Остальные сотрудники: ${other.length}`;
 
     const otherList = document.createElement("div");
     otherList.className = "mt-3 grid gap-3";
@@ -436,15 +423,6 @@ function render() {
 
   dates.forEach((dateText, index) => {
     daysGrid.appendChild(createDayCard(dateText, grouped.get(dateText) || [], index));
-  });
-}
-
-function initRestFilter() {
-  if (!hideRestCheckbox) return;
-  hideRestCheckbox.checked = localStorage.getItem(HIDE_REST_KEY) === "1";
-  hideRestCheckbox.addEventListener("change", () => {
-    localStorage.setItem(HIDE_REST_KEY, hideRestCheckbox.checked ? "1" : "0");
-    render();
   });
 }
 
@@ -566,6 +544,5 @@ refreshBtn?.addEventListener("click", () => void loadSchedule());
     return;
   }
 
-  initRestFilter();
   await loadSchedule();
 })();

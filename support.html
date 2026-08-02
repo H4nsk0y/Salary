@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon-180.png?v=4" />
   <link rel="shortcut icon" href="./images/favicon-64.png?v=4" />
   <link rel="manifest" href="./manifest.webmanifest" />
-  <meta name="theme-color" content="#020617" />
+  <meta name="theme-color" content="#0b0d0f" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Alvisa" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
@@ -338,29 +338,99 @@
       }
       .easter-mode-picker { grid-template-columns: 1fr; }
     }
+    @font-face {
+      font-family: "Anticva";
+      src: url("./fonts/Anticva-Regular.otf") format("opentype");
+      font-display: swap;
+    }
+
+    :root {
+      --alvisa-ink: #0b0d0f;
+      --alvisa-graphite: #15191d;
+      --alvisa-line: rgba(241, 238, 232, 0.11);
+      --alvisa-muted: #9ca3ab;
+      --alvisa-porcelain: #f1eee8;
+      --alvisa-wine: #7a1638;
+      --alvisa-gold: #c6a15b;
+    }
+
+    body.support-page { background: var(--alvisa-ink); color: var(--alvisa-porcelain); }
+    .support-main { min-height: auto; max-width: 1240px; padding-top: 7rem; padding-bottom: 4rem; }
+    .support-layout { grid-template-columns: minmax(0, 1fr) 390px; }
+    .support-story {
+      border-radius: 9px !important;
+      background: rgba(21, 25, 29, 0.84);
+      border-color: var(--alvisa-line);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+    }
+    .support-trigger {
+      border-radius: 5px !important;
+      background: rgba(198, 161, 91, 0.1) !important;
+      color: #ddc18e !important;
+    }
+    .support-title {
+      font-family: "Anticva", Georgia, serif;
+      font-size: clamp(38px, 5.5vw, 66px) !important;
+      font-weight: 400 !important;
+      line-height: 0.98;
+      letter-spacing: 0;
+      color: var(--alvisa-porcelain) !important;
+    }
+    .support-copy { color: var(--alvisa-muted) !important; }
+    .support-label { color: #c8a56a !important; letter-spacing: 0 !important; }
+    .bank-option {
+      min-width: 0;
+      border-radius: 7px !important;
+      border-color: var(--alvisa-line) !important;
+      background: rgba(11, 13, 15, 0.45) !important;
+    }
+    .bank-option:hover { background: rgba(241, 238, 232, 0.045) !important; }
+    .bank-option[aria-pressed="true"] { box-shadow: inset 3px 0 0 currentColor; }
+    .support-action { border-radius: 6px !important; }
+    .support-action-primary { background: var(--alvisa-wine) !important; color: #fff7f8 !important; }
+    .support-qr {
+      border-radius: 9px !important;
+      background: #111417;
+      border-color: var(--alvisa-line);
+      box-shadow: none;
+    }
+    .support-qr-placeholder { border-radius: 7px !important; background: rgba(11, 13, 15, 0.5) !important; }
+    .support-qr-frame { border-radius: 7px !important; }
+    @media (min-width: 768px) { .support-main { padding-top: 6rem; } }
+    @media (max-width: 1023px) {
+      .support-layout { grid-template-columns: 1fr; }
+      .support-qr { max-width: 560px; width: 100%; justify-self: center; }
+    }
+    @media (max-width: 640px) {
+      .support-main { padding-bottom: 2.5rem; }
+      .support-story { padding: 22px !important; }
+      .support-title { font-size: 40px !important; }
+      .support-bank-grid { grid-template-columns: 1fr; }
+      .support-actions > * { flex: 1 1 0; text-align: center; }
+    }
   </style>
 </head>
-<body class="font-sans text-slate-100 antialiased">
-  <div id="appNav" data-active="support"></div>
+<body class="support-page font-sans antialiased">
+  <div data-app-header></div>
 
-  <main class="mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-10 sm:px-6 lg:px-8">
-    <section class="grid w-full gap-6 lg:grid-cols-[1fr_360px] lg:items-center">
-      <div class="glass-card rounded-3xl p-6 sm:p-8">
-        <button id="supportEasterTrigger" type="button" class="inline-flex items-center rounded-full bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-200 ring-1 ring-amber-300/20 transition active:scale-95" aria-label="Поддержка проекта">
+  <main class="support-main mx-auto flex w-full items-center px-4 sm:px-6 lg:px-8">
+    <section class="support-layout grid w-full gap-6 lg:items-center">
+      <div class="support-story glass-card p-6 sm:p-8">
+        <button id="supportEasterTrigger" type="button" class="support-trigger inline-flex items-center px-3 py-1 text-xs font-semibold ring-1 ring-amber-300/20 transition active:scale-95" aria-label="Поддержка проекта">
           Поддержка проекта
         </button>
 
-        <h1 class="mt-5 text-3xl font-black tracking-tight text-slate-50 sm:text-5xl">
+        <h1 class="support-title mt-5">
           Помочь Alvisa переехать на стабильный сервер
         </h1>
 
-        <p class="mt-4 max-w-2xl text-base leading-7 text-slate-300">
+        <p class="support-copy mt-4 max-w-2xl text-base leading-7">
           Сейчас проект находится в разработке, а часть сервисов может быть недоступна без VPN. Сбор нужен для переноса на отдельный сервер, чтобы сайт работал стабильнее и открывался без лишних костылей.
         </p>
 
         <div class="mt-8">
-          <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Выберите удобный для вас банк</h2>
-          <div class="mt-4 grid gap-3 sm:grid-cols-3">
+          <h2 class="support-label text-sm font-semibold uppercase">Выберите удобный для вас банк</h2>
+          <div class="support-bank-grid mt-4 grid gap-3 sm:grid-cols-3">
             <button type="button" class="bank-option rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left transition hover:border-amber-300/40 hover:bg-amber-400/10" data-bank="tbank" aria-pressed="false">
               <span class="block text-base font-bold text-slate-100">Т-Банк</span>
               <span class="mt-1 block text-xs text-slate-400">QR для оплаты через Т-Банк</span>
@@ -376,25 +446,25 @@
           </div>
         </div>
 
-        <div class="mt-7 flex flex-wrap gap-3">
-          <button type="button" onclick="history.back()" class="rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-slate-100 ring-1 ring-white/10 transition hover:bg-white/15">
+        <div class="support-actions mt-7 flex flex-wrap gap-3">
+          <button type="button" onclick="history.back()" class="support-action bg-white/10 px-4 py-3 text-sm font-semibold text-slate-100 ring-1 ring-white/10 transition hover:bg-white/15">
             Назад
           </button>
-          <a href="profile.html" class="rounded-2xl bg-indigo-500/20 px-4 py-3 text-sm font-semibold text-indigo-100 ring-1 ring-indigo-300/20 transition hover:bg-indigo-500/25">
+          <a href="profile.html" class="support-action support-action-primary px-4 py-3 text-sm font-semibold transition">
             В профиль
           </a>
         </div>
       </div>
 
-      <aside class="glass-card rounded-3xl p-5 text-center">
-        <div id="qrPlaceholder" class="flex min-h-[320px] items-center justify-center rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-6">
+      <aside class="support-qr glass-card p-5 text-center">
+        <div id="qrPlaceholder" class="support-qr-placeholder flex min-h-[320px] items-center justify-center border border-dashed border-white/15 p-6">
           <p class="max-w-[240px] text-sm leading-6 text-slate-400">
             Выберите банк слева, и здесь появится подходящий QR-код.
           </p>
         </div>
 
         <div id="qrPanel" class="hidden">
-          <div class="rounded-3xl bg-white p-4">
+          <div class="support-qr-frame bg-white p-4">
             <img id="qrImage" src="" alt="" class="mx-auto w-full max-w-[280px] rounded-2xl" />
           </div>
           <p id="qrCaption" class="mt-4 text-sm font-semibold text-slate-200"></p>
@@ -405,6 +475,8 @@
       </aside>
     </section>
   </main>
+
+  <div data-app-footer></div>
 
   <div id="easterGameOverlay" class="easter-game-overlay hidden" aria-hidden="true">
     <div id="easterGameShell" class="easter-game-shell">
@@ -530,7 +602,7 @@
       option.addEventListener("click", () => selectBank(option.dataset.bank));
     }
   </script>
-  <script type="module" src="./nav.js"></script>
+<script type="module" src="./nav.js?v=20260802-3"></script>
   <script type="module" src="./scrollbar.js"></script>
   <script type="module" src="./support-game.js"></script>
 </body>
