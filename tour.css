@@ -1,0 +1,148 @@
+@font-face {
+  font-family: "Anticva";
+  src: url("./fonts/Anticva-Regular.otf") format("opentype");
+  font-display: swap;
+}
+
+#driver-popover-item.alvisa-tour {
+  width: min(370px, calc(100vw - 28px)) !important;
+  min-width: 0 !important;
+  max-width: 370px !important;
+  max-height: min(560px, calc(100dvh - 28px));
+  overflow-y: auto;
+  border: 1px solid rgba(241, 238, 232, 0.14) !important;
+  border-radius: 8px !important;
+  background: #15191d !important;
+  padding: 20px !important;
+  color: #f1eee8 !important;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55) !important;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  letter-spacing: 0 !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-tip {
+  display: none !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-title {
+  margin: 0 !important;
+  color: #f1eee8 !important;
+  font-family: "Anticva", Georgia, serif !important;
+  font-size: 1.35rem !important;
+  font-weight: 400 !important;
+  line-height: 1.12 !important;
+  letter-spacing: 0 !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-description {
+  margin-top: 10px !important;
+  color: #aaa6a0 !important;
+  font-size: 0.86rem !important;
+  line-height: 1.62 !important;
+  letter-spacing: 0 !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  margin-top: 18px !important;
+  padding: 0 !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-footer::after {
+  display: none !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-btn {
+  float: none !important;
+  margin: 0 auto 0 0 !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-footer .driver-btn-group,
+#driver-popover-item.alvisa-tour .driver-popover-footer .driver-close-only-btn {
+  display: flex !important;
+  float: none !important;
+  gap: 8px !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-footer button {
+  min-height: 38px !important;
+  margin: 0 !important;
+  border: 1px solid rgba(241, 238, 232, 0.12) !important;
+  border-radius: 5px !important;
+  background: rgba(241, 238, 232, 0.055) !important;
+  padding: 8px 12px !important;
+  color: #d5d1ca !important;
+  font-family: Inter, system-ui, sans-serif !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-popover-footer button:hover {
+  border-color: rgba(241, 238, 232, 0.22) !important;
+  background: rgba(241, 238, 232, 0.1) !important;
+  color: #fff !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-next-btn,
+#driver-popover-item.alvisa-tour .driver-close-only-btn button {
+  border-color: rgba(211, 133, 162, 0.38) !important;
+  background: #7a1638 !important;
+  color: #fff7f8 !important;
+}
+
+#driver-popover-item.alvisa-tour .driver-next-btn:hover,
+#driver-popover-item.alvisa-tour .driver-close-only-btn button:hover {
+  border-color: rgba(233, 163, 188, 0.48) !important;
+  background: #8c1b42 !important;
+}
+
+.driver-highlighted-element {
+  border-radius: 7px !important;
+  box-shadow: 0 0 0 2px rgba(198, 161, 91, 0.78), 0 0 0 7px rgba(198, 161, 91, 0.12) !important;
+}
+
+#driver-highlighted-element-stage {
+  border-radius: 7px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 640px) {
+  #driver-popover-item.alvisa-tour {
+    width: calc(100vw - 24px) !important;
+    max-width: none !important;
+    max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - max(24px, env(safe-area-inset-bottom))) !important;
+    padding: 17px !important;
+  }
+
+  #driver-popover-item.alvisa-tour .driver-popover-title {
+    font-size: 1.2rem !important;
+  }
+
+  #driver-popover-item.alvisa-tour .driver-popover-description {
+    font-size: 0.82rem !important;
+  }
+
+  #driver-popover-item.alvisa-tour .driver-popover-footer {
+    align-items: stretch !important;
+    flex-wrap: wrap !important;
+  }
+
+  #driver-popover-item.alvisa-tour .driver-popover-footer button {
+    min-height: 42px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #driver-popover-item.alvisa-tour .driver-popover-footer button {
+    transition: none !important;
+  }
+}

@@ -1,296 +1,321 @@
-// =========================
-// FILE: /tour.js
-// =========================
-// tour.js
-const steps = {
+const tourSteps = {
   calculator: [
     {
-      element: '#oklad',
+      element: "#salaryForm",
       popover: {
-        title: 'Оклад',
-        description: 'Ваш месячный оклад. Если вы авторизованы, значение подтянется из профиля. Можно ввести вручную.',
-        side: 'bottom'
-      }
+        title: "Быстрый расчёт зарплаты",
+        description: "Заполните основные показатели месяца. Калькулятор работает и без регистрации, а авторизованным пользователям может подставить оклад из профиля.",
+        position: "bottom",
+      },
     },
     {
-      element: '#normHours',
+      element: "#oklad",
       popover: {
-        title: 'Норма часов в месяце',
-        description: 'Норма зависит от месяца. Если вы отсутствовали по уважительной причине, она может измениться (больничный, отпуск).',
-        side: 'bottom'
-      }
+        title: "Оклад",
+        description: "Укажите месячный оклад. Денежное значение можно скрыть от посторонних кнопкой с изображением глаза.",
+        position: "bottom",
+      },
     },
     {
-      element: '#workedHours',
+      element: "#normHours",
       popover: {
-        title: 'Отработано часов',
-        description: 'Укажите количество фактически отработанных часов в этом месяце.',
-        side: 'bottom'
-      }
+        title: "Норма месяца",
+        description: "Введите норму часов по производственному календарю или вашему рабочему графику за выбранный месяц.",
+        position: "bottom",
+      },
     },
     {
-      element: '#nightHours',
+      element: "#workedHours",
       popover: {
-        title: 'Ночные часы',
-        description: 'Часы, отработанные с 22:00 до 6:00. К ним применяется надбавка 40%.',
-        side: 'bottom'
-      }
+        title: "Отработанные часы",
+        description: "Здесь учитываются все фактически отработанные часы месяца. Ночные часы ниже указываются отдельно, но входят в это общее количество.",
+        position: "bottom",
+      },
     },
     {
-      element: '#firstHalfHours',
+      element: "#nightHours",
       popover: {
-        title: 'Первая половина месяца',
-        description: 'Часы, отработанные до 15 числа. Используется для расчёта аванса.',
-        side: 'bottom'
-      }
+        title: "Ночные часы",
+        description: "Укажите часы, пришедшиеся на ночное время. К ним применяется дополнительная оплата 40% от базовой часовой ставки.",
+        position: "bottom",
+      },
     },
     {
-      element: '#firstHalfNightHours',
+      element: "#firstHalfHours",
       popover: {
-        title: 'Ночные в первой половине',
-        description: 'Ночные часы, которые пришлись на первую половину месяца.',
-        side: 'bottom'
-      }
+        title: "Первая половина месяца",
+        description: "Часы до 15 числа используются для ориентировочного разделения выплаты на аванс и остаток.",
+        position: "bottom",
+      },
     },
     {
-      element: '#holidayToggle',
+      element: "#holidayToggle",
       popover: {
-        title: 'Праздничные дни',
-        description: 'Если вы работали в праздники, отметьте галочкой. Появятся поля для ввода смен.',
-        side: 'right'
-      }
+        title: "Работа в праздники",
+        description: "Включите этот режим, если были праздничные смены. Появятся отдельные поля для дневных и ночных часов с двойной оплатой.",
+        position: "right",
+      },
     },
     {
-      element: '#resetBtn',
+      element: "#resultsPeekBtn",
       popover: {
-        title: 'Сбросить форму',
-        description: 'Очищает все поля ввода, оставляя только оклад из профиля.',
-        side: 'top'
-      }
+        title: "Результат на руки",
+        description: "Расчёт показывает предполагаемую сумму после налога, часовую ставку, премию, ночные, аванс и остаток. Это ориентир, а не расчётный лист работодателя.",
+        position: "top",
+      },
     },
     {
-      element: '#net',
+      element: "#resetBtn",
       popover: {
-        title: 'Результат расчёта',
-        description: 'Здесь отображается итоговая сумма к выплате (нетто, после вычета налогов).',
-        side: 'left'
-      }
-    }
+        title: "Начать заново",
+        description: "Кнопка очищает введённые показатели. Оклад из профиля при этом можно быстро вернуть повторно.",
+        position: "top",
+      },
+    },
+    {
+      element: "#calculatorSignupPrompt",
+      popover: {
+        title: "Больше возможностей после входа",
+        description: "В профиле сохраняются персональные настройки, а табель рассчитывает часы и выплаты автоматически по каждому дню.",
+        position: "top",
+      },
+    },
   ],
 
   table: [
     {
-      element: '#monthSelect',
+      element: "#monthSelect",
       popover: {
-        title: 'Выбор месяца и года',
-        description: 'Выберите месяц и год, чтобы открыть или создать табель.',
-        side: 'bottom'
-      }
+        title: "Период табеля",
+        description: "Переключайте месяц и год. Сохранённые данные загружаются автоматически, а старые месяцы используют свои снимки нормы и оклада.",
+        position: "bottom",
+      },
     },
     {
-      element: '#okladInput',
+      element: "#readOnlyNotice",
       popover: {
-        title: 'Оклад',
-        description: 'Оклад используется для расчёта зарплаты по табелю. Подтягивается из профиля автоматически.',
-        side: 'bottom'
-      }
+        title: "Режим просмотра",
+        description: "В отделе ЕГАИС официальный график изменяют owner и редакторы отдела. Сотрудник видит актуальный табель и по-прежнему может подтверждать фактические выплаты.",
+        position: "bottom",
+      },
     },
     {
-      element: '#leaveCodesHint',
+      element: "#okladPanel",
       popover: {
-        title: 'Коды отсутствий',
-        description: 'В строке «День» можно ставить ОТ, Б, ОД/ОЗ, У/УД и НТ. Код УВ отмечает увольнение и блокирует дальнейшие дни. Попрактиковаться можно в отдельном тренажёре табеля.',
-        side: 'bottom'
-      }
+        title: "Оклад и коды",
+        description: "Оклад участвует в расчёте выплат. Здесь же находится шпаргалка по отпускам, больничным, учебным дням, периоду до трудоустройства и увольнению.",
+        position: "bottom",
+      },
     },
     {
-      element: '#timesheet',
+      element: "#helpPanel",
       popover: {
-        title: 'Табель',
-        description: 'Вводите часы в строках «День» и «Ночь». Слева всегда видно название строки — таблица прокручивается горизонтально.',
-        side: 'top'
-      }
+        title: "Схемы смен",
+        description: "Краткие примеры объясняют дневные, ночные и переходящие смены. Для практики откройте интерактивный тренажёр табеля.",
+        position: "bottom",
+      },
     },
     {
-      // Mobile toolbar — shown only if the element exists (mobile screens)
-      element: '#mobileBar',
+      element: "#timesheet",
       popover: {
-        title: 'Панель навигации',
-        description: 'Стрелками ‹ › переходите между днями. Кнопки «Праздник» и «Сокращ.» применяются к выбранному дню. Нажмите «Сегодня», чтобы быстро перейти к текущей дате.',
-        side: 'bottom'
-      }
+        title: "День и ночь",
+        description: "Верхняя строка содержит дневные часы или код отсутствия, нижняя — ночные. Таблица прокручивается горизонтально, а стрелки клавиатуры перемещают фокус между ячейками.",
+        position: "top",
+      },
     },
     {
-      element: '#saveBtn',
+      element: "#mobileBar",
       popover: {
-        title: 'Сохранить табель',
-        description: 'После ввода данных нажмите «Сохранить». Данные будут доступны в личном кабинете. Также табель сохраняется автоматически через секунду после изменений.',
-        side: 'bottom'
-      }
+        title: "Управление на телефоне",
+        description: "Стрелками выберите дату. Если редактирование доступно, нижние кнопки отмечают праздник, перенесённый выходной или сокращённый день.",
+        position: "bottom",
+      },
     },
     {
-      element: '#totalHours',
+      element: ".timesheet-summary",
       popover: {
-        title: 'Итоги по часам',
-        description: 'Общее количество часов, норма месяца, личная норма с учётом отпуска/больничного, и переработка или недоработка.',
-        side: 'top'
-      }
+        title: "Часы и личная норма",
+        description: "Здесь собраны отработанные часы, норма месяца, личная норма после отсутствий и итоговая переработка или недоработка.",
+        position: "top",
+      },
     },
     {
-      element: '#payPeekBtn',
+      element: "#payPeekBtn",
       popover: {
-        title: 'Расчёт зарплаты',
-        description: 'Нажмите «Показать», чтобы увидеть расчёт суммы на руки, налога, аванса, остатка и праздничных доплат.',
-        side: 'left'
-      }
-    }
+        title: "Выплаты",
+        description: "Откройте денежный блок, чтобы увидеть сумму на руки, налог, аванс, остаток, доплаты, таймер ближайшей выплаты и предварительные отпускные.",
+        position: "left",
+      },
+    },
+    {
+      element: "#saveBtn",
+      popover: {
+        title: "Сохранение",
+        description: "При наличии доступа изменения сохраняются автоматически. Кнопка позволяет записать их сразу; в режиме просмотра она показывает, что официальный график защищён.",
+        position: "bottom",
+      },
+    },
   ],
 
   profile: [
     {
-      element: '#avatarFallback',
+      element: "#avatarFallback",
       popover: {
-        title: 'Аватар',
-        description: 'Загрузите своё фото, чтобы персонализировать профиль.',
-        side: 'bottom'
-      }
+        title: "Личный профиль",
+        description: "Добавьте аватар и проверьте данные, от которых зависят табель, нормы рабочего времени и отображение в отделе.",
+        position: "bottom",
+      },
     },
     {
-      element: '#displayNameInput',
+      element: "#displayNameInput",
       popover: {
-        title: 'Имя',
-        description: 'Как вас называть в интерфейсе.',
-        side: 'right'
-      }
+        title: "Имя сотрудника",
+        description: "Имя используется в табелях отдела, сменах, задачах и уведомлениях. Укажите его так, чтобы коллеги сразу вас узнали.",
+        position: "right",
+      },
     },
     {
-      element: '#genderSelect',
+      element: "#positionSelect",
       popover: {
-        title: 'Пол',
-        description: 'Нужен для расчёта нормы рабочего времени. Пониженная женская норма применяется только для филиала CHATEAU ALVISA.',
-        side: 'right'
-      }
+        title: "Должность",
+        description: "Должность помогает правильно отображать сотрудника в списках и может влиять на отдельные расчёты, например надбавку за вредность.",
+        position: "right",
+      },
     },
     {
-      element: '#okladInput',
+      element: "#branchSelect",
       popover: {
-        title: 'Оклад',
-        description: 'Базовый оклад, который будет подставляться в калькулятор и табель.',
-        side: 'right'
-      }
+        title: "Филиал",
+        description: "Филиал нужен для применения локальных правил. Пониженная женская дневная норма действует только для CHATEAU ALVISA.",
+        position: "right",
+      },
     },
     {
-      element: '#saveProfileBtn',
+      element: "#weeklyHoursSelect",
       popover: {
-        title: 'Сохранить',
-        description: 'Сохраняет изменения в профиле.',
-        side: 'top'
-      }
+        title: "Норма рабочей недели",
+        description: "По умолчанию используется 40 часов. Значение 35 часов выбирается только для сотрудников, которым установлена сокращённая рабочая неделя.",
+        position: "right",
+      },
     },
     {
-      element: '#yearSelect',
+      element: "#employmentDateInput",
       popover: {
-        title: 'Выбор года',
-        description: 'Просмотр переработок и табелей за выбранный год.',
-        side: 'bottom'
-      }
+        title: "Дата трудоустройства",
+        description: "Дата помогает корректно рассчитывать годовую норму нового сотрудника и период работы в Alvisa.",
+        position: "right",
+      },
     },
     {
-      element: '#overtimeBarFill',
+      element: "#okladInput",
       popover: {
-        title: 'Лимит переработок',
-        description: 'Показывает, сколько часов переработки вы использовали из актуального годового лимита (с учётом годовой коррекции по отсутствиям).',
-        side: 'bottom'
-      }
+        title: "Оклад",
+        description: "Оклад подставляется в калькулятор и новые табели. Старые месяцы сохраняют собственный денежный снимок и не пересчитываются после его изменения.",
+        position: "right",
+      },
     },
     {
-      element: '#timesheetsList',
+      element: "#saveProfileBtn",
       popover: {
-        title: 'Ваши табели',
-        description: 'Список всех сохранённых табелей за выбранный год. Можно открыть или удалить.',
-        side: 'top'
-      }
+        title: "Сохраните изменения",
+        description: "После изменения персональных данных нажмите «Сохранить». Обязательные поля должны быть заполнены для корректной работы табеля.",
+        position: "top",
+      },
     },
     {
-      element: '#calGrid',
+      element: "#trainingAchievement",
       popover: {
-        title: 'Календарь',
-        description: 'Цвета показывают официальные праздники, выходные, а также ваши отметки из табеля. Нажмите на день — перейдёте в табель.',
-        side: 'left'
-      }
-    }
-  ]
+        title: "Обучение",
+        description: "После полного прохождения интерактивного тренажёра здесь появится отметка об успешном обучении.",
+        position: "bottom",
+      },
+    },
+    {
+      element: "#overtimeBarText",
+      popover: {
+        title: "Годовой баланс",
+        description: "Профиль собирает подтверждённые табели выбранного года и показывает переработку, остаток лимита и корректировки по отсутствиям.",
+        position: "bottom",
+      },
+    },
+    {
+      element: "#timesheetsList",
+      popover: {
+        title: "Сохранённые месяцы",
+        description: "Здесь можно открыть любой сохранённый месяц. Будущие табели не включаются в годовые финансовые итоги до наступления соответствующего месяца.",
+        position: "top",
+      },
+    },
+    {
+      element: "#calGrid",
+      popover: {
+        title: "Календарь",
+        description: "Календарь объединяет официальные выходные и отметки табеля. Нажатие на дату открывает соответствующий день месяца.",
+        position: "left",
+      },
+    },
+  ],
 };
 
+function isElementVisible(element) {
+  if (!(element instanceof Element)) return false;
+
+  const style = window.getComputedStyle(element);
+  if (style.display === "none" || style.visibility === "hidden") return false;
+
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0 && element.getClientRects().length > 0;
+}
+
+function prepareSteps(page) {
+  return (tourSteps[page] ?? [])
+    .map((step) => {
+      const element = document.querySelector(step.element);
+      if (!isElementVisible(element)) return null;
+
+      return {
+        ...step,
+        element,
+        popover: {
+          ...step.popover,
+          className: "alvisa-tour",
+        },
+      };
+    })
+    .filter(Boolean);
+}
+
 export function startTour(page) {
-  if (typeof window.Driver !== 'function') {
-    console.error('Driver.js не загружен');
+  if (typeof window.Driver !== "function") {
+    console.error("Driver.js не загружен");
+    return;
+  }
+
+  const steps = prepareSteps(page);
+  if (!steps.length) {
+    console.warn(`Для обзора «${page}» не найдено доступных шагов.`);
     return;
   }
 
   const driver = new window.Driver({
-    opacity: 0.5,
-    animate: true,
-    nextBtnText: 'Далее',
-    prevBtnText: 'Назад',
-    closeBtnText: 'Закрыть',
-    doneBtnText: 'Готово'
+    opacity: 0.72,
+    animate: !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches,
+    allowClose: true,
+    keyboardControl: true,
+    padding: 8,
+    nextBtnText: "Далее",
+    prevBtnText: "Назад",
+    closeBtnText: "Закрыть",
+    doneBtnText: "Завершить",
   });
 
-  if (!steps[page]) {
-    console.warn(`Тур для страницы "${page}" не определён`);
-    return;
-  }
-
-  const stepsCopy = steps[page]
-    .map(step => {
-      if (!step.element || typeof step.element !== 'string') {
-        return { ...step, popover: { ...step.popover, className: 'alvisa-tour' } };
-      }
-
-      const el = document.querySelector(step.element);
-      if (!el) {
-        // ✅ Skip steps for elements that don't exist on this screen
-        // (e.g. #mobileBar is hidden on desktop but still in DOM — check visibility)
-        return null;
-      }
-
-      // Skip elements that are completely hidden (display:none via CSS)
-      const style = window.getComputedStyle(el);
-      if (style.display === 'none') {
-        return null;
-      }
-
-      return {
-        ...step,
-        element: el,
-        popover: { ...step.popover, className: 'alvisa-tour' }
-      };
-    })
-    .filter(step => step !== null);
-
-  if (stepsCopy.length === 0) {
-    console.warn('Нет валидных шагов для тура');
-    return;
-  }
-
-  if (typeof driver.defineSteps === 'function') {
-    driver.defineSteps(stepsCopy);
-    driver.start();
-  } else if (typeof driver.setSteps === 'function') {
-    driver.setSteps(stepsCopy);
-    driver.start();
-  } else {
-    console.error('Неизвестный API driver.js, доступные методы:', Object.keys(driver));
-  }
+  driver.defineSteps(steps);
+  driver.start();
 }
 
 export function shouldShowTour(page) {
   const key = `tour_${page}_shown`;
-  const shown = localStorage.getItem(key);
-  if (!shown) {
-    localStorage.setItem(key, 'true');
-    return true;
-  }
-  return false;
+  if (localStorage.getItem(key)) return false;
+  localStorage.setItem(key, "true");
+  return true;
 }

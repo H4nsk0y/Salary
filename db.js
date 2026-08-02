@@ -694,6 +694,20 @@ export async function setDepartmentMemberOrder(departmentKey, userIds) {
   if (error) throw error;
 }
 
+export async function saveMyTimesheetActual(year, month, actual, status = "draft") {
+  const normalized = assertValidYearMonth(year, month);
+  await requireUserId();
+
+  const { error } = await supabase.rpc("save_my_timesheet_actual", {
+    p_year: normalized.year,
+    p_month: normalized.month,
+    p_actual: actual ?? {},
+    p_status: String(status || "draft"),
+  });
+
+  if (error) throw error;
+}
+
 export async function managedLoadTimesheet(userId, year, month) {
   const normalized = assertValidYearMonth(year, month);
 

@@ -1,7 +1,7 @@
 
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
-import { getMyProfile, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, saveTimesheet } from "./db.js";
+import { getMyProfile, getMyDepartmentMembershipKey, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, saveMyTimesheetActual, saveTimesheet } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import {
   normalizeShiftComments,
@@ -54,6 +54,7 @@ const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
 const saveBtn = document.getElementById("saveBtn");
 const saveStatus = document.getElementById("saveStatus");
+const readOnlyNotice = document.getElementById("readOnlyNotice");
 
 const monthSelect = document.getElementById("monthSelect");
 const yearSelect = document.getElementById("yearSelect");
@@ -131,6 +132,38 @@ const okladPanel = document.getElementById("okladPanel");
 const helpPanel = document.getElementById("helpPanel");
 
 let profileCompletionGateEl = null;
+let personalTimesheetReadOnly = false;
+
+function applyPersonalTimesheetEditability() {
+  readOnlyNotice?.classList.toggle("hidden", !personalTimesheetReadOnly);
+
+  if (saveBtn) {
+    saveBtn.disabled = personalTimesheetReadOnly;
+    saveBtn.textContent = personalTimesheetReadOnly ? "Только просмотр" : "Сохранить";
+    saveBtn.classList.toggle("cursor-not-allowed", personalTimesheetReadOnly);
+    saveBtn.classList.toggle("opacity-60", personalTimesheetReadOnly);
+  }
+
+  const editControls = [
+    mHolidayBtn,
+    mTransferredBtn,
+    mShortBtn,
+    okladInput,
+    useProfileOkladBtn,
+  ];
+
+  for (const control of editControls) {
+    if (control) control.disabled = personalTimesheetReadOnly;
+  }
+
+  for (const input of [...dayInputs, ...nightInputs]) {
+    if (input) input.disabled = personalTimesheetReadOnly || input.disabled;
+  }
+
+  if (personalTimesheetReadOnly) {
+    setSaveStatus("Только просмотр", "ok");
+  }
+}
 
 function applyAutoCollapsedPanels(profile) {
   if (profile?.auto_collapse_table_panels !== true) return;
@@ -2312,6 +2345,30 @@ function currentPayload() {
 }
 
 async function doSaveTimesheet() {
+  if (personalTimesheetReadOnly) {
+    setSaveStatus("Сохраняю факт…", "busy");
+
+    try {
+      syncActualStateFromInputs();
+      const payload = currentPayload();
+
+      await saveMyTimesheetActual(
+        year,
+        month,
+        cloneActualSummary(currentPaySummary.actual),
+        computeCurrentPaySummaryStatus()
+      );
+
+      lastSavedJSON = JSON.stringify(payload);
+      dirty = false;
+      setSaveStatus("Фактические суммы сохранены", "ok");
+    } catch (e) {
+      setSaveStatus("Ошибка сохранения", "err");
+      setError(e?.message || "Не удалось сохранить фактические суммы.");
+    }
+    return;
+  }
+
   setSaveStatus("Сохраняю…", "busy");
 
   try {
@@ -2383,6 +2440,10 @@ function lockNightCell(i) {
 function unlockNightCell(i) {
   const el = nightInputs?.[i];
   if (!el) return;
+  if (personalTimesheetReadOnly) {
+    el.disabled = true;
+    return;
+  }
   el.disabled = false;
   el.classList.remove("opacity-50","cursor-not-allowed");
   el.title = "";
@@ -2399,6 +2460,10 @@ function lockDayCell(i) {
 function unlockDayCell(i) {
   const el = dayInputs?.[i];
   if (!el) return;
+  if (personalTimesheetReadOnly) {
+    el.disabled = true;
+    return;
+  }
   el.disabled = false;
   el.classList.remove("opacity-50","cursor-not-allowed");
   el.title = "";
@@ -2521,6 +2586,7 @@ function buildTableForMonth() {
     let clickTimer = null;
 
     th.addEventListener("click", (e) => {
+      if (personalTimesheetReadOnly) return;
       const idx = Number(e.currentTarget.dataset.dayIndex);
       clickCount += 1;
 
@@ -2554,6 +2620,7 @@ function buildTableForMonth() {
 
     th.addEventListener("contextmenu", (e) => {
       e.preventDefault();
+      if (personalTimesheetReadOnly) return;
       const idx = Number(e.currentTarget.dataset.dayIndex);
       isHoliday[idx] = false;
       isTransferredOff[idx] = false;
@@ -3021,6 +3088,7 @@ mTodayBtn?.addEventListener("click", () => {
   if (now.getFullYear() === year && now.getMonth() === month) setMobileDay(now.getDate() - 1);
 });
 mHolidayBtn?.addEventListener("click", () => {
+  if (personalTimesheetReadOnly) return;
   const idx = mobileSelectedIdx;
   if (!Number.isInteger(idx)) return;
 
@@ -3040,6 +3108,7 @@ mHolidayBtn?.addEventListener("click", () => {
 });
 
 mTransferredBtn?.addEventListener("click", () => {
+  if (personalTimesheetReadOnly) return;
   const idx = mobileSelectedIdx;
   if (!Number.isInteger(idx)) return;
 
@@ -3060,6 +3129,7 @@ mTransferredBtn?.addEventListener("click", () => {
 });
 
 mShortBtn?.addEventListener("click", () => {
+  if (personalTimesheetReadOnly) return;
   const idx = mobileSelectedIdx;
   if (!Number.isInteger(idx)) return;
 
@@ -3136,7 +3206,9 @@ monthSelect?.addEventListener("change", async () => {
   month = Number(monthSelect.value);
   updateUrlForMonth();
   buildTableForMonth();
+  applyPersonalTimesheetEditability();
   await loadCurrentMonthFromDb();
+  applyPersonalTimesheetEditability();
   if (isMobileNow()) setMobileDay(mobileSelectedIdx < daysInMonth ? mobileSelectedIdx : 0);
 });
 
@@ -3144,7 +3216,9 @@ yearSelect?.addEventListener("change", async () => {
   year = Number(yearSelect.value);
   updateUrlForMonth();
   buildTableForMonth();
+  applyPersonalTimesheetEditability();
   await loadCurrentMonthFromDb();
+  applyPersonalTimesheetEditability();
   if (isMobileNow()) setMobileDay(mobileSelectedIdx < daysInMonth ? mobileSelectedIdx : 0);
 });
 
@@ -3199,9 +3273,6 @@ if (missingProfileFields.length) {
 setFromQueryOrNow();
 fillYearOptions();
 updateUrlForMonth();
-buildTableForMonth();
-applyAutoCollapsedPanels(profile);
-
   profileRole = profile?.role ?? "user";
   profileOklad = profile?.oklad ?? null;
   profilePosition = profile?.position ?? "";
@@ -3210,7 +3281,19 @@ applyAutoCollapsedPanels(profile);
   profileWeeklyHours = profile?.weekly_hours ?? null;
   profileEmploymentDate = profile?.employment_date ?? null;
 
-  const managedDepartment = await getMyManagedDepartment().catch(() => null);
+  const [membershipDepartmentKey, managedDepartment] = await Promise.all([
+    getMyDepartmentMembershipKey().catch(() => null),
+    getMyManagedDepartment().catch(() => null),
+  ]);
+
+  personalTimesheetReadOnly =
+    profileRole !== "owner" &&
+    membershipDepartmentKey === "egais" &&
+    managedDepartment?.key !== "egais";
+
+  buildTableForMonth();
+  applyPersonalTimesheetEditability();
+  applyAutoCollapsedPanels(profile);
 
   if (managedDepartment) {
   adminLink?.classList.remove("hidden");
@@ -3235,6 +3318,7 @@ applyAutoCollapsedPanels(profile);
 
 
   await loadCurrentMonthFromDb();
+  applyPersonalTimesheetEditability();
   startPaymentCountdownTimer();
 
   if (isMobileNow()) {

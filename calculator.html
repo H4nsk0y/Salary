@@ -613,6 +613,7 @@
       .calculator-title { font-size: 40px !important; }
     }
   </style>
+  <link rel="stylesheet" href="./tour.css?v=20260802-1" />
 </head>
 
 <body class="calculator-page min-h-screen antialiased selection:bg-rose-900/50 selection:text-white">
@@ -1131,7 +1132,7 @@
 
   // Определяем имя страницы по текущему URL
   let pageName = '';
-  if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname === '') {
+  if (window.location.pathname.includes('calculator.html')) {
     pageName = 'calculator';
   } else if (window.location.pathname.includes('table.html')) {
     pageName = 'table';
