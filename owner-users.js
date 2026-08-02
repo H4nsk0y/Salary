@@ -404,7 +404,7 @@ function getInviteStatus(invite) {
 
 function createInviteCard(invite) {
   const card = document.createElement("div");
-  card.className = "rounded-3xl bg-slate-950/25 p-4 ring-1 ring-white/10";
+  card.className = "owner-invite-card rounded-3xl bg-slate-950/25 p-4 ring-1 ring-white/10";
 
   const top = document.createElement("div");
   top.className = "flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between";
@@ -564,7 +564,7 @@ function createDepartmentSelect(row, isBusy) {
 
 function createDetail(label, value) {
   const item = document.createElement("div");
-  item.className = "rounded-2xl bg-slate-950/25 p-3 ring-1 ring-white/10";
+  item.className = "owner-user-detail rounded-2xl bg-slate-950/25 p-3 ring-1 ring-white/10";
 
   const title = document.createElement("div");
   title.className = "text-[11px] uppercase text-slate-500";
@@ -587,7 +587,7 @@ function createUserCard(row) {
   const missingFields = normalizeArray(row.missing_fields);
 
   const card = document.createElement("article");
-  card.className = "glass-card rounded-3xl p-5 ring-1 ring-white/10";
+  card.className = "owner-user-card glass-card rounded-3xl p-5 ring-1 ring-white/10";
 
   const top = document.createElement("div");
   top.className = "flex gap-4";
@@ -648,7 +648,7 @@ function createUserCard(row) {
   }
 
   const controls = document.createElement("div");
-  controls.className = "mt-5 rounded-3xl bg-slate-950/25 p-4 ring-1 ring-white/10";
+  controls.className = "owner-user-controls mt-5 rounded-3xl bg-slate-950/25 p-4 ring-1 ring-white/10";
 
   const controlsGrid = document.createElement("div");
   controlsGrid.className = "grid min-w-0 gap-3";
