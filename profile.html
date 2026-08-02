@@ -589,6 +589,56 @@
       color: #dcc38f;
     }
 
+    .profile-easter-badge {
+      width: 22px;
+      height: 22px;
+      right: -3px;
+      bottom: -3px;
+      border: 1px solid rgba(198, 161, 91, 0.72);
+      border-radius: 6px;
+      background: #171b1f;
+      color: #ddc58f;
+      box-shadow: 0 5px 12px rgba(0, 0, 0, 0.38);
+      outline: none;
+    }
+
+    .profile-easter-badge svg {
+      width: 12px;
+      height: 12px;
+      stroke-width: 2.5;
+    }
+
+    .profile-easter-badge:focus-visible {
+      box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.16), 0 5px 12px rgba(0, 0, 0, 0.38);
+    }
+
+    .profile-easter-tooltip {
+      position: absolute;
+      z-index: 20;
+      bottom: calc(100% + 9px);
+      left: -6px;
+      width: 214px;
+      padding: 9px 11px;
+      border: 1px solid var(--profile-border);
+      border-radius: 6px;
+      background: #111519;
+      color: #c9cdd1;
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.38);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.45;
+      text-align: left;
+      opacity: 0;
+      transform: translateY(3px);
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .profile-easter-badge:hover .profile-easter-tooltip,
+    .profile-easter-badge:focus .profile-easter-tooltip {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
     .profile-header {
       margin-bottom: 26px !important;
       padding-bottom: 22px;
@@ -766,6 +816,14 @@
 
     #trainingAchievement {
       color: var(--profile-muted) !important;
+    }
+
+    #trainingAchievement.profile-training-achievement {
+      border: 1px solid rgba(198, 161, 91, 0.3);
+      border-radius: 6px;
+      background: rgba(198, 161, 91, 0.08);
+      color: #d9c18d !important;
+      box-shadow: none;
     }
 
     #avatarUploadBtn,
@@ -1262,9 +1320,9 @@
               <img id="avatarImg" alt="avatar" class="h-full w-full object-cover hidden" />
               <div id="avatarFallback" class="absolute inset-0 flex items-center justify-center text-xl font-bold text-slate-200/90">A</div>
             </div>
-            <span id="easterEggBadge" class="group absolute -bottom-1 -right-1 hidden h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-white ring-2 ring-slate-950 shadow-[0_0_18px_rgba(14,165,233,0.45)]" tabindex="0" aria-label="Секретная награда">
+            <span id="easterEggBadge" class="profile-easter-badge absolute hidden items-center justify-center" tabindex="0" aria-label="Секретная награда">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>
-              <span class="pointer-events-none absolute bottom-full left-0 z-20 mb-2 w-52 rounded-xl bg-slate-950 px-3 py-2 text-center text-[11px] font-semibold leading-4 text-slate-200 opacity-0 shadow-xl ring-1 ring-white/10 transition group-hover:opacity-100 group-focus:opacity-100">Награда получена за прохождение пасхалки</span>
+              <span class="profile-easter-tooltip pointer-events-none">Награда получена за прохождение пасхалки</span>
             </span>
           </div>
           <div class="min-w-0 flex-1">
@@ -1276,7 +1334,7 @@
         <div class="mt-2 flex flex-wrap items-center gap-2">
           <input id="avatarFileInput" type="file" accept="image/*" class="hidden" />
           <button id="avatarUploadBtn" type="button" class="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">Загрузить аватар</button>
-          <button id="avatarRemoveBtn" type="button" class="rounded-xl bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-500/20 hover:bg-rose-500/15" disabled>Удалить</button>
+          <button id="avatarRemoveBtn" type="button" class="rounded-xl bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 ring-1 ring-rose-500/20 hover:bg-rose-500/15" disabled>Удалить аватар</button>
           <span id="avatarHint" class="text-[11px] text-slate-400/80"></span>
 
           <div class="profile-training mt-4 border-t border-white/10 pt-4 w-full">

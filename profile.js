@@ -2285,7 +2285,7 @@ function renderTrainingAchievement(userId) {
   }
 
   trainingAchievementEl.textContent = "Обучение успешно пройдено";
-  trainingAchievementEl.className = "mt-1 inline-flex max-w-full items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-200 ring-1 ring-emerald-400/25";
+  trainingAchievementEl.className = "profile-training-achievement mt-1 inline-flex max-w-full items-center px-2.5 py-1 text-[11px] font-semibold";
 
   const date = new Date(completedAt);
   if (!Number.isNaN(date.getTime())) {
