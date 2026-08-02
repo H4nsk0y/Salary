@@ -63,6 +63,25 @@ async function verifyDepartmentAccess({
   return data === true;
 }
 
+async function verifyOwnerAccess({
+  supabaseUrl,
+  supabaseAnonKey,
+  authorization,
+}: {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  authorization: string;
+}) {
+  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authorization } },
+    auth: { persistSession: false },
+  });
+
+  const { data, error } = await userClient.rpc("is_owner");
+  if (error) throw error;
+  return data === true;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -88,19 +107,22 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const departmentKey = normalizeText(body.departmentKey, 120);
     const type = normalizeText(body.type || "department_timesheet_saved", 120);
+    const allUsers = body.allUsers === true;
     const lookbackMinutes = Math.min(60, Math.max(1, Number(body.lookbackMinutes) || 10));
     const limit = Math.min(200, Math.max(1, Number(body.limit) || 100));
 
-    if (!departmentKey) {
+    if (!departmentKey && !allUsers) {
       return jsonResponse({ error: "DEPARTMENT_REQUIRED" }, 400);
     }
 
-    const allowed = await verifyDepartmentAccess({
-      supabaseUrl,
-      supabaseAnonKey,
-      authorization,
-      departmentKey,
-    });
+    const allowed = allUsers
+      ? await verifyOwnerAccess({ supabaseUrl, supabaseAnonKey, authorization })
+      : await verifyDepartmentAccess({
+          supabaseUrl,
+          supabaseAnonKey,
+          authorization,
+          departmentKey,
+        });
 
     if (!allowed) {
       return jsonResponse({ error: "ACCESS_DENIED" }, 403);
@@ -115,14 +137,19 @@ serve(async (req) => {
     const since = new Date(Date.now() - lookbackMinutes * 60 * 1000).toISOString();
     const now = new Date().toISOString();
 
-    const { data: notifications, error: notificationsError } = await serviceClient
+    let notificationsQuery = serviceClient
       .from("user_notifications")
       .select("id, user_id, type, title, body, url, created_at, department_key")
-      .eq("department_key", departmentKey)
       .eq("type", type)
       .is("push_sent_at", null)
       .gt("expires_at", now)
-      .gte("created_at", since)
+      .gte("created_at", since);
+
+    if (!allUsers) {
+      notificationsQuery = notificationsQuery.eq("department_key", departmentKey);
+    }
+
+    const { data: notifications, error: notificationsError } = await notificationsQuery
       .order("created_at", { ascending: false })
       .limit(limit);
 

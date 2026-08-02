@@ -22,8 +22,6 @@ import {
   updateShiftCommentCell,
 } from "./shiftComments.js";
 
-import { exportDepartmentTimesheetXlsx } from "./excelExport.js";
-
 document.body.classList.add("is-loaded");
 
 const DEFAULT_DAY_HOURS = 8;
@@ -68,7 +66,7 @@ const matrixBody = document.getElementById("matrixBody");
 const tableScrollable = document.getElementById("tableScrollable");
 const topTableScroll = document.getElementById("topTableScroll");
 const topTableScrollSpacer = document.getElementById("topTableScrollSpacer");
-const exportExcelBtn = document.getElementById("exportExcelBtn");
+const announcementLink = document.getElementById("announcementLink");
 const createInviteBtn = document.getElementById("createInviteBtn");
 const inviteBox = document.getElementById("inviteBox");
 const inviteLinkInput = document.getElementById("inviteLinkInput");
@@ -2221,29 +2219,6 @@ function initCurrentDaySelection() {
   }
 }
 
-async function exportCurrentMonthToExcel() {
-  setSaveStatus("Готовлю Excel…", "busy");
-  setError(null);
-
-  try {
-   await exportDepartmentTimesheetXlsx({
-    year,
-    month,
-    department: managedDepartment,
-    states: teamStates,
-    sharedHoliday,
-    sharedTransferredOff,
-    sharedShortDay,
-    templateUrl: new URL("./templates/tabel-template.xlsx", import.meta.url).href,
-  });
-
-    setSaveStatus("Excel выгружен", "ok");
-  } catch (e) {
-    setSaveStatus("Ошибка выгрузки", "err");
-    setError(e?.message || "Не удалось выгрузить Excel.");
-  }
-}
-
 function buildInviteUrl(token) {
   const url = new URL("login.html", window.location.href);
   url.searchParams.set("mode", "signup");
@@ -2504,6 +2479,10 @@ async function guardManagedDepartment() {
     return false;
   }
 
+  if (announcementLink) {
+    announcementLink.href = `announcements.html?department=${encodeURIComponent(managedDepartment.key)}`;
+  }
+
   return true;
 }
 
@@ -2620,10 +2599,6 @@ saveBtn?.addEventListener("click", async () => {
 
 saveSilentBtn?.addEventListener("click", async () => {
   await doSaveAll({ notify: false });
-});
-
-exportExcelBtn?.addEventListener("click", async () => {
-  await exportCurrentMonthToExcel();
 });
 
 createInviteBtn?.addEventListener("click", async () => {

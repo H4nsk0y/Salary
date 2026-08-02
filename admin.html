@@ -1144,7 +1144,7 @@ td.shift-comment-cell.has-shift-comment::after {
         color: #cfbc96 !important;
       }
 
-      #exportExcelBtn {
+      #announcementLink {
         border: 1px solid rgba(94, 187, 151, 0.28) !important;
         background: rgba(94, 187, 151, 0.09) !important;
         color: #a9ddc9 !important;
@@ -1156,7 +1156,8 @@ td.shift-comment-cell.has-shift-comment::after {
         color: #bcd8f6 !important;
       }
 
-      .admin-action-buttons button:hover {
+      .admin-action-buttons button:hover,
+      .admin-action-buttons a:hover {
         filter: brightness(1.16);
       }
 
@@ -1600,10 +1601,11 @@ td.shift-comment-cell.has-shift-comment::after {
               title="Сохранить табели без уведомлений сотрудникам"
             >Сохранить всем без отправки уведомления</button>
 
-            <button
-              id="exportExcelBtn"
-              class="rounded-2xl bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 ring-1 ring-emerald-400/20 transition hover:bg-emerald-500/15"
-            >Выгрузить Excel</button>
+            <a
+              id="announcementLink"
+              href="announcements.html"
+              class="inline-flex items-center rounded-2xl bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 ring-1 ring-emerald-400/20 transition hover:bg-emerald-500/15"
+            >Объявление</a>
 
             <button
               id="createInviteBtn"

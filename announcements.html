@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover" />
+  <title>Объявления — Alvisa</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon-32.png?v=4" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon-180.png?v=4" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#0b0d0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    @font-face {
+      font-family: "Anticva";
+      src: url("./fonts/Anticva-Regular.otf") format("opentype");
+      font-display: swap;
+    }
+
+    :root {
+      --ink: #0b0d0f;
+      --graphite: #15191d;
+      --graphite-soft: #101418;
+      --line: rgba(241, 238, 232, 0.11);
+      --muted: #9ca3ab;
+      --porcelain: #f1eee8;
+      --wine: #7a1638;
+      --steel: #6ea8e8;
+      --gold: #c6a15b;
+    }
+
+    * { box-sizing: border-box; }
+    html { color-scheme: dark; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+      background: var(--ink);
+      color: var(--porcelain);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+      scrollbar-color: rgba(110, 168, 232, 0.52) #111519;
+      scrollbar-width: thin;
+    }
+
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-track { background: #111519; }
+    *::-webkit-scrollbar-thumb { border: 2px solid #111519; border-radius: 999px; background: rgba(110, 168, 232, 0.52); }
+    *::-webkit-scrollbar-thumb:hover { background: rgba(110, 168, 232, 0.72); }
+
+    .page-shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 112px 0 24px;
+    }
+
+    .page-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 9px;
+      color: #d5ba83;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    h1, h2 {
+      margin: 0;
+      font-family: "Anticva", Georgia, serif;
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+
+    h1 { font-size: 3.65rem; line-height: 1; }
+    h2 { font-size: 1.55rem; line-height: 1.15; }
+
+    .head-copy {
+      max-width: 630px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 0.93rem;
+      line-height: 1.65;
+    }
+
+    .back-link {
+      display: inline-flex;
+      min-height: 42px;
+      align-items: center;
+      padding: 0 15px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--graphite-soft);
+      color: #cbd0d5;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: border-color 160ms ease, color 160ms ease;
+    }
+
+    .back-link:hover { border-color: rgba(198, 161, 91, 0.42); color: var(--porcelain); }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+      gap: 20px;
+      margin-top: 22px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--graphite);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2);
+    }
+
+    .form-panel { padding: 24px; border-top: 2px solid rgba(198, 161, 91, 0.52); }
+    .preview-panel { padding: 24px; align-self: start; }
+
+    .field { margin-top: 20px; }
+    .field:first-of-type { margin-top: 24px; }
+    .field-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    label { color: #d8dbde; font-size: 0.78rem; font-weight: 700; }
+    .counter { color: #737b82; font-size: 0.7rem; }
+
+    .control {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid rgba(241, 238, 232, 0.13);
+      border-radius: 6px;
+      outline: none;
+      background: #0d1114;
+      color: var(--porcelain);
+      font: inherit;
+      padding: 12px 14px;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    textarea.control { min-height: 190px; resize: vertical; line-height: 1.55; }
+    .control:focus { border-color: rgba(110, 168, 232, 0.72); box-shadow: 0 0 0 3px rgba(110, 168, 232, 0.11); }
+
+    .audience-note {
+      margin: 9px 0 0;
+      color: #858d94;
+      font-size: 0.73rem;
+      line-height: 1.5;
+    }
+
+    .submit-row { display: flex; align-items: center; gap: 14px; margin-top: 22px; }
+    .submit-button {
+      min-height: 46px;
+      border: 1px solid rgba(198, 161, 91, 0.46);
+      border-radius: 6px;
+      background: rgba(198, 161, 91, 0.13);
+      color: #ead3a5;
+      padding: 0 20px;
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 160ms ease, transform 160ms ease;
+    }
+
+    .submit-button:hover { background: rgba(198, 161, 91, 0.2); }
+    .submit-button:active { transform: translateY(1px); }
+    .submit-button:disabled { cursor: wait; opacity: 0.55; }
+    .status { min-height: 20px; color: var(--muted); font-size: 0.75rem; }
+    .status.ok { color: #7dd3a6; }
+    .status.error { color: #f2a7af; }
+
+    .preview-label { margin: 18px 0 8px; color: #737b82; font-size: 0.67rem; font-weight: 700; text-transform: uppercase; }
+    .notification-preview {
+      position: relative;
+      overflow: hidden;
+      padding: 18px;
+      border: 1px solid rgba(110, 168, 232, 0.18);
+      border-radius: 7px;
+      background: #0e1317;
+    }
+
+    .notification-preview::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      background: var(--steel);
+    }
+
+    .preview-title { color: var(--porcelain); font-size: 0.92rem; font-weight: 700; overflow-wrap: anywhere; }
+    .preview-body { margin: 9px 0 0; color: #aeb4ba; font-size: 0.79rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .preview-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; color: #687078; font-size: 0.67rem; }
+
+    .delivery-list { display: grid; gap: 12px; margin-top: 22px; }
+    .delivery-row { display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; }
+    .delivery-icon { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: #b9cfe8; font-size: 0.72rem; }
+    .delivery-row strong { display: block; color: #d7dadd; font-size: 0.76rem; }
+    .delivery-row span { display: block; margin-top: 3px; color: #737b82; font-size: 0.7rem; line-height: 1.45; }
+
+    @media (max-width: 820px) {
+      .page-shell { width: min(680px, calc(100% - 28px)); padding-top: 102px; }
+      .page-head { align-items: flex-start; flex-direction: column; }
+      .content-grid { grid-template-columns: 1fr; }
+      .preview-panel { width: 100%; }
+    }
+
+    @media (max-width: 520px) {
+      .page-shell { width: calc(100% - 24px); padding-top: 92px; }
+      h1 { font-size: 2.35rem; }
+      .form-panel, .preview-panel { padding: 18px; }
+      .submit-row { align-items: stretch; flex-direction: column; }
+      .submit-button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div data-app-header data-active="table"></div>
+  <main class="page-shell">
+    <header class="page-head">
+      <div>
+        <p class="eyebrow">Связь с отделом</p>
+        <h1>Новое объявление</h1>
+        <p class="head-copy">Сообщение появится в уведомлениях и будет отправлено на устройства сотрудников с включенными push-уведомлениями.</p>
+      </div>
+      <a id="backLink" class="back-link" href="admin.html">Вернуться в табель</a>
+    </header>
+
+    <div class="content-grid">
+      <form id="announcementForm" class="panel form-panel">
+        <h2>Сообщение</h2>
+
+        <div class="field">
+          <div class="field-head"><label for="audienceSelect">Получатели</label></div>
+          <select id="audienceSelect" class="control" aria-describedby="audienceNote"></select>
+          <p id="audienceNote" class="audience-note">Загружаю доступные отделы…</p>
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <label for="titleInput">Заголовок</label>
+            <span id="titleCounter" class="counter">0 / 80</span>
+          </div>
+          <input id="titleInput" class="control" type="text" maxlength="80" value="Объявление отдела" autocomplete="off" required />
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <label for="bodyInput">Текст объявления</label>
+            <span id="bodyCounter" class="counter">0 / 1000</span>
+          </div>
+          <textarea id="bodyInput" class="control" maxlength="1000" placeholder="Например: проверьте график, в него внесены изменения." required></textarea>
+        </div>
+
+        <div class="submit-row">
+          <button id="submitButton" class="submit-button" type="submit">Отправить объявление</button>
+          <div id="statusText" class="status" aria-live="polite"></div>
+        </div>
+      </form>
+
+      <aside class="panel preview-panel">
+        <h2>Как это увидят</h2>
+        <p class="preview-label">Предпросмотр</p>
+        <div class="notification-preview">
+          <div id="previewTitle" class="preview-title">Объявление отдела</div>
+          <p id="previewBody" class="preview-body">Здесь появится текст вашего объявления.</p>
+          <div class="preview-meta">
+            <span id="previewAudience">Отдел</span>
+            <span>только что</span>
+          </div>
+        </div>
+
+        <div class="delivery-list">
+          <div class="delivery-row">
+            <div class="delivery-icon">1</div>
+            <div><strong>Колокольчик на сайте</strong><span>Объявление хранится семь дней и его можно удалить вручную.</span></div>
+          </div>
+          <div class="delivery-row">
+            <div class="delivery-icon">2</div>
+            <div><strong>Push-уведомление</strong><span>Придет тем, кто разрешил уведомления в настройках устройства.</span></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <div data-app-footer></div>
+  <script type="module" src="./nav.js?v=20260802-3"></script>
+  <script type="module" src="./announcements.js"></script>
+  <script type="module" src="./footer.js?v=20260802-2"></script>
+</body>
+</html>

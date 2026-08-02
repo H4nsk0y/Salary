@@ -834,19 +834,45 @@ export async function notifyPersonalTimesheetChanges({
 export async function sendPushNotifications({
   departmentKey,
   type = "department_timesheet_saved",
+  allUsers = false,
 } = {}) {
   const key = String(departmentKey ?? "").trim();
-  if (!key) throw new Error("Не указан отдел.");
+  if (!key && !allUsers) throw new Error("Не указан отдел.");
 
   const { data, error } = await supabase.functions.invoke("send-push-notifications", {
     body: {
-      departmentKey: key,
+      departmentKey: key || null,
       type,
+      allUsers: Boolean(allUsers),
     },
   });
 
   if (error) throw error;
   return data ?? null;
+}
+
+export async function sendDepartmentAnnouncement({
+  departmentKey = null,
+  title,
+  body,
+} = {}) {
+  await requireUserId();
+
+  const key = String(departmentKey ?? "").trim();
+  const normalizedTitle = String(title ?? "").trim();
+  const normalizedBody = String(body ?? "").trim();
+
+  if (!normalizedTitle) throw new Error("Укажите заголовок объявления.");
+  if (!normalizedBody) throw new Error("Напишите текст объявления.");
+
+  const { data, error } = await supabase.rpc("send_department_announcement", {
+    p_department_key: key || null,
+    p_title: normalizedTitle,
+    p_body: normalizedBody,
+  });
+
+  if (error) throw error;
+  return data ?? { recipient_count: 0, is_global: !key };
 }
 
 export async function listMyNotifications() {

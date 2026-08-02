@@ -1392,7 +1392,7 @@ function createTimesheetCard(row) {
     const badge = document.createElement("div");
     badge.className =
       actualLabel.tone === "ok"
-        ? "inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20"
+        ? "profile-fact-confirmed inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
         : actualLabel.tone === "warn"
           ? "inline-flex items-center rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200 ring-1 ring-amber-400/20"
           : "inline-flex items-center rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10";
