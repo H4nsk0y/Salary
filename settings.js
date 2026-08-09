@@ -10,6 +10,12 @@ import {
 } from "./pushNotifications.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import {
+  activatePwaUpdate,
+  checkForPwaUpdate,
+  getPwaState,
+  requestPwaInstall,
+} from "./pwa.js";
+import {
   createMoneyPinSecret,
   hasMoneyPin,
   isMoneyProtectionEnabled,
@@ -26,6 +32,9 @@ const egaisFileRemindersRow = document.getElementById("egaisFileRemindersRow");
 const egaisFileRemindersToggle = document.getElementById("egaisFileRemindersToggle");
 const pushNotificationsBtn = document.getElementById("pushNotificationsBtn");
 const pushNotificationsHint = document.getElementById("pushNotificationsHint");
+const pwaInstallBtn = document.getElementById("pwaInstallBtn");
+const pwaInstallHint = document.getElementById("pwaInstallHint");
+const pwaStatusBadge = document.getElementById("pwaStatusBadge");
 const saveSettingsBtn = document.getElementById("saveSettingsBtn");
 
 let canUseEgaisFileReminders = false;
@@ -304,6 +313,83 @@ async function refreshPushNotificationState() {
   }
 }
 
+function applyPwaState(state, message = "") {
+  if (!pwaInstallBtn || !pwaInstallHint || !pwaStatusBadge) return;
+
+  pwaInstallBtn.disabled = false;
+
+  if (!state?.supported) {
+    pwaInstallBtn.disabled = true;
+    pwaInstallBtn.textContent = "Недоступно";
+    pwaStatusBadge.textContent = "Не поддерживается";
+    pwaInstallHint.textContent = state?.reason || "Этот браузер не поддерживает установку приложения.";
+    return;
+  }
+
+  if (state.updateAvailable) {
+    pwaInstallBtn.textContent = "Обновить";
+    pwaStatusBadge.textContent = "Есть обновление";
+    pwaInstallHint.textContent = "Новая версия Alvisa готова к установке.";
+    return;
+  }
+
+  if (state.installed) {
+    pwaInstallBtn.textContent = "Проверить обновления";
+    pwaStatusBadge.textContent = "Установлено";
+    pwaInstallHint.textContent = message || "Alvisa запускается как отдельное приложение на этом устройстве.";
+    return;
+  }
+
+  if (state.ios) {
+    pwaInstallBtn.textContent = "Как установить";
+    pwaStatusBadge.textContent = "Доступно";
+    pwaInstallHint.textContent = message || "На iPhone установка выполняется через меню Safari.";
+    return;
+  }
+
+  pwaInstallBtn.textContent = "Установить";
+  pwaStatusBadge.textContent = state.canPromptInstall ? "Готово к установке" : "Доступно";
+  pwaInstallHint.textContent = message || "Добавьте Alvisa на главный экран и запускайте без панели браузера.";
+}
+
+async function handlePwaInstallClick() {
+  if (!pwaInstallBtn) return;
+
+  const state = getPwaState();
+
+  if (state.updateAvailable) {
+    activatePwaUpdate();
+    return;
+  }
+
+  if (state.installed) {
+    pwaInstallBtn.disabled = true;
+    pwaInstallBtn.textContent = "Проверяю…";
+    const nextState = await checkForPwaUpdate();
+    applyPwaState(nextState, nextState.updateAvailable ? "" : "Установлена актуальная версия Alvisa.");
+    return;
+  }
+
+  const result = await requestPwaInstall();
+
+  if (result.outcome === "ios-help") {
+    applyPwaState(result.state, "В Safari нажмите «Поделиться», затем «На экран Домой».");
+    return;
+  }
+
+  if (result.outcome === "browser-help") {
+    applyPwaState(result.state, "Откройте меню браузера и выберите «Установить приложение» или «Добавить на главный экран».");
+    return;
+  }
+
+  if (result.outcome === "accepted") {
+    applyPwaState(result.state, "Установка началась. Иконка Alvisa появится на устройстве.");
+    return;
+  }
+
+  applyPwaState(result.state, result.outcome === "dismissed" ? "Установка отменена. Ее можно запустить позже." : "");
+}
+
 async function saveSettings() {
   if (!hideMoneyToggle) return;
 
@@ -388,6 +474,14 @@ pushNotificationsBtn?.addEventListener("click", () => {
   void handlePushNotificationsClick();
 });
 
+pwaInstallBtn?.addEventListener("click", () => {
+  void handlePwaInstallClick();
+});
+
+window.addEventListener("alvisa:pwa-state", (event) => {
+  applyPwaState(event.detail);
+});
+
 saveSettingsBtn?.addEventListener("click", () => void saveSettings());
 
 (async () => {
@@ -402,6 +496,7 @@ saveSettingsBtn?.addEventListener("click", () => void saveSettings());
 
   try {
     await loadSettings();
+    applyPwaState(getPwaState());
     await refreshPushNotificationState();
   } catch (e) {
     setStatus("Ошибка загрузки", "err");

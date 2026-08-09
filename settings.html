@@ -182,12 +182,17 @@
     .settings-button:hover { background: rgba(241, 238, 232, 0.09) !important; }
     .settings-button-primary { border-radius: 6px !important; background: var(--alvisa-wine) !important; color: #fff7f8 !important; box-shadow: none !important; }
     .settings-button-primary:hover { background: #8c1b42 !important; }
+    .pwa-app-icon { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32); }
+    .pwa-status-badge { display: inline-flex; margin-top: 7px; border-radius: 4px; padding: 3px 7px; background: rgba(198, 161, 91, 0.1); color: #d9bd86; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .pwa-actions { display: flex; flex: 0 0 auto; align-items: center; }
     @media (min-width: 768px) { .pt-safe { padding-top: 6rem; } }
     @media (max-width: 640px) {
       .settings-header { align-items: flex-start; flex-direction: column; gap: 14px; }
       .settings-panel { padding: 18px !important; }
       .setting-row { gap: 14px !important; }
       .settings-actions > * { width: 100%; justify-content: center; text-align: center; }
+      .pwa-actions, .pwa-actions > button { width: 100%; }
+      .pwa-actions > button { justify-content: center; }
     }
   </style>
 </head>
@@ -267,6 +272,36 @@
           </span>
         </label>
 
+      </div>
+
+      <div class="settings-section-label mt-6">Приложение</div>
+      <div class="grid gap-3">
+        <div class="setting-row flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex min-w-0 items-start gap-3">
+            <img class="pwa-app-icon shrink-0" src="./images/app-icon-192.png" alt="" />
+            <div class="min-w-0">
+              <div class="setting-row-title text-sm font-semibold">Alvisa на устройстве</div>
+              <p id="pwaInstallHint" class="setting-row-copy mt-1 text-xs leading-5">
+                Проверяю возможность установки…
+              </p>
+              <span id="pwaStatusBadge" class="pwa-status-badge">Проверяю</span>
+            </div>
+          </div>
+
+          <div class="pwa-actions">
+            <button
+              id="pwaInstallBtn"
+              type="button"
+              class="settings-button inline-flex shrink-0 px-4 py-2.5 text-sm font-semibold ring-1 ring-white/10 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Проверяю…
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section-label mt-6">Уведомления</div>
+      <div class="grid gap-3">
         <label
           id="egaisFileRemindersRow"
           for="egaisFileRemindersToggle"
@@ -325,7 +360,7 @@
 
   <div data-app-footer></div>
 
-  <script type="module" src="./nav.js?v=20260802-3"></script>
+  <script type="module" src="./nav.js?v=20260809-1"></script>
   <script type="module" src="./settings.js"></script>
   <script type="module" src="./footer.js?v=20260802-2"></script>
 </body>

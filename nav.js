@@ -8,6 +8,7 @@ import {
 } from "./db.js";
 import { alertDialog, confirmDialog } from "./modal.js";
 import { normalizeInternalNextUrl } from "./profileCompletion.js";
+import "./pwa.js";
 import "./scrollbar.js";
 import "./footer.js?v=20260802-2";
 

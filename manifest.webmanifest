@@ -1,28 +1,56 @@
 {
   "id": "./",
-  "name": "Alvisa Salary",
+  "name": "Alvisa — рабочий кабинет",
   "short_name": "Alvisa",
-  "description": "Табель, зарплата и уведомления отдела.",
-  "lang": "ru",
-  "start_url": "./index.html",
+  "description": "Табель, смены, задачи и личные расчеты сотрудников.",
+  "lang": "ru-RU",
+  "dir": "ltr",
+  "start_url": "./index.html?source=pwa",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["standalone", "browser"],
-  "orientation": "portrait",
-  "theme_color": "#020617",
-  "background_color": "#020617",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "theme_color": "#0b0d0f",
+  "background_color": "#0b0d0f",
+  "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "./images/favicon-180.png",
-      "sizes": "180x180",
+      "src": "./images/app-icon-192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./images/favicon1.png",
-      "sizes": "1024x1024",
+      "src": "./images/app-icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./images/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Мой табель",
+      "short_name": "Табель",
+      "url": "./table.html",
+      "icons": [{ "src": "./images/app-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Смены",
+      "short_name": "Смены",
+      "url": "./schedule.html",
+      "icons": [{ "src": "./images/app-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Мои задачи",
+      "short_name": "Задачи",
+      "url": "./tasks.html",
+      "icons": [{ "src": "./images/app-icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
