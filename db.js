@@ -33,6 +33,15 @@ const NOTIFICATION_SELECT =
 const NOTIFICATION_SELECT_LEGACY =
   "id, type, title, body, url, created_at, expires_at, department_key";
 
+const MY_PROFILE_MUTABLE_FIELDS = new Set([
+  "hide_money",
+  "money_pin_hash",
+  "money_pin_salt",
+  "auto_collapse_table_panels",
+  "hide_calculator_nav",
+  "egais_file_reminders_enabled",
+]);
+
 function isNotFoundError(error) {
   return (
     error &&
@@ -309,7 +318,13 @@ export async function updateMyProfile({
 
 export async function updateMyProfileFields(fields) {
   const userId = await requireUserId();
-  const patch = { user_id: userId, ...(fields || {}) };
+  const source = fields && typeof fields === "object" && !Array.isArray(fields) ? fields : {};
+  const unknownFields = Object.keys(source).filter((key) => !MY_PROFILE_MUTABLE_FIELDS.has(key));
+  if (unknownFields.length) {
+    throw new Error(`Запрещённые поля профиля: ${unknownFields.join(", ")}`);
+  }
+
+  const patch = { user_id: userId, ...source };
 
   const { error } = await supabase
     .from("profiles")

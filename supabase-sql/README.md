@@ -16,3 +16,10 @@
 002_owner_reports.sql
 003_department_settings.sql
 ```
+
+Актуальные security-файлы:
+
+- `026_security_hardening.sql` - серверная защита профилей, табелей, уведомлений, push-подписок и аватаров;
+- `027_security_audit_report.sql` - безопасный отчёт только на чтение по grants, RLS, функциям и триггерам.
+- `028_secure_egais_cron.sql` - защищает плановые уведомления ЕГАИС отдельным секретом cron.
+- `029_restrict_security_definer_execute.sql` - убирает неявный анонимный доступ к `security definer` RPC, сохраняя доступ авторизованного приложения.

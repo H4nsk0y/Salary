@@ -165,12 +165,15 @@ function getSelectedUserIds() {
 }
 
 function updateDepartmentOptions() {
-  const options = editableDepartments
-    .map((department) => `<option value="${department.key}">${department.name}</option>`)
-    .join("");
+  const createOptions = () => editableDepartments.map((department) => {
+    const option = document.createElement("option");
+    option.value = String(department.key || "");
+    option.textContent = String(department.name || department.key || "Отдел");
+    return option;
+  });
 
-  elements.department.innerHTML = options;
-  elements.departmentFilter.innerHTML = options;
+  elements.department.replaceChildren(...createOptions());
+  elements.departmentFilter.replaceChildren(...createOptions());
   elements.department.value = selectedDepartmentKey;
   elements.departmentFilter.value = selectedDepartmentKey;
 

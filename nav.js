@@ -7,6 +7,7 @@ import {
   markMyNotificationsRead,
 } from "./db.js";
 import { alertDialog, confirmDialog } from "./modal.js";
+import { normalizeInternalNextUrl } from "./profileCompletion.js";
 import "./scrollbar.js";
 import "./footer.js?v=20260802-2";
 
@@ -1101,7 +1102,7 @@ function createNotificationsWidget() {
 
       meta.appendChild(time);
 
-      const href = String(item.url || "").trim();
+      const href = normalizeInternalNextUrl(item.url, "");
       if (href) {
         const open = document.createElement("a");
         open.href = href;

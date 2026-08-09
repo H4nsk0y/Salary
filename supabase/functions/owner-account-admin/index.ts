@@ -40,6 +40,28 @@ function errorMessage(error: any) {
   return normalizeText(error?.message || error?.error_description || error?.error || error, 1000);
 }
 
+function safeRecoveryRedirect(value: unknown) {
+  const allowedOrigins = new Set(
+    (Deno.env.get("APP_ALLOWED_ORIGINS") || "https://h4nsk0y.ru,https://www.h4nsk0y.ru,https://h4nsk0y.github.io")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  );
+
+  try {
+    const url = new URL(normalizeText(value, 1000));
+    if (url.protocol !== "https:" || !allowedOrigins.has(url.origin)) return "";
+    const allowedPath = url.origin === "https://h4nsk0y.github.io" ? "/Salary/login.html" : "/login.html";
+    if (url.pathname !== allowedPath) return "";
+    url.username = "";
+    url.password = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -134,7 +156,7 @@ serve(async (req) => {
         return jsonResponse({ error: "EMAIL_NOT_FOUND" }, 409);
       }
 
-      const redirectTo = normalizeText(body.redirectTo, 1000);
+      const redirectTo = safeRecoveryRedirect(body.redirectTo);
       const recoveryOptions = redirectTo ? { redirectTo } : undefined;
       const { error } = await publicClient.auth.resetPasswordForEmail(targetUser.email, recoveryOptions);
       if (error) throw error;

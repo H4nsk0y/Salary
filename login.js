@@ -8,6 +8,7 @@ import {
   updateMyPassword,
 } from "./auth.js";
 import { acceptDepartmentInvite } from "./db.js";
+import { normalizeInternalNextUrl } from "./profileCompletion.js";
 
 const PASSWORD_REGEX =
   /^(?=.*[a-zа-яё])(?=.*[A-ZА-ЯЁ])(?=.*\d)(?=.*[^A-Za-zА-Яа-яЁё0-9]).{10,}$/;
@@ -93,7 +94,7 @@ function validatePassword(password) {
 function getNextUrl() {
   const url = new URL(window.location.href);
   const next = String(url.searchParams.get("next") ?? "").trim();
-  return next || "table.html";
+  return normalizeInternalNextUrl(next, "table.html");
 }
 
 function getInviteToken() {

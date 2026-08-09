@@ -24,6 +24,8 @@ export const EYE_OFF_ICON = `
 `;
 
 const PIN_REGEX = /^\d{4}$/;
+const PIN_HASH_PREFIX = "pbkdf2-sha256";
+const PIN_HASH_ITERATIONS = 150000;
 const MODAL_STYLE_ID = "moneyPinModalStyles";
 const FORGOT_PIN_ACTION = "__forgot_pin__";
 
@@ -57,6 +59,47 @@ async function sha256Hex(text) {
   return bytesToHex(new Uint8Array(digest));
 }
 
+async function pbkdf2Hex(pin, salt, iterations = PIN_HASH_ITERATIONS) {
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(String(pin ?? "")),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      hash: "SHA-256",
+      salt: new TextEncoder().encode(String(salt ?? "")),
+      iterations,
+    },
+    keyMaterial,
+    256
+  );
+  return bytesToHex(new Uint8Array(bits));
+}
+
+function constantTimeEqual(left, right) {
+  const a = String(left ?? "");
+  const b = String(right ?? "");
+  if (a.length !== b.length) return false;
+  let difference = 0;
+  for (let index = 0; index < a.length; index += 1) {
+    difference |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 export async function createMoneyPinSecret(pin) {
   const normalizedPin = String(pin ?? "").trim();
   if (!validateMoneyPin(normalizedPin)) {
@@ -64,7 +107,8 @@ export async function createMoneyPinSecret(pin) {
   }
 
   const money_pin_salt = randomHex(16);
-  const money_pin_hash = await sha256Hex(`${money_pin_salt}:${normalizedPin}`);
+  const derivedHash = await pbkdf2Hex(normalizedPin, money_pin_salt);
+  const money_pin_hash = `${PIN_HASH_PREFIX}$${PIN_HASH_ITERATIONS}$${derivedHash}`;
 
   return { money_pin_hash, money_pin_salt };
 }
@@ -76,9 +120,18 @@ export async function verifyMoneyPin(pin, profile) {
 
   const expectedHash = String(profile.money_pin_hash);
   const salt = String(profile.money_pin_salt);
-  const actualHash = await sha256Hex(`${salt}:${normalizedPin}`);
+  const [algorithm, rawIterations, storedHash] = expectedHash.split("$");
 
-  return actualHash === expectedHash;
+  if (algorithm === PIN_HASH_PREFIX && /^\d+$/.test(rawIterations) && storedHash) {
+    const iterations = Number(rawIterations);
+    if (iterations < 100000 || iterations > 1000000) return false;
+    const actualHash = await pbkdf2Hex(normalizedPin, salt, iterations);
+    return constantTimeEqual(actualHash, storedHash);
+  }
+
+  // Existing SHA-256 PINs keep working until the user replaces the PIN.
+  const legacyHash = await sha256Hex(`${salt}:${normalizedPin}`);
+  return constantTimeEqual(legacyHash, expectedHash);
 }
 
 function ensureModalStyles() {
@@ -360,15 +413,15 @@ export function requestMoneyPin({
     const forgotBlock = mode === "verify" && allowForgotPin
       ? `
         <div class="money-pin-helper">
-          <button type="button" id="moneyPinForgotBtn" class="money-pin-link">${forgotText}</button>
+          <button type="button" id="moneyPinForgotBtn" class="money-pin-link">${escapeHtml(forgotText)}</button>
         </div>
       `
       : "";
 
     overlay.innerHTML = `
       <div class="money-pin-modal" role="dialog" aria-modal="true" aria-labelledby="moneyPinModalTitle">
-        <h3 id="moneyPinModalTitle">${title}</h3>
-        <p>${description}</p>
+        <h3 id="moneyPinModalTitle">${escapeHtml(title)}</h3>
+        <p>${escapeHtml(description)}</p>
 
         <div class="money-pin-fields">
           <div>
@@ -378,12 +431,12 @@ export function requestMoneyPin({
           ${confirmField}
         </div>
 
-        <div id="moneyPinError" class="money-pin-error">${initialError}</div>
+        <div id="moneyPinError" class="money-pin-error">${escapeHtml(initialError)}</div>
         ${forgotBlock}
 
         <div class="money-pin-actions">
-          <button type="button" id="moneyPinCancelBtn" class="money-pin-btn money-pin-btn-secondary">${cancelText}</button>
-          <button type="button" id="moneyPinConfirmBtn" class="money-pin-btn money-pin-btn-primary">${confirmText}</button>
+          <button type="button" id="moneyPinCancelBtn" class="money-pin-btn money-pin-btn-secondary">${escapeHtml(cancelText)}</button>
+          <button type="button" id="moneyPinConfirmBtn" class="money-pin-btn money-pin-btn-primary">${escapeHtml(confirmText)}</button>
         </div>
       </div>
     `;
@@ -494,8 +547,8 @@ function requestAccountPassword({
 
     overlay.innerHTML = `
       <div class="money-pin-modal" role="dialog" aria-modal="true" aria-labelledby="moneyPasswordModalTitle">
-        <h3 id="moneyPasswordModalTitle">${title}</h3>
-        <p>${description}</p>
+        <h3 id="moneyPasswordModalTitle">${escapeHtml(title)}</h3>
+        <p>${escapeHtml(description)}</p>
 
         <div class="money-pin-fields">
           <div>
@@ -504,11 +557,11 @@ function requestAccountPassword({
           </div>
         </div>
 
-        <div id="moneyPasswordError" class="money-pin-error">${initialError}</div>
+        <div id="moneyPasswordError" class="money-pin-error">${escapeHtml(initialError)}</div>
 
         <div class="money-pin-actions">
-          <button type="button" id="moneyPasswordCancelBtn" class="money-pin-btn money-pin-btn-secondary">${cancelText}</button>
-          <button type="button" id="moneyPasswordConfirmBtn" class="money-pin-btn money-pin-btn-primary">${confirmText}</button>
+          <button type="button" id="moneyPasswordCancelBtn" class="money-pin-btn money-pin-btn-secondary">${escapeHtml(cancelText)}</button>
+          <button type="button" id="moneyPasswordConfirmBtn" class="money-pin-btn money-pin-btn-primary">${escapeHtml(confirmText)}</button>
         </div>
       </div>
     `;

@@ -34,17 +34,28 @@ export function isProfileCompleteForTimesheet(profile) {
 }
 
 export function normalizeInternalNextUrl(nextUrl, fallback = "table.html") {
-  const safeFallback = String(fallback || "").trim() || "table.html";
-  const raw = String(nextUrl || "").trim();
-  if (!raw) return safeFallback;
+  const appBase = new URL(".", location.href);
 
-  try {
-    const url = new URL(raw, location.href);
-    if (url.origin !== location.origin) return safeFallback;
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return safeFallback;
-  }
+  const normalize = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+
+    try {
+      const url = new URL(raw, appBase);
+      const allowedProtocol = url.protocol === "https:" || url.protocol === "http:";
+      const insideApp = url.pathname.startsWith(appBase.pathname);
+      if (!allowedProtocol || url.origin !== appBase.origin || !insideApp) return "";
+      return `${url.pathname}${url.search}${url.hash}`;
+    } catch {
+      return "";
+    }
+  };
+
+  const safeFallback = normalize(fallback) || (fallback === "" || fallback == null
+    ? ""
+    : normalize("table.html"));
+
+  return normalize(nextUrl) || safeFallback;
 }
 
 export function buildProfileCompletionUrl(nextUrl, missingKeys = []) {

@@ -2048,8 +2048,12 @@ async function saveProfile() {
     setError("Имя слишком короткое (минимум 2 символа).");
     return;
   }
-  if (okladInput.value.trim() && (!Number.isFinite(oklad) || oklad < 0)) {
-    setError("Оклад должен быть числом ≥ 0.");
+  if (displayName.length > 120) {
+    setError("ФИО слишком длинное (максимум 120 символов).");
+    return;
+  }
+  if (okladInput.value.trim() && (!Number.isFinite(oklad) || oklad < 0 || oklad > 1000000000)) {
+    setError("Оклад должен быть числом от 0 до 1 000 000 000.");
     return;
   }
   if (!POSITION_VALUES.has(position)) {
@@ -2081,6 +2085,13 @@ async function saveProfile() {
       parsedEmploymentDate.getDate() !== dateDay
     ) {
       setError("Некорректная дата трудоустройства.");
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    if (parsedEmploymentDate < new Date(1950, 0, 1) || parsedEmploymentDate > today) {
+      setError("Дата трудоустройства должна быть между 01.01.1950 и сегодняшним днём.");
       return;
     }
   }

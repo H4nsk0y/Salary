@@ -24,3 +24,15 @@ supabase.cmd functions deploy send-egais-file-reminders
 
 3. Для первоначальной настройки выполнить `supabase-sql/013_egais_file_reminders.sql`.
 4. Для перехода на отбор по сменам выполнить `supabase-sql/023_egais_shift_aware_reminders.sql`.
+
+## Защита планового вызова
+
+Функция принимает плановые запросы только с отдельным `CRON_SECRET`. После обновления:
+
+1. Создать случайную строку длиной не менее 32 символов.
+2. Сохранить её в Edge secrets: `supabase.cmd secrets set CRON_SECRET="..."`.
+3. Сохранить то же значение в Supabase Vault под именем `alvisa_egais_cron_secret`.
+4. Повторно развернуть функцию.
+5. Выполнить `supabase-sql/028_secure_egais_cron.sql`.
+
+Сам секрет нельзя записывать в репозиторий или клиентский JavaScript.

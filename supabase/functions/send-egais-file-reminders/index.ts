@@ -13,6 +13,20 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+function constantTimeEqual(left: string, right: string) {
+  const encoder = new TextEncoder();
+  const leftBytes = encoder.encode(left);
+  const rightBytes = encoder.encode(right);
+  const length = Math.max(leftBytes.length, rightBytes.length);
+  let mismatch = leftBytes.length ^ rightBytes.length;
+
+  for (let index = 0; index < length; index += 1) {
+    mismatch |= (leftBytes[index] ?? 0) ^ (rightBytes[index] ?? 0);
+  }
+
+  return mismatch === 0;
+}
+
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -137,6 +151,12 @@ serve(async (req) => {
   }
 
   try {
+    const expectedCronSecret = requiredEnv("CRON_SECRET");
+    const receivedCronSecret = req.headers.get("x-cron-secret") || "";
+    if (!receivedCronSecret || !constantTimeEqual(receivedCronSecret, expectedCronSecret)) {
+      return jsonResponse({ error: "INVALID_CRON_SECRET" }, 401);
+    }
+
     const requestBody = await req.json().catch(() => ({}));
     const kind = String(requestBody?.kind || "").trim();
     if (!VALID_KINDS.has(kind)) {

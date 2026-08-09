@@ -22,10 +22,26 @@ self.addEventListener("push", (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
+function safeNotificationUrl(value) {
+  const scopeUrl = new URL(self.registration.scope);
+  const fallbackUrl = new URL("./profile.html", scopeUrl);
+
+  try {
+    const targetUrl = new URL(String(value || ""), scopeUrl);
+    const allowedProtocol = targetUrl.protocol === "https:" || targetUrl.protocol === "http:";
+    const insideScope = targetUrl.pathname.startsWith(scopeUrl.pathname);
+    return allowedProtocol && targetUrl.origin === scopeUrl.origin && insideScope
+      ? targetUrl.href
+      : fallbackUrl.href;
+  } catch {
+    return fallbackUrl.href;
+  }
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const targetUrl = new URL(event.notification?.data?.url || "./profile.html", self.registration.scope).href;
+  const targetUrl = safeNotificationUrl(event.notification?.data?.url);
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
