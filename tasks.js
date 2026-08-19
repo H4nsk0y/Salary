@@ -681,4 +681,5 @@ async function initialize() {
   }
 }
 
-void initialize();
+// Функция заморожена: код сохранен для возможного возвращения раздела.
+location.replace("index.html");

@@ -88,28 +88,5 @@ function setupInteractions() {
   }
 }
 
-(async () => {
-  setupInteractions();
-
-  try {
-    await requireSession();
-  } catch {
-    location.href = "login.html?next=instructions.html";
-    return;
-  }
-
-  try {
-    const departmentKey = await getMyDepartmentMembershipKey();
-    if (departmentKey !== EGAIS_DEPARTMENT_KEY) {
-      showAccessDenied();
-      return;
-    }
-
-    startPresenceHeartbeat("Инструкции ЕГАИС");
-    showContent();
-    applyFilters();
-  } catch (error) {
-    showAccessDenied();
-    console.error(error);
-  }
-})();
+// Функция заморожена: код сохранен для возможного возвращения раздела.
+location.replace("index.html");

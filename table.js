@@ -21,6 +21,7 @@ import {
   isMoneyProtectionEnabled,
   setRevealButtonState,
 } from "./moneyPrivacy.js";
+import { buildPayDifferenceInsight } from "./payDifference.js";
 
 document.body.classList.add("is-loaded");
 
@@ -723,6 +724,7 @@ let paymentCountdownTimer = null;
 let paymentCountdownRunId = 0;
 const paymentMarksCache = new Map();
 let vacationPayEstimateRunId = 0;
+let currentVacationPayEstimate = null;
 const vacationPayHistoryCache = new Map();
 
 function replaceElementWithClone(el) {
@@ -1641,6 +1643,7 @@ async function calculateVacationPayEstimate(baseYear, baseMonth, vacationDays) {
 }
 
 function renderVacationPayEstimateIdle() {
+  currentVacationPayEstimate = null;
   if (vacationPayEstimateEl) {
     vacationPayEstimateEl.textContent = "—";
     vacationPayEstimateEl.dataset.value = "";
@@ -1651,6 +1654,7 @@ function renderVacationPayEstimateIdle() {
 }
 
 function renderVacationPayEstimateLoading(vacationDays) {
+  currentVacationPayEstimate = null;
   if (vacationPayEstimateEl) {
     vacationPayEstimateEl.textContent = "Считаю...";
     vacationPayEstimateEl.dataset.value = "";
@@ -1662,6 +1666,7 @@ function renderVacationPayEstimateLoading(vacationDays) {
 
 function renderVacationPayEstimateResult(result) {
   if (!result?.ok) {
+    currentVacationPayEstimate = null;
     if (vacationPayEstimateEl) {
       vacationPayEstimateEl.textContent = "Нет 12 мес. факта";
       vacationPayEstimateEl.dataset.value = "";
@@ -1670,8 +1675,11 @@ function renderVacationPayEstimateResult(result) {
       vacationPayEstimateHint.textContent =
         `Нужны: ${result?.periodText || "12 прошлых мес."}, есть ${result?.confirmedMonths ?? 0}/12`;
     }
+    renderPayWarnings(currentPaySummary.calculated);
     return;
   }
+
+  currentVacationPayEstimate = Number(result.amount);
 
   if (vacationPayEstimateEl) {
     animateNumber(vacationPayEstimateEl, result.amount, (v) => `~ ${formatRub(v, 0)}`, 420);
@@ -1682,6 +1690,7 @@ function renderVacationPayEstimateResult(result) {
         ? `Бета: по последним 12 фактам, ${result.periodText}`
         : `Бета: ${result.vacationDays} ${formatRuDays(result.vacationDays)}, ${result.periodText}`;
   }
+  renderPayWarnings(currentPaySummary.calculated);
 }
 
 function requestVacationPayEstimateUpdate() {
@@ -1704,6 +1713,7 @@ function requestVacationPayEstimateUpdate() {
     })
     .catch(() => {
       if (runId !== vacationPayEstimateRunId) return;
+      currentVacationPayEstimate = null;
       if (vacationPayEstimateEl) {
         vacationPayEstimateEl.textContent = "Ошибка";
         vacationPayEstimateEl.dataset.value = "";
@@ -1711,6 +1721,7 @@ function requestVacationPayEstimateUpdate() {
       if (vacationPayEstimateHint) {
         vacationPayEstimateHint.textContent = "Не удалось проверить прошлые месяцы";
       }
+      renderPayWarnings(currentPaySummary.calculated);
     });
 }
 
@@ -1945,18 +1956,30 @@ function renderPayWarnings(calculated) {
     });
   }
 
-  if (
-    confirmed &&
-    calculated &&
-    normalizeEnteredMoneyNumber(actual?.net) !== null &&
-    Number.isFinite(calculated?.net)
-  ) {
-    const diff = Math.abs(Number(actual.net) - Number(calculated.net));
-    if (diff >= 1) {
-      warnings.push({
-        tone: "neutral",
-        text: `Фактическая зарплата отличается от авторасчёта на ${formatRub(diff, 0)}.`,
-      });
+  if (confirmed && calculated) {
+    const insight = buildPayDifferenceInsight({
+      actual,
+      calculated,
+      paidLeaveEstimate: currentVacationPayEstimate,
+    });
+
+    if (insight?.amount >= 1) {
+      const direction = insight.direction === "more" ? "больше" : "меньше";
+      let text = `По факту пришло ${direction} на ${formatRub(insight.amount, 0)}.`;
+
+      if (insight.largest) {
+        const largestDirection = insight.largest.direction === "more" ? "больше" : "меньше";
+        text += ` Самое большое расхождение — в ${insight.largest.label}: по факту ${largestDirection} на ${formatRub(insight.largest.amount, 0)}.`;
+      }
+
+      warnings.push({ tone: insight.direction === "more" ? "positive" : "warn", text });
+    } else if (insight) {
+      let text = "Общая фактическая выплата совпала с авторасчётом.";
+      if (insight.largest) {
+        const largestDirection = insight.largest.direction === "more" ? "больше" : "меньше";
+        text += ` При этом самое большое расхождение — в ${insight.largest.label}: по факту ${largestDirection} на ${formatRub(insight.largest.amount, 0)}.`;
+      }
+      warnings.push({ tone: "positive", text });
     }
   }
 
@@ -1973,6 +1996,8 @@ function renderPayWarnings(calculated) {
         ? "border-amber-400/20 bg-amber-500/10 text-amber-100"
         : item.tone === "err"
           ? "border-rose-400/20 bg-rose-500/10 text-rose-100"
+          : item.tone === "positive"
+            ? "border-sky-400/20 bg-sky-500/10 text-sky-100"
           : "border-white/10 bg-white/5 text-slate-200";
     return `<div class="rounded-2xl border px-4 py-3 text-sm ${cls}">${item.text}</div>`;
   }).join("");

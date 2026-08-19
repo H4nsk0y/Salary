@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 
 const root = new URL("../", import.meta.url);
@@ -45,4 +45,17 @@ test("settings expose installation controls", () => {
   assert.match(html, /id="pwaInstallHint"/);
   assert.match(script, /requestPwaInstall/);
   assert.match(script, /checkForPwaUpdate/);
+});
+
+test("iOS pages use a seamless translucent status bar", () => {
+  const pages = readdirSync(root)
+    .filter((name) => name.endsWith(".html") && name !== "offline.html");
+
+  for (const page of pages) {
+    assert.match(
+      read(page),
+      /apple-mobile-web-app-status-bar-style" content="black-translucent"/,
+      `${page} must extend its background under the iOS status bar`
+    );
+  }
 });

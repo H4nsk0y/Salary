@@ -45,12 +45,6 @@
       "short_name": "Смены",
       "url": "./schedule.html",
       "icons": [{ "src": "./images/app-icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Мои задачи",
-      "short_name": "Задачи",
-      "url": "./tasks.html",
-      "icons": [{ "src": "./images/app-icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
