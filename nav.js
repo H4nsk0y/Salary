@@ -23,8 +23,6 @@ const MAIN_LINKS = [
 ];
 
 const OWNER_LINKS = [
-  { key: "owner-users", href: "owner-users.html", label: "Пользователи" },
-  { key: "owner-analytics", href: "owner-analytics.html", label: "Аналитика" },
   { key: "owner", href: "owner.html", label: "Отделы" },
 ];
 

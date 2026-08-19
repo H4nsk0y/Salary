@@ -1,4 +1,4 @@
-import { requireSession, signOut } from "./auth.js";
+import { requireSession } from "./auth.js";
 import {
   getMyProfile,
   listAllDepartments,
@@ -16,7 +16,6 @@ import { confirmDialog } from "./modal.js";
 
 document.body.classList.add("is-loaded");
 
-const logoutBtn = document.getElementById("logoutBtn");
 const statusPill = document.getElementById("statusPill");
 const errorBox = document.getElementById("errorBox");
 const departmentsGrid = document.getElementById("departmentsGrid");
@@ -418,14 +417,6 @@ async function openDepartmentManager(department) {
     block: "start",
   });
 }
-
-logoutBtn?.addEventListener("click", async () => {
-  try {
-    await signOut();
-  } finally {
-    location.href = "login.html?next=owner.html";
-  }
-});
 
 refreshDepartmentBtn?.addEventListener("click", async () => {
   if (!selectedDepartment?.key) return;
