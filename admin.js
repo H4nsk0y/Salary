@@ -4,8 +4,10 @@
 import { requireSession, signOut } from "./auth.js";
 import {
   getMyManagedDepartment,
+  getMyDepartmentMembershipKey,
   getMyProfile,
   getDepartmentByKey,
+  listEgaisDepartmentTimesheetView,
   listManagedDepartmentMembers,
   managedListTimesheetsBefore,
   managedLoadTimesheet,
@@ -14,7 +16,7 @@ import {
   ownerCreateDepartmentInvite,
   sendPushNotifications,
   setDepartmentMemberOrder,
-} from "./db.js";
+} from "./db.js?v=20260819-2";
 import { startPresenceHeartbeat } from "./presence.js";
 import {
   normalizeShiftComments,
@@ -71,12 +73,15 @@ const createInviteBtn = document.getElementById("createInviteBtn");
 const inviteBox = document.getElementById("inviteBox");
 const inviteLinkInput = document.getElementById("inviteLinkInput");
 const copyInviteBtn = document.getElementById("copyInviteBtn");
+const adminPageHeading = document.getElementById("adminPageHeading");
+const departmentViewNotice = document.getElementById("departmentViewNotice");
 
 const backToTableLink = document.getElementById("backToTableLink");
 const pageParams = new URLSearchParams(window.location.search);
 const requestedDepartmentKey = String(pageParams.get("department") || "").trim();
 
 let currentProfile = null;
+let departmentViewOnly = false;
 
 let year = new Date().getFullYear();
 let month = new Date().getMonth();
@@ -781,8 +786,12 @@ function makeLabelCell(state) {
   const td = document.createElement("td");
   td.className = "label-cell member-draggable-cell";
   td.rowSpan = 2;
-  td.title = state.name ? `${state.name}. Перетащите, чтобы изменить порядок.` : "Сотрудник";
-  td.draggable = !isMobileNow();
+  td.title = departmentViewOnly
+    ? state.name || "Сотрудник"
+    : state.name
+      ? `${state.name}. Перетащите, чтобы изменить порядок.`
+      : "Сотрудник";
+  td.draggable = !departmentViewOnly && !isMobileNow();
   td.dataset.userId = state.userId;
 
   const main = document.createElement("span");
@@ -800,6 +809,7 @@ function makeLabelCell(state) {
   dragHandle.className = "member-drag-handle";
   dragHandle.textContent = "⋮⋮";
   dragHandle.setAttribute("aria-hidden", "true");
+  dragHandle.classList.toggle("hidden", departmentViewOnly);
 
   titleRow.append(dragHandle, main, overtimeBadge);
 
@@ -872,6 +882,13 @@ function createHeaderCell(dayIndex) {
   if (weekend) dowEl.style.color = "rgba(252, 165, 165, 0.8)";
 
   th.append(numEl, dowEl);
+
+  if (departmentViewOnly) {
+    th.tabIndex = -1;
+    th.style.cursor = "default";
+    return th;
+  }
+
   th.style.cursor = "pointer";
   th.title = "1 клик — праздник. 2 клика — перенесённый выходной. 3 клика — сокращённый день. ПКМ — очистить.";
 
@@ -1349,6 +1366,7 @@ function handleMatrixFocusIn(e) {
 }
 
 function handleMatrixFocusOut(e) {
+  if (departmentViewOnly) return;
   const inputEl = getMatrixInput(e.target);
   if (!inputEl) return;
 
@@ -1529,6 +1547,7 @@ function handleNightInput(input, state, i) {
 }
 
 function handleMatrixInput(e) {
+  if (departmentViewOnly) return;
   const input = getMatrixInput(e.target);
   if (!input) return;
 
@@ -1636,6 +1655,10 @@ function clearMemberDragState() {
 }
 
 function handleMemberDragStart(event) {
+  if (departmentViewOnly) {
+    event.preventDefault();
+    return;
+  }
   const cell = getMemberDragCell(event.target);
   if (!cell || isMobileNow() || teamStates.length < 2) {
     event.preventDefault();
@@ -1952,10 +1975,10 @@ function openStateShiftComment(state, index, anchor) {
   if (!state || index < 0 || index >= daysInMonth) return;
   openShiftCommentDialog({
     anchor,
-    editable: true,
+    editable: !departmentViewOnly,
     title: `${state.name}, ${index + 1} ${monthNamesGenitive[month]}`,
     comment: state.shiftComments[index],
-    onSave: (comment) => {
+    onSave: departmentViewOnly ? null : (comment) => {
       state.shiftComments[index] = comment;
       updateStateShiftCommentCells(state, index);
       updateMobileToolbar();
@@ -2302,6 +2325,7 @@ function mapPushNotificationError(error) {
 }
 
 async function createCurrentDepartmentInvite() {
+  if (departmentViewOnly) return;
   if (!managedDepartment?.key) {
     setError("Не найден текущий отдел для приглашения.");
     return;
@@ -2337,6 +2361,7 @@ async function createCurrentDepartmentInvite() {
 
 
 async function doSaveAll({ notify = false } = {}) {
+  if (departmentViewOnly) return;
   setSaveStatus("Сохраняю…", "busy");
   setError(null);
 
@@ -2413,6 +2438,7 @@ async function doSaveAll({ notify = false } = {}) {
 }
 
 function scheduleSave() {
+  if (departmentViewOnly) return;
   markDirty();
   if (saveTimer) clearTimeout(saveTimer);
 
@@ -2451,14 +2477,48 @@ async function resolveManagedDepartment() {
     return ownerDepartment;
   }
 
-  const managedDepartment = await getMyManagedDepartment();
+  const [managedDepartment, membershipDepartmentKey] = await Promise.all([
+    getMyManagedDepartment(),
+    getMyDepartmentMembershipKey(),
+  ]);
 
   if (backToTableLink) {
     backToTableLink.href = "table.html";
     backToTableLink.textContent = "Личный табель";
   }
 
-  return managedDepartment;
+  if (managedDepartment) return managedDepartment;
+
+  if (requestedDepartmentKey === "egais" && membershipDepartmentKey === "egais") {
+    const egaisDepartment = await getDepartmentByKey("egais");
+    if (!egaisDepartment) throw new Error("Отдел ЕГАИС не найден.");
+    departmentViewOnly = true;
+    return egaisDepartment;
+  }
+
+  return null;
+}
+
+function applyDepartmentViewOnlyUi() {
+  if (!departmentViewOnly) return;
+
+  document.body.classList.add("department-view-only");
+  departmentViewNotice?.classList.remove("hidden");
+  if (adminPageHeading) adminPageHeading.textContent = "График отдела ЕГАИС";
+  if (backToTableLink) {
+    backToTableLink.href = "table.html";
+    backToTableLink.textContent = "Личный табель";
+  }
+
+  for (const element of [saveBtn, saveSilentBtn, announcementLink, createInviteBtn, inviteBox]) {
+    element?.classList.add("hidden");
+  }
+  for (const element of [mHolidayBtn, mTransferredBtn, mShortBtn]) {
+    element?.classList.add("hidden");
+  }
+  mHolidayBtn?.parentElement?.classList.add("hidden");
+
+  setSaveStatus("Только просмотр", "busy");
 }
 
 
@@ -2479,6 +2539,8 @@ async function guardManagedDepartment() {
     return false;
   }
 
+  applyDepartmentViewOnlyUi();
+
   if (announcementLink) {
     announcementLink.href = `announcements.html?department=${encodeURIComponent(managedDepartment.key)}`;
   }
@@ -2497,23 +2559,49 @@ async function loadCurrentMonth() {
       throw new Error("Не найден доступный отдел.");
     }
 
-    const members = await listManagedDepartmentMembers(managedDepartment.key);
-    resetMonthArrays(members);
+    let payloadsByUserId;
 
-    const userIds = teamStates.map((state) => state.userId);
-    const [payloads, previousRows] = await Promise.all([
-      Promise.all(teamStates.map((state) => managedLoadTimesheet(state.userId, year, month))),
-      managedListTimesheetsBefore(userIds, year, month),
-    ]);
+    if (departmentViewOnly) {
+      const viewRows = await listEgaisDepartmentTimesheetView(year, month);
+      const members = viewRows.map((row) => ({
+        ...row,
+        position: row.position_name ?? "",
+      }));
+      resetMonthArrays(members);
+      payloadsByUserId = new Map(viewRows.map((row) => [row.user_id, row.payload]));
 
-    const payloadsByUserId = new Map();
-    for (let i = 0; i < teamStates.length; i++) {
-      payloadsByUserId.set(teamStates[i].userId, payloads[i]);
+      const dismissedUsers = new Set(
+        viewRows.filter((row) => row.dismissed_before_month).map((row) => String(row.user_id))
+      );
+      for (const state of teamStates) {
+        state.dismissedBeforeMonth = dismissedUsers.has(String(state.userId));
+      }
+    } else {
+      const members = await listManagedDepartmentMembers(managedDepartment.key);
+      resetMonthArrays(members);
+
+      const userIds = teamStates.map((state) => state.userId);
+      const [payloads, previousRows] = await Promise.all([
+        Promise.all(teamStates.map((state) => managedLoadTimesheet(state.userId, year, month))),
+        managedListTimesheetsBefore(userIds, year, month),
+      ]);
+
+      payloadsByUserId = new Map();
+      for (let i = 0; i < teamStates.length; i++) {
+        payloadsByUserId.set(teamStates[i].userId, payloads[i]);
+      }
+      applyDismissalsBeforeMonth(previousRows);
     }
 
-    applyDismissalsBeforeMonth(previousRows);
     applyLoadedPayloads(payloadsByUserId);
     buildTable();
+    if (departmentViewOnly) {
+      matrixBody?.querySelectorAll("input.input-hour").forEach((input) => {
+        input.readOnly = true;
+        input.tabIndex = -1;
+        input.classList.add("cursor-default");
+      });
+    }
     syncTopTableScrollWidth();
     syncHorizontalScrollState();
 
@@ -2521,12 +2609,20 @@ async function loadCurrentMonth() {
     resetNotificationBaseline();
     hasPendingPersonalPush = false;
     dirty = false;
-    setSaveStatus("Сохранено", "ok");
+    setSaveStatus(
+      departmentViewOnly ? "Только просмотр" : "Сохранено",
+      departmentViewOnly ? "busy" : "ok"
+    );
 
     initCurrentDaySelection();
   } catch (e) {
     setSaveStatus("Ошибка загрузки", "err");
-    setError(e?.message || "Не удалось загрузить общий табель.");
+    const message = String(e?.message || "");
+    setError(
+      departmentViewOnly && /list_egais_department_timesheet_view|schema cache|PGRST202/i.test(message)
+        ? "В базе нужно запустить supabase-sql/030_egais_department_timesheet_view.sql."
+        : message || "Не удалось загрузить общий табель."
+    );
   }
 }
 
@@ -2542,6 +2638,7 @@ mToday?.addEventListener("click", () => {
 });
 
 mHolidayBtn?.addEventListener("click", () => {
+  if (departmentViewOnly) return;
   const idx = mobileSelectedIdx;
   if (idx < 0 || idx >= daysInMonth) return;
 
@@ -2555,6 +2652,7 @@ mHolidayBtn?.addEventListener("click", () => {
 });
 
 mTransferredBtn?.addEventListener("click", () => {
+  if (departmentViewOnly) return;
   const idx = mobileSelectedIdx;
   if (idx < 0 || idx >= daysInMonth) return;
 
@@ -2568,6 +2666,7 @@ mTransferredBtn?.addEventListener("click", () => {
 });
 
 mShortBtn?.addEventListener("click", () => {
+  if (departmentViewOnly) return;
   const idx = mobileSelectedIdx;
   if (idx < 0 || idx >= daysInMonth) return;
 

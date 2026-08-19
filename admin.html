@@ -1514,6 +1514,15 @@ td.shift-comment-cell.has-shift-comment::after {
         }
       }
 
+      .department-view-only .input-hour {
+        cursor: default;
+        caret-color: transparent;
+      }
+
+      .department-view-only .member-draggable-cell {
+        cursor: default;
+      }
+
     </style>
 
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
@@ -1528,7 +1537,7 @@ td.shift-comment-cell.has-shift-comment::after {
         <div class="admin-header-surface flex flex-col gap-4 rounded-3xl border border-white/10 bg-slate-950/70 p-4 md:p-5">
           <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div class="min-w-0 flex-1">
-              <h1 class="admin-page-heading text-2xl md:text-3xl font-bold tracking-tight">
+              <h1 id="adminPageHeading" class="admin-page-heading text-2xl md:text-3xl font-bold tracking-tight">
                 <span class="bg-gradient-to-r from-indigo-200 via-sky-200 to-slate-100 bg-clip-text text-transparent">
                   Табель команды
                 </span>
@@ -1551,6 +1560,10 @@ td.shift-comment-cell.has-shift-comment::after {
           </div>
         </div>
       </header>
+
+      <div id="departmentViewNotice" class="hidden mb-6 rounded-lg border border-sky-300/20 bg-sky-400/10 px-4 py-3 text-sm leading-6 text-sky-100">
+        Общий график ЕГАИС открыт в режиме просмотра. Изменять смены и сохранять табель могут только ответственные за отдел.
+      </div>
 
       <section class="admin-action-panel mb-6 rounded-3xl p-3 md:p-4">
         <div class="relative flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -1718,6 +1731,6 @@ td.shift-comment-cell.has-shift-comment::after {
     </div>
 
 <script type="module" src="./nav.js?v=20260819-1"></script>
-    <script type="module" src="./admin.js"></script>
+    <script type="module" src="./admin.js?v=20260819-2"></script>
   </body>
 </html>

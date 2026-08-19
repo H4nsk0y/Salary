@@ -678,6 +678,18 @@ export async function listManagedDepartmentMembers(departmentKey) {
   });
 }
 
+export async function listEgaisDepartmentTimesheetView(year, month) {
+  const normalized = assertValidYearMonth(year, month);
+
+  const { data, error } = await supabase.rpc("list_egais_department_timesheet_view", {
+    p_year: normalized.year,
+    p_month: normalized.month,
+  });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 function isMissingDepartmentMemberOrderColumnError(error) {
   const text = [
     error?.message,

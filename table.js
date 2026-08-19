@@ -1,7 +1,7 @@
 
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
-import { getMyProfile, getMyDepartmentMembershipKey, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, saveMyTimesheetActual, saveTimesheet } from "./db.js";
+import { getMyProfile, getMyDepartmentMembershipKey, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, saveMyTimesheetActual, saveTimesheet } from "./db.js?v=20260819-2";
 import { startPresenceHeartbeat } from "./presence.js";
 import {
   normalizeShiftComments,
@@ -3320,13 +3320,21 @@ updateUrlForMonth();
   applyPersonalTimesheetEditability();
   applyAutoCollapsedPanels(profile);
 
-  if (managedDepartment) {
+  const departmentTableAccess = managedDepartment ?? (
+    membershipDepartmentKey === "egais"
+      ? { key: "egais", name: "Отдел ЕГАИС", readOnly: true }
+      : null
+  );
+
+  if (departmentTableAccess) {
   adminLink?.classList.remove("hidden");
   if (adminLink) {
-    adminLink.href = `admin.html?department=${encodeURIComponent(managedDepartment.key)}`;
-    adminLink.textContent = managedDepartment.name
-      ? `Табель: ${managedDepartment.name}`
-      : "Табель отдела";
+    adminLink.href = `admin.html?department=${encodeURIComponent(departmentTableAccess.key)}`;
+    adminLink.textContent = departmentTableAccess.readOnly
+      ? "График отдела ЕГАИС"
+      : departmentTableAccess.name
+        ? `Табель: ${departmentTableAccess.name}`
+        : "Табель отдела";
   }
 } else {
   adminLink?.classList.add("hidden");
