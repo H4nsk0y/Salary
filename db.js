@@ -690,6 +690,50 @@ export async function listEgaisDepartmentTimesheetView(year, month) {
   return data ?? [];
 }
 
+export async function listStaffVoteCandidates() {
+  const { data, error } = await supabase.rpc("list_staff_vote_candidates");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getStaffVotePeriods() {
+  const { data, error } = await supabase.rpc("get_staff_vote_periods");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function submitStaffVote({ periodType, nomineeUserId, comment = "" } = {}) {
+  const type = String(periodType ?? "").trim();
+  const nomineeId = String(nomineeUserId ?? "").trim();
+  const text = String(comment ?? "").trim();
+
+  if (!["week", "month"].includes(type)) throw new Error("Некорректный период голосования.");
+  if (!nomineeId) throw new Error("Выберите сотрудника.");
+  if (text.length > 500) throw new Error("Комментарий не может быть длиннее 500 символов.");
+
+  const { error } = await supabase.rpc("submit_staff_vote", {
+    p_period_type: type,
+    p_nominee_user_id: nomineeId,
+    p_comment: text || null,
+  });
+
+  if (error) throw error;
+}
+
+export async function listCompletedStaffVoteComments(periodType, periodStart) {
+  const type = String(periodType ?? "").trim();
+  const start = String(periodStart ?? "").trim();
+  if (!["week", "month"].includes(type) || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return [];
+
+  const { data, error } = await supabase.rpc("list_completed_staff_vote_comments", {
+    p_period_type: type,
+    p_period_start: start,
+  });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 function isMissingDepartmentMemberOrderColumnError(error) {
   const text = [
     error?.message,
