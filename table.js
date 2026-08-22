@@ -22,6 +22,10 @@ import {
   setRevealButtonState,
 } from "./moneyPrivacy.js";
 import { buildPayDifferenceInsight } from "./payDifference.js";
+import {
+  calculateVacationPayFromHistory,
+  VACATION_PAY_MONTHS_REQUIRED,
+} from "./vacationPay.js";
 
 document.body.classList.add("is-loaded");
 
@@ -44,8 +48,6 @@ const REMAINING_PAYMENT_DAY = 10;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 const DISMISSED_LEAVE_TYPE = "dismissed";
-const VACATION_PAY_MONTHS_REQUIRED = 12;
-const VACATION_PAY_AVERAGE_CALENDAR_DAYS = 29.3;
 
 let focusDayIndex = null;
 let mobileSelectedIdx = 0;
@@ -1551,18 +1553,6 @@ function countCurrentVacationPayDays() {
   return payableDays;
 }
 
-function extractConfirmedVacationPayIncome(payload) {
-  const actual = normalizeStoredPaySummary(payload?.paySummary).actual;
-  if (!hasConfirmedActual(actual)) return null;
-
-  const netFromParts = computeActualNetFromParts(actual.advance, actual.remaining);
-  const baseNet = normalizeMoneyNumber(actual.net) ?? netFromParts ?? 0;
-  const paidLeaveNet = normalizeMoneyNumber(actual.paidLeaveNet) ?? 0;
-  const total = Number(baseNet) + Number(paidLeaveNet);
-
-  return total > 0 ? Number(total.toFixed(2)) : null;
-}
-
 async function getVacationPayHistoryRows(baseYear, baseMonth) {
   const key = monthKey(baseYear, baseMonth);
   if (!vacationPayHistoryCache.has(key)) {
@@ -1581,64 +1571,20 @@ async function getVacationPayHistoryRows(baseYear, baseMonth) {
 async function calculateVacationPayEstimate(baseYear, baseMonth, vacationDays) {
   const months = getPreviousVacationPayMonths(baseYear, baseMonth);
   const rows = await getVacationPayHistoryRows(baseYear, baseMonth);
-  const rowsByMonth = new Map((rows ?? []).map((row) => [monthKey(row.year, row.month), row]));
-
-  let totalIncome = 0;
-  let confirmedMonths = 0;
-  let fallbackTotalIncome = 0;
-  const fallbackRows = [];
-
-  for (const item of months) {
-    const row = rowsByMonth.get(monthKey(item.year, item.month));
-    const income = extractConfirmedVacationPayIncome(row?.payload);
-    if (!Number.isFinite(income)) continue;
-    totalIncome += income;
-    confirmedMonths += 1;
-  }
-
-  for (const row of rows ?? []) {
-    const income = extractConfirmedVacationPayIncome(row?.payload);
-    if (!Number.isFinite(income)) continue;
-    fallbackRows.push(row);
-    fallbackTotalIncome += income;
-    if (fallbackRows.length >= VACATION_PAY_MONTHS_REQUIRED) break;
-  }
-
   const requestedPeriodText = formatVacationPayPeriod(months);
-
-  if (confirmedMonths < VACATION_PAY_MONTHS_REQUIRED) {
-    if (fallbackRows.length >= VACATION_PAY_MONTHS_REQUIRED) {
-      const averageDaily = fallbackTotalIncome / (VACATION_PAY_MONTHS_REQUIRED * VACATION_PAY_AVERAGE_CALENDAR_DAYS);
-      return {
-        ok: true,
-        fallback: true,
-        vacationDays,
-        confirmedMonths,
-        periodText: buildVacationPayPeriodLabelFromRows(fallbackRows),
-        requestedPeriodText,
-        averageDaily,
-        amount: averageDaily * vacationDays,
-      };
-    }
-
-    return {
-      ok: false,
-      vacationDays,
-      confirmedMonths,
-      periodText: requestedPeriodText,
-    };
-  }
-
-  // Бета-упрощение: используем подтвержденные суммы "на руки" и среднее 29,3 календарного дня.
-  const averageDaily = totalIncome / (VACATION_PAY_MONTHS_REQUIRED * VACATION_PAY_AVERAGE_CALENDAR_DAYS);
-  return {
-    ok: true,
-    fallback: false,
+  const result = calculateVacationPayFromHistory({
+    baseYear,
+    baseMonth,
     vacationDays,
-    confirmedMonths,
-    periodText: requestedPeriodText,
-    averageDaily,
-    amount: averageDaily * vacationDays,
+    rows,
+  });
+
+  if (!result.ok) return { ...result, periodText: requestedPeriodText };
+
+  return {
+    ...result,
+    periodText: buildVacationPayPeriodLabelFromRows(result.usedRows),
+    requestedPeriodText,
   };
 }
 
@@ -1687,8 +1633,8 @@ function renderVacationPayEstimateResult(result) {
   if (vacationPayEstimateHint) {
     vacationPayEstimateHint.textContent =
       result.fallback
-        ? `Бета: по последним 12 фактам, ${result.periodText}`
-        : `Бета: ${result.vacationDays} ${formatRuDays(result.vacationDays)}, ${result.periodText}`;
+        ? `Бета, на руки: последние 12 подтверждений, ${result.periodText}`
+        : `Бета, на руки: ${result.vacationDays} ${formatRuDays(result.vacationDays)}, ${result.periodText}`;
   }
   renderPayWarnings(currentPaySummary.calculated);
 }
