@@ -3151,7 +3151,7 @@ exportCalendarBtn?.addEventListener("click", () => {
     dayHours,
     nightHours,
     shiftComments,
-    calendarName: `График Alvisa — ${monthNames[month]} ${year}`,
+    calendarName: `График ALVISA SALARY — ${monthNames[month]} ${year}`,
   });
 
   if (!result.events.length) {

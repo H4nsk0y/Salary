@@ -42,6 +42,7 @@ test("database exposes checklists only through authenticated RPCs", async () => 
   assert.match(sql, /завершенные записи не удаляются автоматически/i);
   assert.match(sql, /owner_shift_checklist_statistics/i);
   assert.match(sql, /if not public\.is_owner\(\)/i);
+  assert.match(sql, /alter table public\.shift_checklists[\s\S]*add column if not exists department_name text/i);
   assert.doesNotMatch(sql, /grant (select|insert|update|delete)[\s\S]*shift_checklists[\s\S]*authenticated/i);
 });
 

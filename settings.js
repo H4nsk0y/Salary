@@ -329,14 +329,14 @@ function applyPwaState(state, message = "") {
   if (state.updateAvailable) {
     pwaInstallBtn.textContent = "Обновить";
     pwaStatusBadge.textContent = "Есть обновление";
-    pwaInstallHint.textContent = "Новая версия Alvisa готова к установке.";
+    pwaInstallHint.textContent = "Новая версия ALVISA SALARY готова к установке.";
     return;
   }
 
   if (state.installed) {
     pwaInstallBtn.textContent = "Проверить обновления";
     pwaStatusBadge.textContent = "Установлено";
-    pwaInstallHint.textContent = message || "Alvisa запускается как отдельное приложение на этом устройстве.";
+    pwaInstallHint.textContent = message || "ALVISA SALARY запускается как отдельное приложение на этом устройстве.";
     return;
   }
 
@@ -349,7 +349,7 @@ function applyPwaState(state, message = "") {
 
   pwaInstallBtn.textContent = "Установить";
   pwaStatusBadge.textContent = state.canPromptInstall ? "Готово к установке" : "Доступно";
-  pwaInstallHint.textContent = message || "Добавьте Alvisa на главный экран и запускайте без панели браузера.";
+  pwaInstallHint.textContent = message || "Добавьте ALVISA SALARY на главный экран и запускайте без панели браузера.";
 }
 
 async function handlePwaInstallClick() {
@@ -366,7 +366,7 @@ async function handlePwaInstallClick() {
     pwaInstallBtn.disabled = true;
     pwaInstallBtn.textContent = "Проверяю…";
     const nextState = await checkForPwaUpdate();
-    applyPwaState(nextState, nextState.updateAvailable ? "" : "Установлена актуальная версия Alvisa.");
+    applyPwaState(nextState, nextState.updateAvailable ? "" : "Установлена актуальная версия ALVISA SALARY.");
     return;
   }
 
@@ -383,7 +383,7 @@ async function handlePwaInstallClick() {
   }
 
   if (result.outcome === "accepted") {
-    applyPwaState(result.state, "Установка началась. Иконка Alvisa появится на устройстве.");
+    applyPwaState(result.state, "Установка началась. Иконка ALVISA SALARY появится на устройстве.");
     return;
   }
 

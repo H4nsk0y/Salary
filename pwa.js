@@ -118,7 +118,7 @@ function showUpdateBanner() {
 
   const text = document.createElement("div");
   text.className = "alvisa-pwa-update-text";
-  text.textContent = "Новая версия Alvisa уже готова.";
+  text.textContent = "Новая версия ALVISA SALARY уже готова.";
 
   const button = document.createElement("button");
   button.type = "button";

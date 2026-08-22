@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover" />
+  <title>Идеи пользователей — ALVISA SALARY</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon-32.png?v=4" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon-180.png?v=4" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#0b0d0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ALVISA SALARY" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    @font-face{font-family:"Anticva";src:url("./fonts/Anticva-Regular.otf") format("opentype");font-display:swap}
+    :root{--ink:#0b0d0f;--panel:#15191d;--line:rgba(241,238,232,.12);--muted:#959ca2;--porcelain:#f1eee8;--gold:#c6a15b;--steel:#6ea8e8}
+    *{box-sizing:border-box}html{color-scheme:dark}body{margin:0;min-height:100vh;background:var(--ink);color:var(--porcelain);font-family:Inter,system-ui,sans-serif;letter-spacing:0}.ideas-shell{width:min(1120px,calc(100% - 32px));margin:0 auto;padding:112px 0 36px}.ideas-header{display:flex;align-items:end;justify-content:space-between;gap:22px;padding-bottom:22px;border-bottom:1px solid var(--line)}.ideas-kicker{color:#d5ba83;font-size:.68rem;font-weight:800;text-transform:uppercase}.ideas-title{margin:8px 0 0;font-family:Anticva,Georgia,serif;font-size:3.5rem;font-weight:400;line-height:1}.ideas-copy{max-width:640px;margin:10px 0 0;color:var(--muted);font-size:.8rem;line-height:1.55}.ideas-controls{display:flex;align-items:center;gap:8px}.ideas-select,.ideas-button{height:42px;border:1px solid var(--line);border-radius:6px;background:#111519;color:#d5d8da;padding:0 13px;font:inherit;font-size:.75rem}.ideas-button{font-weight:700}.ideas-button:hover{background:#191e22}.ideas-status{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:18px;color:#858c92;font-size:.72rem}.ideas-list{display:grid;gap:12px;margin-top:14px}.idea-card{border:1px solid var(--line);border-radius:8px;padding:20px;background:var(--panel)}.idea-card-head,.idea-card-foot{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.idea-author{font-size:.88rem}.idea-author-meta{margin-top:5px;color:#858c92;font-size:.69rem}.idea-status{flex:0 0 auto;border:1px solid var(--line);border-radius:4px;padding:5px 8px;color:#abb1b5;font-size:.65rem;font-weight:700}.status-new{border-color:rgba(198,161,91,.3);color:#e0c78f}.status-reviewed{border-color:rgba(110,168,232,.28);color:#bcd8f5}.idea-text{margin:18px 0;color:#d2d4d5;font-size:.82rem;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}.idea-card-foot{align-items:center;padding-top:14px;border-top:1px solid rgba(241,238,232,.08)}.idea-date{color:#777f85;font-size:.68rem}.idea-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}.idea-status-button{min-height:34px;border:1px solid var(--line);border-radius:5px;padding:0 10px;background:transparent;color:#aeb4b8;font-size:.67rem}.idea-status-button:hover{background:rgba(241,238,232,.06)}.idea-status-button:disabled{opacity:.35}.ideas-empty{border:1px dashed var(--line);border-radius:8px;padding:28px;color:#858c92;text-align:center;font-size:.78rem}.ideas-error{margin-top:16px;border:1px solid rgba(190,74,105,.35);border-radius:7px;padding:13px;color:#e4a4b7;font-size:.75rem}
+    .idea-delete-button{border-color:rgba(190,74,105,.32);color:#e4a4b7}.idea-delete-button:hover{background:rgba(122,22,56,.18)}
+    @media(max-width:700px){.ideas-shell{width:calc(100% - 24px);padding-top:96px}.ideas-header{align-items:flex-start;flex-direction:column}.ideas-title{font-size:2.55rem}.ideas-controls{width:100%}.ideas-select{min-width:0;flex:1}.idea-card{padding:16px}.idea-card-foot{align-items:flex-start;flex-direction:column}.idea-actions{justify-content:flex-start}}
+  </style>
+</head>
+<body>
+  <div data-app-header data-active="owner" data-owner-nav="true"></div>
+  <main class="ideas-shell">
+    <header class="ideas-header"><div><div class="ideas-kicker">Обратная связь</div><h1 class="ideas-title">Идеи пользователей</h1><p class="ideas-copy">Предложения, отправленные непосредственно через ALVISA SALARY. Статус помогает не потерять то, что уже рассмотрено.</p></div><div class="ideas-controls"><select id="statusFilter" class="ideas-select" aria-label="Фильтр идей"><option value="">Все идеи</option><option value="new">Новые</option><option value="reviewed">Рассмотренные</option><option value="archived">Архив</option></select><button id="refreshBtn" class="ideas-button" type="button">Обновить</button></div></header>
+    <div id="errorBox" class="ideas-error hidden" role="alert"></div>
+    <div class="ideas-status"><span id="statusPill">—</span><span>Найдено: <strong id="ideasCount">0</strong></span></div>
+    <section id="ideasList" class="ideas-list" aria-live="polite"></section>
+  </main>
+  <div data-app-footer></div>
+  <script type="module" src="./footer.js?v=20260802-2"></script>
+  <script type="module" src="./nav.js?v=20260822-4"></script>
+  <script type="module" src="./owner-ideas.js?v=20260822-2"></script>
+</body>
+</html>

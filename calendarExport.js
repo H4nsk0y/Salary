@@ -156,7 +156,7 @@ export function buildShiftCalendarIcs({
   dayHours,
   nightHours,
   shiftComments,
-  calendarName = "График Alvisa",
+  calendarName = "График ALVISA SALARY",
   generatedAt = new Date(),
 } = {}) {
   const events = buildShiftCalendarEvents({ year, month, dayHours, nightHours, shiftComments });
@@ -164,7 +164,7 @@ export function buildShiftCalendarIcs({
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Alvisa//Personal schedule//RU",
+    "PRODID:-//ALVISA SALARY//Personal schedule//RU",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeIcsText(calendarName)}`,

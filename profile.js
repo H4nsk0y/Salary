@@ -33,6 +33,8 @@ import {
   setRevealButtonState,
 } from "./moneyPrivacy.js";
 import { confirmDialog } from "./modal.js";
+import { openIdeaDialog } from "./ideaDialog.js?v=20260822-1";
+import { buildDecemberForecast, estimateYearEndReserve } from "./yearEndReserve.js?v=20260822-1";
 
 document.body.classList.add("is-loaded");
 
@@ -76,6 +78,14 @@ const tabNumberInput = document.getElementById("tabNumberInput");
 const branchSelect = document.getElementById("branchSelect");
 const weeklyHoursSelect = document.getElementById("weeklyHoursSelect");
 const employmentDateInput = document.getElementById("employmentDateInput");
+const customPositionOverlay = document.getElementById("customPositionOverlay");
+const customPositionCloseBtn = document.getElementById("customPositionCloseBtn");
+const customPositionDepartmentSelect = document.getElementById("customPositionDepartmentSelect");
+const customPositionInput = document.getElementById("customPositionInput");
+const customPositionError = document.getElementById("customPositionError");
+const missingDepartmentBtn = document.getElementById("missingDepartmentBtn");
+const customPositionSaveBtn = document.getElementById("customPositionSaveBtn");
+const customPositionGroup = document.getElementById("customPositionGroup");
 const okladPeekBtnInitial = document.getElementById("okladInputPeekBtn");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const refreshBtn = document.getElementById("refreshBtn");
@@ -173,6 +183,7 @@ const POSITION_VALUES = new Set([
   "procurement_specialist",
   "technology_accounting_specialist",
 ]);
+const CUSTOM_POSITION_VALUE = "__custom__";
 
 const BRANCH_VALUES = new Set([
   "",
@@ -238,7 +249,11 @@ function getExpectedProfileFieldValues(profile) {
 
 function applyExpectedProfileFieldValues(values) {
   if (displayNameInput) displayNameInput.value = values.displayName;
-  if (positionSelect) positionSelect.value = values.position;
+  if (positionSelect) {
+    const position = String(values.position || "").trim();
+    if (position && !POSITION_VALUES.has(position)) ensureCustomPositionOption(position);
+    positionSelect.value = position;
+  }
   if (genderSelect) genderSelect.value = values.gender;
   if (tabNumberInput) tabNumberInput.value = values.tabNumber;
   if (branchSelect) branchSelect.value = values.branch;
@@ -248,6 +263,78 @@ function applyExpectedProfileFieldValues(values) {
     updateEmploymentDateHint();
   }
   if (okladInput) okladInput.value = values.oklad;
+}
+
+function normalizeCustomPosition(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function isValidCustomPosition(value) {
+  const normalized = normalizeCustomPosition(value);
+  return normalized.length >= 2
+    && normalized.length <= 80
+    && !/[<>\{\}\u0000-\u001f\u007f]/.test(normalized);
+}
+
+function ensureCustomPositionOption(position) {
+  if (!positionSelect || !customPositionGroup) return;
+  const normalized = normalizeCustomPosition(position);
+  if (!normalized || POSITION_VALUES.has(normalized)) return;
+
+  let option = Array.from(customPositionGroup.options).find((item) => item.value === normalized);
+  if (!option) {
+    option = document.createElement("option");
+    option.value = normalized;
+    option.textContent = normalized;
+    const sentinel = Array.from(customPositionGroup.options).find((item) => item.value === CUSTOM_POSITION_VALUE);
+    customPositionGroup.insertBefore(option, sentinel || null);
+  }
+}
+
+function setCustomPositionError(message = "") {
+  if (!customPositionError) return;
+  customPositionError.textContent = message;
+}
+
+function closeCustomPositionModal({ restoreSelection = true } = {}) {
+  customPositionOverlay?.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+  setCustomPositionError();
+  if (restoreSelection && positionSelect?.value === CUSTOM_POSITION_VALUE) {
+    const previousPosition = normalizeCustomPosition(currentProfile?.position);
+    if (previousPosition && !POSITION_VALUES.has(previousPosition)) ensureCustomPositionOption(previousPosition);
+    positionSelect.value = previousPosition || "";
+  }
+}
+
+function openCustomPositionModal() {
+  if (!customPositionOverlay) return;
+  customPositionDepartmentSelect.value = "";
+  customPositionInput.value = "";
+  setCustomPositionError();
+  customPositionOverlay.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  window.setTimeout(() => customPositionDepartmentSelect?.focus(), 0);
+}
+
+function saveCustomPosition() {
+  const department = String(customPositionDepartmentSelect?.value || "").trim();
+  const position = normalizeCustomPosition(customPositionInput?.value);
+  if (!department) {
+    setCustomPositionError("Сначала выберите отдел.");
+    customPositionDepartmentSelect?.focus();
+    return;
+  }
+  if (!isValidCustomPosition(position)) {
+    setCustomPositionError("Введите название должности длиной от 2 до 80 символов без служебных знаков.");
+    customPositionInput?.focus();
+    return;
+  }
+
+  ensureCustomPositionOption(position);
+  positionSelect.value = position;
+  markProfileFieldsTouched();
+  closeCustomPositionModal({ restoreSelection: false });
 }
 
 function pluralRu(value, one, few, many) {
@@ -1262,6 +1349,155 @@ function computeMonthOvertimeSigned(payload) {
   return workedTotal - personalNorm;
 }
 
+function buildReserveMonthInput(row) {
+  const payload = row?.payload;
+  if (!payload || typeof payload !== "object") return null;
+
+  const baseDayHours = resolveBaseDayHoursForPayload(payload, currentProfile);
+  const calculatedRaw = payload?.paySummary?.calculated ?? payload?.paySummary ?? {};
+  const monthNormRaw = Number(calculatedRaw?.monthNorm);
+  const monthNorm = monthNormRaw > 0
+    ? monthNormRaw
+    : computeCalendarNormFromPayload(payload, baseDayHours);
+  const snapshot = resolveMoneySnapshotFromPayload(payload, currentProfile);
+  const effectiveOklad = Number(snapshot?.effectiveOkladSnapshot);
+
+  const dayHours = Array.isArray(payload.dayHours) ? payload.dayHours : [];
+  const nightHours = Array.isArray(payload.nightHours) ? payload.nightHours : [];
+  const workedHours = sum(dayHours) + sum(nightHours);
+  const workedNightHours = sum(nightHours);
+  const { hDay, hNight } = getHolidayWorkedTotalsFromPayload(payload);
+  const holidayHours = hDay + hNight;
+  const workedNonHolidayHours = Math.max(0, workedHours - holidayHours);
+  const nonHolidayNightHours = Math.max(0, workedNightHours - hNight);
+
+  let overtimeHourlyGross = 0;
+  let holidayExtraNet = 0;
+  if (effectiveOklad > 0 && monthNorm > 0) {
+    const baseHourlyGross = effectiveOklad / monthNorm;
+    const standardHourlyGross = baseHourlyGross * (1 + BONUS_RATE);
+    const nightShare = workedNonHolidayHours > 0
+      ? Math.min(1, nonHolidayNightHours / workedNonHolidayHours)
+      : 0;
+    overtimeHourlyGross = standardHourlyGross + baseHourlyGross * NIGHT_EXTRA_RATE * nightShare;
+
+    const storedHolidayExtraGross = Number(calculatedRaw?.holidayExtraGross);
+    const holidayExtraGross = Number.isFinite(storedHolidayExtraGross)
+      ? storedHolidayExtraGross
+      : standardHourlyGross * holidayHours + baseHourlyGross * NIGHT_EXTRA_RATE * hNight;
+    holidayExtraNet = Math.max(0, holidayExtraGross * (1 - TAX_RATE));
+  }
+
+  const moneyState = getTimesheetMoneyState(payload);
+  return {
+    overtimeBalanceHours: computeMonthOvertimeSigned(payload),
+    compensatoryLeaveHours: computeCompensatoryLeaveHours(payload),
+    holidayHours,
+    holidayExtraNet,
+    overtimeHourlyGross,
+    workedNonHolidayHours,
+    calculatedNet: Number(calculatedRaw?.net),
+    actualNet: Number(moneyState.actual?.net),
+    actualConfirmed: moneyState.confirmed,
+  };
+}
+
+function buildYearEndForecast(rows) {
+  const months = (Array.isArray(rows) ? rows : [])
+    .map(buildReserveMonthInput)
+    .filter(Boolean);
+  const reserve = estimateYearEndReserve(months, { taxRate: TAX_RATE });
+  const decemberRow = rows.find((row) => Number(row?.month) === 11);
+  const decemberPayload = decemberRow?.payload;
+  const decemberRaw = decemberPayload?.paySummary?.calculated ?? decemberPayload?.paySummary ?? {};
+  const decemberAutoNet = Number.isFinite(Number(decemberRaw?.net))
+    ? Number(decemberRaw.net)
+    : null;
+
+  return {
+    ...buildDecemberForecast({ decemberAutoNet, reserve }),
+    reserve,
+  };
+}
+
+function showYearEndForecastDialog(forecast, year) {
+  const overlay = document.createElement("div");
+  overlay.className = "year-end-forecast-overlay";
+
+  const dialog = document.createElement("section");
+  dialog.className = "year-end-forecast-dialog";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.setAttribute("aria-labelledby", "yearEndForecastTitle");
+
+  const header = document.createElement("header");
+  header.className = "year-end-forecast-head";
+  const headingWrap = document.createElement("div");
+  const kicker = document.createElement("div");
+  kicker.className = "profile-kicker";
+  kicker.textContent = "Beta-расчет";
+  const title = document.createElement("h2");
+  title.id = "yearEndForecastTitle";
+  title.className = "year-end-forecast-title";
+  title.textContent = `Прогноз выплаты за декабрь ${year}`;
+  headingWrap.append(kicker, title);
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "year-end-forecast-close";
+  closeButton.setAttribute("aria-label", "Закрыть");
+  closeButton.textContent = "×";
+  header.append(headingWrap, closeButton);
+
+  const body = document.createElement("div");
+  body.className = "year-end-forecast-body";
+  const details = [
+    ["Авторасчет декабря", forecast.decemberAutoNet === null ? "Нет данных" : formatMoney(forecast.decemberAutoNet)],
+    ["Предполагаемая доплата за год", formatMoney(forecast.reserveNet)],
+    ["Ориентир на руки", forecast.expectedNet === null ? "Нет данных" : formatMoney(forecast.expectedNet)],
+  ];
+  for (const [label, value] of details) {
+    const row = document.createElement("div");
+    row.className = "year-end-forecast-row";
+    const labelEl = document.createElement("span");
+    labelEl.textContent = label;
+    const valueEl = document.createElement("strong");
+    valueEl.textContent = value;
+    row.append(labelEl, valueEl);
+    body.append(row);
+  }
+
+  const breakdown = document.createElement("p");
+  breakdown.className = "year-end-forecast-breakdown";
+  breakdown.textContent = `В резерве: праздничные часы ${formatMoney(forecast.reserve.holidayReserveNet)}, переработка ${formatMoney(forecast.reserve.overtimeReserveNet)}.`;
+  const note = document.createElement("p");
+  note.className = "year-end-forecast-note";
+  const calibrationText = forecast.reserve.confirmedHolidayMonths > 0
+    ? `Доля по праздникам уточнена по ${forecast.reserve.confirmedHolidayMonths} подтвержденным месяцам.`
+    : "Для праздников пока используется предварительное допущение: половина повышенной части переносится на конец года.";
+  note.textContent = `${calibrationText} Переработка рассчитана как при годовом суммированном учете. Это ориентир, а не расчетный лист: порядок предприятия может отличаться.`;
+  body.append(breakdown, note);
+
+  const close = () => {
+    overlay.remove();
+    document.body.classList.remove("modal-open");
+    document.removeEventListener("keydown", onKeydown);
+  };
+  const onKeydown = (event) => {
+    if (event.key === "Escape") close();
+  };
+  closeButton.addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  document.addEventListener("keydown", onKeydown);
+  dialog.append(header, body);
+  overlay.append(dialog);
+  document.body.append(overlay);
+  document.body.classList.add("modal-open");
+  closeButton.focus();
+}
+
 function fillYearOptions(currentYear) {
   if (!requireDom(yearSelect, "yearSelect")) return;
   const nowY = new Date().getFullYear();
@@ -1341,7 +1577,7 @@ function applyOvertimeProgress(usedHoursForLimit, limit = OVERTIME_LIMIT_DEFAULT
   else overtimeBarFill.classList.add("bg-rose-400/85");
 }
 
-function createTimesheetCard(row) {
+function createTimesheetCard(row, yearEndForecast = null) {
   const y = row.year;
   const m = row.month;
   const updatedAt = row.updated_at ? new Date(row.updated_at) : null;
@@ -1445,6 +1681,22 @@ function createTimesheetCard(row) {
   });
 
   right.appendChild(openBtn);
+
+  if (m === 11 && yearEndForecast) {
+    const forecastBtn = document.createElement("button");
+    forecastBtn.type = "button";
+    forecastBtn.className = "profile-year-end-button rounded-2xl px-3 py-2 text-xs font-semibold text-center";
+    forecastBtn.textContent = "Прогноз выплаты";
+    forecastBtn.addEventListener("click", async () => {
+      if (isMoneyProtectionEnabled(currentProfile)) {
+        const allowed = await ensureProfileMoneyAccess();
+        if (!allowed) return;
+      }
+      showYearEndForecastDialog(yearEndForecast, y);
+    });
+    right.appendChild(forecastBtn);
+  }
+
   right.appendChild(delBtn);
 
   top.appendChild(left);
@@ -2017,7 +2269,8 @@ async function refreshTimesheets() {
   }
 
   startedRows.sort((a, b) => (a.month ?? 0) - (b.month ?? 0));
-  for (const row of startedRows) timesheetsList.appendChild(createTimesheetCard(row));
+  const yearEndForecast = buildYearEndForecast(startedRows);
+  for (const row of startedRows) timesheetsList.appendChild(createTimesheetCard(row, yearEndForecast));
 
   setStatus("Готово", "ok");
 
@@ -2056,8 +2309,8 @@ async function saveProfile() {
     setError("Оклад должен быть числом от 0 до 1 000 000 000.");
     return;
   }
-  if (!POSITION_VALUES.has(position)) {
-    setError("Некорректная должность.");
+  if (position === CUSTOM_POSITION_VALUE || (!POSITION_VALUES.has(position) && !isValidCustomPosition(position))) {
+    setError("Выберите должность из списка или укажите свой вариант.");
     return;
   }
   if (gender && gender !== "male" && gender !== "female") {
@@ -2257,6 +2510,34 @@ avatarRemoveBtn?.addEventListener("click", async () => {
     try {
       await refreshProfile();
     } catch {}
+  }
+});
+
+positionSelect?.addEventListener("change", () => {
+  if (positionSelect.value === CUSTOM_POSITION_VALUE) openCustomPositionModal();
+});
+
+customPositionCloseBtn?.addEventListener("click", () => closeCustomPositionModal());
+customPositionSaveBtn?.addEventListener("click", saveCustomPosition);
+customPositionInput?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    saveCustomPosition();
+  }
+});
+customPositionOverlay?.addEventListener("click", (event) => {
+  if (event.target === customPositionOverlay) closeCustomPositionModal();
+});
+missingDepartmentBtn?.addEventListener("click", () => {
+  closeCustomPositionModal();
+  openIdeaDialog({
+    prefill: "Предлагаю добавить новый отдел: ",
+    openSiteForm: true,
+  });
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !customPositionOverlay?.classList.contains("hidden")) {
+    closeCustomPositionModal();
   }
 });
 

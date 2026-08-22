@@ -1150,6 +1150,50 @@ export async function finishMyShiftChecklist(checklistId) {
   return data ?? null;
 }
 
+export async function submitProjectIdea(ideaText) {
+  await requireUserId();
+  const text = String(ideaText ?? "").trim();
+  const { data, error } = await supabase.rpc("submit_project_idea", {
+    p_idea_text: text,
+  });
+  if (error) throw error;
+  return Number(data) || null;
+}
+
+export async function ownerListProjectIdeas(status = null) {
+  await requireUserId();
+  const normalizedStatus = ["new", "reviewed", "archived"].includes(status) ? status : null;
+  const { data, error } = await supabase.rpc("owner_list_project_ideas", {
+    p_status: normalizedStatus,
+  });
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+export async function ownerSetProjectIdeaStatus(ideaId, status) {
+  await requireUserId();
+  const id = Number(ideaId);
+  if (!Number.isInteger(id) || id <= 0) throw new Error("Некорректная идея.");
+  if (!["new", "reviewed", "archived"].includes(status)) throw new Error("Некорректный статус идеи.");
+
+  const { error } = await supabase.rpc("owner_set_project_idea_status", {
+    p_idea_id: id,
+    p_status: status,
+  });
+  if (error) throw error;
+}
+
+export async function ownerDeleteProjectIdea(ideaId) {
+  await requireUserId();
+  const id = Number(ideaId);
+  if (!Number.isInteger(id) || id <= 0) throw new Error("Некорректная идея.");
+
+  const { error } = await supabase.rpc("owner_delete_project_idea", {
+    p_idea_id: id,
+  });
+  if (error) throw error;
+}
+
 export async function getMyChatDepartment() {
   return getMyDepartmentKey();
 }

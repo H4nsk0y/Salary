@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "alvisa-pwa";
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = new URL("./offline.html", self.registration.scope).href;
@@ -81,7 +81,7 @@ self.addEventListener("push", (event) => {
     payload = { body: event.data?.text() || "" };
   }
 
-  const title = payload.title || "Alvisa";
+  const title = payload.title || "ALVISA SALARY";
   const options = {
     body: payload.body || "Появилось новое уведомление.",
     icon: payload.icon || "./images/app-icon-192.png",

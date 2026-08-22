@@ -34,6 +34,10 @@ create table if not exists public.shift_checklists (
   )
 );
 
+-- The script may be rerun after an earlier version created the table.
+alter table public.shift_checklists
+  add column if not exists department_name text;
+
 create unique index if not exists shift_checklists_one_active_per_user_idx
 on public.shift_checklists (user_id)
 where status = 'active';

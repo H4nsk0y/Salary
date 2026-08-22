@@ -1305,12 +1305,12 @@ function renderHeader(mount) {
   const home = document.createElement("a");
   home.href = "index.html";
   home.className = "group shrink-0";
-  home.setAttribute("aria-label", "ALVISA — главная");
+  home.setAttribute("aria-label", "ALVISA SALARY — главная");
 
   const homeText = document.createElement("span");
   homeText.className =
     "text-base md:text-lg font-semibold bg-gradient-to-r from-indigo-200 to-slate-100 bg-clip-text text-transparent transition-colors group-hover:from-indigo-300 group-hover:to-white";
-  homeText.textContent = "ALVISA";
+  homeText.textContent = "ALVISA SALARY";
   home.appendChild(homeText);
 
   const nav = document.createElement("nav");

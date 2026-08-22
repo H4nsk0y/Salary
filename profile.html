@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover" />
-  <title>Профиль — Alvisa</title>
+  <title>Профиль — ALVISA SALARY</title>
   <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon-32.png?v=4" />
   <link rel="icon" type="image/png" sizes="48x48" href="./images/favicon-48.png?v=4" />
   <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon-180.png?v=4" />
@@ -12,7 +12,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <meta name="theme-color" content="#020617" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Alvisa" />
+  <meta name="apple-mobile-web-app-title" content="ALVISA SALARY" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
 
@@ -746,6 +746,42 @@
       color: #f1b7c9 !important;
     }
 
+    .profile-action-icon { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border: 1px solid var(--profile-border); border-radius: 5px; background: transparent; }
+    #ownerLink .profile-action-icon { color: var(--profile-steel); }
+    #logoutBtn .profile-action-icon { color: #d99aad; }
+    #employmentDateInput { display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; color-scheme: dark; }
+    #employmentDateInput::-webkit-date-and-time-value { min-width: 0; text-align: left; }
+    #employmentDateInput::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .9; filter: invert(82%) sepia(19%) saturate(620%) hue-rotate(174deg) brightness(109%); }
+    .profile-fields > * { min-width: 0; }
+
+    .position-modal-overlay { position: fixed; inset: 0; z-index: 310; display: grid; place-items: center; padding: 18px; background: rgba(5,6,7,.86); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    .position-modal-overlay.hidden { display: none !important; }
+    .position-modal { width: min(500px, 100%); max-height: calc(100dvh - 36px); overflow: auto; border: 1px solid var(--profile-border-strong); border-radius: 9px; background: var(--profile-panel); box-shadow: 0 30px 100px rgba(0,0,0,.58); }
+    .position-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 21px; border-bottom: 1px solid var(--profile-border); }
+    .position-modal-title { margin: 0; font-family: Anticva, Georgia, serif; font-size: 1.65rem; font-weight: 400; }
+    .position-modal-close { width: 34px; height: 34px; border: 1px solid var(--profile-border); border-radius: 6px; background: transparent; color: var(--profile-muted); }
+    .position-modal-body { display: grid; gap: 16px; padding: 21px; }
+    .position-modal-copy { margin: 0; color: var(--profile-muted); font-size: .75rem; line-height: 1.55; }
+    .position-modal-field label { display: block; margin-bottom: 7px; color: #c7cbce; font-size: .75rem; font-weight: 700; }
+    .position-modal-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 3px; }
+    .position-modal-missing { border: 0; padding: 0; background: transparent; color: #c7a665; font-size: .72rem; font-weight: 700; }
+    .position-modal-save { min-height: 42px; border: 1px solid rgba(110,168,232,.36); border-radius: 6px; padding: 0 15px; background: rgba(110,168,232,.11); color: #d4e9fd; font-size: .75rem; font-weight: 800; }
+    .position-modal-error { min-height: 18px; color: #e4a4b7; font-size: .7rem; }
+
+    .profile-year-end-button { border: 1px solid rgba(198,161,91,.34); background: rgba(198,161,91,.10); color: #ead3a5; }
+    .profile-year-end-button:hover { border-color: rgba(198,161,91,.55); background: rgba(198,161,91,.17); }
+    .year-end-forecast-overlay { position: fixed; inset: 0; z-index: 315; display: grid; place-items: center; padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom)); background: rgba(5,6,7,.86); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    .year-end-forecast-dialog { width: min(540px,100%); max-height: calc(100dvh - 36px); overflow: auto; border: 1px solid var(--profile-border-strong); border-radius: 9px; background: var(--profile-panel); box-shadow: 0 30px 100px rgba(0,0,0,.58); }
+    .year-end-forecast-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 22px; border-bottom: 1px solid var(--profile-border); }
+    .year-end-forecast-title { margin: 7px 0 0; font-family: Anticva,Georgia,serif; font-size: 1.65rem; font-weight: 400; line-height: 1.08; }
+    .year-end-forecast-close { width: 34px; height: 34px; flex: 0 0 auto; border: 1px solid var(--profile-border); border-radius: 6px; background: transparent; color: var(--profile-muted); }
+    .year-end-forecast-body { display: grid; gap: 0; padding: 8px 22px 22px; }
+    .year-end-forecast-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 15px 0; border-bottom: 1px solid var(--profile-border); color: var(--profile-muted); font-size: .76rem; }
+    .year-end-forecast-row strong { color: var(--profile-porcelain); font-size: .92rem; text-align: right; }
+    .year-end-forecast-row:nth-child(3) strong { color: #e6ce9c; font-size: 1.08rem; }
+    .year-end-forecast-breakdown { margin: 16px 0 0; color: #c5c9cc; font-size: .74rem; line-height: 1.55; }
+    .year-end-forecast-note { margin: 12px 0 0; border-left: 3px solid rgba(198,161,91,.58); padding: 10px 12px; background: rgba(11,13,15,.48); color: var(--profile-muted); font-size: .7rem; line-height: 1.55; }
+
     #statusPill {
       min-height: 26px;
       border: 1px solid var(--profile-border) !important;
@@ -1169,6 +1205,14 @@
         padding-inline: 10px !important;
       }
 
+      #employmentDateInput { min-inline-size: 0 !important; padding-left: 12px !important; padding-right: 8px !important; font-size: 16px; }
+      .position-modal-actions { align-items: stretch; flex-direction: column; }
+      .position-modal-save { width: 100%; }
+      .year-end-forecast-head { padding: 18px; }
+      .year-end-forecast-body { padding: 6px 18px 18px; }
+      .year-end-forecast-row { align-items: flex-start; flex-direction: column; gap: 6px; }
+      .year-end-forecast-row strong { text-align: left; }
+
       .profile-editor,
       .profile-overview {
         padding: 18px !important;
@@ -1270,13 +1314,15 @@
           <a
             id="ownerLink"
             href="owner.html"
-            class="hidden rounded-2xl bg-indigo-500/15 px-5 py-2.5 text-sm font-semibold text-indigo-200 ring-1 ring-indigo-400/30 backdrop-blur-sm transition-all hover:bg-indigo-500/20 hover:ring-indigo-300/50"
+            class="hidden inline-flex items-center gap-2 rounded-2xl bg-indigo-500/15 px-4 py-2.5 text-sm font-semibold text-indigo-200 ring-1 ring-indigo-400/30 backdrop-blur-sm transition-all hover:bg-indigo-500/20 hover:ring-indigo-300/50"
           >
-            Управление
+            <span class="profile-action-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M6 21V7l6-4 6 4v14"></path><path d="M9 10h6"></path><path d="M9 14h6"></path></svg></span>
+            <span>Управление</span>
           </a>
 
-          <button id="logoutBtn" class="rounded-2xl bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 ring-1 ring-red-500/30 backdrop-blur-sm transition-all hover:bg-red-500/20 hover:ring-red-400/50">
-            Выйти
+          <button id="logoutBtn" class="inline-flex items-center gap-2 rounded-2xl bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 ring-1 ring-red-500/30 backdrop-blur-sm transition-all hover:bg-red-500/20 hover:ring-red-400/50">
+            <span class="profile-action-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path></svg></span>
+            <span>Выйти</span>
           </button>
         </div>
       </div>
@@ -1435,6 +1481,10 @@
 
                 <optgroup label="Технологический отдел">
                   <option value="technology_accounting_specialist">Специалист по учету</option>
+                </optgroup>
+
+                <optgroup id="customPositionGroup" label="Другое">
+                  <option value="__custom__">Свой вариант…</option>
                 </optgroup>
               </select>
             </span>
@@ -1630,6 +1680,31 @@
       </section>
     </main>
 
+    <div id="customPositionOverlay" class="position-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="customPositionTitle">
+      <section class="position-modal">
+        <header class="position-modal-head">
+          <div><div class="profile-kicker">Профиль</div><h2 id="customPositionTitle" class="position-modal-title">Своя должность</h2></div>
+          <button id="customPositionCloseBtn" class="position-modal-close" type="button" aria-label="Закрыть">×</button>
+        </header>
+        <div class="position-modal-body">
+          <p class="position-modal-copy">Выберите существующий отдел и напишите должность так, как она должна отображаться. Это не меняет ваш доступ и не добавляет вас в состав отдела.</p>
+          <div class="position-modal-field">
+            <label for="customPositionDepartmentSelect">Отдел</label>
+            <span class="select-wrap w-full"><select id="customPositionDepartmentSelect" class="ui-select text-sm w-full"><option value="">Выберите отдел</option><option value="administration">Администрация</option><option value="accounting">Бухгалтерия</option><option value="laboratory">Лаборатория</option><option value="egais">Отдел ЕГАИС</option><option value="operations">Отдел эксплуатации</option><option value="warehouse">Склад ГП</option><option value="hr">Служба персонала</option><option value="technology">Технологический отдел</option><option value="bottling">Цех розлива</option></select></span>
+          </div>
+          <div class="position-modal-field">
+            <label for="customPositionInput">Название должности</label>
+            <input id="customPositionInput" class="input-glass w-full px-4 py-3 text-slate-100 focus:outline-none" type="text" minlength="2" maxlength="80" autocomplete="off" placeholder="Например, инженер по автоматизации" />
+          </div>
+          <div id="customPositionError" class="position-modal-error" role="alert"></div>
+          <div class="position-modal-actions">
+            <button id="missingDepartmentBtn" class="position-modal-missing" type="button">Не нашли свой отдел?</button>
+            <button id="customPositionSaveBtn" class="position-modal-save" type="button">Использовать должность</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <div data-app-footer></div>
   </div>
 
@@ -1657,8 +1732,8 @@
     })();
   </script>
 
-<script type="module" src="./nav.js?v=20260822-3"></script>
-  <script type="module" src="./profile.js"></script>
+<script type="module" src="./nav.js?v=20260822-4"></script>
+  <script type="module" src="./profile.js?v=20260822-3"></script>
 
   <script type="module">
     import { startTour } from './tour.js';
