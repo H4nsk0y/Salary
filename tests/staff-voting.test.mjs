@@ -49,17 +49,18 @@ test("tie winner is randomized once and then persisted", async () => {
   );
 });
 
-test("voting page is in navigation after shifts and renders database text safely", async () => {
-  const [nav, html, script] = await Promise.all([
+test("voting is frozen while the shift checklist replaces it in navigation", async () => {
+  const [nav, votingHtml, checklistHtml, checklistScript] = await Promise.all([
     source("nav.js"),
     source("voting.html"),
-    source("voting.js"),
+    source("checklist.html"),
+    source("checklist.js"),
   ]);
 
-  assert.ok(nav.indexOf('key: "schedule"') < nav.indexOf('key: "voting"'));
-  assert.ok(nav.indexOf('key: "voting"') < nav.indexOf('key: "profile"'));
-  assert.match(html, /data-active="voting"/);
-  assert.match(html, /voting\.js\?v=20260820-1/);
-  assert.match(script, /textContent/);
-  assert.doesNotMatch(script, /\.innerHTML\s*=/);
+  assert.ok(nav.indexOf('key: "schedule"') < nav.indexOf('key: "checklist"'));
+  assert.ok(nav.indexOf('key: "checklist"') < nav.indexOf('key: "profile"'));
+  assert.doesNotMatch(nav, /key: "voting"/);
+  assert.match(votingHtml, /location\.replace\("\.\/checklist\.html"\)/);
+  assert.match(checklistHtml, /data-active="checklist"/);
+  assert.match(checklistScript, /textContent/);
 });

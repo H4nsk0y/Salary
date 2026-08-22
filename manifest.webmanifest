@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Alvisa — рабочий кабинет",
   "short_name": "Alvisa",
-  "description": "Табель, смены, задачи и личные расчеты сотрудников.",
+  "description": "Табель, смены, чек-лист и личные расчеты сотрудников.",
   "lang": "ru-RU",
   "dir": "ltr",
   "start_url": "./index.html?source=pwa",
@@ -44,6 +44,12 @@
       "name": "Смены",
       "short_name": "Смены",
       "url": "./schedule.html",
+      "icons": [{ "src": "./images/app-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Чек-лист смены",
+      "short_name": "Чек-лист",
+      "url": "./checklist.html",
       "icons": [{ "src": "./images/app-icon-192.png", "sizes": "192x192" }]
     }
   ]

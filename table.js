@@ -26,6 +26,7 @@ import {
   calculateVacationPayFromHistory,
   VACATION_PAY_MONTHS_REQUIRED,
 } from "./vacationPay.js";
+import { downloadShiftCalendar } from "./calendarExport.js";
 
 document.body.classList.add("is-loaded");
 
@@ -56,6 +57,7 @@ let dismissedBeforeMonth = false;
 const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
 const saveBtn = document.getElementById("saveBtn");
+const exportCalendarBtn = document.getElementById("exportCalendarBtn");
 const saveStatus = document.getElementById("saveStatus");
 const readOnlyNotice = document.getElementById("readOnlyNotice");
 
@@ -3141,6 +3143,25 @@ logoutBtn?.addEventListener("click", async () => {
 });
 
 saveBtn?.addEventListener("click", async () => { await doSaveTimesheet(); });
+
+exportCalendarBtn?.addEventListener("click", () => {
+  const result = downloadShiftCalendar({
+    year,
+    month,
+    dayHours,
+    nightHours,
+    shiftComments,
+    calendarName: `График Alvisa — ${monthNames[month]} ${year}`,
+  });
+
+  if (!result.events.length) {
+    setError("В выбранном месяце пока нет смен для экспорта.");
+    return;
+  }
+
+  setError(null);
+  setSaveStatus(`Календарь: ${result.events.length} событий`, "ok");
+});
 
 okladInput?.addEventListener("input", () => {
   const raw = String(okladInput.value ?? "").trim();

@@ -1102,6 +1102,54 @@ export async function getMyDepartmentKey() {
   return editorRow?.department_key ?? null;
 }
 
+export async function getMyShiftChecklistState() {
+  await requireUserId();
+
+  const { data, error } = await supabase.rpc("get_my_shift_checklist_state");
+  if (error) throw error;
+  return data ?? { active: null, latest_completed: null };
+}
+
+export async function startMyShiftChecklist({ items, remindersEnabled = true } = {}) {
+  await requireUserId();
+
+  const { data, error } = await supabase.rpc("start_my_shift_checklist", {
+    p_items: Array.isArray(items) ? items : [],
+    p_reminders_enabled: remindersEnabled === true,
+  });
+
+  if (error) throw error;
+  return data ?? null;
+}
+
+export async function updateMyShiftChecklist(checklistId, { items, remindersEnabled } = {}) {
+  await requireUserId();
+  const id = Number(checklistId);
+  if (!Number.isInteger(id) || id <= 0) throw new Error("Некорректный чек-лист.");
+
+  const { data, error } = await supabase.rpc("update_my_shift_checklist", {
+    p_checklist_id: id,
+    p_items: Array.isArray(items) ? items : [],
+    p_reminders_enabled: remindersEnabled === true,
+  });
+
+  if (error) throw error;
+  return data ?? null;
+}
+
+export async function finishMyShiftChecklist(checklistId) {
+  await requireUserId();
+  const id = Number(checklistId);
+  if (!Number.isInteger(id) || id <= 0) throw new Error("Некорректный чек-лист.");
+
+  const { data, error } = await supabase.rpc("finish_my_shift_checklist", {
+    p_checklist_id: id,
+  });
+
+  if (error) throw error;
+  return data ?? null;
+}
+
 export async function getMyChatDepartment() {
   return getMyDepartmentKey();
 }

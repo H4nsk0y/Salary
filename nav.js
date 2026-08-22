@@ -19,7 +19,7 @@ const MAIN_LINKS = [
   { key: "calculator", href: "calculator.html", label: "Калькулятор" },
   { key: "table", href: "table.html", label: "Табель" },
   { key: "schedule", href: "schedule.html", label: "Смены" },
-  { key: "voting", href: "voting.html", label: "Голосование" },
+  { key: "checklist", href: "checklist.html", label: "Чек-лист" },
   { key: "profile", href: "profile.html", label: "Профиль" },
 ];
 
