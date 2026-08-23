@@ -27,6 +27,7 @@ import {
   VACATION_PAY_MONTHS_REQUIRED,
 } from "./vacationPay.js";
 import { downloadShiftCalendar } from "./calendarExport.js";
+import { getNightSequenceDisplay, isWorkDepartureDay } from "./timesheetView.js?v=20260823-2";
 
 document.body.classList.add("is-loaded");
 
@@ -124,6 +125,28 @@ const headerRow = document.getElementById("headerRow");
 const dayRow = document.getElementById("dayRow");
 const nightRow = document.getElementById("nightRow");
 const tableScrollable = document.getElementById("tableScrollable");
+const classicTimesheetView = document.getElementById("classicTimesheetView");
+const calendarTimesheetView = document.getElementById("calendarTimesheetView");
+const agendaTimesheetView = document.getElementById("agendaTimesheetView");
+const timesheetCalendarGrid = document.getElementById("timesheetCalendarGrid");
+const timesheetAgendaList = document.getElementById("timesheetAgendaList");
+const timesheetViewButtons = [...document.querySelectorAll("[data-timesheet-view-button]")];
+const timesheetViewToolbar = document.querySelector(".timesheet-view-toolbar");
+const timesheetWorkDaysOnly = document.getElementById("timesheetWorkDaysOnly");
+const timesheetWorkDaysOnlyLabel = document.getElementById("timesheetWorkDaysOnlyLabel");
+const timesheetGuideGrid = document.querySelector(".timesheet-guide-grid");
+const timesheetSummary = document.querySelector(".timesheet-summary");
+
+const timesheetDayEditor = document.getElementById("timesheetDayEditor");
+const timesheetDayEditorTitle = document.getElementById("timesheetDayEditorTitle");
+const timesheetDayEditorClose = document.getElementById("timesheetDayEditorClose");
+const timesheetDayEditorDay = document.getElementById("timesheetDayEditorDay");
+const timesheetDayEditorNight = document.getElementById("timesheetDayEditorNight");
+const timesheetDayEditorHoliday = document.getElementById("timesheetDayEditorHoliday");
+const timesheetDayEditorTransferred = document.getElementById("timesheetDayEditorTransferred");
+const timesheetDayEditorShort = document.getElementById("timesheetDayEditorShort");
+const timesheetDayEditorComment = document.getElementById("timesheetDayEditorComment");
+const timesheetDayEditorHint = document.getElementById("timesheetDayEditorHint");
 
 const mPrevDayBtn = document.getElementById("mPrevDay");
 const mNextDayBtn = document.getElementById("mNextDay");
@@ -138,6 +161,12 @@ const helpPanel = document.getElementById("helpPanel");
 
 let profileCompletionGateEl = null;
 let personalTimesheetReadOnly = false;
+const TIMESHEET_VIEW_STORAGE_KEY = "alvisa-timesheet-view-v1";
+const TIMESHEET_WORK_FILTER_STORAGE_KEY = "alvisa-timesheet-work-days-only-v1";
+const TIMESHEET_VIEWS = new Set(["classic", "calendar", "agenda"]);
+let activeTimesheetView = "classic";
+let activeDayEditorIndex = null;
+let showWorkDepartureDaysOnly = false;
 
 function applyPersonalTimesheetEditability() {
   readOnlyNotice?.classList.toggle("hidden", !personalTimesheetReadOnly);
@@ -164,6 +193,8 @@ function applyPersonalTimesheetEditability() {
   for (const input of [...dayInputs, ...nightInputs]) {
     if (input) input.disabled = personalTimesheetReadOnly || input.disabled;
   }
+
+  syncDayEditor();
 
   if (personalTimesheetReadOnly) {
     setSaveStatus("Только просмотр", "ok");
@@ -2144,6 +2175,429 @@ function getResolvedHazardRate() {
   return getHazardRateByPosition(profilePosition);
 }
 
+function getStoredTimesheetView() {
+  try {
+    const stored = localStorage.getItem(TIMESHEET_VIEW_STORAGE_KEY);
+    return TIMESHEET_VIEWS.has(stored) ? stored : "classic";
+  } catch {
+    return "classic";
+  }
+}
+
+function getStoredWorkDepartureFilter() {
+  try { return localStorage.getItem(TIMESHEET_WORK_FILTER_STORAGE_KEY) === "1"; }
+  catch { return false; }
+}
+
+function setWorkDepartureFilter(enabled, { persist = true } = {}) {
+  showWorkDepartureDaysOnly = Boolean(enabled);
+  if (timesheetWorkDaysOnly) timesheetWorkDaysOnly.checked = showWorkDepartureDaysOnly;
+  if (persist) {
+    try { localStorage.setItem(TIMESHEET_WORK_FILTER_STORAGE_KEY, showWorkDepartureDaysOnly ? "1" : "0"); } catch {}
+  }
+  syncClassicFilterState();
+  renderAlternativeTimesheetViews();
+}
+
+function setTimesheetView(view, { persist = true } = {}) {
+  activeTimesheetView = TIMESHEET_VIEWS.has(view) ? view : "classic";
+  document.body.dataset.timesheetView = activeTimesheetView;
+
+  if (classicTimesheetView) classicTimesheetView.hidden = activeTimesheetView !== "classic";
+  if (calendarTimesheetView) calendarTimesheetView.hidden = activeTimesheetView !== "calendar";
+  if (agendaTimesheetView) agendaTimesheetView.hidden = activeTimesheetView !== "agenda";
+  if (timesheetWorkDaysOnlyLabel) {
+    timesheetWorkDaysOnlyLabel.textContent = activeTimesheetView === "classic"
+      ? "Только дни с часами"
+      : activeTimesheetView === "calendar"
+        ? "Выделить дни выхода на работу"
+        : "Только дни выхода на работу";
+  }
+
+  for (const button of timesheetViewButtons) {
+    const selected = button.dataset.timesheetViewButton === activeTimesheetView;
+    button.classList.toggle("is-active", selected);
+    button.setAttribute("aria-selected", String(selected));
+    button.tabIndex = selected ? 0 : -1;
+  }
+
+  if (persist) {
+    try { localStorage.setItem(TIMESHEET_VIEW_STORAGE_KEY, activeTimesheetView); } catch {}
+  }
+
+  if (activeTimesheetView !== "classic") renderAlternativeTimesheetViews();
+  syncClassicFilterState();
+}
+
+function setupTimesheetViews() {
+  if (timesheetGuideGrid) {
+    timesheetGuideGrid.before(
+      ...[timesheetViewToolbar, classicTimesheetView, calendarTimesheetView, agendaTimesheetView, timesheetSummary].filter(Boolean)
+    );
+  }
+  for (const button of timesheetViewButtons) {
+    button.addEventListener("click", () => setTimesheetView(button.dataset.timesheetViewButton));
+  }
+  timesheetWorkDaysOnly?.addEventListener("change", () => setWorkDepartureFilter(timesheetWorkDaysOnly.checked));
+  setWorkDepartureFilter(getStoredWorkDepartureFilter(), { persist: false });
+  setTimesheetView(getStoredTimesheetView(), { persist: false });
+}
+
+function isCurrentCalendarDay(index) {
+  const today = new Date();
+  return today.getFullYear() === year && today.getMonth() === month && today.getDate() === index + 1;
+}
+
+function getDayMarkLabel(index) {
+  if (isHoliday[index]) return "Праздник";
+  if (isTransferredOff[index]) return "Выходной";
+  if (isShortDay[index]) return "Сокращенный";
+  if (isWeekendByIndex(year, month, index)) return "Выходной";
+  return "";
+}
+
+function getLeaveLabel(leave) {
+  const labels = {
+    vac_paid: "Оплачиваемый отпуск",
+    sick: "Больничный",
+    vac_unpaid: "Отпуск без оплаты",
+    vac_unpaid_required: "Отпуск без оплаты",
+    edu_paid: "Учебный отпуск",
+    edu_unpaid: "Учебный отпуск без оплаты",
+    not_employed: "Не трудоустроен",
+    dismissed: "Увольнение",
+  };
+  return labels[normalizeLeaveTypeLegacy(leave)] || "Код отсутствия";
+}
+
+function getDayPresentation(index) {
+  const leave = normalizeLeaveTypeLegacy(leaveType[index]);
+  const day = sanitizeHourNumber(dayHours[index] || 0);
+  const night = sanitizeHourNumber(nightHours[index] || 0);
+  const comment = String(shiftComments[index] ?? "").trim();
+  const mark = getDayMarkLabel(index);
+
+  if (leave) {
+    const code = leaveTypeToCode(leave, "");
+    return {
+      dayText: code,
+      nightText: "",
+      primary: code,
+      secondary: getLeaveLabel(leave),
+      leave: true,
+      comment,
+      mark,
+      hasShift: false,
+    };
+  }
+
+  const nightSequence = getNightSequenceDisplay(dayHours, nightHours, index);
+  if (nightSequence?.kind === "rest") {
+    return {
+      dayText: "",
+      nightText: "",
+      primary: nightSequence.label,
+      compactPrimary: nightSequence.compactLabel,
+      secondary: comment || "После ночной смены",
+      leave: false,
+      isRest: true,
+      comment,
+      mark,
+      hasShift: false,
+    };
+  }
+
+  if (nightSequence?.kind === "night") {
+    return {
+      dayText: "",
+      nightText: String(nightSequence.hours),
+      primary: nightSequence.compactLabel,
+      compactPrimary: nightSequence.compactLabel,
+      secondary: comment || "Ночная смена",
+      leave: false,
+      isRest: false,
+      comment,
+      mark,
+      hasShift: true,
+    };
+  }
+
+  const dayText = day > 0 ? formatHourForInput(day) : "";
+  const nightText = night > 0 ? formatHourForInput(night) : "";
+  const parts = [];
+  if (dayText) parts.push(`${dayText} ч день`);
+  if (nightText) parts.push(`${nightText} ч ночь`);
+
+  return {
+    dayText,
+    nightText,
+    primary: parts.join(" · ") || (mark || "Смена не указана"),
+    secondary: comment || (!parts.length && mark ? "Рабочих часов нет" : ""),
+    leave: false,
+    comment,
+    mark,
+    hasShift: Boolean(dayText || nightText),
+  };
+}
+
+function isClassicFilterDayVisible(index) {
+  if (!showWorkDepartureDaysOnly) return true;
+  if (normalizeLeaveTypeLegacy(leaveType[index])) return false;
+  return (Number(dayHours[index]) || 0) > 0 || (Number(nightHours[index]) || 0) > 0;
+}
+
+function syncClassicFilterState() {
+  const filtered = activeTimesheetView === "classic" && showWorkDepartureDaysOnly;
+  document.body.classList.toggle("timesheet-classic-filtered", filtered);
+
+  for (let index = 0; index < daysInMonth; index += 1) {
+    const hidden = filtered && !isClassicFilterDayVisible(index);
+    for (const element of [
+      headerCells[index],
+      dayInputs[index]?.closest("td"),
+      nightInputs[index]?.closest("td"),
+    ]) {
+      element?.classList.toggle("timesheet-classic-day-hidden", hidden);
+    }
+  }
+}
+
+function applyAlternativeDayClasses(element, index, presentation) {
+  element.classList.toggle("is-weekend", isWeekendByIndex(year, month, index));
+  element.classList.toggle("is-holiday", Boolean(isHoliday[index]));
+  element.classList.toggle("is-transferred", Boolean(isTransferredOff[index]));
+  element.classList.toggle("is-short", Boolean(isShortDay[index]));
+  element.classList.toggle("is-today", isCurrentCalendarDay(index));
+  element.classList.toggle("has-comment", Boolean(presentation.comment));
+  element.classList.toggle("is-rest", Boolean(presentation.isRest));
+}
+
+function renderCalendarTimesheet() {
+  if (!timesheetCalendarGrid) return;
+  calendarTimesheetView?.classList.toggle("is-work-filtered", showWorkDepartureDaysOnly);
+  const fragment = document.createDocumentFragment();
+  const firstDayOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+
+  for (let i = 0; i < firstDayOffset; i += 1) {
+    const spacer = document.createElement("div");
+    spacer.className = "timesheet-calendar-spacer";
+    spacer.setAttribute("aria-hidden", "true");
+    fragment.appendChild(spacer);
+  }
+
+  for (let index = 0; index < daysInMonth; index += 1) {
+    const presentation = getDayPresentation(index);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "timesheet-calendar-day";
+    button.dataset.dayIndex = String(index);
+    button.setAttribute("aria-label", `${index + 1} ${monthNames[month]}: ${presentation.primary}`);
+    applyAlternativeDayClasses(button, index, presentation);
+    button.classList.toggle(
+      "is-not-departure",
+      showWorkDepartureDaysOnly && !isWorkDepartureDay(dayHours, nightHours, leaveType, index)
+    );
+
+    const heading = document.createElement("span");
+    heading.className = "timesheet-calendar-number";
+    const number = document.createElement("span");
+    number.textContent = String(index + 1);
+    const mark = document.createElement("span");
+    mark.textContent = isShortDay[index] ? "−1 ч" : "";
+    mark.setAttribute("aria-hidden", "true");
+    heading.append(number, mark);
+
+    const value = document.createElement("span");
+    value.className = "timesheet-calendar-value";
+    if (presentation.isRest) {
+      const rest = document.createElement("span");
+      rest.className = "rest";
+      rest.textContent = presentation.compactPrimary;
+      value.appendChild(rest);
+    } else if (presentation.leave) {
+      const leave = document.createElement("span");
+      leave.className = "leave";
+      leave.textContent = presentation.dayText;
+      value.appendChild(leave);
+    } else if (presentation.hasShift) {
+      if (presentation.dayText) {
+        const day = document.createElement("span");
+        day.textContent = `Д ${presentation.dayText}`;
+        value.appendChild(day);
+      }
+      if (presentation.nightText) {
+        const night = document.createElement("span");
+        night.className = "night";
+        night.textContent = `Н ${presentation.nightText}`;
+        value.appendChild(night);
+      }
+    } else {
+      const empty = document.createElement("span");
+      empty.className = "timesheet-calendar-empty";
+      empty.textContent = "Нет смены";
+      value.appendChild(empty);
+    }
+
+    button.append(heading, value);
+    button.addEventListener("click", () => openDayEditor(index));
+    fragment.appendChild(button);
+  }
+
+  timesheetCalendarGrid.replaceChildren(fragment);
+}
+
+function renderAgendaTimesheet() {
+  if (!timesheetAgendaList) return;
+  const fragment = document.createDocumentFragment();
+
+  for (let index = 0; index < daysInMonth; index += 1) {
+    if (showWorkDepartureDaysOnly && !isWorkDepartureDay(dayHours, nightHours, leaveType, index)) continue;
+    const presentation = getDayPresentation(index);
+    const date = new Date(year, month, index + 1);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "timesheet-agenda-day";
+    applyAlternativeDayClasses(button, index, presentation);
+
+    const dateBlock = document.createElement("span");
+    dateBlock.className = "timesheet-agenda-date";
+    const dateNumber = document.createElement("strong");
+    dateNumber.textContent = String(index + 1).padStart(2, "0");
+    const weekday = document.createElement("span");
+    weekday.textContent = DOW_SHORT[date.getDay()];
+    dateBlock.append(dateNumber, weekday);
+
+    const shift = document.createElement("span");
+    shift.className = "timesheet-agenda-shift";
+    const primary = document.createElement("strong");
+    primary.textContent = presentation.primary;
+    const secondary = document.createElement("span");
+    secondary.textContent = presentation.secondary;
+    shift.append(primary, secondary);
+
+    const status = document.createElement("span");
+    status.className = "timesheet-agenda-status";
+    status.textContent = presentation.comment ? "Комментарий" : presentation.mark;
+
+    button.append(dateBlock, shift, status);
+    button.addEventListener("click", () => openDayEditor(index));
+    fragment.appendChild(button);
+  }
+
+  if (!fragment.childNodes.length) {
+    const empty = document.createElement("div");
+    empty.className = "timesheet-filter-empty";
+    empty.textContent = "В этом месяце пока нет указанных выходов на работу.";
+    fragment.appendChild(empty);
+  }
+
+  timesheetAgendaList.replaceChildren(fragment);
+}
+
+function renderAlternativeTimesheetViews() {
+  if (activeTimesheetView === "calendar") renderCalendarTimesheet();
+  if (activeTimesheetView === "agenda") renderAgendaTimesheet();
+}
+
+function closeDayEditor() {
+  if (!timesheetDayEditor) return;
+  timesheetDayEditor.hidden = true;
+  activeDayEditorIndex = null;
+  document.body.classList.remove("overflow-hidden");
+}
+
+function syncDayEditor() {
+  if (!timesheetDayEditor || timesheetDayEditor.hidden || !Number.isInteger(activeDayEditorIndex)) return;
+  const index = activeDayEditorIndex;
+  const sourceDay = dayInputs[index];
+  const sourceNight = nightInputs[index];
+  if (!sourceDay || !sourceNight) return;
+
+  const date = new Date(year, month, index + 1);
+  if (timesheetDayEditorTitle) {
+    timesheetDayEditorTitle.textContent = `${index + 1} ${monthNames[month].toLowerCase()} · ${DOW_SHORT[date.getDay()]}`;
+  }
+  if (timesheetDayEditorDay) {
+    timesheetDayEditorDay.value = sourceDay.value;
+    timesheetDayEditorDay.disabled = sourceDay.disabled;
+  }
+  if (timesheetDayEditorNight) {
+    timesheetDayEditorNight.value = sourceNight.value;
+    timesheetDayEditorNight.disabled = sourceNight.disabled;
+  }
+
+  timesheetDayEditorHoliday?.classList.toggle("is-active", Boolean(isHoliday[index]));
+  timesheetDayEditorTransferred?.classList.toggle("is-active", Boolean(isTransferredOff[index]));
+  timesheetDayEditorShort?.classList.toggle("is-active", Boolean(isShortDay[index]));
+
+  for (const markButton of [timesheetDayEditorHoliday, timesheetDayEditorTransferred, timesheetDayEditorShort]) {
+    if (markButton) markButton.disabled = personalTimesheetReadOnly;
+  }
+
+  const comment = String(shiftComments[index] ?? "").trim();
+  if (timesheetDayEditorComment) {
+    timesheetDayEditorComment.hidden = !comment;
+    timesheetDayEditorComment.textContent = comment;
+  }
+  if (timesheetDayEditorHint) {
+    timesheetDayEditorHint.textContent = personalTimesheetReadOnly
+      ? "Табель доступен только для просмотра."
+      : "Можно вводить часы или код отсутствия. Изменения сохраняются автоматически.";
+  }
+}
+
+function openDayEditor(index) {
+  if (!timesheetDayEditor || index < 0 || index >= daysInMonth) return;
+  activeDayEditorIndex = index;
+  timesheetDayEditor.hidden = false;
+  document.body.classList.add("overflow-hidden");
+  syncDayEditor();
+  if (!personalTimesheetReadOnly) timesheetDayEditorDay?.focus();
+}
+
+function forwardDayEditorInput(editorInput, sourceInputs) {
+  if (!editorInput || !Number.isInteger(activeDayEditorIndex) || personalTimesheetReadOnly) return;
+  const source = sourceInputs[activeDayEditorIndex];
+  if (!source || source.disabled) return;
+  source.value = editorInput.value;
+  source.dispatchEvent(new Event("input", { bubbles: true }));
+  editorInput.value = source.value;
+  syncDayEditor();
+}
+
+function toggleDayEditorMark(type) {
+  if (!Number.isInteger(activeDayEditorIndex) || personalTimesheetReadOnly) return;
+  const index = activeDayEditorIndex;
+  const wasActive = type === "holiday"
+    ? Boolean(isHoliday[index])
+    : type === "transferred"
+      ? Boolean(isTransferredOff[index])
+      : Boolean(isShortDay[index]);
+
+  isHoliday[index] = type === "holiday" ? !wasActive : false;
+  isTransferredOff[index] = type === "transferred" ? !wasActive : false;
+  isShortDay[index] = type === "short" ? !wasActive : false;
+  personalSharedMarksChanged = true;
+  updateDayMarkClasses(index);
+  recalcAll();
+  scheduleSave();
+  updateMobileToolbar();
+  syncDayEditor();
+}
+
+timesheetDayEditorDay?.addEventListener("input", () => forwardDayEditorInput(timesheetDayEditorDay, dayInputs));
+timesheetDayEditorNight?.addEventListener("input", () => forwardDayEditorInput(timesheetDayEditorNight, nightInputs));
+timesheetDayEditorHoliday?.addEventListener("click", () => toggleDayEditorMark("holiday"));
+timesheetDayEditorTransferred?.addEventListener("click", () => toggleDayEditorMark("transferred"));
+timesheetDayEditorShort?.addEventListener("click", () => toggleDayEditorMark("short"));
+timesheetDayEditorClose?.addEventListener("click", closeDayEditor);
+timesheetDayEditor?.addEventListener("click", (event) => {
+  if (event.target === timesheetDayEditor) closeDayEditor();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && timesheetDayEditor && !timesheetDayEditor.hidden) closeDayEditor();
+});
+
 function recalcAll() {
   if (monthYearDisplay) monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
   requestPaymentCountdownUpdate();
@@ -2169,6 +2623,8 @@ function recalcAll() {
   if (workedFirstHalfEl) workedFirstHalfEl.textContent = workedFH.toFixed(1);
 
   syncPaidLeaveControls();
+  syncClassicFilterState();
+  renderAlternativeTimesheetViews();
 
   const baseOklad = getResolvedBaseOklad();
   let calculated = null;
@@ -3214,6 +3670,7 @@ yearSelect?.addEventListener("change", async () => {
   if (isMobileNow()) setMobileDay(mobileSelectedIdx < daysInMonth ? mobileSelectedIdx : 0);
 });
 
+setupTimesheetViews();
 setupTableMoneyControls();
 setupActualMoneyControls();
 

@@ -1064,6 +1064,285 @@
         min-height: 94px;
       }
     }
+
+    .timesheet-view-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 16px;
+      margin-bottom: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--alvisa-line);
+      border-radius: 9px;
+      background: #111519;
+    }
+
+    .timesheet-view-switcher {
+      display: inline-grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 3px;
+      padding: 3px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 7px;
+      background: #090c0f;
+    }
+
+    .timesheet-work-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 7px;
+      background: #0b0f12;
+      color: #aeb6bd;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .timesheet-work-filter input {
+      width: 17px;
+      height: 17px;
+      margin: 0;
+      accent-color: #6ea8e8;
+      cursor: pointer;
+    }
+
+    .timesheet-classic-day-hidden { display: none !important; }
+    body.timesheet-classic-filtered #mobileBar { display: none !important; }
+
+    .timesheet-view-button {
+      min-height: 36px;
+      border: 0;
+      border-radius: 5px;
+      padding: 7px 13px;
+      background: transparent;
+      color: #89939d;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+    }
+
+    .timesheet-view-button:hover { color: var(--alvisa-porcelain); }
+    .timesheet-view-button.is-active {
+      background: #20272d;
+      color: #f1eee8;
+      box-shadow: inset 0 0 0 1px rgba(110,168,232,.2);
+    }
+
+    .timesheet-alt-view[hidden],
+    #classicTimesheetView[hidden],
+    #timesheetDayEditor[hidden] { display: none !important; }
+
+    .timesheet-calendar-shell,
+    .timesheet-agenda-shell {
+      margin-bottom: 20px;
+      overflow: hidden;
+      border: 1px solid var(--alvisa-line);
+      border-radius: 9px;
+      background: #111519;
+    }
+
+    .timesheet-calendar-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      border-bottom: 1px solid var(--alvisa-line);
+      background: #191e23;
+    }
+
+    .timesheet-calendar-weekdays span {
+      padding: 10px 4px;
+      color: #77818b;
+      font-size: 10px;
+      font-weight: 700;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .timesheet-calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .timesheet-calendar-spacer {
+      min-height: 96px;
+      border-right: 1px solid rgba(241,238,232,.06);
+      border-bottom: 1px solid rgba(241,238,232,.06);
+      background: #0d1114;
+    }
+
+    .timesheet-calendar-day {
+      position: relative;
+      min-width: 0;
+      min-height: 96px;
+      border: 0;
+      border-right: 1px solid rgba(241,238,232,.07);
+      border-bottom: 1px solid rgba(241,238,232,.07);
+      padding: 10px;
+      background: #12171b;
+      color: #e8e6e0;
+      text-align: left;
+      cursor: pointer;
+      transition: background .16s ease, box-shadow .16s ease;
+    }
+
+    .timesheet-calendar-day:hover { background: #182027; }
+    .timesheet-calendar-day.is-weekend { background: rgba(122,22,56,.13); }
+    .timesheet-calendar-day.is-holiday { background: rgba(198,161,91,.16); }
+    .timesheet-calendar-day.is-transferred { background: rgba(110,168,232,.14); }
+    .timesheet-calendar-day.is-short { box-shadow: inset 0 3px 0 rgba(99,190,151,.75); }
+    .timesheet-calendar-day.is-today { box-shadow: inset 0 0 0 2px rgba(110,168,232,.75); z-index: 1; }
+    .timesheet-calendar-day.is-rest { background: rgba(122,22,56,.14); }
+    .timesheet-calendar-shell.is-work-filtered .timesheet-calendar-day.is-not-departure {
+      opacity: .16;
+      filter: grayscale(.9) saturate(.25);
+    }
+    .timesheet-calendar-shell.is-work-filtered .timesheet-calendar-day.is-not-departure:hover,
+    .timesheet-calendar-shell.is-work-filtered .timesheet-calendar-day.is-not-departure:focus-visible {
+      opacity: .48;
+    }
+    .timesheet-calendar-day.has-comment::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 0;
+      height: 0;
+      border-top: 13px solid #6ea8e8;
+      border-left: 13px solid transparent;
+    }
+
+    .timesheet-calendar-number {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      color: #9da7b0;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .timesheet-calendar-value {
+      display: grid;
+      gap: 3px;
+      margin-top: 10px;
+      color: #f1eee8;
+      font-size: 13px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+    }
+
+    .timesheet-calendar-value .night { color: #bcd8f6; }
+    .timesheet-calendar-value .leave { color: #ead3a5; }
+    .timesheet-calendar-value .rest { color: #e3a8b8; }
+    .timesheet-calendar-empty { color: #59636c; font-weight: 500; }
+
+    .timesheet-agenda-list { display: grid; }
+    .timesheet-agenda-day {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
+      border: 0;
+      border-bottom: 1px solid var(--alvisa-line);
+      padding: 14px 16px;
+      background: #111519;
+      color: #f1eee8;
+      text-align: left;
+      cursor: pointer;
+      transition: background .16s ease;
+    }
+
+    .timesheet-agenda-day:last-child { border-bottom: 0; }
+    .timesheet-agenda-day:hover { background: #182027; }
+    .timesheet-agenda-day.is-today { box-shadow: inset 3px 0 0 #6ea8e8; }
+    .timesheet-agenda-day.is-holiday { background: rgba(198,161,91,.11); }
+    .timesheet-agenda-day.is-transferred { background: rgba(110,168,232,.1); }
+    .timesheet-agenda-day.is-rest { background: rgba(122,22,56,.12); }
+    .timesheet-agenda-day.is-rest .timesheet-agenda-shift strong { color: #e3a8b8; }
+    .timesheet-agenda-date strong { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+    .timesheet-agenda-date span { color: #77818b; font-size: 11px; }
+    .timesheet-agenda-shift { min-width: 0; }
+    .timesheet-agenda-shift strong { display: block; overflow-wrap: anywhere; font-size: 14px; }
+    .timesheet-agenda-shift span { display: block; margin-top: 3px; overflow: hidden; color: #89939d; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .timesheet-agenda-status { color: #6ea8e8; font-size: 11px; font-weight: 700; text-align: right; }
+
+    .timesheet-filter-empty {
+      grid-column: 1 / -1;
+      padding: 36px 18px;
+      background: #111519;
+      color: #77818b;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .timesheet-day-editor-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1200;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      background: rgba(4,6,8,.76);
+      backdrop-filter: blur(8px);
+    }
+
+    .timesheet-day-editor-dialog {
+      width: min(460px, 100%);
+      overflow: hidden;
+      border: 1px solid rgba(110,168,232,.24);
+      border-radius: 10px;
+      background: #111519;
+      box-shadow: 0 28px 90px rgba(0,0,0,.58);
+    }
+
+    .timesheet-day-editor-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--alvisa-line);
+      background: #191e23;
+    }
+
+    .timesheet-day-editor-head h2 { margin: 0; font-family: "Anticva", Georgia, serif; font-size: 23px; font-weight: 400; }
+    .timesheet-day-editor-close { border: 0; background: transparent; color: #9da7b0; font-size: 25px; cursor: pointer; }
+    .timesheet-day-editor-body { display: grid; gap: 16px; padding: 18px; }
+    .timesheet-day-editor-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .timesheet-day-editor-field { display: grid; gap: 7px; color: #89939d; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .timesheet-day-editor-input { width: 100%; min-width: 0; border: 1px solid rgba(255,255,255,.11); border-radius: 7px; padding: 12px; background: #090c0f; color: #f1eee8; font-size: 17px; text-align: center; text-transform: uppercase; outline: none; }
+    .timesheet-day-editor-input:focus { border-color: #6ea8e8; box-shadow: 0 0 0 3px rgba(110,168,232,.13); }
+    .timesheet-day-editor-marks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+    .timesheet-day-editor-mark { min-height: 40px; border: 1px solid rgba(255,255,255,.1); border-radius: 6px; background: #151a1f; color: #9da7b0; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .timesheet-day-editor-mark.is-active { border-color: rgba(110,168,232,.5); background: rgba(110,168,232,.15); color: #d9ebff; }
+    .timesheet-day-editor-comment { padding: 12px; border-left: 2px solid #6ea8e8; background: #0d1114; color: #c3cad0; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .timesheet-day-editor-hint { color: #77818b; font-size: 11px; line-height: 1.5; }
+
+    body:not([data-timesheet-view="classic"]) #mobileBar { display: none !important; }
+
+    @media (max-width: 767px) {
+      .timesheet-view-toolbar { align-items: stretch; flex-direction: column; gap: 9px; padding: 10px; }
+      .timesheet-view-switcher { width: 100%; }
+      .timesheet-work-filter { justify-content: center; width: 100%; }
+      .timesheet-view-button { min-width: 0; padding: 7px 5px; }
+      .timesheet-calendar-spacer, .timesheet-calendar-day { min-height: 72px; }
+      .timesheet-calendar-day { padding: 7px 5px; }
+      .timesheet-calendar-number { font-size: 11px; }
+      .timesheet-calendar-value { gap: 2px; margin-top: 7px; font-size: 11px; }
+      .timesheet-calendar-empty { font-size: 0; }
+      .timesheet-agenda-day { grid-template-columns: 54px minmax(0, 1fr) auto; gap: 10px; padding: 13px 12px; }
+      .timesheet-agenda-date strong { font-size: 16px; }
+      .timesheet-agenda-status { max-width: 70px; }
+      .timesheet-day-editor-backdrop { align-items: end; padding: 0; }
+      .timesheet-day-editor-dialog { width: 100%; border-radius: 12px 12px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+    }
   </style>
   <link rel="stylesheet" href="./tour.css?v=20260802-1" />
 </head>
@@ -1278,16 +1557,63 @@
       </section>
     </div>
 
-    <div class="timesheet-grid-wrap reveal">
-      <div class="scrollable" id="tableScrollable">
-        <table class="timesheet-table" id="timesheet">
-          <thead><tr id="headerRow"></tr></thead>
-          <tbody>
-            <tr id="dayRow"></tr>
-            <tr id="nightRow"></tr>
-          </tbody>
-        </table>
+    <div class="timesheet-view-toolbar reveal">
+      <div class="timesheet-view-switcher" role="tablist" aria-label="Вид личного табеля">
+        <button type="button" class="timesheet-view-button is-active" data-timesheet-view-button="classic" role="tab" aria-selected="true">Классический</button>
+        <button type="button" class="timesheet-view-button" data-timesheet-view-button="calendar" role="tab" aria-selected="false">Календарь</button>
+        <button type="button" class="timesheet-view-button" data-timesheet-view-button="agenda" role="tab" aria-selected="false">Лента</button>
       </div>
+      <label class="timesheet-work-filter">
+        <input id="timesheetWorkDaysOnly" type="checkbox">
+        <span id="timesheetWorkDaysOnlyLabel">Только дни выхода на работу</span>
+      </label>
+    </div>
+
+    <div id="classicTimesheetView">
+      <div class="timesheet-grid-wrap reveal">
+        <div class="scrollable" id="tableScrollable">
+          <table class="timesheet-table" id="timesheet">
+            <thead><tr id="headerRow"></tr></thead>
+            <tbody>
+              <tr id="dayRow"></tr>
+              <tr id="nightRow"></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <section id="calendarTimesheetView" class="timesheet-alt-view timesheet-calendar-shell reveal" hidden aria-label="Табель в виде календаря">
+      <div class="timesheet-calendar-weekdays" aria-hidden="true">
+        <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+      </div>
+      <div id="timesheetCalendarGrid" class="timesheet-calendar-grid"></div>
+    </section>
+
+    <section id="agendaTimesheetView" class="timesheet-alt-view timesheet-agenda-shell reveal" hidden aria-label="Табель в виде ленты">
+      <div id="timesheetAgendaList" class="timesheet-agenda-list"></div>
+    </section>
+
+    <div id="timesheetDayEditor" class="timesheet-day-editor-backdrop" hidden>
+      <section class="timesheet-day-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="timesheetDayEditorTitle">
+        <header class="timesheet-day-editor-head">
+          <h2 id="timesheetDayEditorTitle">Смена</h2>
+          <button id="timesheetDayEditorClose" type="button" class="timesheet-day-editor-close" aria-label="Закрыть">×</button>
+        </header>
+        <div class="timesheet-day-editor-body">
+          <div class="timesheet-day-editor-fields">
+            <label class="timesheet-day-editor-field">День<input id="timesheetDayEditorDay" class="timesheet-day-editor-input" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+            <label class="timesheet-day-editor-field">Ночь<input id="timesheetDayEditorNight" class="timesheet-day-editor-input" type="text" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
+          </div>
+          <div class="timesheet-day-editor-marks">
+            <button id="timesheetDayEditorHoliday" type="button" class="timesheet-day-editor-mark">Праздник</button>
+            <button id="timesheetDayEditorTransferred" type="button" class="timesheet-day-editor-mark">Выходной</button>
+            <button id="timesheetDayEditorShort" type="button" class="timesheet-day-editor-mark">Сокращ.</button>
+          </div>
+          <div id="timesheetDayEditorComment" class="timesheet-day-editor-comment" hidden></div>
+          <div id="timesheetDayEditorHint" class="timesheet-day-editor-hint">Можно вводить часы или код отсутствия. Изменения сохраняются автоматически.</div>
+        </div>
+      </section>
     </div>
 
     <div class="timesheet-summary glass-card hover-lift rounded-3xl p-6 md:p-7 reveal grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-4 mb-6">
@@ -1461,8 +1787,8 @@
   </div>
 
   <script type="module" src="./footer.js?v=20260802-2"></script>
-<script type="module" src="./nav.js?v=20260822-4"></script>
-  <script type="module" src="./table.js?v=20260822-2"></script>
+<script type="module" src="./nav.js?v=20260823-1"></script>
+  <script type="module" src="./table.js?v=20260823-3"></script>
 
   <script type="module">
     import { startTour } from './tour.js';

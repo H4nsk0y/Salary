@@ -14,6 +14,9 @@ import "./footer.js?v=20260802-2";
 const NAV_STYLE_ID = "alvisa-common-nav-style";
 const NOTIFICATION_READ_STORAGE_KEY = "alvisa.notificationReadIds.v1";
 const NOTIFICATION_POLL_INTERVAL_MS = 45000;
+const CURRENT_UPDATES_VERSION = "28.0";
+const UPDATES_SEEN_STORAGE_KEY = "alvisa.updatesSeenVersion.v1";
+const UPDATES_PROMPT_SESSION_KEY = "alvisa.updatesPromptedVersion.v1";
 
 const MAIN_LINKS = [
   { key: "calculator", href: "calculator.html", label: "Калькулятор" },
@@ -839,6 +842,34 @@ function detectActiveKey() {
   return fileName;
 }
 
+function markCurrentUpdatesSeen() {
+  try { localStorage.setItem(UPDATES_SEEN_STORAGE_KEY, CURRENT_UPDATES_VERSION); } catch {}
+}
+
+function scheduleUnreadUpdatesPrompt(activeKey) {
+  if (["updates", "login", "register"].includes(activeKey)) return;
+
+  try {
+    if (localStorage.getItem(UPDATES_SEEN_STORAGE_KEY) === CURRENT_UPDATES_VERSION) return;
+    if (sessionStorage.getItem(UPDATES_PROMPT_SESSION_KEY) === CURRENT_UPDATES_VERSION) return;
+    sessionStorage.setItem(UPDATES_PROMPT_SESSION_KEY, CURRENT_UPDATES_VERSION);
+  } catch {
+    return;
+  }
+
+  window.setTimeout(async () => {
+    const openUpdates = await confirmDialog({
+      title: "В ALVISA SALARY появились изменения",
+      message: "Личный табель стал удобнее для просмотра графика, ночных смен и дней выхода на работу.",
+      note: "Откройте короткое описание обновления, чтобы ничего важного не пропустить.",
+      confirmText: "Посмотреть",
+      cancelText: "Позже",
+      tone: "info",
+    });
+    if (openUpdates) window.location.href = "updates.html";
+  }, 1100);
+}
+
 function linkClass(isActive, variant = "desktop") {
   if (variant === "mobile") {
     return isActive ? "mobile-menu-link active" : "mobile-menu-link";
@@ -1352,6 +1383,7 @@ async function enhanceNavForProfile(header) {
     applyProfileNavPreferences(header, profile);
 
     const activeKey = header.dataset.activeKey || detectActiveKey();
+    if (profile?.user_id) scheduleUnreadUpdatesPrompt(activeKey);
     const desktopNav = header.querySelector('[data-nav-slot="desktop"]');
     const mobileNav = header.querySelector('[data-nav-slot="mobile"]');
     if (header.dataset.ownerNavMode === "false") return;
@@ -1371,6 +1403,7 @@ function initCommonNav() {
   if (!mount) return;
 
   injectNavStyles();
+  if (detectActiveKey() === "updates") markCurrentUpdatesSeen();
   const header = renderHeader(mount);
   void enhanceNavForProfile(header);
 }

@@ -36,3 +36,27 @@ test("employment date is constrained inside the mobile profile grid", async () =
   assert.match(html, /#employmentDateInput \{[^}]*width: 100%[^}]*min-width: 0[^}]*max-width: 100%/);
   assert.match(html, /#employmentDateInput \{[^}]*min-inline-size: 0 !important/);
 });
+
+test("personal timesheet offers classic, calendar and agenda views", async () => {
+  const [html, script] = await Promise.all([source("table.html"), source("table.js")]);
+  assert.match(html, /data-timesheet-view-button="classic"[^>]*>Классический</);
+  assert.match(html, /data-timesheet-view-button="calendar"[^>]*>Календарь</);
+  assert.match(html, /data-timesheet-view-button="agenda"[^>]*>Лента</);
+  assert.match(html, /id="timesheetDayEditor"/);
+  assert.match(script, /TIMESHEET_VIEW_STORAGE_KEY/);
+  assert.match(script, /renderCalendarTimesheet/);
+  assert.match(script, /renderAgendaTimesheet/);
+  assert.match(script, /source\.dispatchEvent\(new Event\("input"/);
+  assert.match(script, /Только дни с часами/);
+  assert.match(script, /syncClassicFilterState/);
+});
+
+test("latest user update is announced once until the updates page is opened", async () => {
+  const [updates, nav] = await Promise.all([source("updates.html"), source("nav.js")]);
+  assert.match(updates, /Обновление 28\.0/);
+  assert.match(updates, /У личного табеля появилось три вида/);
+  assert.match(nav, /CURRENT_UPDATES_VERSION = "28\.0"/);
+  assert.match(nav, /UPDATES_SEEN_STORAGE_KEY/);
+  assert.match(nav, /scheduleUnreadUpdatesPrompt/);
+  assert.match(nav, /markCurrentUpdatesSeen/);
+});
