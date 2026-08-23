@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon-180.png?v=4" />
   <link rel="shortcut icon" href="./images/favicon-64.png?v=4" />
   <link rel="manifest" href="./manifest.webmanifest" />
-  <meta name="theme-color" content="#020617" />
+  <meta name="theme-color" content="#0b0d0f" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="ALVISA SALARY" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -546,33 +546,444 @@
       }
     }
   </style>
+
+  <style>
+    @font-face {
+      font-family: "Anticva";
+      src: url("./fonts/Anticva-Regular.otf") format("opentype");
+      font-display: swap;
+    }
+
+    :root {
+      --ink: #0b0d0f;
+      --graphite: #15191d;
+      --graphite-soft: #1b2025;
+      --porcelain: #f1eee8;
+      --muted: #9ca3ab;
+      --line: rgba(241, 238, 232, 0.12);
+      --line-strong: rgba(241, 238, 232, 0.22);
+      --wine: #7a1638;
+      --wine-light: #d3a0b3;
+      --gold: #c6a15b;
+      --steel: #6ea8e8;
+    }
+
+    html { background: var(--ink); }
+
+    body {
+      background:
+        linear-gradient(180deg, rgba(122, 22, 56, 0.07), transparent 310px),
+        var(--ink);
+      color: var(--porcelain);
+      letter-spacing: 0;
+    }
+
+    body::after {
+      background-image: linear-gradient(rgba(241, 238, 232, 0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(241, 238, 232, 0.018) 1px, transparent 1px);
+      background-size: 46px 46px;
+      opacity: 0.6;
+      mask-image: linear-gradient(to bottom, #000 0%, transparent 72%);
+    }
+
+    .training-shell {
+      width: min(1460px, calc(100% - 32px));
+      max-width: none;
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    .training-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
+      align-items: end;
+      gap: 48px;
+      margin-bottom: 26px;
+      padding: 20px 0 30px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .training-kicker {
+      color: var(--wine-light) !important;
+      background: transparent !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      font-size: 0.67rem !important;
+      font-weight: 800 !important;
+      text-transform: uppercase;
+    }
+
+    .training-title,
+    #lessonTitle,
+    #managerMissionTitle,
+    .completion-title,
+    .manager-course-title,
+    .success-title {
+      font-family: "Anticva", Georgia, serif;
+      font-weight: 400 !important;
+      letter-spacing: 0;
+    }
+
+    .training-title {
+      margin-top: 10px !important;
+      color: var(--porcelain) !important;
+      font-size: clamp(2.75rem, 6vw, 5rem) !important;
+      line-height: 0.96 !important;
+    }
+
+    #trainingPageLead {
+      max-width: 720px;
+      margin-top: 16px !important;
+      color: var(--muted) !important;
+      font-size: 0.9rem !important;
+      line-height: 1.72 !important;
+    }
+
+    .training-controls {
+      display: grid;
+      gap: 13px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(241, 238, 232, 0.025);
+    }
+
+    .training-control-label {
+      margin-bottom: 7px !important;
+      color: #777d83 !important;
+      font-size: 0.64rem !important;
+      letter-spacing: 0;
+    }
+
+    #trainingTrackControl,
+    #modeControl {
+      gap: 4px;
+      border-radius: 6px !important;
+      background: #101316 !important;
+      padding: 4px !important;
+      box-shadow: inset 0 0 0 1px var(--line) !important;
+    }
+
+    .mode-button,
+    .mark-button {
+      border-color: transparent;
+      border-radius: 4px !important;
+      background: transparent;
+      color: #969ca3;
+    }
+
+    .mode-button:hover,
+    .mark-button:hover { background: rgba(241, 238, 232, 0.065); color: var(--porcelain); }
+
+    .mode-button.is-active {
+      border-color: rgba(198, 161, 91, 0.25);
+      background: rgba(198, 161, 91, 0.11);
+      color: #ead6ae;
+    }
+
+    #modeHint { color: #727980 !important; }
+
+    .course-progress {
+      margin-bottom: 16px;
+      padding: 15px 16px 13px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(241, 238, 232, 0.022);
+    }
+
+    #stepCounter,
+    #managerStepCounter { color: var(--gold) !important; }
+
+    #progressText,
+    #managerProgressText { color: #858c93 !important; }
+
+    .progress-track {
+      height: 4px !important;
+      border-radius: 0 !important;
+      background: rgba(241, 238, 232, 0.08) !important;
+      box-shadow: none !important;
+    }
+
+    #progressBar,
+    #managerProgressBar {
+      border-radius: 0 !important;
+      background: linear-gradient(90deg, var(--wine-light), var(--gold)) !important;
+    }
+
+    .quiet-button,
+    .secondary-button,
+    .primary-button,
+    .success-button {
+      min-height: 42px;
+      border-radius: 5px !important;
+      padding: 10px 15px !important;
+      font-size: 0.78rem !important;
+      font-weight: 700 !important;
+      transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease !important;
+    }
+
+    .quiet-button,
+    .secondary-button {
+      border: 1px solid var(--line) !important;
+      background: rgba(241, 238, 232, 0.035) !important;
+      color: #b5b1ab !important;
+      box-shadow: none !important;
+    }
+
+    .quiet-button:hover,
+    .secondary-button:hover { border-color: var(--line-strong) !important; background: rgba(241, 238, 232, 0.07) !important; color: var(--porcelain) !important; }
+
+    .primary-button {
+      border: 1px solid rgba(211, 160, 179, 0.28) !important;
+      background: var(--wine) !important;
+      color: #fff5f7 !important;
+      box-shadow: 0 12px 26px -18px rgba(122, 22, 56, 0.9) !important;
+    }
+
+    .primary-button:hover { background: #8d1b42 !important; transform: translateY(-1px); }
+
+    .lesson-strip {
+      gap: 7px;
+      margin-bottom: 18px !important;
+      padding: 2px 1px 9px;
+      scrollbar-color: #4b5055 transparent;
+    }
+
+    .lesson-tab {
+      min-width: 156px;
+      border-color: var(--line);
+      border-radius: 6px;
+      background: rgba(241, 238, 232, 0.025);
+      padding: 11px 12px;
+      color: #858b91;
+    }
+
+    .lesson-tab:hover { border-color: var(--line-strong); background: rgba(241, 238, 232, 0.055); color: var(--porcelain); }
+    .lesson-tab.is-active { border-color: rgba(198, 161, 91, 0.42); background: rgba(198, 161, 91, 0.085); color: #ead6ae; transform: none; }
+    .lesson-tab.is-complete { border-color: rgba(110, 168, 232, 0.3); color: #aac9eb; }
+    .lesson-tab-number { font-size: 0.59rem; }
+    .lesson-tab-title { font-size: 0.73rem; }
+
+    .lesson-workspace,
+    .manager-workspace {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(21, 25, 29, 0.82);
+      box-shadow: 0 28px 70px -44px rgba(0, 0, 0, 0.95);
+      overflow: hidden;
+    }
+
+    .lesson-heading,
+    .manager-heading {
+      padding: 22px 24px !important;
+      border: 0 !important;
+      border-bottom: 1px solid var(--line) !important;
+      background: rgba(241, 238, 232, 0.018);
+    }
+
+    #lessonKind,
+    .manager-kicker { color: var(--gold) !important; }
+
+    #lessonTitle,
+    #managerMissionTitle {
+      margin-top: 6px !important;
+      color: var(--porcelain) !important;
+      font-size: clamp(1.75rem, 3vw, 2.35rem) !important;
+      line-height: 1.05 !important;
+    }
+
+    #lessonDescription,
+    #managerMissionDescription { color: #a7a39d !important; line-height: 1.7 !important; }
+
+    #lessonStatus {
+      border-radius: 4px !important;
+      background: rgba(110, 168, 232, 0.1) !important;
+      color: #b8d3ef !important;
+      box-shadow: inset 0 0 0 1px rgba(110, 168, 232, 0.25) !important;
+    }
+
+    #theoryPanel,
+    #exercisePanel { margin-top: 0 !important; padding: 22px 24px 0; }
+
+    .theory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .theory-example { border-color: var(--line); border-radius: 6px; background: #111518; padding: 16px; }
+    .snippet-table { border-color: var(--line); border-radius: 5px; }
+    .snippet-table th { background: #0d1012; color: #858b91; }
+    .snippet-table td { color: var(--porcelain); }
+
+    #lessonReference {
+      border-color: rgba(198, 161, 91, 0.25) !important;
+      border-radius: 6px !important;
+      background: rgba(198, 161, 91, 0.055) !important;
+    }
+
+    #lessonReferenceTitle { color: #d9bd88 !important; }
+
+    .day-toolbar {
+      margin-bottom: 16px !important;
+      padding: 12px 0 !important;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line) !important;
+    }
+
+    #selectedDayLabel,
+    #managerSelectedDayLabel { color: var(--porcelain) !important; }
+
+    .training-table-wrap,
+    .manager-table-wrap {
+      border-color: var(--line);
+      border-radius: 6px;
+      background: #090c0e;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
+    }
+
+    .training-table th,
+    .training-table td,
+    .manager-table th,
+    .manager-table td { border-color: rgba(241, 238, 232, 0.075); }
+
+    .training-table thead th,
+    .manager-table thead th { background: #171b1f; color: #c7c3bd; }
+    .training-table .row-label,
+    .manager-table .manager-person-cell,
+    .manager-table .manager-row-label,
+    .manager-table .manager-summary-cell { background: #121619; color: #c7c3bd; }
+
+    .training-table thead th.is-selected,
+    .manager-table thead th.is-selected { color: #f2dfb8; box-shadow: inset 0 -3px 0 var(--gold); }
+    .training-table .weekend-cell,
+    .manager-table .is-weekend { background: rgba(122, 22, 56, 0.12); }
+
+    .trainer-input,
+    .manager-input {
+      border-color: var(--line);
+      border-radius: 4px;
+      background: #0b0e10;
+      color: var(--porcelain);
+      font-family: Inter, system-ui, sans-serif;
+    }
+
+    .trainer-input:focus,
+    .manager-input:focus { border-color: rgba(198, 161, 91, 0.72); box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.11); }
+
+    .training-table td.is-correct,
+    .training-table th.is-correct,
+    .manager-table .is-correct { background: rgba(110, 168, 232, 0.1) !important; }
+
+    .feedback-box {
+      margin: 16px 24px 0 !important;
+      border-color: var(--line);
+      border-radius: 6px;
+      background: #111518;
+      color: #b9b5af;
+      padding: 13px 15px;
+    }
+
+    .feedback-box.is-success { border-color: rgba(110, 168, 232, 0.32); background: rgba(110, 168, 232, 0.075); color: #bed5ed; }
+    .feedback-box.is-error { border-color: rgba(211, 160, 179, 0.34); background: rgba(122, 22, 56, 0.13); color: #e9c4d1; }
+
+    .lesson-actions { margin: 0 !important; padding: 18px 24px 22px; }
+
+    .manager-course-head {
+      padding: 22px 0 24px !important;
+      border-top: 0 !important;
+      border-bottom-color: var(--line) !important;
+    }
+
+    .manager-course-title { color: var(--porcelain) !important; font-size: 2.1rem !important; }
+    #managerBriefings { padding: 0 24px; }
+    #managerBriefings > div { border-color: var(--line) !important; }
+    #managerTableWrap { margin: 18px 24px 0 !important; }
+
+    .completion-panel { padding: 54px 24px !important; }
+    .completion-title { color: var(--porcelain) !important; }
+    .success-mark {
+      border-color: rgba(198, 161, 91, 0.38);
+      border-radius: 50%;
+      background: rgba(198, 161, 91, 0.11);
+      color: #ead6ae;
+      box-shadow: 0 0 40px rgba(198, 161, 91, 0.12);
+    }
+
+    .success-overlay { background: rgba(11, 13, 15, 0.82); }
+    .success-dialog {
+      border: 1px solid var(--line);
+      border-radius: 8px !important;
+      background: #15191d;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.48);
+      animation: trainer-success-in 360ms cubic-bezier(0.2, 0.75, 0.2, 1) both;
+    }
+
+    .success-overlay:not(.is-visible) .success-dialog { animation: none; }
+
+    @keyframes trainer-success-in {
+      from { opacity: 0; transform: translateY(12px) scale(0.975); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (max-width: 1023px) {
+      .training-hero { grid-template-columns: 1fr; align-items: start; gap: 24px; }
+      .training-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #modeHint { grid-column: 1 / -1; }
+    }
+
+    @media (max-width: 767px) {
+      .training-shell { width: min(100% - 24px, 1460px); }
+      .training-hero { padding-top: 10px; padding-bottom: 22px; }
+      .training-title { font-size: 2.8rem !important; }
+      .training-controls { grid-template-columns: 1fr; padding: 12px; }
+      .course-progress { padding: 13px 12px 11px; }
+      .lesson-tab { min-width: 138px; }
+      .lesson-heading,
+      .manager-heading { padding: 18px 16px !important; }
+      #theoryPanel,
+      #exercisePanel { padding: 16px 12px 0; }
+      .theory-grid { grid-template-columns: 1fr; }
+      .training-table { min-width: 540px; }
+      .training-table th,
+      .training-table td { height: 56px; padding: 5px 3px; }
+      .training-table .row-label { width: 62px; min-width: 62px; }
+      .trainer-input { width: 52px; min-height: 40px; }
+      .feedback-box { margin: 14px 12px 0 !important; }
+      .lesson-actions { padding: 16px 12px 18px; }
+      .lesson-actions > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+      .lesson-actions > button { width: 100%; }
+      .day-toolbar { align-items: stretch !important; }
+      .mark-button { flex: 1 1 30%; min-height: 40px; padding: 8px !important; }
+      #managerBriefings { padding: 0 12px; }
+      #managerTableWrap { margin: 16px 12px 0 !important; max-height: 62vh; }
+      .manager-table .manager-person-cell { width: 152px; min-width: 152px; max-width: 152px; }
+      .manager-course-title { font-size: 1.85rem !important; }
+    }
+  </style>
 </head>
 
 <body class="min-h-screen text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
   <div data-app-header data-active="table"></div>
 
-  <main class="relative z-10 mx-auto max-w-7xl px-4 pt-safe pb-12 md:pb-16">
-    <header class="mb-6 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+  <main class="training-shell relative z-10 mx-auto pt-safe pb-12 md:pb-16">
+    <header class="training-hero">
       <div class="max-w-3xl">
-        <div class="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20">
+        <div class="training-kicker inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20">
           Безопасная тренировка
         </div>
-        <h1 class="mt-4 text-3xl font-bold text-slate-100 md:text-4xl">Тренажёр табеля</h1>
+        <h1 class="training-title mt-4 text-3xl font-bold text-slate-100 md:text-4xl">Тренажёр табеля</h1>
         <p id="trainingPageLead" class="mt-2 text-sm leading-6 text-slate-300/85">
           Заполняйте учебную неделю, проверяйте себя и переходите к следующему заданию. Эти данные никогда не попадут в настоящий табель.
         </p>
       </div>
 
-      <div class="min-w-0 space-y-4">
+      <div class="training-controls min-w-0">
         <div id="trainingTrackGroup" class="hidden">
-          <div class="mb-2 text-xs font-semibold uppercase text-slate-400">Выберите курс</div>
+          <div class="training-control-label mb-2 text-xs font-semibold uppercase text-slate-400">Выберите курс</div>
           <div id="trainingTrackControl" class="grid grid-cols-2 gap-1 rounded-2xl bg-white/[0.035] p-1 ring-1 ring-white/10">
             <button id="employeeTrackBtn" type="button" class="mode-button is-active rounded-xl px-3 py-2 text-xs font-semibold">Для сотрудника</button>
             <button id="managerTrackBtn" type="button" class="mode-button hidden rounded-xl px-3 py-2 text-xs font-semibold">Для руководителя</button>
           </div>
         </div>
         <div>
-        <div class="mb-2 text-xs font-semibold uppercase text-slate-400">Режим примеров</div>
+        <div class="training-control-label mb-2 text-xs font-semibold uppercase text-slate-400">Режим примеров</div>
         <div id="modeControl" class="grid grid-cols-2 gap-1 rounded-2xl bg-white/[0.035] p-1 ring-1 ring-white/10">
           <button type="button" class="mode-button rounded-xl px-3 py-2 text-xs font-semibold" data-mode="standard">Стандартная норма</button>
           <button type="button" class="mode-button rounded-xl px-3 py-2 text-xs font-semibold" data-mode="female">Женская CHATEAU</button>
@@ -583,25 +994,25 @@
     </header>
 
     <div id="employeeTrainingRoot">
-    <section class="mb-5">
+    <section class="course-progress mb-5">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div id="stepCounter" class="text-xs font-semibold uppercase text-indigo-200">Шаг 1 из 8</div>
           <div id="progressText" class="mt-1 text-sm text-slate-400">Пройдено: 0 из 8</div>
         </div>
-        <button id="resetProgressBtn" type="button" class="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white">
+        <button id="resetProgressBtn" type="button" class="quiet-button rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white">
           Сбросить прогресс
         </button>
       </div>
-      <div class="mt-3 h-2 overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10">
+      <div class="progress-track mt-3 h-2 overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10">
         <div id="progressBar" class="h-full rounded-full bg-emerald-400 transition-[width] duration-500" style="width: 0%"></div>
       </div>
     </section>
 
     <nav id="lessonStrip" class="lesson-strip mb-5" aria-label="Уроки тренажёра"></nav>
 
-    <section id="lessonArea">
-      <div class="border-y border-white/10 py-5">
+    <section id="lessonArea" class="lesson-workspace">
+      <div class="lesson-heading border-y border-white/10 py-5">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div id="lessonKind" class="text-xs font-semibold uppercase text-sky-200">Теория</div>
@@ -625,7 +1036,7 @@
           <div id="lessonReferenceList" class="mt-3 grid gap-2 text-xs text-slate-300 sm:grid-cols-2 lg:grid-cols-3"></div>
         </div>
 
-        <div class="mb-4 flex flex-col gap-3 border-b border-white/10 pb-4 md:flex-row md:items-center md:justify-between">
+        <div class="day-toolbar mb-4 flex flex-col gap-3 border-b border-white/10 pb-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div class="text-xs font-semibold uppercase text-slate-500">Выбранный день</div>
             <div id="selectedDayLabel" class="mt-1 text-sm font-semibold text-slate-100">Понедельник, 1 число</div>
@@ -658,23 +1069,23 @@
         Прочитайте задание и заполните учебный табель.
       </div>
 
-      <div id="lessonActions" class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div id="lessonActions" class="lesson-actions mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex flex-wrap gap-2">
-          <button id="previousLessonBtn" type="button" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
-          <button id="resetLessonBtn" type="button" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10">Очистить урок</button>
-          <button id="newExamBtn" type="button" class="hidden rounded-2xl bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-200 ring-1 ring-sky-400/25 transition hover:bg-sky-500/20">Другое задание</button>
+          <button id="previousLessonBtn" type="button" class="secondary-button rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
+          <button id="resetLessonBtn" type="button" class="secondary-button rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10">Очистить урок</button>
+          <button id="newExamBtn" type="button" class="secondary-button hidden rounded-2xl bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-200 ring-1 ring-sky-400/25 transition hover:bg-sky-500/20">Другое задание</button>
         </div>
-        <button id="primaryLessonBtn" type="button" class="rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white ring-1 ring-indigo-300/40 transition hover:bg-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-400/20">Начать практику</button>
+        <button id="primaryLessonBtn" type="button" class="primary-button rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white ring-1 ring-indigo-300/40 transition hover:bg-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-400/20">Начать практику</button>
       </div>
     </section>
 
-    <section id="completionPanel" class="hidden py-10 text-center">
+    <section id="completionPanel" class="completion-panel hidden py-10 text-center">
       <div class="success-mark">
         <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="m5 12 4 4L19 6"></path>
         </svg>
       </div>
-      <h2 class="mt-5 text-3xl font-bold text-slate-100">Тренировка завершена</h2>
+      <h2 class="completion-title mt-5 text-3xl font-bold text-slate-100">Тренировка завершена</h2>
       <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-300/85">Вы прошли все основные сценарии заполнения табеля. Теперь можно открыть настоящий табель или повторить любой урок.</p>
       <div class="mx-auto mt-6 max-w-2xl rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-left">
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -691,14 +1102,14 @@
     </div>
 
     <section id="managerTrainingRoot" class="hidden">
-      <div class="border-y border-white/10 py-5">
+      <div class="manager-course-head border-y border-white/10 py-5">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div class="max-w-4xl">
             <div class="text-xs font-bold uppercase text-sky-200">Учебный отдел</div>
-            <h2 class="mt-2 text-2xl font-bold text-slate-100">Практика руководителя</h2>
+            <h2 class="manager-course-title mt-2 text-2xl font-bold text-slate-100">Практика руководителя</h2>
             <p class="mt-2 text-sm leading-6 text-slate-300/85">Работайте с вымышленными сотрудниками. Данные не сохраняются в общий табель и не создают уведомлений.</p>
           </div>
-          <button id="managerNewVariantBtn" type="button" class="rounded-xl bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-200 ring-1 ring-sky-400/25 transition hover:bg-sky-500/20">Новый вариант</button>
+          <button id="managerNewVariantBtn" type="button" class="secondary-button rounded-xl bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-200 ring-1 ring-sky-400/25 transition hover:bg-sky-500/20">Новый вариант</button>
         </div>
       </div>
 
@@ -707,23 +1118,23 @@
           <div id="managerStepCounter" class="text-xs font-semibold uppercase text-indigo-200">Задание 1 из 9</div>
           <div id="managerProgressText" class="mt-1 text-sm text-slate-400">Выполнено: 0 из 9</div>
         </div>
-        <div class="h-2 w-full overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10 sm:w-64">
+        <div class="progress-track h-2 w-full overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10 sm:w-64">
           <div id="managerProgressBar" class="h-full rounded-full bg-sky-400 transition-[width] duration-500" style="width: 0%"></div>
         </div>
       </div>
 
       <nav id="managerMissionStrip" class="lesson-strip mt-4" aria-label="Задания руководителя"></nav>
 
-      <div id="managerMissionArea" class="mt-4">
-        <div class="border-y border-white/10 py-5">
-          <div class="text-xs font-semibold uppercase text-amber-200">Практическое задание</div>
+      <div id="managerMissionArea" class="manager-workspace mt-4">
+        <div class="manager-heading border-y border-white/10 py-5">
+          <div class="manager-kicker text-xs font-semibold uppercase text-amber-200">Практическое задание</div>
           <h3 id="managerMissionTitle" class="mt-2 text-2xl font-bold text-slate-100"></h3>
           <p id="managerMissionDescription" class="mt-2 max-w-5xl text-sm leading-6 text-slate-300/90"></p>
         </div>
 
         <div id="managerBriefings" class="mt-5 grid gap-3 lg:grid-cols-2"></div>
 
-        <div class="mt-5 flex flex-col gap-3 border-y border-white/10 py-4 md:flex-row md:items-center md:justify-between">
+        <div class="day-toolbar mx-6 mt-5 flex flex-col gap-3 border-y border-white/10 py-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div class="text-xs font-semibold uppercase text-slate-500">Выбранный день</div>
             <div id="managerSelectedDayLabel" class="mt-1 text-sm font-semibold text-slate-100">Понедельник, 1 число</div>
@@ -744,22 +1155,22 @@
 
         <div id="managerFeedback" class="feedback-box mt-5" aria-live="polite">Прочитайте условия для каждого сотрудника и заполните учебный месяц.</div>
 
-        <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="lesson-actions mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex flex-wrap gap-2">
-            <button id="managerPreviousBtn" type="button" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10 disabled:opacity-40">Назад</button>
-            <button id="managerResetBtn" type="button" class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10">Очистить</button>
+            <button id="managerPreviousBtn" type="button" class="secondary-button rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10 disabled:opacity-40">Назад</button>
+            <button id="managerResetBtn" type="button" class="secondary-button rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10">Очистить</button>
           </div>
-          <button id="managerCheckBtn" type="button" class="rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white ring-1 ring-indigo-300/40 transition hover:bg-indigo-400">Проверить отдел</button>
+          <button id="managerCheckBtn" type="button" class="primary-button rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white ring-1 ring-indigo-300/40 transition hover:bg-indigo-400">Проверить отдел</button>
         </div>
       </div>
 
-      <div id="managerCompletionPanel" class="hidden py-10 text-center">
+      <div id="managerCompletionPanel" class="completion-panel hidden py-10 text-center">
         <div class="success-mark">
           <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m5 12 4 4L19 6"></path>
           </svg>
         </div>
-        <h2 class="mt-5 text-3xl font-bold text-slate-100">Курс руководителя пройден</h2>
+        <h2 class="completion-title mt-5 text-3xl font-bold text-slate-100">Курс руководителя пройден</h2>
         <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-300/85">Вы отработали нормы, отсутствия, перенос переработки, ночные смены, кадровые коды и общий календарь отдела.</p>
         <button id="managerRestartBtn" type="button" class="mt-6 rounded-2xl bg-sky-500/15 px-5 py-3 text-sm font-bold text-sky-100 ring-1 ring-sky-400/30 transition hover:bg-sky-500/25">Пройти курс заново</button>
       </div>
@@ -767,13 +1178,13 @@
   </main>
 
   <div id="successOverlay" class="success-overlay" aria-hidden="true">
-    <div class="glass-card w-full max-w-sm rounded-3xl p-7 text-center">
+    <div class="success-dialog glass-card w-full max-w-sm rounded-3xl p-7 text-center">
       <div class="success-mark">
         <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="m5 12 4 4L19 6"></path>
         </svg>
       </div>
-      <div class="mt-5 text-2xl font-bold text-slate-100">Правильно</div>
+      <div class="success-title mt-5 text-2xl font-bold text-slate-100">Правильно</div>
       <div id="successMessage" class="mt-2 text-sm text-slate-300">Переходим дальше…</div>
     </div>
   </div>
