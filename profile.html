@@ -11,12 +11,13 @@
   <link rel="shortcut icon" href="./images/favicon-64.png?v=4" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <meta name="theme-color" content="#020617" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://isdayoff.ru; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="ALVISA SALARY" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./styles/tailwind.css?v=20260825-1" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -587,56 +588,6 @@
       border: 1px solid rgba(198, 161, 91, 0.26);
       background: rgba(198, 161, 91, 0.08);
       color: #dcc38f;
-    }
-
-    .profile-easter-badge {
-      width: 22px;
-      height: 22px;
-      right: -3px;
-      bottom: -3px;
-      border: 1px solid rgba(198, 161, 91, 0.72);
-      border-radius: 6px;
-      background: #171b1f;
-      color: #ddc58f;
-      box-shadow: 0 5px 12px rgba(0, 0, 0, 0.38);
-      outline: none;
-    }
-
-    .profile-easter-badge svg {
-      width: 12px;
-      height: 12px;
-      stroke-width: 2.5;
-    }
-
-    .profile-easter-badge:focus-visible {
-      box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.16), 0 5px 12px rgba(0, 0, 0, 0.38);
-    }
-
-    .profile-easter-tooltip {
-      position: absolute;
-      z-index: 20;
-      bottom: calc(100% + 9px);
-      left: -6px;
-      width: 214px;
-      padding: 9px 11px;
-      border: 1px solid var(--profile-border);
-      border-radius: 6px;
-      background: #111519;
-      color: #c9cdd1;
-      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.38);
-      font-size: 11px;
-      font-weight: 600;
-      line-height: 1.45;
-      text-align: left;
-      opacity: 0;
-      transform: translateY(3px);
-      transition: opacity 160ms ease, transform 160ms ease;
-    }
-
-    .profile-easter-badge:hover .profile-easter-tooltip,
-    .profile-easter-badge:focus .profile-easter-tooltip {
-      opacity: 1;
-      transform: translateY(0);
     }
 
     .profile-header {
@@ -1366,10 +1317,6 @@
               <img id="avatarImg" alt="avatar" class="h-full w-full object-cover hidden" />
               <div id="avatarFallback" class="absolute inset-0 flex items-center justify-center text-xl font-bold text-slate-200/90">A</div>
             </div>
-            <span id="easterEggBadge" class="profile-easter-badge absolute hidden items-center justify-center" tabindex="0" aria-label="Секретная награда">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>
-              <span class="profile-easter-tooltip pointer-events-none">Награда получена за прохождение пасхалки</span>
-            </span>
           </div>
           <div class="min-w-0 flex-1">
             <div id="displayName" class="truncate text-lg font-semibold">—</div>
@@ -1518,7 +1465,7 @@
               maxlength="64"
               placeholder="Напр. ТДЗК-01758"
             />
-            <p class="mt-1.5 text-xs text-slate-400/80">Необязательное поле, но нужно для выгрузки данных.</p>
+            <p class="mt-1.5 text-xs text-slate-400/80">Необязательное поле для внутреннего учета.</p>
           </div>
 
           <div>

@@ -53,9 +53,9 @@ test("personal timesheet offers classic, calendar and agenda views", async () =>
 
 test("latest user update is announced once until the updates page is opened", async () => {
   const [updates, nav] = await Promise.all([source("updates.html"), source("nav.js")]);
-  assert.match(updates, /Обновление 28\.0/);
-  assert.match(updates, /У личного табеля появилось три вида/);
-  assert.match(nav, /CURRENT_UPDATES_VERSION = "28\.0"/);
+  assert.match(updates, /Обновление 29\.0/);
+  assert.match(updates, /ALVISA SALARY стал легче/);
+  assert.match(nav, /CURRENT_UPDATES_VERSION = "29\.0"/);
   assert.match(nav, /UPDATES_SEEN_STORAGE_KEY/);
   assert.match(nav, /scheduleUnreadUpdatesPrompt/);
   assert.match(nav, /markCurrentUpdatesSeen/);

@@ -35,6 +35,7 @@ function injectFooterStyles() {
 
     .app-footer-support {
       display: inline-flex;
+      min-height: 44px;
       flex: 0 0 auto;
       align-items: center;
       gap: 8px;

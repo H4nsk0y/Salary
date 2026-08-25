@@ -16,8 +16,9 @@ import {
   ownerCreateDepartmentInvite,
   sendPushNotifications,
   setDepartmentMemberOrder,
-} from "./db.js?v=20260819-2";
+} from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
+import { setUiStatus } from "./uiStatus.js";
 import {
   normalizeShiftComments,
   openShiftCommentDialog,
@@ -118,6 +119,9 @@ const mCommentBtn = document.getElementById("mCommentBtn");
 
 let dirty = false;
 let lastSavedSignature = "";
+let changeRevision = 0;
+let sharedMarksRevision = 0;
+const dirtyUserRevisions = new Map();
 let notificationBaselineByUserId = new Map();
 let hasPendingPersonalPush = false;
 let saveTimer = null;
@@ -265,24 +269,10 @@ function setMobileEmployee(activeState) {
 }
 
 function setSaveStatus(text, tone = "neutral") {
-  saveStatus.textContent = text;
-  saveStatus.className =
-    "inline-flex items-center rounded-full px-4 py-1.5 text-xs ring-1";
-
-  if (tone === "ok") {
-    saveStatus.classList.add("bg-emerald-500/10", "text-emerald-200", "ring-emerald-400/20");
-    return;
-  }
-  if (tone === "err") {
-    saveStatus.classList.add("bg-rose-500/10", "text-rose-200", "ring-rose-400/20");
-    return;
-  }
-  if (tone === "busy") {
-    saveStatus.classList.add("bg-sky-500/10", "text-sky-200", "ring-sky-400/20");
-    return;
-  }
-
-  saveStatus.classList.add("bg-white/5", "text-slate-300", "ring-white/10");
+  setUiStatus(saveStatus, text, tone, {
+    baseClassName: "inline-flex items-center rounded-full px-4 py-1.5 text-xs ring-1",
+    accent: "ring",
+  });
 }
 
 function parseNumberValue(raw) {
@@ -588,7 +578,10 @@ function formatHourForInput(n) {
   return String(x);
 }
 
-function markDirty() {
+function markDirty({ state = null, shared = false } = {}) {
+  changeRevision += 1;
+  if (state?.userId) dirtyUserRevisions.set(String(state.userId), changeRevision);
+  if (shared) sharedMarksRevision = changeRevision;
   dirty = true;
   setSaveStatus("Есть несохранённые изменения", "neutral");
 }
@@ -907,7 +900,7 @@ function createHeaderCell(dayIndex) {
       updateDayMarkClasses(dayIndex);
       renderSharedSummary();
       recalcAllPeople();
-      if (changed) scheduleSave();
+      if (changed) scheduleSave({ shared: true });
       updateMobileToolbar();
     }, 320);
   };
@@ -946,7 +939,7 @@ function createHeaderCell(dayIndex) {
     updateDayMarkClasses(dayIndex);
     renderSharedSummary();
     recalcAllPeople();
-    if (changed) scheduleSave();
+    if (changed) scheduleSave({ shared: true });
     updateMobileToolbar();
   });
 
@@ -971,8 +964,12 @@ function currentPayloadForState(state) {
   };
 }
 
-function currentSaveItems() {
-  return teamStates.map((state) => ({
+function currentSaveItems({ changedOnly = false } = {}) {
+  const states = changedOnly && !sharedMarksRevision
+    ? teamStates.filter((state) => dirtyUserRevisions.has(String(state.userId)))
+    : teamStates;
+
+  return states.map((state) => ({
     user_id: state.userId,
     year,
     month,
@@ -1428,7 +1425,7 @@ function handleMatrixKeyDown(e) {
 function onPersonDataChanged(state) {
   setError(null);
   recalcPerson(state);
-  scheduleSave();
+  scheduleSave({ state });
 }
 
 function handleDayInput(input, state, i) {
@@ -1982,7 +1979,7 @@ function openStateShiftComment(state, index, anchor) {
       state.shiftComments[index] = comment;
       updateStateShiftCommentCells(state, index);
       updateMobileToolbar();
-      scheduleSave();
+      scheduleSave({ state });
     },
   });
 }
@@ -2372,10 +2369,18 @@ async function doSaveAll({ notify = false } = {}) {
     }
 
     const personalChanges = notify ? collectPersonalTimesheetChanges() : [];
-    const items = currentSaveItems();
-    await managedSaveManyTimesheets(items);
-    lastSavedSignature = currentSignature();
-    dirty = false;
+    const saveRevision = changeRevision;
+    const items = currentSaveItems({ changedOnly: true });
+    if (items.length) await managedSaveManyTimesheets(items);
+
+    for (const item of items) {
+      const key = String(item.user_id);
+      if ((dirtyUserRevisions.get(key) ?? 0) <= saveRevision) dirtyUserRevisions.delete(key);
+    }
+    if (sharedMarksRevision && sharedMarksRevision <= saveRevision) sharedMarksRevision = 0;
+
+    dirty = dirtyUserRevisions.size > 0 || sharedMarksRevision > 0;
+    if (!dirty) lastSavedSignature = currentSignature();
 
     if (notify) {
       try {
@@ -2437,14 +2442,16 @@ async function doSaveAll({ notify = false } = {}) {
   }
 }
 
-function scheduleSave() {
+function scheduleSave({ state = null, shared = false } = {}) {
   if (departmentViewOnly) return;
-  markDirty();
+  markDirty({ state, shared });
   if (saveTimer) clearTimeout(saveTimer);
 
   saveTimer = setTimeout(async () => {
     const nextSignature = currentSignature();
     if (nextSignature === lastSavedSignature) {
+      dirtyUserRevisions.clear();
+      sharedMarksRevision = 0;
       dirty = false;
       setSaveStatus("Сохранено", "ok");
       return;
@@ -2607,6 +2614,8 @@ async function loadCurrentMonth() {
 
     lastSavedSignature = currentSignature();
     resetNotificationBaseline();
+    dirtyUserRevisions.clear();
+    sharedMarksRevision = 0;
     hasPendingPersonalPush = false;
     dirty = false;
     setSaveStatus(
@@ -2647,7 +2656,7 @@ mHolidayBtn?.addEventListener("click", () => {
   updateDayMarkClasses(idx);
   renderSharedSummary();
   recalcAllPeople();
-  if (changed) scheduleSave();
+  if (changed) scheduleSave({ shared: true });
   updateMobileToolbar();
 });
 
@@ -2661,7 +2670,7 @@ mTransferredBtn?.addEventListener("click", () => {
   updateDayMarkClasses(idx);
   renderSharedSummary();
   recalcAllPeople();
-  if (changed) scheduleSave();
+  if (changed) scheduleSave({ shared: true });
   updateMobileToolbar();
 });
 
@@ -2675,7 +2684,7 @@ mShortBtn?.addEventListener("click", () => {
   updateDayMarkClasses(idx);
   renderSharedSummary();
   recalcAllPeople();
-  if (changed) scheduleSave();
+  if (changed) scheduleSave({ shared: true });
   updateMobileToolbar();
 });
 

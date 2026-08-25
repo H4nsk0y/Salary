@@ -1,5 +1,5 @@
 import { requireSession } from "./auth.js";
-import { getMyProfile, ownerDeleteProjectIdea, ownerListProjectIdeas, ownerSetProjectIdeaStatus } from "./db.js?v=20260822-5";
+import { getMyProfile, ownerDeleteProjectIdea, ownerListProjectIdeas, ownerSetProjectIdeaStatus } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { confirmDialog } from "./modal.js";
 

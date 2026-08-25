@@ -6,8 +6,9 @@ import {
   sendPushNotifications,
   startMyShiftChecklist,
   updateMyShiftChecklist,
-} from "./db.js?v=20260825-1";
+} from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
+import { setUiStatus } from "./uiStatus.js";
 import {
   checklistProgress,
   createChecklistItem,
@@ -257,8 +258,16 @@ function renderActiveTemplates() {
 
 function setSaveState(message, type = "") {
   if (!saveState) return;
-  saveState.textContent = message;
-  saveState.className = `save-state${type ? ` ${type}` : ""}`;
+  const tone = type === "ok"
+    ? "ok"
+    : type === "error"
+      ? "err"
+      : message.includes("Сохраняю")
+        ? "busy"
+        : "neutral";
+  setUiStatus(saveState, message, tone, {
+    baseClassName: `save-state${type ? ` ${type}` : ""}`,
+  });
 }
 
 function queueSave() {

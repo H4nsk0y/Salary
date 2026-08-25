@@ -2,9 +2,11 @@ import { requireSession, signOut } from "./auth.js";
 import {
   getMyProfile,
   listAllDepartments,
+  ownerListClientErrors,
   ownerListPayrollAnalytics,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
+import { setUiStatus } from "./uiStatus.js";
 
 document.body.classList.add("is-loaded");
 
@@ -37,6 +39,9 @@ const insightGroup = document.getElementById("insightGroup");
 const tableCount = document.getElementById("tableCount");
 const analyticsBody = document.getElementById("analyticsBody");
 const emptyState = document.getElementById("emptyState");
+const clientErrorsCount = document.getElementById("clientErrorsCount");
+const clientErrorsList = document.getElementById("clientErrorsList");
+const clientErrorsEmpty = document.getElementById("clientErrorsEmpty");
 
 const MONTHS = [
   "Январь",
@@ -84,22 +89,34 @@ let departments = [];
 let rows = [];
 let filteredRows = [];
 let isLoading = false;
+let clientErrors = [];
+
+function renderClientErrors() {
+  if (!clientErrorsList) return;
+  clientErrorsList.replaceChildren();
+  if (clientErrorsCount) clientErrorsCount.textContent = `${clientErrors.length} последних`;
+  clientErrorsEmpty?.classList.toggle("hidden", clientErrors.length > 0);
+
+  for (const row of clientErrors) {
+    const item = document.createElement("article");
+    item.className = "rounded-xl border border-white/10 bg-black/15 p-4";
+
+    const head = document.createElement("div");
+    head.className = "flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between";
+    head.append(
+      text(row.display_name || "Сотрудник", "text-sm font-semibold text-slate-100"),
+      text(formatDateTime(row.created_at), "text-xs text-slate-500")
+    );
+
+    const message = text(row.message || "Неизвестная ошибка", "mt-2 break-words text-sm text-rose-200");
+    const page = text(row.page || "Страница не определена", "mt-2 break-all text-xs text-slate-500");
+    item.append(head, message, page);
+    clientErrorsList.append(item);
+  }
+}
 
 function setStatus(text, tone = "neutral") {
-  if (!statusPill) return;
-
-  statusPill.textContent = text;
-  statusPill.classList.remove(
-    "text-slate-300", "bg-white/5",
-    "text-emerald-200", "bg-emerald-500/10",
-    "text-rose-200", "bg-rose-500/10",
-    "text-sky-200", "bg-sky-500/10"
-  );
-
-  if (tone === "ok") statusPill.classList.add("text-emerald-200", "bg-emerald-500/10");
-  else if (tone === "err") statusPill.classList.add("text-rose-200", "bg-rose-500/10");
-  else if (tone === "busy") statusPill.classList.add("text-sky-200", "bg-sky-500/10");
-  else statusPill.classList.add("text-slate-300", "bg-white/5");
+  setUiStatus(statusPill, text, tone, { accent: "ring" });
 }
 
 function setError(msg) {
@@ -724,12 +741,16 @@ async function loadAnalytics(options = {}) {
     }
 
     syncUrl();
-    rows = await ownerListPayrollAnalytics({
-      year: yearFilter?.value || null,
-      departmentKey: departmentFilter?.value || null,
-    });
+    [rows, clientErrors] = await Promise.all([
+      ownerListPayrollAnalytics({
+        year: yearFilter?.value || null,
+        departmentKey: departmentFilter?.value || null,
+      }),
+      ownerListClientErrors(20).catch(() => []),
+    ]);
 
     renderAll();
+    renderClientErrors();
 
     const now = new Date();
     if (updatedAtPill) {

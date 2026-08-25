@@ -9,6 +9,7 @@ import {
   getPushNotificationState,
 } from "./pushNotifications.js";
 import { startPresenceHeartbeat } from "./presence.js";
+import { setUiStatus } from "./uiStatus.js";
 import {
   activatePwaUpdate,
   checkForPwaUpdate,
@@ -94,27 +95,10 @@ function markDirty(text = "Есть несохранённые изменени�
 }
 
 function setStatus(text, tone = "neutral") {
-  if (!statusPill) return;
-
-  statusPill.textContent = text;
-  statusPill.className = "status-pill";
-
-  if (tone === "ok") {
-    statusPill.classList.add("bg-emerald-500/10", "text-emerald-200", "border-emerald-400/20");
-    return;
-  }
-
-  if (tone === "err") {
-    statusPill.classList.add("bg-rose-500/10", "text-rose-200", "border-rose-400/20");
-    return;
-  }
-
-  if (tone === "busy") {
-    statusPill.classList.add("bg-sky-500/10", "text-sky-200", "border-sky-400/20");
-    return;
-  }
-
-  statusPill.classList.add("bg-white/5", "text-slate-300", "border-white/10");
+  setUiStatus(statusPill, text, tone, {
+    baseClassName: "status-pill",
+    accent: "border",
+  });
 }
 
 function setError(msg) {

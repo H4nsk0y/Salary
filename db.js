@@ -1,28 +1,28 @@
 import { supabase } from "./supabaseClient.js";
 
 const PROFILE_SELECT =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, egais_file_reminders_enabled, hide_calculator_nav";
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours, egais_file_reminders_enabled, hide_calculator_nav";
 
 const PROFILE_SELECT_WITHOUT_HIDE_CALCULATOR_NAV =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, egais_file_reminders_enabled";
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours, egais_file_reminders_enabled";
 
 const PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, hide_calculator_nav";
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours, hide_calculator_nav";
 
 const PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS_AND_HIDE_CALCULATOR_NAV =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date";
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours";
 
 const PROFILE_SELECT_WITH_BRANCH =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch";
+  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, weekly_hours";
 
 const PROFILE_SELECT_LEGACY =
   "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number";
 
 const ADMIN_PROFILE_SELECT =
-  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number, branch, employment_date";
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number, branch, employment_date, weekly_hours";
 
 const ADMIN_PROFILE_SELECT_WITHOUT_EMPLOYMENT =
-  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number, branch";
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number, branch, weekly_hours";
 
 const ADMIN_PROFILE_SELECT_LEGACY =
   "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number";
@@ -41,6 +41,13 @@ const MY_PROFILE_MUTABLE_FIELDS = new Set([
   "hide_calculator_nav",
   "egais_file_reminders_enabled",
 ]);
+
+let currentUserIdPromise = null;
+let myProfilePromise = null;
+
+function invalidateMyProfileCache() {
+  myProfilePromise = null;
+}
 
 function isNotFoundError(error) {
   return (
@@ -137,16 +144,24 @@ function assertValidYearMonth(year, month) {
 }
 
 async function requireUserId() {
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError) throw sessionError;
+  if (!currentUserIdPromise) {
+    currentUserIdPromise = (async () => {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
 
-  const userId = sessionData.session?.user?.id;
-  if (!userId) throw new Error("NO_SESSION");
+      const userId = sessionData.session?.user?.id;
+      if (!userId) throw new Error("NO_SESSION");
+      return userId;
+    })().catch((error) => {
+      currentUserIdPromise = null;
+      throw error;
+    });
+  }
 
-  return userId;
+  return currentUserIdPromise;
 }
 
-export async function getMyProfile() {
+async function loadMyProfile() {
   const userId = await requireUserId();
 
   const { data, error } = await supabase
@@ -259,6 +274,17 @@ export async function getMyProfile() {
   return data ? attachWeeklyHours(data, userId) : null;
 }
 
+export function getMyProfile({ fresh = false } = {}) {
+  if (fresh) invalidateMyProfileCache();
+  if (!myProfilePromise) {
+    myProfilePromise = loadMyProfile().catch((error) => {
+      myProfilePromise = null;
+      throw error;
+    });
+  }
+  return myProfilePromise;
+}
+
 export async function updateMyOklad(oklad) {
   const userId = await requireUserId();
 
@@ -268,6 +294,7 @@ export async function updateMyOklad(oklad) {
     .eq("user_id", userId);
 
   if (error) throw error;
+  invalidateMyProfileCache();
 }
 
 export async function updateMyProfile({
@@ -314,6 +341,8 @@ export async function updateMyProfile({
 
     throw error;
   }
+
+  invalidateMyProfileCache();
 }
 
 export async function updateMyProfileFields(fields) {
@@ -340,6 +369,8 @@ export async function updateMyProfileFields(fields) {
 
     throw error;
   }
+
+  invalidateMyProfileCache();
 }
 
 function normalizeWeeklyHours(value) {
@@ -372,6 +403,9 @@ async function fetchWeeklyHoursMap(userIds = []) {
 
 async function attachWeeklyHours(profile, userId) {
   if (!profile) return profile;
+  if (Object.prototype.hasOwnProperty.call(profile, "weekly_hours")) {
+    return { ...profile, weekly_hours: normalizeWeeklyHours(profile.weekly_hours) };
+  }
   const weeklyMap = await fetchWeeklyHoursMap([userId ?? profile.user_id]);
   return { ...profile, weekly_hours: weeklyMap.get(userId ?? profile.user_id) ?? null };
 }
@@ -395,6 +429,7 @@ export async function updateMyMoneyPin({
     .upsert(patch, { onConflict: "user_id" });
 
   if (error) throw error;
+  invalidateMyProfileCache();
 }
 
 export async function loadTimesheet(year, month) {
@@ -652,7 +687,6 @@ export async function listManagedDepartmentMembers(departmentKey) {
   if (profilesError) throw profilesError;
 
   const profileMap = new Map((profiles ?? []).map((row) => [row.user_id, row]));
-  const weeklyHoursMap = await fetchWeeklyHoursMap(userIds);
 
  return userIds.map((userId) => {
     const profile = profileMap.get(userId) ?? null;
@@ -665,7 +699,7 @@ export async function listManagedDepartmentMembers(departmentKey) {
       role: profile?.role ?? "user",
       oklad: profile?.oklad ?? null,
       gender: profile?.gender ?? null,
-      weekly_hours: weeklyHoursMap.get(userId) ?? null,
+      weekly_hours: normalizeWeeklyHours(profile?.weekly_hours),
       branch: profile?.branch ?? null,
       position: profile?.position ?? "",
       tab_number: profile?.tab_number ?? "",
@@ -684,50 +718,6 @@ export async function listEgaisDepartmentTimesheetView(year, month) {
   const { data, error } = await supabase.rpc("list_egais_department_timesheet_view", {
     p_year: normalized.year,
     p_month: normalized.month,
-  });
-
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function listStaffVoteCandidates() {
-  const { data, error } = await supabase.rpc("list_staff_vote_candidates");
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function getStaffVotePeriods() {
-  const { data, error } = await supabase.rpc("get_staff_vote_periods");
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function submitStaffVote({ periodType, nomineeUserId, comment = "" } = {}) {
-  const type = String(periodType ?? "").trim();
-  const nomineeId = String(nomineeUserId ?? "").trim();
-  const text = String(comment ?? "").trim();
-
-  if (!["week", "month"].includes(type)) throw new Error("Некорректный период голосования.");
-  if (!nomineeId) throw new Error("Выберите сотрудника.");
-  if (text.length > 500) throw new Error("Комментарий не может быть длиннее 500 символов.");
-
-  const { error } = await supabase.rpc("submit_staff_vote", {
-    p_period_type: type,
-    p_nominee_user_id: nomineeId,
-    p_comment: text || null,
-  });
-
-  if (error) throw error;
-}
-
-export async function listCompletedStaffVoteComments(periodType, periodStart) {
-  const type = String(periodType ?? "").trim();
-  const start = String(periodStart ?? "").trim();
-  if (!["week", "month"].includes(type) || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return [];
-
-  const { data, error } = await supabase.rpc("list_completed_staff_vote_comments", {
-    p_period_type: type,
-    p_period_start: start,
   });
 
   if (error) throw error;
@@ -1015,31 +1005,6 @@ export async function deleteAllMyNotifications() {
   if (error) throw error;
 }
 
-export async function submitEasterRunnerScore({ mode, score, passed } = {}) {
-  await requireUserId();
-
-  const { data, error } = await supabase.rpc("submit_easter_runner_score", {
-    p_mode: String(mode ?? "").trim(),
-    p_score: Number(score) || 0,
-    p_passed: Number(passed) || 0,
-  });
-
-  if (error) throw error;
-  return Array.isArray(data) ? data[0] ?? null : data ?? null;
-}
-
-export async function listEasterRunnerLeaderboard(mode = "normal", limit = 5) {
-  await requireUserId();
-
-  const { data, error } = await supabase.rpc("list_easter_runner_leaderboard", {
-    p_mode: String(mode ?? "").trim(),
-    p_limit: Number(limit) || 5,
-  });
-
-  if (error) throw error;
-  return data ?? [];
-}
-
 export async function upsertMyPushSubscription({
   endpoint,
   p256dh,
@@ -1194,123 +1159,6 @@ export async function ownerDeleteProjectIdea(ideaId) {
   if (error) throw error;
 }
 
-export async function getMyChatDepartment() {
-  return getMyDepartmentKey();
-}
-
-export async function listMyDepartmentMessages(limit = 100) {
-  const departmentKey = await getMyChatDepartment();
-  if (!departmentKey) return [];
-
-  const { data, error } = await supabase
-    .from("department_messages")
-    .select("id, department_key, user_id, text, created_at, updated_at, deleted_at")
-    .eq("department_key", departmentKey)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: true })
-    .limit(limit);
-
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function sendDepartmentMessage(text) {
-  const userId = await requireUserId();
-  const departmentKey = await getMyChatDepartment();
-
-  const messageText = String(text ?? "").trim();
-  if (!departmentKey) throw new Error("Отдел для чата не найден.");
-  if (!messageText) throw new Error("Сообщение пустое.");
-  if (messageText.length > 2000) throw new Error("Сообщение слишком длинное.");
-
-  const { data, error } = await supabase
-    .from("department_messages")
-    .insert({
-      department_key: departmentKey,
-      user_id: userId,
-      text: messageText,
-    })
-    .select("id, department_key, user_id, text, created_at, updated_at, deleted_at")
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function updateDepartmentMessage(messageId, text) {
-  const userId = await requireUserId();
-  const messageText = String(text ?? "").trim();
-
-  if (!messageId) throw new Error("Не указан id сообщения.");
-  if (!messageText) throw new Error("Сообщение пустое.");
-  if (messageText.length > 2000) throw new Error("Сообщение слишком длинное.");
-
-  const { data, error } = await supabase
-    .from("department_messages")
-    .update({
-      text: messageText,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", messageId)
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .select("id, department_key, user_id, text, created_at, updated_at, deleted_at")
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function softDeleteDepartmentMessage(messageId) {
-  const userId = await requireUserId();
-
-  if (!messageId) throw new Error("Не указан id сообщения.");
-
-  const { error } = await supabase
-    .from("department_messages")
-    .update({
-      deleted_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", messageId)
-    .eq("user_id", userId)
-    .is("deleted_at", null);
-
-  if (error) throw error;
-}
-
-export function subscribeToMyDepartmentMessages(onChange) {
-  let channel = null;
-
-  return (async () => {
-    const departmentKey = await getMyChatDepartment();
-    if (!departmentKey) return () => {};
-
-    channel = supabase
-      .channel(`department-messages:${departmentKey}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "department_messages",
-          filter: `department_key=eq.${departmentKey}`,
-        },
-        (payload) => {
-          onChange?.(payload);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-        channel = null;
-      }
-    };
-  })();
-}
-
 export async function listDepartmentShiftOverview({
   departmentKey = null,
   startDate = null,
@@ -1328,68 +1176,6 @@ export async function listDepartmentShiftOverview({
 
   if (error) throw error;
   return data ?? [];
-}
-
-export async function createDepartmentTask({
-  departmentKey,
-  taskDate,
-  dueAt,
-  text,
-  assignmentMode,
-  userIds = [],
-} = {}) {
-  const key = String(departmentKey ?? "").trim();
-  const date = String(taskDate ?? "").trim();
-  const due = String(dueAt ?? "").trim();
-  const taskText = String(text ?? "").trim();
-  const mode = String(assignmentMode ?? "").trim();
-  const recipients = [...new Set(
-    (Array.isArray(userIds) ? userIds : [])
-      .map((id) => String(id || "").trim())
-      .filter(Boolean)
-  )];
-
-  if (!key) throw new Error("Не указан отдел.");
-  if (!date) throw new Error("Не указана дата задачи.");
-  if (!due) throw new Error("Не указан срок выполнения.");
-  if (!taskText) throw new Error("Введите текст задачи.");
-
-  const { data, error } = await supabase.rpc("create_department_task", {
-    p_department_key: key,
-    p_task_date: date,
-    p_due_at: due,
-    p_text: taskText,
-    p_assignment_mode: mode,
-    p_user_ids: recipients,
-  });
-
-  if (error) throw error;
-  return Array.isArray(data) ? data[0] ?? null : data ?? null;
-}
-
-export async function listMyDepartmentTasks({
-  departmentKey = null,
-  limit = 100,
-} = {}) {
-  const key = String(departmentKey ?? "").trim();
-  const { data, error } = await supabase.rpc("list_my_department_tasks", {
-    p_department_key: key || null,
-    p_limit: Math.min(300, Math.max(1, Number(limit) || 100)),
-  });
-
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function deleteDepartmentTask(taskId) {
-  const id = Number(taskId);
-  if (!Number.isInteger(id) || id <= 0) throw new Error("Некорректная задача.");
-
-  const { error } = await supabase.rpc("delete_department_task", {
-    p_task_id: id,
-  });
-
-  if (error) throw error;
 }
 
 export async function upsertMyPresence(pageName = "") {
@@ -1648,6 +1434,16 @@ export async function ownerRevokeDepartmentInvite(token) {
   });
 
   if (error) throw error;
+}
+
+export async function ownerListClientErrors(limit = 20) {
+  const normalizedLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+  const { data, error } = await supabase.rpc("owner_list_client_errors", {
+    p_limit: normalizedLimit,
+  });
+
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function ownerDeleteDepartmentInvite(token) {

@@ -142,7 +142,7 @@ function ensureModalStyles() {
     .app-modal-btn {
       appearance: none;
       border: none;
-      min-height: 42px;
+      min-height: 44px;
       border-radius: 16px;
       padding: 10px 16px;
       font-size: 0.9rem;

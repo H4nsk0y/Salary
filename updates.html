@@ -10,12 +10,13 @@
   <link rel="shortcut icon" href="./images/favicon-64.png?v=4" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <meta name="theme-color" content="#0b0d0f" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://isdayoff.ru; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="ALVISA SALARY" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./styles/tailwind.css?v=20260825-1" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -253,6 +254,49 @@
       <article class="updates-release-latest glass-card">
         <div class="flex flex-wrap items-center gap-3">
           <span class="inline-flex items-center px-3 py-1 text-xs font-semibold ring-1">
+            Обновление 29.0
+          </span>
+          <span class="text-xs text-slate-400">25.08.2026</span>
+        </div>
+
+        <div class="mt-6 grid gap-5">
+          <div class="relative pl-7">
+            <span class="timeline-dot absolute left-0"></span>
+            <h2>ALVISA SALARY стал легче</h2>
+            <p class="mt-2 text-sm leading-6">
+              Убраны невостребованные разделы, мини-игра и тяжелые файлы. Основные страницы теперь загружают меньше лишнего и быстрее готовы к работе.
+            </p>
+          </div>
+
+          <div class="relative pl-7">
+            <span class="timeline-dot absolute left-0"></span>
+            <h2>Сохранение общего табеля стало экономнее</h2>
+            <p class="mt-2 text-sm leading-6">
+              При сохранении отправляются только действительно измененные данные сотрудников. Это сокращает ожидание и расход трафика при работе с большим отделом.
+            </p>
+          </div>
+
+          <div class="relative pl-7">
+            <span class="timeline-dot absolute left-0"></span>
+            <h2>Последний график остается под рукой</h2>
+            <p class="mt-2 text-sm leading-6">
+              Если база временно недоступна, страница смен покажет последний успешно загруженный график и честно предупредит, что данные могут быть неактуальны.
+            </p>
+          </div>
+
+          <div class="relative pl-7">
+            <span class="timeline-dot absolute left-0"></span>
+            <h2>Excel-выгрузка убрана</h2>
+            <p class="mt-2 text-sm leading-6">
+              Формат выгрузки не соответствовал требованиям отдела кадров, поэтому ненадежный инструмент убран, чтобы не создавать ошибочные документы.
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <article class="glass-card">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="inline-flex items-center px-3 py-1 text-xs font-semibold ring-1">
             Обновление 28.0
           </span>
           <span class="text-xs text-slate-400">23.08.2026</span>
@@ -328,9 +372,9 @@
 
           <div class="relative pl-7">
             <span class="timeline-dot absolute left-0"></span>
-            <h2>Голосование временно скрыто</h2>
+            <h2>Голосование убрано</h2>
             <p class="mt-2 text-sm leading-6">
-              Раздел уступил место более полезному ежедневному инструменту. При необходимости голосование можно будет вернуть позднее.
+              Раздел уступил место более полезному ежедневному инструменту — личному чек-листу смены.
             </p>
           </div>
 

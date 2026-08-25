@@ -5,6 +5,13 @@ import {
   listDepartmentShiftOverview,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
+import {
+  loadScheduleContext,
+  loadScheduleSnapshot,
+  saveScheduleContext,
+  saveScheduleSnapshot,
+} from "./scheduleCache.js";
+import { setUiStatus } from "./uiStatus.js";
 
 document.body.classList.add("is-loaded");
 
@@ -68,20 +75,7 @@ const POSITION_LABELS = new Map([
 ]);
 
 function setStatus(text, tone = "neutral") {
-  if (!statusPill) return;
-
-  statusPill.textContent = text;
-  statusPill.classList.remove(
-    "bg-white/5", "text-slate-300",
-    "bg-emerald-500/10", "text-emerald-200",
-    "bg-rose-500/10", "text-rose-200",
-    "bg-sky-500/10", "text-sky-200"
-  );
-
-  if (tone === "ok") statusPill.classList.add("bg-emerald-500/10", "text-emerald-200");
-  else if (tone === "err") statusPill.classList.add("bg-rose-500/10", "text-rose-200");
-  else if (tone === "busy") statusPill.classList.add("bg-sky-500/10", "text-sky-200");
-  else statusPill.classList.add("bg-white/5", "text-slate-300");
+  setUiStatus(statusPill, text, tone, { accent: "ring" });
 }
 
 function setError(message) {
@@ -450,6 +444,7 @@ function updateDepartmentUrl() {
 function bindDepartmentSelect() {
   departmentSelect?.addEventListener("change", () => {
     selectedDepartmentKey = String(departmentSelect.value || "").trim();
+    saveScheduleContext(currentUserId, departments, selectedDepartmentKey);
     updateDepartmentUrl();
     void loadSchedule();
   });
@@ -476,14 +471,25 @@ async function loadSchedule() {
   isLoading = true;
   if (refreshBtn) refreshBtn.disabled = true;
 
+  const startDate = toLocalIsoDate(new Date());
+  const days = 2;
+
   try {
     setStatus("Загружаю смены…", "busy");
     setError(null);
 
     rows = await listDepartmentShiftOverview({
       departmentKey: selectedDepartmentKey,
-      startDate: toLocalIsoDate(new Date()),
-      days: 2,
+      startDate,
+      days,
+    });
+
+    saveScheduleSnapshot({
+      userId: currentUserId,
+      departmentKey: selectedDepartmentKey,
+      startDate,
+      days,
+      rows,
     });
 
     render();
@@ -498,8 +504,32 @@ async function loadSchedule() {
 
     setStatus("Готово", "ok");
   } catch (error) {
-    setStatus("Ошибка загрузки", "err");
-    setError(mapError(error));
+    const cached = loadScheduleSnapshot({
+      userId: currentUserId,
+      departmentKey: selectedDepartmentKey,
+      startDate,
+      days,
+    });
+
+    if (cached) {
+      rows = cached.rows;
+      render();
+
+      const cachedAt = new Date(cached.savedAt);
+      const cachedLabel = cachedAt.toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      if (updatedAtPill) updatedAtPill.textContent = `Кеш: ${cachedLabel}`;
+      setStatus("Последние загруженные данные", "warning");
+      setError(`Нет доступа к базе, показан последний загруженный график от ${cachedLabel}.`);
+    } else {
+      setStatus("Ошибка загрузки", "err");
+      setError(mapError(error));
+    }
   } finally {
     isLoading = false;
     if (refreshBtn) refreshBtn.disabled = false;
@@ -538,10 +568,25 @@ refreshBtn?.addEventListener("click", () => void loadSchedule());
     renderDepartmentSelect();
     bindDepartmentSelect();
     updateDepartmentUrl();
+    saveScheduleContext(currentUserId, departments, selectedDepartmentKey);
   } catch (error) {
-    setStatus("Ошибка загрузки", "err");
-    setError(mapError(error));
-    return;
+    const cachedContext = loadScheduleContext(currentUserId);
+    if (!cachedContext) {
+      setStatus("Ошибка загрузки", "err");
+      setError(mapError(error));
+      return;
+    }
+
+    departments = cachedContext.departments;
+    const requestedKey = new URL(window.location.href).searchParams.get("department") || "";
+    selectedDepartmentKey = departments.some((item) => item.key === requestedKey)
+      ? requestedKey
+      : departments.some((item) => item.key === cachedContext.selectedDepartmentKey)
+        ? cachedContext.selectedDepartmentKey
+        : departments[0]?.key || "";
+    renderDepartmentSelect();
+    bindDepartmentSelect();
+    updateDepartmentUrl();
   }
 
   await loadSchedule();

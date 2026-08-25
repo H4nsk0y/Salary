@@ -9,6 +9,7 @@ import {
   deleteMyTimesheet,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
+import { setUiStatus } from "./uiStatus.js";
 import {
   parseNumber,
   BONUS_RATE,
@@ -45,8 +46,6 @@ const SHORT_DAY_REDUCTION_HOURS = 1;
 const HAZARD_POSITION_RATE = 0.04;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const TRAINING_ACHIEVEMENT_KEY_PREFIX = "alvisa.timesheetTraining.completedOnce.v1";
-const EASTER_REWARD_KEY_PREFIX = "alvisa.easterRunner.reward.v1";
-const EASTER_PENDING_REWARD_KEY = "alvisa.easterRunner.pendingReward.v1";
 const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 const DISMISSED_LEAVE_TYPE = "dismissed";
 
@@ -68,7 +67,6 @@ const avatarImg = document.getElementById("avatarImg");
 const avatarFallback = document.getElementById("avatarFallback");
 const displayNameEl = document.getElementById("displayName");
 const trainingAchievementEl = document.getElementById("trainingAchievement");
-const easterEggBadgeEl = document.getElementById("easterEggBadge");
 
 const displayNameInput = document.getElementById("displayNameInput");
 const positionSelect = document.getElementById("positionSelect");
@@ -577,20 +575,7 @@ function requireDom(el, name) {
 }
 
 function setStatus(text, tone = "neutral") {
-  if (!statusPill) return;
-  statusPill.textContent = text;
-
-  statusPill.classList.remove(
-    "text-slate-300", "bg-white/5",
-    "text-emerald-200", "bg-emerald-500/10",
-    "text-rose-200", "bg-rose-500/10",
-    "text-sky-200", "bg-sky-500/10"
-  );
-
-  if (tone === "ok") statusPill.classList.add("text-emerald-200", "bg-emerald-500/10");
-  else if (tone === "err") statusPill.classList.add("text-rose-200", "bg-rose-500/10");
-  else if (tone === "busy") statusPill.classList.add("text-sky-200", "bg-sky-500/10");
-  else statusPill.classList.add("text-slate-300", "bg-white/5");
+  setUiStatus(statusPill, text, tone, { accent: "ring" });
 }
 
 function setError(msg) {
@@ -2585,24 +2570,6 @@ function renderTrainingAchievement(userId) {
   }
 }
 
-function renderEasterEggReward(userId) {
-  if (!easterEggBadgeEl || !userId) return;
-
-  const rewardKey = `${EASTER_REWARD_KEY_PREFIX}:${userId}`;
-  let completedAt = localStorage.getItem(rewardKey);
-  const pendingReward = localStorage.getItem(EASTER_PENDING_REWARD_KEY);
-
-  if (!completedAt && pendingReward) {
-    completedAt = pendingReward;
-    localStorage.setItem(rewardKey, pendingReward);
-    localStorage.removeItem(EASTER_PENDING_REWARD_KEY);
-  }
-
-  easterEggBadgeEl.classList.toggle("hidden", !completedAt);
-  easterEggBadgeEl.classList.toggle("flex", Boolean(completedAt));
-  if (completedAt) easterEggBadgeEl.title = "Награда получена за прохождение пасхалки";
-}
-
 /* ========= boot ========= */
 
 (async () => {
@@ -2615,7 +2582,6 @@ function renderEasterEggReward(userId) {
   }
 
   renderTrainingAchievement(session?.user?.id);
-  renderEasterEggReward(session?.user?.id);
   startPresenceHeartbeat("Профиль");
 
   const now = new Date();

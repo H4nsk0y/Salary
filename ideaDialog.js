@@ -1,4 +1,4 @@
-import { submitProjectIdea } from "./db.js?v=20260822-4";
+import { submitProjectIdea } from "./db.js";
 
 const STYLE_ID = "alvisa-idea-dialog-style";
 const TELEGRAM_URL = "https://t.me/Hanskoy";

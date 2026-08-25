@@ -12,6 +12,7 @@ import {
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { confirmDialog } from "./modal.js";
+import { setUiStatus } from "./uiStatus.js";
 
 
 document.body.classList.add("is-loaded");
@@ -42,20 +43,7 @@ let selectedDepartment = null;
 let isDepartmentBusy = false;
 
 function setStatus(text, tone = "neutral") {
-  if (!statusPill) return;
-
-  statusPill.textContent = text;
-  statusPill.classList.remove(
-    "text-slate-300", "bg-white/5",
-    "text-emerald-200", "bg-emerald-500/10",
-    "text-rose-200", "bg-rose-500/10",
-    "text-sky-200", "bg-sky-500/10"
-  );
-
-  if (tone === "ok") statusPill.classList.add("text-emerald-200", "bg-emerald-500/10");
-  else if (tone === "err") statusPill.classList.add("text-rose-200", "bg-rose-500/10");
-  else if (tone === "busy") statusPill.classList.add("text-sky-200", "bg-sky-500/10");
-  else statusPill.classList.add("text-slate-300", "bg-white/5");
+  setUiStatus(statusPill, text, tone, { accent: "ring" });
 }
 
 function setError(msg) {

@@ -1,8 +1,9 @@
 
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
-import { getMyProfile, getMyDepartmentMembershipKey, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, saveMyTimesheetActual, saveTimesheet } from "./db.js?v=20260819-2";
+import { getMyProfile, getMyDepartmentMembershipKey, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, saveMyTimesheetActual, saveTimesheet } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
+import { setUiStatus } from "./uiStatus.js";
 import {
   normalizeShiftComments,
   openShiftCommentDialog,
@@ -287,18 +288,7 @@ function ensureShortDayStyles() {
 ensureShortDayStyles();
 
 function setSaveStatus(text, tone = "neutral") {
-  if (!saveStatus) return;
-  saveStatus.textContent = text;
-  saveStatus.classList.remove(
-    "text-slate-300","bg-white/5",
-    "text-emerald-200","bg-emerald-500/10",
-    "text-rose-200","bg-rose-500/10",
-    "text-sky-200","bg-sky-500/10"
-  );
-  if (tone === "ok") saveStatus.classList.add("text-emerald-200","bg-emerald-500/10");
-  else if (tone === "err") saveStatus.classList.add("text-rose-200","bg-rose-500/10");
-  else if (tone === "busy") saveStatus.classList.add("text-sky-200","bg-sky-500/10");
-  else saveStatus.classList.add("text-slate-300","bg-white/5");
+  setUiStatus(saveStatus, text, tone, { accent: "ring" });
 }
 
 function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }

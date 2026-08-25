@@ -10,12 +10,13 @@
   <link rel="shortcut icon" href="./images/favicon-64.png?v=4" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <meta name="theme-color" content="#0b0d0f" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://isdayoff.ru; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="ALVISA SALARY" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./styles/tailwind.css?v=20260825-1" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -411,6 +412,18 @@
       <div id="emptyState" class="hidden p-6 text-sm text-slate-300">
         Нет подтверждённых фактических сумм для выбранных фильтров.
       </div>
+    </section>
+
+    <section class="glass-card mt-5 rounded-3xl p-5 md:p-6" aria-labelledby="clientErrorsTitle">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 id="clientErrorsTitle" class="text-lg font-semibold text-slate-100">Серьёзные ошибки интерфейса</h2>
+          <p class="mt-1 text-sm text-slate-400">Сетевые сбои, отсутствие VPN и отменённые запросы сюда не попадают.</p>
+        </div>
+        <span id="clientErrorsCount" class="text-xs text-slate-400">—</span>
+      </div>
+      <div id="clientErrorsList" class="mt-4 grid gap-3"></div>
+      <p id="clientErrorsEmpty" class="mt-4 hidden text-sm text-slate-400">Зафиксированных ошибок пока нет.</p>
     </section>
   </div>
 

@@ -7,14 +7,17 @@ import {
 } from "./db.js";
 import { alertDialog, confirmDialog } from "./modal.js";
 import { normalizeInternalNextUrl } from "./profileCompletion.js";
+import { installErrorLogger } from "./errorLogger.js";
 import "./pwa.js";
 import "./scrollbar.js";
 import "./footer.js?v=20260802-2";
 
+installErrorLogger();
+
 const NAV_STYLE_ID = "alvisa-common-nav-style";
 const NOTIFICATION_READ_STORAGE_KEY = "alvisa.notificationReadIds.v1";
 const NOTIFICATION_POLL_INTERVAL_MS = 45000;
-const CURRENT_UPDATES_VERSION = "28.0";
+const CURRENT_UPDATES_VERSION = "29.0";
 const UPDATES_SEEN_STORAGE_KEY = "alvisa.updatesSeenVersion.v1";
 const UPDATES_PROMPT_SESSION_KEY = "alvisa.updatesPromptedVersion.v1";
 
