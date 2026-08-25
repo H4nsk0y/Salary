@@ -108,11 +108,17 @@ function shiftForDate(payload: any, dayIndex: number) {
 
 function isFullNightShift(shift: { day: number; night: number }) {
   const tolerance = 0.05;
-  return (
-    Math.abs(shift.day - 2) <= tolerance && Math.abs(shift.night - 5) <= tolerance
-  ) || (
-    Math.abs(shift.day - 4) <= tolerance && Math.abs(shift.night - 7) <= tolerance
-  );
+  const sameHours = (actual: number, expected: number) =>
+    Math.abs(actual - expected) <= tolerance;
+
+  const closesNight =
+    sameHours(shift.night, 5) &&
+    (sameHours(shift.day, 1) || sameHours(shift.day, 2));
+  const continuesNight =
+    sameHours(shift.night, 7) &&
+    (sameHours(shift.day, 3) || sameHours(shift.day, 4));
+
+  return closesNight || continuesNight;
 }
 
 function isDayShift(shift: { day: number; night: number }) {

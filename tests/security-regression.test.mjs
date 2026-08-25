@@ -72,6 +72,15 @@ test("13:00 EGAIS reminder is limited to a day-only shift", async () => {
   assert.doesNotMatch(departureBranch, /hasAnyShift/);
 });
 
+test("00:15 EGAIS reminder recognizes standard and reduced full-night patterns", async () => {
+  const edge = await source("supabase/functions/send-egais-file-reminders/index.ts");
+
+  assert.match(edge, /sameHours\(shift\.night, 5\)/);
+  assert.match(edge, /sameHours\(shift\.day, 1\)[\s\S]*sameHours\(shift\.day, 2\)/);
+  assert.match(edge, /sameHours\(shift\.night, 7\)/);
+  assert.match(edge, /sameHours\(shift\.day, 3\)[\s\S]*sameHours\(shift\.day, 4\)/);
+});
+
 test("anonymous users cannot execute SECURITY DEFINER application RPCs", async () => {
   const sql = await source("supabase-sql/029_restrict_security_definer_execute.sql");
 
