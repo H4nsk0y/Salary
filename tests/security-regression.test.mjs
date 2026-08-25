@@ -61,6 +61,17 @@ test("scheduled Edge Function requires a separate cron secret", async () => {
   assert.match(cron, /alvisa_egais_cron_secret/g);
 });
 
+test("13:00 EGAIS reminder is limited to a day-only shift", async () => {
+  const edge = await source("supabase/functions/send-egais-file-reminders/index.ts");
+  const departureBranch = edge.match(
+    /if \(kind === "departure_check"\) \{([\s\S]*?)\} else if \(phase === "night"\)/
+  )?.[1] ?? "";
+
+  assert.match(edge, /return shift\.day > 0 && shift\.night === 0/);
+  assert.match(departureBranch, /isDayShift/);
+  assert.doesNotMatch(departureBranch, /hasAnyShift/);
+});
+
 test("anonymous users cannot execute SECURITY DEFINER application RPCs", async () => {
   const sql = await source("supabase-sql/029_restrict_security_definer_execute.sql");
 

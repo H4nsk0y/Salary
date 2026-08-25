@@ -115,10 +115,6 @@ function isFullNightShift(shift: { day: number; night: number }) {
   );
 }
 
-function hasAnyShift(shift: { day: number; night: number }) {
-  return shift.day > 0 || shift.night > 0;
-}
-
 function isDayShift(shift: { day: number; night: number }) {
   return shift.day > 0 && shift.night === 0;
 }
@@ -221,7 +217,7 @@ serve(async (req) => {
     if (kind === "departure_check") {
       scheduledUserIds = memberUserIds
         .map(String)
-        .filter((userId) => hasAnyShift(shiftsByUserId.get(userId) ?? { day: 0, night: 0 }));
+        .filter((userId) => isDayShift(shiftsByUserId.get(userId) ?? { day: 0, night: 0 }));
     } else if (phase === "night") {
       scheduledUserIds = fullNightUserIds;
     } else if (phase === "day_fallback") {
