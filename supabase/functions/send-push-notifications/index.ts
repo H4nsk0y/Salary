@@ -82,6 +82,30 @@ async function verifyOwnerAccess({
   return data === true;
 }
 
+async function verifyShiftHandoverAccess({
+  supabaseUrl,
+  supabaseAnonKey,
+  authorization,
+  departmentKey,
+}: {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  authorization: string;
+  departmentKey: string;
+}) {
+  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authorization } },
+    auth: { persistSession: false },
+  });
+
+  const { data, error } = await userClient.rpc("can_send_shift_handover_push", {
+    p_department_key: departmentKey,
+  });
+
+  if (error) throw error;
+  return data === true;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -117,12 +141,19 @@ serve(async (req) => {
 
     const allowed = allUsers
       ? await verifyOwnerAccess({ supabaseUrl, supabaseAnonKey, authorization })
-      : await verifyDepartmentAccess({
-          supabaseUrl,
-          supabaseAnonKey,
-          authorization,
-          departmentKey,
-        });
+      : type === "shift_handover_ready"
+        ? await verifyShiftHandoverAccess({
+            supabaseUrl,
+            supabaseAnonKey,
+            authorization,
+            departmentKey,
+          })
+        : await verifyDepartmentAccess({
+            supabaseUrl,
+            supabaseAnonKey,
+            authorization,
+            departmentKey,
+          });
 
     if (!allowed) {
       return jsonResponse({ error: "ACCESS_DENIED" }, 403);

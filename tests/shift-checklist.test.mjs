@@ -59,3 +59,25 @@ test("reminder function is protected and advances reminders by three hours", asy
   assert.match(edge, /3 \* 60 \* 60 \* 1000/);
   assert.match(edge, /shift_checklist_reminder/);
 });
+
+test("completed checklist notifies only the actual next shift", async () => {
+  const [sql, client, edge] = await Promise.all([
+    source("supabase-sql/034_shift_handover_notifications.sql"),
+    source("checklist.js"),
+    source("supabase/functions/send-push-notifications/index.ts"),
+  ]);
+
+  assert.match(sql, /v_handover_kind = 'day_to_night'[\s\S]*public\.is_night_shift_start\(hours\.day_hours, hours\.night_hours\)/i);
+  assert.match(sql, /v_handover_kind = 'night_to_day'[\s\S]*hours\.day_hours > 0 and hours\.night_hours = 0/i);
+  assert.match(sql, /v_schedule_date - 1/i);
+  assert.match(sql, /p_night_hours[\s\S]*= 5[\s\S]*p_day_hours[\s\S]*in \(1, 2\)/i);
+  assert.doesNotMatch(sql, /v_target_date := v_schedule_date \+ 1/i);
+  assert.match(sql, /not public\.is_shift_handover_manager_position\(profile\.position\)/i);
+  assert.match(sql, /v_row\.started_at >= now\(\) - interval '36 hours'/i);
+  assert.match(sql, /existing\.created_at >= now\(\) - interval '10 hours'/i);
+  assert.match(sql, /'handover_recipients', v_recipient_count/i);
+  assert.match(sql, /revoke all on function public\.shift_hours_on_date\(uuid, date\) from public, anon, authenticated/i);
+  assert.match(client, /type: "shift_handover_ready"/);
+  assert.match(edge, /verifyShiftHandoverAccess/);
+  assert.match(edge, /type === "shift_handover_ready"/);
+});

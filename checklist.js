@@ -3,9 +3,10 @@ import {
   finishMyShiftChecklist,
   getMyDepartmentKey,
   getMyShiftChecklistState,
+  sendPushNotifications,
   startMyShiftChecklist,
   updateMyShiftChecklist,
-} from "./db.js?v=20260822-3";
+} from "./db.js?v=20260825-1";
 import { startPresenceHeartbeat } from "./presence.js";
 import {
   checklistProgress,
@@ -384,6 +385,17 @@ summaryConfirmBtn?.addEventListener("click", async () => {
   try {
     await flushSave();
     const completed = await finishMyShiftChecklist(activeChecklist.id);
+    const handoverRecipients = Number(completed?.handover_recipients) || 0;
+    if (handoverRecipients > 0 && completed?.department_key) {
+      try {
+        await sendPushNotifications({
+          departmentKey: completed.department_key,
+          type: "shift_handover_ready",
+        });
+      } catch {
+        // The in-site notification is already saved; push can be retried separately.
+      }
+    }
     closeSummary();
     activeChecklist = null;
     renderLatest(completed);
