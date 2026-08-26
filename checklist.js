@@ -13,8 +13,9 @@ import {
   checklistProgress,
   createChecklistItem,
   DEPARTMENT_NAMES,
+  ensureRequiredChecklistItems,
   getDepartmentChecklistTemplates,
-  normalizeChecklistItems,
+  isRequiredChecklistItem,
 } from "./shiftChecklist.js";
 
 const loadingNotice = document.getElementById("loadingNotice");
@@ -133,11 +134,18 @@ function renderSetupTemplates() {
   emptyTemplates?.classList.toggle("hidden", templates.length > 0);
 
   templates.forEach((text) => {
+    const required = isRequiredChecklistItem(text, departmentKey);
     const selected = containsText(setupItems, text);
-    const button = element("button", `template-card${selected ? " selected" : ""}`, text);
+    const button = element(
+      "button",
+      `template-card${selected ? " selected" : ""}${required ? " required" : ""}`,
+      text
+    );
     button.type = "button";
     button.setAttribute("aria-pressed", String(selected));
+    if (required) button.setAttribute("aria-label", `${text}. Обязательный пункт`);
     button.addEventListener("click", () => {
+      if (required) return;
       const index = setupItems.findIndex(
         (item) => item.text.toLocaleLowerCase("ru-RU") === text.toLocaleLowerCase("ru-RU")
       );
@@ -155,17 +163,23 @@ function renderSelectedItems() {
   selectedList.innerHTML = "";
 
   setupItems.forEach((item) => {
+    const required = isRequiredChecklistItem(item, departmentKey);
     const row = element("div", "selected-row");
     const text = element("span", "", item.text);
-    const remove = element("button", "remove-button", "×");
-    remove.type = "button";
-    remove.setAttribute("aria-label", `Убрать: ${item.text}`);
-    remove.addEventListener("click", () => {
-      setupItems = setupItems.filter((candidate) => candidate.id !== item.id);
-      renderSetupTemplates();
-      renderSelectedItems();
-    });
-    row.append(text, remove);
+    if (required) {
+      row.classList.add("required");
+      row.append(text, element("span", "required-mark", "Всегда в списке"));
+    } else {
+      const remove = element("button", "remove-button", "×");
+      remove.type = "button";
+      remove.setAttribute("aria-label", `Убрать: ${item.text}`);
+      remove.addEventListener("click", () => {
+        setupItems = setupItems.filter((candidate) => candidate.id !== item.id);
+        renderSetupTemplates();
+        renderSelectedItems();
+      });
+      row.append(text, remove);
+    }
     selectedList.append(row);
   });
 
@@ -182,7 +196,7 @@ function renderActive() {
   setupView?.classList.add("hidden");
   activeView?.classList.remove("hidden");
 
-  activeChecklist.items = normalizeChecklistItems(activeChecklist.items);
+  activeChecklist.items = ensureRequiredChecklistItems(activeChecklist.items, departmentKey);
   const progress = checklistProgress(activeChecklist.items);
   if (activeMeta) activeMeta.textContent = `Начата ${formatDateTime(activeChecklist.started_at)}`;
   if (progressValue) progressValue.textContent = `${progress.percent}%`;
@@ -204,6 +218,7 @@ function renderActiveItems() {
   activeList.innerHTML = "";
 
   activeChecklist.items.forEach((item) => {
+    const required = isRequiredChecklistItem(item, departmentKey);
     const row = element("div", `check-row${item.done ? " done" : ""}`);
     const toggle = element("button", "check-toggle", "✓");
     toggle.type = "button";
@@ -217,19 +232,27 @@ function renderActiveItems() {
     const text = element("div", "check-text", item.text);
     text.addEventListener("click", () => toggle.click());
 
-    const remove = element("button", "remove-button", "×");
-    remove.type = "button";
-    remove.setAttribute("aria-label", `Удалить: ${item.text}`);
-    remove.addEventListener("click", () => {
-      if (activeChecklist.items.length <= 1) {
-        setSaveState("В чек-листе должен остаться хотя бы один пункт", "error");
-        return;
-      }
-      activeChecklist.items = activeChecklist.items.filter((candidate) => candidate.id !== item.id);
-      renderActive();
-      scheduleSave();
-    });
-    row.append(toggle, text, remove);
+    if (required) {
+      row.classList.add("required");
+      const mark = element("span", "required-lock", "●");
+      mark.title = "Обязательный пункт";
+      mark.setAttribute("aria-label", "Обязательный пункт");
+      row.append(toggle, text, mark);
+    } else {
+      const remove = element("button", "remove-button", "×");
+      remove.type = "button";
+      remove.setAttribute("aria-label", `Удалить: ${item.text}`);
+      remove.addEventListener("click", () => {
+        if (activeChecklist.items.length <= 1) {
+          setSaveState("В чек-листе должен остаться хотя бы один пункт", "error");
+          return;
+        }
+        activeChecklist.items = activeChecklist.items.filter((candidate) => candidate.id !== item.id);
+        renderActive();
+        scheduleSave();
+      });
+      row.append(toggle, text, remove);
+    }
     activeList.append(row);
   });
 }
@@ -274,7 +297,7 @@ function queueSave() {
   if (!activeChecklist) return Promise.resolve();
   const checklistId = activeChecklist.id;
   const snapshot = {
-    items: normalizeChecklistItems(activeChecklist.items),
+    items: ensureRequiredChecklistItems(activeChecklist.items, departmentKey),
     remindersEnabled: activeChecklist.reminders_enabled === true,
   };
 
@@ -360,7 +383,7 @@ startShiftBtn?.addEventListener("click", async () => {
   setError("");
   try {
     activeChecklist = await startMyShiftChecklist({
-      items: normalizeChecklistItems(setupItems),
+      items: ensureRequiredChecklistItems(setupItems, departmentKey),
       remindersEnabled: setupReminders?.checked === true,
     });
     setupItems = [];
@@ -408,7 +431,7 @@ summaryConfirmBtn?.addEventListener("click", async () => {
     closeSummary();
     activeChecklist = null;
     renderLatest(completed);
-    setupItems = [];
+    setupItems = ensureRequiredChecklistItems([], departmentKey);
     renderSetup();
     if (progress.percent === 100) showSuccess();
   } catch (error) {
@@ -431,6 +454,7 @@ async function init() {
   try {
     departmentKey = await getMyDepartmentKey();
     templates = getDepartmentChecklistTemplates(departmentKey);
+    setupItems = ensureRequiredChecklistItems([], departmentKey);
     if (departmentChip) departmentChip.textContent = DEPARTMENT_NAMES[departmentKey] || "Личный список";
 
     const state = await getMyShiftChecklistState();

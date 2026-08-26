@@ -153,6 +153,7 @@
     }
 
     .template-card.selected::after { content: "✓"; color: #8fc0f2; }
+    .template-card.required { cursor: default; }
     .empty-templates { margin-top: 18px; color: #878e94; font-size: 0.8rem; line-height: 1.55; }
 
     .add-form { display: flex; gap: 8px; margin-top: 18px; }
@@ -190,6 +191,8 @@
 
     .selected-list { display: grid; gap: 8px; margin-top: 18px; }
     .selected-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; min-height: 44px; border-bottom: 1px solid rgba(241,238,232,.08); color: #c7cbcf; font-size: .78rem; }
+    .selected-row.required { color: #d8e9fa; }
+    .required-mark { color: #7894ad; font-size: .65rem; white-space: nowrap; }
     .remove-button { width: 32px; height: 32px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #7d848a; font-size: 1rem; }
     .remove-button:hover { border-color: rgba(190,74,105,.25); background: rgba(122,22,56,.12); color: #e4a4b7; }
 
@@ -220,6 +223,8 @@
     .check-row.done { border-color: rgba(110,168,232,.22); background: rgba(110,168,232,.045); }
     .check-row.done .check-toggle { border-color: rgba(110,168,232,.55); background: rgba(110,168,232,.18); color: #d9ecff; }
     .check-row.done .check-text { color: #7f878d; text-decoration: line-through; }
+    .check-row.required { border-color: rgba(110,168,232,.2); }
+    .required-lock { justify-self: center; color: #6e92b4; font-size: .55rem; }
     .check-text { min-width: 0; padding: 12px 8px; color: #d2d5d8; font-size: .82rem; line-height: 1.35; overflow-wrap: anywhere; }
     .active-templates { display: grid; gap: 7px; margin-top: 14px; }
     .active-template { min-height: 40px; border: 1px solid var(--line); border-radius: 6px; padding: 9px 11px; background: transparent; color: #aeb4b9; text-align: left; font-size: .72rem; }
@@ -369,6 +374,6 @@
 
   <div data-app-footer></div>
   <script type="module" src="./nav.js?v=20260823-1"></script>
-  <script type="module" src="./checklist.js?v=20260825-1"></script>
+  <script type="module" src="./checklist.js?v=20260826-1"></script>
 </body>
 </html>

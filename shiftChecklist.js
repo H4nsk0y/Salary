@@ -2,7 +2,7 @@ export const DEPARTMENT_CHECKLIST_TEMPLATES = Object.freeze({
   egais: Object.freeze([
     "Проверить суточные на отправку",
     "Проверить суточные на правильность",
-    "Покрутить марку для сменщика",
+    "Покрутить марку сменщику",
     "Контролировать розлив",
     "Зафиксировать производство",
     "Отгрузить машины",
@@ -11,6 +11,13 @@ export const DEPARTMENT_CHECKLIST_TEMPLATES = Object.freeze({
     "Принять дистиллят",
   ]),
 });
+
+export const EGAIS_REQUIRED_CHECKLIST_ITEM = "Покрутить марку сменщику";
+
+const EGAIS_REQUIRED_CHECKLIST_ALIASES = new Set([
+  EGAIS_REQUIRED_CHECKLIST_ITEM.toLocaleLowerCase("ru-RU"),
+  "Покрутить марку для сменщика".toLocaleLowerCase("ru-RU"),
+]);
 
 export const DEPARTMENT_NAMES = Object.freeze({
   administration: "Администрация",
@@ -57,6 +64,27 @@ export function normalizeChecklistItems(items, limit = 40) {
   }
 
   return result;
+}
+
+export function isRequiredChecklistItem(item, departmentKey) {
+  if (String(departmentKey ?? "").trim() !== "egais") return false;
+  const text = typeof item === "string" ? item : item?.text;
+  return EGAIS_REQUIRED_CHECKLIST_ALIASES.has(
+    String(text ?? "").trim().replace(/\s+/g, " ").toLocaleLowerCase("ru-RU")
+  );
+}
+
+export function ensureRequiredChecklistItems(items, departmentKey) {
+  const normalized = normalizeChecklistItems(items);
+  if (String(departmentKey ?? "").trim() !== "egais") return normalized;
+
+  const required = normalized.find((item) => isRequiredChecklistItem(item, departmentKey));
+  const remaining = normalized.filter((item) => !isRequiredChecklistItem(item, departmentKey));
+  const canonical = required
+    ? { ...required, text: EGAIS_REQUIRED_CHECKLIST_ITEM, source: "standard" }
+    : createChecklistItem(EGAIS_REQUIRED_CHECKLIST_ITEM, "standard");
+
+  return canonical ? [canonical, ...remaining].slice(0, 40) : remaining;
 }
 
 export function getDepartmentChecklistTemplates(departmentKey) {
