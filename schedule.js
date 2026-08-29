@@ -1,6 +1,9 @@
 import { requireSession } from "./auth.js";
 import {
+  getMyDepartmentMembershipKey,
   getMyDepartmentKey,
+  getMyManagedDepartment,
+  getMyProfile,
   listAllDepartments,
   listDepartmentShiftOverview,
 } from "./db.js";
@@ -26,12 +29,14 @@ const todayWorkCount = document.getElementById("todayWorkCount");
 const tomorrowWorkCount = document.getElementById("tomorrowWorkCount");
 const departmentCount = document.getElementById("departmentCount");
 const departmentSelect = document.getElementById("scheduleDepartmentSelect");
+const timesheetLink = document.getElementById("timesheetLink");
 
 let rows = [];
 let departments = [];
 let selectedDepartmentKey = "";
 let currentUserId = "";
 let isLoading = false;
+let departmentTableAccess = null;
 const LEAVE_LABELS = {
   vac_paid: "Отпуск",
   vac_unpaid: "Отпуск без оплаты",
@@ -434,6 +439,23 @@ function renderDepartmentSelect() {
   departmentSelect.value = selectedDepartmentKey;
 }
 
+function updateTimesheetLink() {
+  if (!timesheetLink) return;
+
+  const accessKey = departmentTableAccess?.owner
+    ? selectedDepartmentKey
+    : departmentTableAccess?.key;
+
+  if (!accessKey) {
+    timesheetLink.href = "table.html";
+    timesheetLink.textContent = "Мой табель";
+    return;
+  }
+
+  timesheetLink.href = `admin.html?department=${encodeURIComponent(accessKey)}`;
+  timesheetLink.textContent = "Табель отдела";
+}
+
 function updateDepartmentUrl() {
   const url = new URL(window.location.href);
   if (selectedDepartmentKey) url.searchParams.set("department", selectedDepartmentKey);
@@ -446,6 +468,7 @@ function bindDepartmentSelect() {
     selectedDepartmentKey = String(departmentSelect.value || "").trim();
     saveScheduleContext(currentUserId, departments, selectedDepartmentKey);
     updateDepartmentUrl();
+    updateTimesheetLink();
     void loadSchedule();
   });
 }
@@ -552,11 +575,22 @@ refreshBtn?.addEventListener("click", () => void loadSchedule());
   setStatus("Загружаю отделы…", "busy");
 
   try {
-    const [departmentRows, myDepartmentKey] = await Promise.all([
+    const [departmentRows, myDepartmentKey, profile, managedDepartment, membershipDepartmentKey] = await Promise.all([
       listAllDepartments(),
       getMyDepartmentKey(),
+      getMyProfile().catch(() => null),
+      getMyManagedDepartment().catch(() => null),
+      getMyDepartmentMembershipKey().catch(() => null),
     ]);
     departments = departmentRows ?? [];
+
+    departmentTableAccess = profile?.role === "owner"
+      ? { owner: true }
+      : managedDepartment?.key
+        ? { key: managedDepartment.key }
+        : membershipDepartmentKey === "egais"
+          ? { key: "egais", readOnly: true }
+          : null;
 
     const requestedKey = new URL(window.location.href).searchParams.get("department") || "";
     selectedDepartmentKey = departments.some((item) => item.key === requestedKey)
@@ -566,6 +600,7 @@ refreshBtn?.addEventListener("click", () => void loadSchedule());
         : departments[0]?.key || "";
 
     renderDepartmentSelect();
+    updateTimesheetLink();
     bindDepartmentSelect();
     updateDepartmentUrl();
     saveScheduleContext(currentUserId, departments, selectedDepartmentKey);
@@ -585,6 +620,7 @@ refreshBtn?.addEventListener("click", () => void loadSchedule());
         ? cachedContext.selectedDepartmentKey
         : departments[0]?.key || "";
     renderDepartmentSelect();
+    updateTimesheetLink();
     bindDepartmentSelect();
     updateDepartmentUrl();
   }

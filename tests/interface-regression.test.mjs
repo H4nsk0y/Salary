@@ -18,6 +18,29 @@ test("schedule controls share a desktop baseline and legacy badge is gone", asyn
   assert.doesNotMatch(html, />\s*График отдела\s*</);
 });
 
+test("schedule sends users with department access to the shared timesheet", async () => {
+  const [html, script] = await Promise.all([source("schedule.html"), source("schedule.js")]);
+  assert.match(html, /id="timesheetLink"[\s\S]*Мой табель/);
+  assert.match(script, /timesheetLink\.textContent = "Табель отдела"/);
+  assert.match(script, /admin\.html\?department=/);
+  assert.match(script, /profile\?\.role === "owner"/);
+  assert.match(script, /membershipDepartmentKey === "egais"/);
+});
+
+test("personal schedule notifications contain only the new state", async () => {
+  const [script, sql] = await Promise.all([
+    source("admin.js"),
+    source("supabase-sql/039_compact_timesheet_change_notifications.sql"),
+  ]);
+  const collector = script.match(/function collectPersonalTimesheetChanges\(\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+  assert.match(script, /return `Ночь \$\{fmtHours\(day\)\}\/\$\{fmtHours\(night\)\}`/);
+  assert.match(collector, /notificationCellLabel\(current, index\)/);
+  assert.doesNotMatch(collector, /notificationCellLabel\(previous, index\)/);
+  assert.doesNotMatch(collector, /→/);
+  assert.match(sql, /'Ваш график изменился\.'/);
+  assert.doesNotMatch(sql, /v_actor_name/);
+});
+
 test("help page no longer renders the old product badge", async () => {
   assert.doesNotMatch(await source("help.html"), />\s*Помощь по Alvisa\s*</i);
 });

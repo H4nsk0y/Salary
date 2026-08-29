@@ -1010,23 +1010,21 @@ function updateNotificationBaseline(userIds) {
 
 function notificationCellLabel(snapshot, index) {
   const leaveCode = leaveTypeToCode(snapshot?.leaveType?.[index], "ОТ");
-  if (leaveCode) return leaveCode;
+  if (leaveCode) return `Код ${leaveCode}`;
 
   const day = sanitizeHourNumber(Number(snapshot?.dayHours?.[index]));
   const night = sanitizeHourNumber(Number(snapshot?.nightHours?.[index]));
-  const parts = [];
-
-  if (day > 0) parts.push(`${fmtHours(day)} ч день`);
-  if (night > 0) parts.push(`${fmtHours(night)} ч ночь`);
-
-  return parts.length ? parts.join(" + ") : "выходной";
+  if (day > 0 && night > 0) return `Ночь ${fmtHours(day)}/${fmtHours(night)}`;
+  if (day > 0) return `День ${fmtHours(day)} ч`;
+  if (night > 0) return `Ночь ${fmtHours(night)} ч`;
+  return "Выходной";
 }
 
 function notificationDayMarkLabel(snapshot, index) {
-  if (snapshot?.isHoliday?.[index]) return "праздничный день";
-  if (snapshot?.isTransferredOff?.[index]) return "перенесённый выходной";
-  if (snapshot?.isShortDay?.[index]) return "сокращённый день";
-  return "обычный день";
+  if (snapshot?.isHoliday?.[index]) return "Праздничный день";
+  if (snapshot?.isTransferredOff?.[index]) return "Перенесённый выходной";
+  if (snapshot?.isShortDay?.[index]) return "Сокращённый день";
+  return "Обычный день";
 }
 
 function notificationNumberChanged(previous, current) {
@@ -1060,19 +1058,15 @@ function collectPersonalTimesheetChanges() {
       if (!cellChanged && !markChanged && !commentChanged) continue;
 
       const details = [];
-      if (cellChanged) {
-        details.push(
-          `${notificationCellLabel(previous, index)} → ${notificationCellLabel(current, index)}`
-        );
+      if (cellChanged) details.push(notificationCellLabel(current, index));
+      if (markChanged) details.push(notificationDayMarkLabel(current, index));
+      if (commentChanged) {
+        const hadComment = Boolean(String(previous.shiftComments?.[index] ?? "").trim());
+        const hasComment = Boolean(String(current.shiftComments?.[index] ?? "").trim());
+        details.push(hasComment ? (hadComment ? "Комментарий обновлён" : "Комментарий добавлен") : "Комментарий удалён");
       }
-      if (markChanged) {
-        details.push(
-          `${notificationDayMarkLabel(previous, index)} → ${notificationDayMarkLabel(current, index)}`
-        );
-      }
-      if (commentChanged) details.push("изменён комментарий к смене");
 
-      dayChanges.push(`${index + 1} ${monthNamesGenitive[month]}: ${details.join(", ")}`);
+      dayChanges.push(`${index + 1}: ${details.join(", ")}`);
     }
 
     if (!dayChanges.length) continue;

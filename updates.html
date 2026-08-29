@@ -140,23 +140,6 @@
       color: var(--alvisa-porcelain) !important;
     }
     .updates-idea-button:hover { background: rgba(241, 238, 232, 0.09) !important; }
-    .updates-audience-grid {
-      gap: 0 !important;
-      border-top: 1px solid var(--alvisa-line);
-      border-bottom: 1px solid var(--alvisa-line);
-    }
-    .updates-audience {
-      border: 0 !important;
-      border-right: 1px solid var(--alvisa-line) !important;
-      border-radius: 0 !important;
-      background: transparent !important;
-      box-shadow: none !important;
-      padding: 18px 22px !important;
-    }
-    .updates-audience:last-child { border-right: 0 !important; }
-    .updates-audience:hover { transform: none; box-shadow: none; }
-    .updates-audience > div { color: #c8a56a !important; letter-spacing: 0; }
-    .updates-audience p { color: var(--alvisa-muted) !important; }
     .updates-list { margin-top: 22px !important; gap: 14px !important; }
     .updates-list > article {
       overflow: visible;
@@ -200,9 +183,6 @@
     @media (max-width: 767px) {
       .updates-header { padding-bottom: 20px !important; }
       .updates-title { font-size: 42px !important; }
-      .updates-audience-grid { grid-template-columns: 1fr; }
-      .updates-audience { border-right: 0 !important; border-bottom: 1px solid var(--alvisa-line) !important; padding: 16px 0 !important; }
-      .updates-audience:last-child { border-bottom: 0 !important; }
       .updates-list > article { padding: 20px 18px !important; }
     }
   </style>
@@ -234,21 +214,6 @@
         </button>
       </div>
     </header>
-
-    <section class="updates-audience-grid grid md:grid-cols-3">
-      <article class="updates-audience">
-        <div class="text-xs font-semibold uppercase text-slate-400">Сотрудникам</div>
-        <p class="mt-2 text-sm leading-6 text-slate-300">Быстрее смотреть свои смены, табель, выплаты и обновления проекта.</p>
-      </article>
-      <article class="updates-audience">
-        <div class="text-xs font-semibold uppercase text-slate-400">Руководителям</div>
-        <p class="mt-2 text-sm leading-6 text-slate-300">Проще подключать людей, вести отдел и проверять состояние табелей.</p>
-      </article>
-      <article class="updates-audience">
-        <div class="text-xs font-semibold uppercase text-slate-400">Безопасность</div>
-        <p class="mt-2 text-sm leading-6 text-slate-300">Денежные данные, роли и доступы развиваются без лишнего раскрытия информации.</p>
-      </article>
-    </section>
 
     <section class="updates-list grid">
       <article class="updates-release-latest glass-card">

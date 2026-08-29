@@ -40,3 +40,16 @@ test("idea UI renders user content as text instead of HTML", async () => {
 test("owner hub links to the idea inbox", async () => {
   assert.match(await source("owner.html"), /href="owner-ideas\.html"[\s\S]*Идеи/);
 });
+
+test("reviewing an idea creates one personal notification and requests push delivery", async () => {
+  const [sql, page] = await Promise.all([
+    source("supabase-sql/038_idea_review_notifications.sql"),
+    source("owner-ideas.js"),
+  ]);
+
+  assert.match(sql, /p_status = 'reviewed' and v_idea\.status is distinct from 'reviewed'/i);
+  assert.match(sql, /insert into public\.user_notifications/i);
+  assert.match(sql, /'project_idea_reviewed'/);
+  assert.match(sql, /v_idea\.user_id/);
+  assert.match(page, /sendPushNotifications\(\{ type: "project_idea_reviewed", allUsers: true \}\)/);
+});

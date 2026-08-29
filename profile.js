@@ -9,6 +9,12 @@ import {
   deleteMyTimesheet,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
+import {
+  CUSTOM_POSITION_VALUE,
+  isValidCustomPosition,
+  normalizeCustomPosition,
+  validateCustomPositionSelection,
+} from "./profilePosition.js";
 import { setUiStatus } from "./uiStatus.js";
 import {
   parseNumber,
@@ -181,7 +187,17 @@ const POSITION_VALUES = new Set([
   "procurement_specialist",
   "technology_accounting_specialist",
 ]);
-const CUSTOM_POSITION_VALUE = "__custom__";
+const CUSTOM_POSITION_DEPARTMENTS = new Set([
+  "administration",
+  "accounting",
+  "laboratory",
+  "egais",
+  "operations",
+  "warehouse",
+  "hr",
+  "technology",
+  "bottling",
+]);
 
 const BRANCH_VALUES = new Set([
   "",
@@ -263,28 +279,18 @@ function applyExpectedProfileFieldValues(values) {
   if (okladInput) okladInput.value = values.oklad;
 }
 
-function normalizeCustomPosition(value) {
-  return String(value || "").replace(/\s+/g, " ").trim();
-}
-
-function isValidCustomPosition(value) {
-  const normalized = normalizeCustomPosition(value);
-  return normalized.length >= 2
-    && normalized.length <= 80
-    && !/[<>\{\}\u0000-\u001f\u007f]/.test(normalized);
-}
-
 function ensureCustomPositionOption(position) {
   if (!positionSelect || !customPositionGroup) return;
   const normalized = normalizeCustomPosition(position);
   if (!normalized || POSITION_VALUES.has(normalized)) return;
 
-  let option = Array.from(customPositionGroup.options).find((item) => item.value === normalized);
+  const customOptions = Array.from(customPositionGroup.querySelectorAll("option"));
+  let option = customOptions.find((item) => item.value === normalized);
   if (!option) {
     option = document.createElement("option");
     option.value = normalized;
     option.textContent = normalized;
-    const sentinel = Array.from(customPositionGroup.options).find((item) => item.value === CUSTOM_POSITION_VALUE);
+    const sentinel = customOptions.find((item) => item.value === CUSTOM_POSITION_VALUE);
     customPositionGroup.insertBefore(option, sentinel || null);
   }
 }
@@ -316,21 +322,25 @@ function openCustomPositionModal() {
 }
 
 function saveCustomPosition() {
-  const department = String(customPositionDepartmentSelect?.value || "").trim();
-  const position = normalizeCustomPosition(customPositionInput?.value);
-  if (!department) {
-    setCustomPositionError("Сначала выберите отдел.");
+  const result = validateCustomPositionSelection({
+    department: customPositionDepartmentSelect?.value,
+    position: customPositionInput?.value,
+    allowedDepartments: CUSTOM_POSITION_DEPARTMENTS,
+  });
+
+  if (!result.ok && result.field === "department") {
+    setCustomPositionError(result.message);
     customPositionDepartmentSelect?.focus();
     return;
   }
-  if (!isValidCustomPosition(position)) {
-    setCustomPositionError("Введите название должности длиной от 2 до 80 символов без служебных знаков.");
+  if (!result.ok) {
+    setCustomPositionError(result.message);
     customPositionInput?.focus();
     return;
   }
 
-  ensureCustomPositionOption(position);
-  positionSelect.value = position;
+  ensureCustomPositionOption(result.position);
+  positionSelect.value = result.position;
   markProfileFieldsTouched();
   closeCustomPositionModal({ restoreSelection: false });
 }

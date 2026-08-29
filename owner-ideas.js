@@ -1,5 +1,11 @@
 import { requireSession } from "./auth.js";
-import { getMyProfile, ownerDeleteProjectIdea, ownerListProjectIdeas, ownerSetProjectIdeaStatus } from "./db.js";
+import {
+  getMyProfile,
+  ownerDeleteProjectIdea,
+  ownerListProjectIdeas,
+  ownerSetProjectIdeaStatus,
+  sendPushNotifications,
+} from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { confirmDialog } from "./modal.js";
 
@@ -38,7 +44,16 @@ function statusButton(row, status, label) {
     setError("");
     try {
       await ownerSetProjectIdeaStatus(row.id, status);
+      let pushWarning = "";
+      if (status === "reviewed" && row.status !== "reviewed") {
+        try {
+          await sendPushNotifications({ type: "project_idea_reviewed", allUsers: true });
+        } catch {
+          pushWarning = "Статус сохранен, но push-уведомление не отправилось. Уведомление внутри сайта уже создано.";
+        }
+      }
       await loadIdeas();
+      if (pushWarning) setError(pushWarning);
     } catch (error) {
       setError(error?.message || "Не удалось изменить статус идеи.");
       button.disabled = false;
@@ -116,7 +131,7 @@ async function loadIdeas() {
     setStatus("Готово");
   } catch (error) {
     const raw = String(error?.message ?? error ?? "");
-    setError(/owner_list_project_ideas|PGRST202/i.test(raw) ? "Выполните SQL-скрипт 033_project_ideas.sql в Supabase." : raw || "Не удалось загрузить идеи.");
+    setError(/owner_list_project_ideas|PGRST202/i.test(raw) ? "Выполните последние SQL-скрипты для идей в Supabase." : raw || "Не удалось загрузить идеи.");
     setStatus("Ошибка");
   } finally {
     refreshBtn.disabled = false;
