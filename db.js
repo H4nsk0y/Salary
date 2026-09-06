@@ -898,7 +898,7 @@ export async function sendPushNotifications({
   allUsers = false,
 } = {}) {
   const key = String(departmentKey ?? "").trim();
-  if (!key && !allUsers) throw new Error("Не указан отдел.");
+  if (!key && !allUsers && type !== "push_test") throw new Error("Не указан отдел.");
 
   const { data, error } = await supabase.functions.invoke("send-push-notifications", {
     body: {
@@ -1048,6 +1048,13 @@ export async function getMyDepartmentMembershipKey() {
 
   if (memberError && !isNotFoundError(memberError)) throw memberError;
   return memberRow?.department_key ?? null;
+}
+
+export async function createMyPushTestNotification() {
+  await requireUserId();
+  const { data, error } = await supabase.rpc("create_my_push_test_notification");
+  if (error) throw error;
+  return Number(data) || null;
 }
 
 export async function getMyDepartmentKey() {

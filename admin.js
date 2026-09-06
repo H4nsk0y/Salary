@@ -18,7 +18,16 @@ import {
   setDepartmentMemberOrder,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
+import { createSerialTaskQueue } from "./asyncTasks.js";
 import { setUiStatus } from "./uiStatus.js";
+import {
+  getProductionCalendarMonth,
+  shouldApplyProductionCalendar,
+} from "./productionCalendar.js";
+import {
+  hardenTimesheetInput,
+  rejectUnexpectedTimesheetAutofill,
+} from "./timesheetInput.js";
 import {
   normalizeShiftComments,
   openShiftCommentDialog,
@@ -93,6 +102,7 @@ let teamStates = [];
 let sharedHoliday = [];
 let sharedTransferredOff = [];
 let sharedShortDay = [];
+let productionCalendarVersion = null;
 let headerCells = [];
 let columnCells = [];
 let focusedDayIndex = null;
@@ -125,6 +135,9 @@ const dirtyUserRevisions = new Map();
 let notificationBaselineByUserId = new Map();
 let hasPendingPersonalPush = false;
 let saveTimer = null;
+const runTimesheetTask = createSerialTaskQueue();
+let monthTransitionPending = false;
+let monthDataLoaded = false;
 
 function setError(msg) {
   if (!msg) {
@@ -667,6 +680,7 @@ function resetMonthArrays(members) {
   sharedHoliday = new Array(daysInMonth).fill(false);
   sharedTransferredOff = new Array(daysInMonth).fill(false);
   sharedShortDay = new Array(daysInMonth).fill(false);
+  productionCalendarVersion = null;
   headerCells = [];
   columnCells = Array.from({ length: daysInMonth }, () => []);
   focusedDayIndex = null;
@@ -956,6 +970,7 @@ function currentPayloadForState(state) {
     isHoliday: [...sharedHoliday],
     isTransferredOff: [...sharedTransferredOff],
     isShortDay: [...sharedShortDay],
+    productionCalendarVersion,
     dayHours: [...state.dayHours],
     nightHours: [...state.nightHours],
     leaveType: [...state.leaveType],
@@ -999,12 +1014,12 @@ function resetNotificationBaseline() {
   );
 }
 
-function updateNotificationBaseline(userIds) {
+function updateNotificationBaseline(userIds, snapshots) {
   const ids = new Set((Array.isArray(userIds) ? userIds : []).map(String));
 
   for (const state of teamStates) {
     if (!ids.has(String(state.userId))) continue;
-    notificationBaselineByUserId.set(state.userId, notificationSnapshotForState(state));
+    notificationBaselineByUserId.set(state.userId, snapshots.get(state.userId));
   }
 }
 
@@ -1541,6 +1556,7 @@ function handleMatrixInput(e) {
   if (departmentViewOnly) return;
   const input = getMatrixInput(e.target);
   if (!input) return;
+  if (rejectUnexpectedTimesheetAutofill(input)) return;
 
   const ctx = getInputContext(input);
   if (!ctx) return;
@@ -1786,6 +1802,7 @@ function createDayInput(state, i, memberIndex) {
   input.className = "input-hour";
   input.autocapitalize = "characters";
   input.spellcheck = false;
+  hardenTimesheetInput(input);
   setupMatrixInput(input, memberIndex, "day", i);
 
   td.appendChild(input);
@@ -1805,6 +1822,7 @@ function createNightInput(state, i, memberIndex) {
   input.inputMode = "decimal";
   input.className = "input-hour";
   input.spellcheck = false;
+  hardenTimesheetInput(input);
   setupMatrixInput(input, memberIndex, "night", i);
 
   td.appendChild(input);
@@ -2351,8 +2369,16 @@ async function createCurrentDepartmentInvite() {
 }
 
 
-async function doSaveAll({ notify = false } = {}) {
+function doSaveAll(options = {}) {
+  return runTimesheetTask(() => saveAllNow(options));
+}
+
+async function saveAllNow({ notify = false } = {}) {
   if (departmentViewOnly) return;
+  if (!monthDataLoaded) {
+    setError("Табель еще не загружен. Нажмите Обновить.");
+    return;
+  }
   setSaveStatus("Сохраняю…", "busy");
   setError(null);
 
@@ -2363,8 +2389,11 @@ async function doSaveAll({ notify = false } = {}) {
     }
 
     const personalChanges = notify ? collectPersonalTimesheetChanges() : [];
+    const notifiedSnapshots = notify
+      ? new Map(teamStates.map((state) => [state.userId, notificationSnapshotForState(state)]))
+      : null;
     const saveRevision = changeRevision;
-    const items = currentSaveItems({ changedOnly: true });
+    const items = structuredClone(currentSaveItems({ changedOnly: true }));
     if (items.length) await managedSaveManyTimesheets(items);
 
     for (const item of items) {
@@ -2386,7 +2415,7 @@ async function doSaveAll({ notify = false } = {}) {
             changes: personalChanges,
           });
 
-          updateNotificationBaseline(personalChanges.map((item) => item.userId));
+          updateNotificationBaseline(personalChanges.map((item) => item.userId), notifiedSnapshots);
           hasPendingPersonalPush = true;
         }
 
@@ -2437,7 +2466,7 @@ async function doSaveAll({ notify = false } = {}) {
 }
 
 function scheduleSave({ state = null, shared = false } = {}) {
-  if (departmentViewOnly) return;
+  if (departmentViewOnly || !monthDataLoaded) return;
   markDirty({ state, shared });
   if (saveTimer) clearTimeout(saveTimer);
 
@@ -2549,7 +2578,7 @@ async function guardManagedDepartment() {
   return true;
 }
 
-async function loadCurrentMonth() {
+async function loadCurrentMonth(targetYear = year, targetMonth = month) {
   setSaveStatus("Загружаю…", "busy");
 
   try {
@@ -2563,11 +2592,13 @@ async function loadCurrentMonth() {
     let payloadsByUserId;
 
     if (departmentViewOnly) {
-      const viewRows = await listEgaisDepartmentTimesheetView(year, month);
+      const viewRows = await listEgaisDepartmentTimesheetView(targetYear, targetMonth);
       const members = viewRows.map((row) => ({
         ...row,
         position: row.position_name ?? "",
       }));
+      year = targetYear;
+      month = targetMonth;
       resetMonthArrays(members);
       payloadsByUserId = new Map(viewRows.map((row) => [row.user_id, row.payload]));
 
@@ -2579,14 +2610,16 @@ async function loadCurrentMonth() {
       }
     } else {
       const members = await listManagedDepartmentMembers(managedDepartment.key);
-      resetMonthArrays(members);
 
-      const userIds = teamStates.map((state) => state.userId);
+      const userIds = members.map((member) => member.user_id);
       const [payloads, previousRows] = await Promise.all([
-        Promise.all(teamStates.map((state) => managedLoadTimesheet(state.userId, year, month))),
-        managedListTimesheetsBefore(userIds, year, month),
+        Promise.all(userIds.map((userId) => managedLoadTimesheet(userId, targetYear, targetMonth))),
+        managedListTimesheetsBefore(userIds, targetYear, targetMonth),
       ]);
 
+      year = targetYear;
+      month = targetMonth;
+      resetMonthArrays(members);
       payloadsByUserId = new Map();
       for (let i = 0; i < teamStates.length; i++) {
         payloadsByUserId.set(teamStates[i].userId, payloads[i]);
@@ -2595,6 +2628,25 @@ async function loadCurrentMonth() {
     }
 
     applyLoadedPayloads(payloadsByUserId);
+
+    const knownBranches = teamStates.map((state) => state.branch).filter(Boolean);
+    const calendarBranch = knownBranches.length > 0 && knownBranches.every((branch) => branch === CHATEAU_ALVISA_BRANCH)
+      ? CHATEAU_ALVISA_BRANCH
+      : null;
+    const productionCalendar = await getProductionCalendarMonth(targetYear, targetMonth, {
+      branch: calendarBranch,
+    });
+    productionCalendarVersion = productionCalendar?.version ?? null;
+    const savedPayloads = Array.from(payloadsByUserId.values()).filter(Boolean);
+    const hasCurrentCalendar = savedPayloads.some(
+      (payload) => !shouldApplyProductionCalendar(payload, productionCalendar)
+    );
+    if (!hasCurrentCalendar) {
+      sharedHoliday = productionCalendar.isHoliday.map(Boolean);
+      sharedTransferredOff = productionCalendar.isTransferredOff.map(Boolean);
+      sharedShortDay = productionCalendar.isShortDay.map(Boolean);
+    }
+    monthDataLoaded = true;
     buildTable();
     if (departmentViewOnly) {
       matrixBody?.querySelectorAll("input.input-hour").forEach((input) => {
@@ -2618,6 +2670,8 @@ async function loadCurrentMonth() {
     );
 
     initCurrentDaySelection();
+    setError(null);
+    return true;
   } catch (e) {
     setSaveStatus("Ошибка загрузки", "err");
     const message = String(e?.message || "");
@@ -2626,6 +2680,7 @@ async function loadCurrentMonth() {
         ? "В базе нужно запустить supabase-sql/030_egais_department_timesheet_view.sql."
         : message || "Не удалось загрузить общий табель."
     );
+    return false;
   }
 }
 
@@ -2721,7 +2776,7 @@ copyInviteBtn?.addEventListener("click", async () => {
 });
 
 reloadBtn?.addEventListener("click", async () => {
-  await loadCurrentMonth();
+  await changeDepartmentMonth();
 });
 
 tableScrollable?.addEventListener("scroll", () => {
@@ -2752,19 +2807,39 @@ matrixBody?.addEventListener("dragover", handleMemberDragOver);
 matrixBody?.addEventListener("drop", handleMemberDrop);
 matrixBody?.addEventListener("dragend", clearMemberDragState);
 
-monthSelect?.addEventListener("change", async () => {
-  month = Number(monthSelect.value);
-  updateUrlForMonth();
-  await loadCurrentMonth();
-  initCurrentDaySelection();
-});
+async function changeDepartmentMonth() {
+  if (monthTransitionPending) return;
+  const nextYear = Number(yearSelect.value);
+  const nextMonth = Number(monthSelect.value);
+  const previousYear = year;
+  const previousMonth = month;
+  monthTransitionPending = true;
+  const shell = document.querySelector(".admin-shell");
+  if (shell) shell.inert = true;
+  clearTimeout(saveTimer);
+  try {
+    await runTimesheetTask(async () => {
+      if (dirty) {
+        await saveAllNow();
+        if (dirty) return;
+      }
+      if (!(await loadCurrentMonth(nextYear, nextMonth))) {
+        year = previousYear;
+        month = previousMonth;
+        return;
+      }
+      updateUrlForMonth();
+    });
+  } finally {
+    yearSelect.value = String(year);
+    monthSelect.value = String(month);
+    monthTransitionPending = false;
+    if (shell) shell.inert = false;
+  }
+}
 
-yearSelect?.addEventListener("change", async () => {
-  year = Number(yearSelect.value);
-  updateUrlForMonth();
-  await loadCurrentMonth();
-  initCurrentDaySelection();
-});
+monthSelect?.addEventListener("change", changeDepartmentMonth);
+yearSelect?.addEventListener("change", changeDepartmentMonth);
 
 
 window.addEventListener("resize", () => {
@@ -2789,6 +2864,9 @@ window.addEventListener("beforeunload", (e) => {
 });
 
 (async () => {
+  const shell = document.querySelector(".admin-shell");
+  if (shell) shell.inert = true;
+  monthTransitionPending = true;
   try {
     setError(null);
     const ok = await guardManagedDepartment();
@@ -2804,6 +2882,9 @@ window.addEventListener("beforeunload", (e) => {
   } catch (e) {
     setError(e?.message || "Ошибка админки.");
     setSaveStatus("Ошибка", "err");
+  } finally {
+    monthTransitionPending = false;
+    if (shell) shell.inert = false;
   }
 })();
 

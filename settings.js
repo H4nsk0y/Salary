@@ -7,6 +7,7 @@ import {
   disablePushNotifications,
   enablePushNotifications,
   getPushNotificationState,
+  sendPushTestNotification,
 } from "./pushNotifications.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { setUiStatus } from "./uiStatus.js";
@@ -32,6 +33,7 @@ const hideCalculatorNavToggle = document.getElementById("hideCalculatorNavToggle
 const egaisFileRemindersRow = document.getElementById("egaisFileRemindersRow");
 const egaisFileRemindersToggle = document.getElementById("egaisFileRemindersToggle");
 const pushNotificationsBtn = document.getElementById("pushNotificationsBtn");
+const pushTestBtn = document.getElementById("pushTestBtn");
 const pushNotificationsHint = document.getElementById("pushNotificationsHint");
 const pwaInstallBtn = document.getElementById("pwaInstallBtn");
 const pwaInstallHint = document.getElementById("pwaInstallHint");
@@ -244,6 +246,7 @@ function applyPushButtonState(state) {
   if (!pushNotificationsBtn || !pushNotificationsHint) return;
 
   pushNotificationsBtn.disabled = false;
+  pushTestBtn?.classList.toggle("hidden", !state?.subscribed);
   pushNotificationsBtn.classList.remove("text-emerald-200", "ring-emerald-400/20", "text-rose-200", "ring-rose-400/20");
 
   if (!state?.supported) {
@@ -273,7 +276,7 @@ function applyPushButtonState(state) {
     pushNotificationsBtn.textContent = "Отключить";
     pushNotificationsBtn.classList.add("text-emerald-200", "ring-emerald-400/20");
     pushNotificationsHint.textContent =
-      "Этот браузер подписан на уведомления. Отправка начнет работать после подключения серверной рассылки.";
+      "Этот браузер подписан. Кнопка «Проверить» отправит тестовое уведомление именно на ваши устройства.";
     return;
   }
 
@@ -438,6 +441,25 @@ async function handlePushNotificationsClick() {
   }
 }
 
+async function handlePushTestClick() {
+  if (!pushTestBtn) return;
+  pushTestBtn.disabled = true;
+  pushTestBtn.textContent = "Отправляю…";
+  setError(null);
+
+  try {
+    await sendPushTestNotification();
+    setStatus("Тест отправлен", "ok");
+    pushNotificationsHint.textContent = "Сервер принял отправку. Уведомление должно появиться в течение нескольких секунд.";
+  } catch (e) {
+    setStatus("Тест не прошёл", "err");
+    setError(e?.message || "Не удалось отправить тестовое уведомление.");
+  } finally {
+    pushTestBtn.disabled = false;
+    pushTestBtn.textContent = "Проверить";
+  }
+}
+
 hideMoneyToggle?.addEventListener("change", () => {
   void handleHideMoneyToggleChange();
 });
@@ -456,6 +478,10 @@ egaisFileRemindersToggle?.addEventListener("change", () => {
 
 pushNotificationsBtn?.addEventListener("click", () => {
   void handlePushNotificationsClick();
+});
+
+pushTestBtn?.addEventListener("click", () => {
+  void handlePushTestClick();
 });
 
 pwaInstallBtn?.addEventListener("click", () => {

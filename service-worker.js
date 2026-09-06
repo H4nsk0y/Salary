@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "alvisa-pwa";
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = new URL("./offline.html", self.registration.scope).href;
@@ -36,8 +36,12 @@ async function networkFirst(request) {
   try {
     const response = await fetch(request);
     if (response?.ok) {
-      const cache = await caches.open(RUNTIME_CACHE);
-      await cache.put(request, response.clone());
+      try {
+        const cache = await caches.open(RUNTIME_CACHE);
+        await cache.put(request, response.clone());
+      } catch {
+        // A full or unavailable cache must not discard a successful download.
+      }
     }
     return response;
   } catch (error) {

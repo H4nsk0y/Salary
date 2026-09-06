@@ -22,3 +22,13 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+@layer components {
+  .input-hour:-webkit-autofill,
+  .input-hour:-webkit-autofill:hover,
+  .input-hour:-webkit-autofill:focus {
+    -webkit-text-fill-color: #e2e8f0 !important;
+    box-shadow: 0 0 0 1000px #07101b inset !important;
+    caret-color: #e2e8f0;
+  }
+}

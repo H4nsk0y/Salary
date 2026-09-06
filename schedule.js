@@ -493,6 +493,7 @@ async function loadSchedule() {
 
   isLoading = true;
   if (refreshBtn) refreshBtn.disabled = true;
+  const requestedDepartmentKey = selectedDepartmentKey;
 
   const startDate = toLocalIsoDate(new Date());
   const days = 2;
@@ -501,20 +502,22 @@ async function loadSchedule() {
     setStatus("Загружаю смены…", "busy");
     setError(null);
 
-    rows = await listDepartmentShiftOverview({
-      departmentKey: selectedDepartmentKey,
+    const loadedRows = await listDepartmentShiftOverview({
+      departmentKey: requestedDepartmentKey,
       startDate,
       days,
     });
 
     saveScheduleSnapshot({
       userId: currentUserId,
-      departmentKey: selectedDepartmentKey,
+      departmentKey: requestedDepartmentKey,
       startDate,
       days,
-      rows,
+      rows: loadedRows,
     });
 
+    if (requestedDepartmentKey !== selectedDepartmentKey) return;
+    rows = loadedRows;
     render();
 
     const now = new Date();
@@ -527,9 +530,10 @@ async function loadSchedule() {
 
     setStatus("Готово", "ok");
   } catch (error) {
+    if (requestedDepartmentKey !== selectedDepartmentKey) return;
     const cached = loadScheduleSnapshot({
       userId: currentUserId,
-      departmentKey: selectedDepartmentKey,
+      departmentKey: requestedDepartmentKey,
       startDate,
       days,
     });
@@ -550,12 +554,15 @@ async function loadSchedule() {
       setStatus("Последние загруженные данные", "warning");
       setError(`Нет доступа к базе, показан последний загруженный график от ${cachedLabel}.`);
     } else {
+      rows = [];
+      render();
       setStatus("Ошибка загрузки", "err");
       setError(mapError(error));
     }
   } finally {
     isLoading = false;
     if (refreshBtn) refreshBtn.disabled = false;
+    if (requestedDepartmentKey !== selectedDepartmentKey) void loadSchedule();
   }
 }
 

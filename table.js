@@ -1,9 +1,10 @@
 
-import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary } from "./calc.js";
+import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary, computePaymentSplit } from "./calc.js";
 import { requireSession, signOut } from "./auth.js";
 import { getMyProfile, getMyDepartmentMembershipKey, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, saveMyTimesheetActual, saveTimesheet } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { setUiStatus } from "./uiStatus.js";
+import { createSerialTaskQueue } from "./asyncTasks.js";
 import {
   normalizeShiftComments,
   openShiftCommentDialog,
@@ -29,6 +30,14 @@ import {
 } from "./vacationPay.js";
 import { downloadShiftCalendar } from "./calendarExport.js";
 import { getNightSequenceDisplay, isWorkDepartureDay } from "./timesheetView.js?v=20260823-2";
+import {
+  getProductionCalendarMonth,
+  shouldApplyProductionCalendar,
+} from "./productionCalendar.js";
+import {
+  hardenTimesheetInput,
+  rejectUnexpectedTimesheetAutofill,
+} from "./timesheetInput.js";
 
 document.body.classList.add("is-loaded");
 
@@ -745,6 +754,7 @@ let currentMoneySnapshot = null;
 let currentPaySummary = createEmptyPaySummary();
 let suppressActualInputSync = false;
 let personalSharedMarksChanged = false;
+let productionCalendarVersion = null;
 let paymentCountdownTimer = null;
 let paymentCountdownRunId = 0;
 const paymentMarksCache = new Map();
@@ -1280,6 +1290,9 @@ function setupActualMoneyControls() {
 }
 
 let timesheetSaveTimer = null;
+const runTimesheetTask = createSerialTaskQueue();
+let monthTransitionPending = false;
+let monthDataLoaded = false;
 let lastSavedJSON = "";
 let dirty = false;
 
@@ -1370,8 +1383,16 @@ async function getPaymentMarksForMonth(y, m) {
   if (paymentMarksCache.has(key)) return paymentMarksCache.get(key);
 
   try {
-    const payload = await loadTimesheet(y, m);
-    const marks = normalizePaymentMarks(payload, y, m);
+    const [payload, productionCalendar] = await Promise.all([
+      loadTimesheet(y, m),
+      getProductionCalendarMonth(y, m, { branch: profileBranch }),
+    ]);
+    const marks = shouldApplyProductionCalendar(payload, productionCalendar)
+      ? {
+          isHoliday: productionCalendar.isHoliday.map(Boolean),
+          isTransferredOff: productionCalendar.isTransferredOff.map(Boolean),
+        }
+      : normalizePaymentMarks(payload, y, m);
     paymentMarksCache.set(key, marks);
     return marks;
   } catch {
@@ -1741,13 +1762,6 @@ function findDismissalIndex() {
 function payloadHasDismissal(payload) {
   if (!payload || !Array.isArray(payload.leaveType)) return false;
   return payload.leaveType.some((leave) => isDismissedLeaveType(leave));
-}
-
-async function refreshDismissalBeforeMonth() {
-  dismissedBeforeMonth = false;
-
-  const rows = await listMyTimesheetsBefore(year, month, { withPayload: true });
-  dismissedBeforeMonth = rows.some((row) => payloadHasDismissal(row?.payload));
 }
 
 function personalNormHours(monthNorm) {
@@ -2695,17 +2709,20 @@ function recalcAll() {
 
   const fhDay = sumRange(dayHours, 0, Math.min(14, daysInMonth - 1));
   const fhNight = sumRange(nightHours, 0, Math.min(14, daysInMonth - 1));
-  const fhTotal = fhDay + fhNight;
-  const baseNetHourlyNoBonus = (effectiveOklad * (1 - TAX_RATE)) / monthNorm;
-  const nightExtraNetHourly = (effectiveOklad / monthNorm) * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
-  const advanceApprox = baseNetHourlyNoBonus * fhTotal + nightExtraNetHourly * fhNight;
+  const paymentSplit = computePaymentSplit({
+    netTotal,
+    effectiveOklad,
+    monthNorm,
+    firstHalfDayHours: fhDay,
+    firstHalfNightHours: fhNight,
+  });
 
   calculated = cloneCalculatedSummary({
     net: netTotal,
     tax: taxTotal,
     gross: grossTotal,
-    advance: advanceApprox,
-    remaining: netTotal - advanceApprox,
+    advance: paymentSplit.advance,
+    remaining: paymentSplit.remaining,
     okladSnapshot: baseOklad,
     effectiveOkladSnapshot: effectiveOklad,
     hazardRate,
@@ -2749,6 +2766,7 @@ function currentPayload() {
     isHoliday,
     isTransferredOff,
     isShortDay,
+    productionCalendarVersion,
     dayHours,
     nightHours,
     leaveType,
@@ -2763,13 +2781,23 @@ function currentPayload() {
   };
 }
 
-async function doSaveTimesheet() {
+function doSaveTimesheet() {
+  return runTimesheetTask(saveTimesheetNow);
+}
+
+async function saveTimesheetNow() {
+  if (!monthDataLoaded) {
+    setError("Табель еще не загружен. Выберите месяц повторно.");
+    return false;
+  }
+  clearTimeout(timesheetSaveTimer);
+  timesheetSaveTimer = null;
   if (personalTimesheetReadOnly) {
     setSaveStatus("Сохраняю факт…", "busy");
 
     try {
       syncActualStateFromInputs();
-      const payload = currentPayload();
+      const payload = structuredClone(currentPayload());
 
       await saveMyTimesheetActual(
         year,
@@ -2779,13 +2807,14 @@ async function doSaveTimesheet() {
       );
 
       lastSavedJSON = JSON.stringify(payload);
-      dirty = false;
-      setSaveStatus("Фактические суммы сохранены", "ok");
+      dirty = JSON.stringify(currentPayload()) !== lastSavedJSON;
+      setSaveStatus(dirty ? "Есть несохраненные изменения" : "Фактические суммы сохранены", dirty ? "neutral" : "ok");
+      return true;
     } catch (e) {
       setSaveStatus("Ошибка сохранения", "err");
       setError(e?.message || "Не удалось сохранить фактические суммы.");
+      return false;
     }
-    return;
   }
 
   setSaveStatus("Сохраняю…", "busy");
@@ -2796,22 +2825,25 @@ async function doSaveTimesheet() {
     const payload = currentPayload();
     const json = JSON.stringify(payload);
 
-    await saveTimesheet(year, month, payload);
+    await saveTimesheet(year, month, JSON.parse(json));
 
     lastSavedJSON = json;
-    dirty = false;
+    dirty = JSON.stringify(currentPayload()) !== json;
 
     setSaveStatus(
-      `Сохранено: ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`,
-      "ok"
+      dirty ? "Есть несохраненные изменения" : `Сохранено: ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`,
+      dirty ? "neutral" : "ok"
     );
+    return true;
   } catch (e) {
     setSaveStatus("Ошибка сохранения", "err");
     setError(e?.message || "Не удалось сохранить табель.");
+    return false;
   }
 }
 
 function scheduleSave() {
+  if (!monthDataLoaded) return;
   markDirty();
   if (timesheetSaveTimer) clearTimeout(timesheetSaveTimer);
   timesheetSaveTimer = setTimeout(async () => {
@@ -2966,6 +2998,7 @@ function buildTableForMonth() {
   shiftComments = new Array(daysInMonth).fill("");
 
   currentLoadedPayload = null;
+  productionCalendarVersion = null;
   personalSharedMarksChanged = false;
   currentPaySummary = createEmptyPaySummary();
   currentMoneySnapshot = null;
@@ -3072,6 +3105,7 @@ function buildTableForMonth() {
     dayInput.classList.add("input-hour","input-glass");
     dayInput.autocapitalize = "characters";
     dayInput.spellcheck = false;
+    hardenTimesheetInput(dayInput);
 
     attachPrevValueTracking(dayInput);
     attachArrowNavigation(dayInput, "day", i);
@@ -3100,6 +3134,7 @@ function buildTableForMonth() {
     });
 
     dayInput.addEventListener("input", () => {
+      if (rejectUnexpectedTimesheetAutofill(dayInput)) return;
       const sanitized = sanitizeDayCellValue(dayInput.value);
       if (sanitized !== dayInput.value) dayInput.value = sanitized;
       const raw = dayInput.value;
@@ -3186,6 +3221,7 @@ function buildTableForMonth() {
     nightInput.placeholder = "";
     nightInput.classList.add("input-hour","input-glass");
     nightInput.spellcheck = false;
+    hardenTimesheetInput(nightInput);
 
     attachPrevValueTracking(nightInput);
     attachArrowNavigation(nightInput, "night", i);
@@ -3210,6 +3246,7 @@ function buildTableForMonth() {
     });
 
     nightInput.addEventListener("input", () => {
+      if (rejectUnexpectedTimesheetAutofill(nightInput)) return;
       if (leaveType[i]) return;
       const sanitized = sanitizeNumericValue(nightInput.value);
       if (sanitized !== nightInput.value) nightInput.value = sanitized;
@@ -3434,14 +3471,27 @@ function syncOkladActionState() {
   useProfileOkladBtn.classList.toggle("cursor-not-allowed", !canUse);
 }
 
-async function loadCurrentMonthFromDb() {
+async function loadCurrentMonthFromDb(targetYear = year, targetMonth = month) {
   setSaveStatus("Загружаю…", "busy");
   try {
-    const [payload] = await Promise.all([
-      loadTimesheet(year, month),
-      refreshDismissalBeforeMonth(),
+    const [payload, previousRows, productionCalendar] = await Promise.all([
+      loadTimesheet(targetYear, targetMonth),
+      listMyTimesheetsBefore(targetYear, targetMonth, { withPayload: true }),
+      getProductionCalendarMonth(targetYear, targetMonth, { branch: profileBranch }),
     ]);
+    year = targetYear;
+    month = targetMonth;
+    buildTableForMonth();
+    dismissedBeforeMonth = previousRows.some((row) => payloadHasDismissal(row?.payload));
     applyPayload(payload);
+    productionCalendarVersion = productionCalendar?.version ?? null;
+    if (shouldApplyProductionCalendar(payload, productionCalendar)) {
+      isHoliday = productionCalendar.isHoliday.map(Boolean);
+      isTransferredOff = productionCalendar.isTransferredOff.map(Boolean);
+      isShortDay = productionCalendar.isShortDay.map(Boolean);
+      renderInputsFromState();
+    }
+    monthDataLoaded = true;
 
     if (payload) {
       recalcAll();
@@ -3454,9 +3504,12 @@ async function loadCurrentMonthFromDb() {
       dirty = false;
       setSaveStatus("Новый табель", "neutral");
     }
+    setError(null);
+    return true;
   } catch (e) {
     setSaveStatus("Ошибка загрузки", "err");
     setError(e?.message || "Не удалось загрузить табель.");
+    return false;
   }
 }
 
@@ -3640,25 +3693,39 @@ useProfileOkladBtn?.addEventListener("click", () => {
   scheduleSave();
 });
 
-monthSelect?.addEventListener("change", async () => {
-  month = Number(monthSelect.value);
-  updateUrlForMonth();
-  buildTableForMonth();
-  applyPersonalTimesheetEditability();
-  await loadCurrentMonthFromDb();
-  applyPersonalTimesheetEditability();
-  if (isMobileNow()) setMobileDay(mobileSelectedIdx < daysInMonth ? mobileSelectedIdx : 0);
-});
+async function changeTimesheetMonth() {
+  if (monthTransitionPending) return;
+  const nextYear = Number(yearSelect.value);
+  const nextMonth = Number(monthSelect.value);
+  const previousYear = year;
+  const previousMonth = month;
+  monthTransitionPending = true;
+  const shell = document.querySelector(".timesheet-shell");
+  if (shell) shell.inert = true;
+  closeDayEditor();
+  clearTimeout(timesheetSaveTimer);
+  try {
+    await runTimesheetTask(async () => {
+      if (dirty && !(await saveTimesheetNow())) return;
+      if (!(await loadCurrentMonthFromDb(nextYear, nextMonth))) {
+        year = previousYear;
+        month = previousMonth;
+        return;
+      }
+      updateUrlForMonth();
+      applyPersonalTimesheetEditability();
+      if (isMobileNow()) setMobileDay(mobileSelectedIdx < daysInMonth ? mobileSelectedIdx : 0);
+    });
+  } finally {
+    yearSelect.value = String(year);
+    monthSelect.value = String(month);
+    monthTransitionPending = false;
+    if (shell) shell.inert = false;
+  }
+}
 
-yearSelect?.addEventListener("change", async () => {
-  year = Number(yearSelect.value);
-  updateUrlForMonth();
-  buildTableForMonth();
-  applyPersonalTimesheetEditability();
-  await loadCurrentMonthFromDb();
-  applyPersonalTimesheetEditability();
-  if (isMobileNow()) setMobileDay(mobileSelectedIdx < daysInMonth ? mobileSelectedIdx : 0);
-});
+monthSelect?.addEventListener("change", changeTimesheetMonth);
+yearSelect?.addEventListener("change", changeTimesheetMonth);
 
 setupTimesheetViews();
 setupTableMoneyControls();
@@ -3677,6 +3744,10 @@ tableScrollable?.addEventListener("pointercancel", clearMyShiftCommentLongPress)
 tableScrollable?.addEventListener("pointermove", handleMyShiftCommentPointerMove);
 
 (async () => {
+  const shell = document.querySelector(".timesheet-shell");
+  if (shell) shell.inert = true;
+  monthTransitionPending = true;
+  try {
   try {
     await requireSession();
   } catch {
@@ -3785,6 +3856,10 @@ updateUrlForMonth();
   window.addEventListener("resize", () => {
     if (isMobileNow()) updateMobileToolbar();
   });
+  } finally {
+    monthTransitionPending = false;
+    if (shell) shell.inert = false;
+  }
 })();
 
 

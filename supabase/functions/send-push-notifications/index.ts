@@ -82,6 +82,24 @@ async function verifyOwnerAccess({
   return data === true;
 }
 
+async function getAuthenticatedUserId({
+  supabaseUrl,
+  supabaseAnonKey,
+  authorization,
+}: {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  authorization: string;
+}) {
+  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authorization } },
+    auth: { persistSession: false },
+  });
+  const { data, error } = await userClient.auth.getUser();
+  if (error) throw error;
+  return data.user?.id || null;
+}
+
 async function verifyShiftHandoverAccess({
   supabaseUrl,
   supabaseAnonKey,
@@ -131,15 +149,21 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const departmentKey = normalizeText(body.departmentKey, 120);
     const type = normalizeText(body.type || "department_timesheet_saved", 120);
+    const isPushTest = type === "push_test";
     const allUsers = body.allUsers === true;
     const lookbackMinutes = Math.min(60, Math.max(1, Number(body.lookbackMinutes) || 10));
     const limit = Math.min(200, Math.max(1, Number(body.limit) || 100));
 
-    if (!departmentKey && !allUsers) {
+    if (!departmentKey && !allUsers && !isPushTest) {
       return jsonResponse({ error: "DEPARTMENT_REQUIRED" }, 400);
     }
 
-    const allowed = allUsers
+    const pushTestUserId = isPushTest
+      ? await getAuthenticatedUserId({ supabaseUrl, supabaseAnonKey, authorization })
+      : null;
+    const allowed = isPushTest
+      ? Boolean(pushTestUserId)
+      : allUsers
       ? await verifyOwnerAccess({ supabaseUrl, supabaseAnonKey, authorization })
       : type === "shift_handover_ready"
         ? await verifyShiftHandoverAccess({
@@ -176,7 +200,9 @@ serve(async (req) => {
       .gt("expires_at", now)
       .gte("created_at", since);
 
-    if (!allUsers) {
+    if (isPushTest) {
+      notificationsQuery = notificationsQuery.eq("user_id", pushTestUserId);
+    } else if (!allUsers) {
       notificationsQuery = notificationsQuery.eq("department_key", departmentKey);
     }
 
@@ -211,9 +237,12 @@ serve(async (req) => {
     let sent = 0;
     let failed = 0;
     let disabled = 0;
+    const deliveryErrors: string[] = [];
 
     for (const notification of rows) {
       const userSubscriptions = subscriptionsByUser.get(String(notification.user_id)) ?? [];
+      let notificationSent = 0;
+      let notificationFailed = 0;
 
       for (const subscription of userSubscriptions) {
         const payload = JSON.stringify({
@@ -226,9 +255,13 @@ serve(async (req) => {
         try {
           await webpush.sendNotification(subscriptionFromRow(subscription), payload);
           sent += 1;
+          notificationSent += 1;
         } catch (error) {
           failed += 1;
+          notificationFailed += 1;
           const statusCode = Number(error?.statusCode || error?.status || 0);
+          const errorMessage = normalizeText(error?.message || `HTTP_${statusCode || "UNKNOWN"}`, 300);
+          deliveryErrors.push(errorMessage);
 
           if (statusCode === 404 || statusCode === 410) {
             disabled += 1;
@@ -242,20 +275,21 @@ serve(async (req) => {
           }
         }
       }
+
+      const pushError = notificationSent > 0 && notificationFailed === 0
+        ? null
+        : notificationSent === 0 && userSubscriptions.length === 0
+          ? "Нет активных push-подписок"
+          : `Отправлено: ${notificationSent}; ошибок: ${notificationFailed}`;
+
+      const update: Record<string, unknown> = { push_error: pushError };
+      if (notificationSent > 0) update.push_sent_at = new Date().toISOString();
+
+      await serviceClient
+        .from("user_notifications")
+        .update(update)
+        .eq("id", notification.id);
     }
-
-    const pushError =
-      failed > 0
-        ? `Ошибок push-отправки: ${failed}; отключено подписок: ${disabled}; отправлено: ${sent}`
-        : null;
-
-    await serviceClient
-      .from("user_notifications")
-      .update({
-        push_sent_at: new Date().toISOString(),
-        push_error: pushError,
-      })
-      .in("id", rows.map((item: any) => item.id));
 
     return jsonResponse({
       ok: true,
@@ -264,6 +298,9 @@ serve(async (req) => {
       sent,
       failed,
       disabled,
+      message: sent > 0
+        ? "Push-сервис принял уведомление."
+        : deliveryErrors[0] || "Нет активной push-подписки для отправки.",
     });
   } catch (error) {
     return jsonResponse({

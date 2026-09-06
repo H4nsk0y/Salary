@@ -5,6 +5,30 @@ export const BONUS_RATE = 0.35;
 export const TAX_RATE = 0.13;
 export const NIGHT_EXTRA_RATE = 0.4;
 
+export function computePaymentSplit({
+  netTotal,
+  effectiveOklad,
+  monthNorm,
+  firstHalfDayHours,
+  firstHalfNightHours,
+} = {}) {
+  const values = [netTotal, effectiveOklad, monthNorm, firstHalfDayHours, firstHalfNightHours];
+  if (!values.every(Number.isFinite) || monthNorm <= 0) {
+    return { advance: 0, remaining: Number.isFinite(netTotal) ? netTotal : 0 };
+  }
+
+  const firstHalfTotal = firstHalfDayHours + firstHalfNightHours;
+  const baseNetHourlyNoBonus = (effectiveOklad * (1 - TAX_RATE)) / monthNorm;
+  const nightExtraNetHourly = (effectiveOklad / monthNorm) * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
+  const advance = baseNetHourlyNoBonus * firstHalfTotal + nightExtraNetHourly * firstHalfNightHours;
+
+  // Bonuses and the additional x2 part for holidays are settled with the final payment.
+  return {
+    advance,
+    remaining: netTotal - advance,
+  };
+}
+
 /**
  * @param {unknown} input
  * @returns {number}
@@ -19,7 +43,12 @@ export function parseNumber(input) {
 
 
 export function computeSalary(input) {
+  if (!input || typeof input !== "object") return { ok: false, error: "Не заданы данные расчета." };
   const { oklad, normHours, workedHours, nightHours } = input;
+
+  if (![oklad, normHours, workedHours, nightHours].every(Number.isFinite)) {
+    return { ok: false, error: "Оклад и часы должны быть конечными числами." };
+  }
 
   if (!(oklad >= 0)) return { ok: false, error: "Оклад должен быть числом ≥ 0." };
   if (!(normHours > 0)) return { ok: false, error: "Норма часов должна быть числом > 0." };

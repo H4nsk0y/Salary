@@ -1,5 +1,7 @@
 import {
+  createMyPushTestNotification,
   disableMyPushSubscription,
+  sendPushNotifications,
   upsertMyPushSubscription,
 } from "./db.js";
 import { VAPID_PUBLIC_KEY } from "./pushConfig.js";
@@ -180,4 +182,18 @@ export async function disablePushNotifications() {
   await subscription.unsubscribe();
   await disableMyPushSubscription(endpoint);
   return getPushNotificationState();
+}
+
+export async function sendPushTestNotification() {
+  const state = await getPushNotificationState();
+  if (!state.subscribed || state.permission !== "granted") {
+    throw new Error("Сначала включите уведомления на этом устройстве.");
+  }
+
+  await createMyPushTestNotification();
+  const result = await sendPushNotifications({ type: "push_test" });
+  if (Number(result?.sent) < 1) {
+    throw new Error(result?.message || "Сервер не нашёл активную push-подписку этого устройства.");
+  }
+  return result;
 }

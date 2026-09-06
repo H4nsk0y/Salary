@@ -10,6 +10,10 @@ import {
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import {
+  getProductionCalendarMonth,
+  mergeProductionCalendarDefaults,
+} from "./productionCalendar.js";
+import {
   CUSTOM_POSITION_VALUE,
   isValidCustomPosition,
   normalizeCustomPosition,
@@ -1971,54 +1975,9 @@ async function refreshProfile() {
 
 /* ========= Production calendar + rendering ========= */
 
-function prodCacheKey(y, m) {
-  return `alvisa_prodcal_v1_${y}_${String(m + 1).padStart(2, "0")}`;
-}
-
-function parseProdMonth(text, daysInMonth) {
-  const s = String(text ?? "").trim();
-  if (!s || s.length < daysInMonth) return null;
-  const out = [];
-  for (let i = 0; i < daysInMonth; i++) {
-    const ch = s[i];
-    const n = Number(ch);
-    out.push(Number.isFinite(n) ? n : 0);
-  }
-  return out.length === daysInMonth ? out : null;
-}
-
 async function getProductionMonth(y, m) {
-  const days = new Date(y, m + 1, 0).getDate();
-  const key = prodCacheKey(y, m);
-
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      if (obj && Array.isArray(obj.data) && obj.data.length === days) return obj.data;
-    }
-  } catch {}
-
-  const mm = String(m + 1).padStart(2, "0");
-  const url = `https://isdayoff.ru/api/getdata?year=${y}&month=${mm}&pre=1&holiday=1`;
-
-  try {
-    const resp = await fetch(url, { method: "GET" });
-    if (!resp.ok) throw new Error(`HTTP_${resp.status}`);
-    const txt = await resp.text();
-    const parsed = parseProdMonth(txt, days);
-    if (!parsed) throw new Error("BAD_PROD_DATA");
-
-    try {
-      localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data: parsed }));
-    } catch {}
-
-    return parsed;
-  } catch {
-    const out = [];
-    for (let i = 0; i < days; i++) out.push(isWeekendByIndex(y, m, i) ? 1 : 0);
-    return out;
-  }
+  const calendar = await getProductionCalendarMonth(y, m, { branch: branchSelect?.value });
+  return calendar.codes;
 }
 
 function initCalendarDow() {
@@ -2052,11 +2011,14 @@ function getTimesheetForCalendarMonth() {
   return payloadByMonth.get(calMonth) ?? null;
 }
 
+let calendarRenderRevision = 0;
+
 async function renderCalendar() {
   if (!requireDom(calGrid, "calGrid")) return;
   if (!requireDom(calMonthLabel, "calMonthLabel")) return;
 
   initCalendarDow();
+  const revision = ++calendarRenderRevision;
 
   const first = new Date(calYear, calMonth, 1);
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -2066,6 +2028,7 @@ async function renderCalendar() {
   calMonthLabel.textContent = `${monthNamesFull[calMonth]} ${calYear}`;
 
   const prod = await getProductionMonth(calYear, calMonth);
+  if (revision !== calendarRenderRevision) return;
   const payload = getTimesheetForCalendarMonth();
 
   const tsHoliday = Array.isArray(payload?.isHoliday) ? payload.isHoliday : null;
@@ -2191,6 +2154,8 @@ async function shiftCalendarMonth(delta) {
   }
 }
 
+let timesheetsLoadRevision = 0;
+
 async function refreshTimesheets() {
   if (!requireDom(yearSelect, "yearSelect")) return;
   if (!requireDom(timesheetsList, "timesheetsList")) return;
@@ -2200,12 +2165,30 @@ async function refreshTimesheets() {
   if (!requireDom(yearTaxPaidEl, "yearTaxPaid")) return;
 
   const y = Number(yearSelect.value);
-  loadedYear = y;
+  const revision = ++timesheetsLoadRevision;
 
   setStatus("Загружаю табели…", "busy");
   setError(null);
 
-  const rows = await listMyTimesheetsByYear(y, { withPayload: true });
+  let rows;
+  try {
+    rows = await listMyTimesheetsByYear(y, { withPayload: true });
+  } catch (error) {
+    if (revision !== timesheetsLoadRevision) return;
+    setStatus("Ошибка загрузки", "err");
+    setError(error?.message || "Не удалось загрузить итоги года.");
+    return;
+  }
+  if (revision !== timesheetsLoadRevision) return;
+  if (currentProfile?.branch === CHATEAU_ALVISA_BRANCH && y === 2026) {
+    rows = await Promise.all(rows.map(async (row) => {
+      if (!row?.payload || !Number.isInteger(row.month)) return row;
+      const calendar = await getProductionCalendarMonth(y, row.month, { branch: currentProfile.branch });
+      return { ...row, payload: mergeProductionCalendarDefaults(row.payload, calendar) };
+    }));
+    if (revision !== timesheetsLoadRevision) return;
+  }
+  loadedYear = y;
   const startedRows = rows.filter((row) => isTimesheetMonthStarted(row?.year, row?.month));
 
   payloadByMonth = new Map();
