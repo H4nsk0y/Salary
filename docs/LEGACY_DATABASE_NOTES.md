@@ -93,4 +93,3 @@
 - для policy использовать `do $$ ... if not exists ... create policy ... end $$`;
 - для RPC использовать `create or replace function`;
 - после RPC делать `revoke all ... from public` и `grant execute ... to authenticated`.
-
