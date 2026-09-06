@@ -37,7 +37,8 @@ import {
 import {
   hardenTimesheetInput,
   rejectUnexpectedTimesheetAutofill,
-} from "./timesheetInput.js";
+  restoreUnfocusedNumericInput,
+} from "./timesheetInput.js?v=20260906-2";
 
 document.body.classList.add("is-loaded");
 
@@ -3663,6 +3664,15 @@ exportCalendarBtn?.addEventListener("click", () => {
 });
 
 okladInput?.addEventListener("input", () => {
+  if (restoreUnfocusedNumericInput(
+    okladInput,
+    currentMoneySnapshot?.okladSnapshot,
+    document.activeElement
+  )) {
+    okladInput.value = formatMoneyForInput(currentMoneySnapshot.okladSnapshot);
+    return;
+  }
+
   const raw = String(okladInput.value ?? "").trim();
   const parsed = parseNumber(raw);
 

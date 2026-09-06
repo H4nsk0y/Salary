@@ -50,8 +50,6 @@ import { buildDecemberForecast, estimateYearEndReserve } from "./yearEndReserve.
 document.body.classList.add("is-loaded");
 
 const OVERTIME_LIMIT_DEFAULT_YEAR = 120;
-const OVERTIME_LIMIT_EXTENDED_YEAR = 240;
-const OVERTIME_LIMIT_CHANGE_DATE = new Date(2026, 8, 1);
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const HAZARD_POSITION_RATE = 0.04;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
@@ -1523,14 +1521,8 @@ function ensureYearOption(y) {
   yearSelect.appendChild(opt);
 }
 
-function getOvertimeLimitForYear(selectedYear, now = new Date()) {
-  const y = Number(selectedYear);
-  if (!Number.isInteger(y)) return OVERTIME_LIMIT_DEFAULT_YEAR;
-  if (y < OVERTIME_LIMIT_CHANGE_DATE.getFullYear()) return OVERTIME_LIMIT_DEFAULT_YEAR;
-  if (y > OVERTIME_LIMIT_CHANGE_DATE.getFullYear()) return OVERTIME_LIMIT_EXTENDED_YEAR;
-  return now >= OVERTIME_LIMIT_CHANGE_DATE
-    ? OVERTIME_LIMIT_EXTENDED_YEAR
-    : OVERTIME_LIMIT_DEFAULT_YEAR;
+function getOvertimeLimitForYear() {
+  return OVERTIME_LIMIT_DEFAULT_YEAR;
 }
 
 function updateOvertimeLimitUi(selectedYear, limit) {
@@ -1540,17 +1532,8 @@ function updateOvertimeLimitUi(selectedYear, limit) {
 
   if (!overtimeLimitNote) return;
 
-  const y = Number(selectedYear);
-  if (limit === OVERTIME_LIMIT_EXTENDED_YEAR) {
-    overtimeLimitNote.textContent =
-      "240 ч применяется, если это закреплено коллективным договором или отраслевым соглашением.";
-  } else if (y === OVERTIME_LIMIT_CHANGE_DATE.getFullYear()) {
-    overtimeLimitNote.textContent =
-      "С 01.09.2026 лимит может быть до 240 ч при наличии основания.";
-  } else {
-    overtimeLimitNote.textContent =
-      "С 01.09.2026 лимит может быть до 240 ч при наличии основания.";
-  }
+  overtimeLimitNote.textContent =
+    "Используется действующий для сотрудников предприятия предел 120 ч в год.";
 }
 
 function applyOvertimeProgress(usedHoursForLimit, limit = OVERTIME_LIMIT_DEFAULT_YEAR) {

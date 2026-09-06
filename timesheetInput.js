@@ -20,3 +20,13 @@ export function rejectUnexpectedTimesheetAutofill(input) {
   input.value = previous;
   return true;
 }
+
+export function restoreUnfocusedNumericInput(input, value, activeElement) {
+  const numericValue = Number(value);
+  if (!input || activeElement === input || !(Number.isFinite(numericValue) && numericValue > 0)) {
+    return false;
+  }
+
+  input.value = String(numericValue);
+  return true;
+}

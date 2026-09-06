@@ -11,6 +11,7 @@ import {
 import {
   hardenTimesheetInput,
   rejectUnexpectedTimesheetAutofill,
+  restoreUnfocusedNumericInput,
 } from "../timesheetInput.js";
 
 // Run actual page functions with a small DOM/database boundary, without production access.
@@ -46,6 +47,23 @@ test("salary rejects infinite, missing and nonnumeric inputs", () => {
   }
   assert.equal(computeSalary(null).ok, false);
   assert.equal(computeSalary({ oklad: 50000, normHours: 176, workedHours: 2, nightHours: 3 }).ok, false);
+});
+
+test("annual overtime limit remains 120 hours without an enterprise agreement", async () => {
+  const context = vm.createContext({ OVERTIME_LIMIT_DEFAULT_YEAR: 120 });
+  vm.runInContext(await pageFunction("profile.js", "getOvertimeLimitForYear"), context);
+  assert.equal(context.getOvertimeLimitForYear(2026), 120);
+  assert.equal(context.getOvertimeLimitForYear(2027), 120);
+});
+
+test("background password-manager input cannot clear the salary snapshot", () => {
+  const input = { value: "" };
+  assert.equal(restoreUnfocusedNumericInput(input, 67_200, {}), true);
+  assert.equal(input.value, "67200");
+
+  input.value = "";
+  assert.equal(restoreUnfocusedNumericInput(input, 67_200, input), false);
+  assert.equal(input.value, "");
 });
 
 test("holiday x2 supplement for days 1-15 goes to the remaining payment", () => {
