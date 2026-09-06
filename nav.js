@@ -6,7 +6,11 @@ import {
   markMyNotificationsRead,
 } from "./db.js";
 import { alertDialog, confirmDialog } from "./modal.js";
-import { normalizeInternalNextUrl } from "./profileCompletion.js";
+import {
+  buildProfileCompletionUrl,
+  getMissingRequiredProfileFields,
+  normalizeInternalNextUrl,
+} from "./profileCompletion.js";
 import { installErrorLogger } from "./errorLogger.js";
 import "./pwa.js";
 import "./scrollbar.js";
@@ -1319,6 +1323,25 @@ function applyProfileNavPreferences(header, profile) {
   }
 }
 
+function installProfileCompletionNavigationGate(header, profile) {
+  header._missingRequiredProfileFields = getMissingRequiredProfileFields(profile);
+  if (header.dataset.profileCompletionGate === "true") return;
+  header.dataset.profileCompletionGate = "true";
+
+  header.addEventListener("click", (event) => {
+    const missing = header._missingRequiredProfileFields || [];
+    if (!missing.length) return;
+    const link = event.target.closest("a");
+    if (!link || !header.contains(link)) return;
+    const key = link.dataset.navKey || "home";
+    if (key === "calculator" || key === "profile") return;
+
+    event.preventDefault();
+    const nextUrl = normalizeInternalNextUrl(link.href, "table.html");
+    window.location.href = buildProfileCompletionUrl(nextUrl, missing);
+  }, true);
+}
+
 function renderHeader(mount) {
   const activeKey = mount.dataset.active || detectActiveKey();
   const ownerNavMode = mount.dataset.ownerNav || "auto";
@@ -1338,6 +1361,7 @@ function renderHeader(mount) {
 
   const home = document.createElement("a");
   home.href = "index.html";
+  home.dataset.navKey = "home";
   home.className = "group shrink-0";
   home.setAttribute("aria-label", "ALVISA SALARY — главная");
 
@@ -1375,6 +1399,9 @@ function renderHeader(mount) {
 
   mount.replaceWith(safeAreaCover, header);
   setupMobileMenu(header, menuButton, mobileMenu);
+  window.addEventListener("alvisa:profile-updated", (event) => {
+    installProfileCompletionNavigationGate(header, event.detail?.profile);
+  });
   return header;
 }
 
@@ -1383,6 +1410,7 @@ async function enhanceNavForProfile(header) {
 
   try {
     const profile = await getMyProfile();
+    installProfileCompletionNavigationGate(header, profile);
     applyProfileNavPreferences(header, profile);
 
     const activeKey = header.dataset.activeKey || detectActiveKey();

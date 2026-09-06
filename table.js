@@ -39,6 +39,8 @@ import {
   rejectUnexpectedTimesheetAutofill,
   restoreUnfocusedNumericInput,
 } from "./timesheetInput.js?v=20260906-2";
+import { confirmDialog } from "./modal.js";
+import { parsePayrollSlipFile } from "./payslipImport.js?v=20260906-1";
 
 document.body.classList.add("is-loaded");
 
@@ -103,6 +105,8 @@ const actualPaidLeaveNetInput = document.getElementById("actualPaidLeaveNetInput
 const actualPaidLeaveTaxInput = document.getElementById("actualPaidLeaveTaxInput");
 
 const fillActualFromCalcBtn = document.getElementById("fillActualFromCalcBtn");
+const recognizePayslipBtn = document.getElementById("recognizePayslipBtn");
+const payslipFileInput = document.getElementById("payslipFileInput");
 const confirmActualBtn = document.getElementById("confirmActualBtn");
 const clearActualBtn = document.getElementById("clearActualBtn");
 
@@ -1257,6 +1261,70 @@ function setupActualMoneyControls() {
     setError(null);
     recalcAll();
     scheduleSave();
+  });
+
+  recognizePayslipBtn?.addEventListener("click", () => {
+    if (!payslipFileInput) return;
+    payslipFileInput.value = "";
+    payslipFileInput.click();
+  });
+
+  payslipFileInput?.addEventListener("change", async () => {
+    const file = payslipFileInput.files?.[0];
+    if (!file || !recognizePayslipBtn) return;
+    const originalText = recognizePayslipBtn.textContent;
+    recognizePayslipBtn.disabled = true;
+    recognizePayslipBtn.textContent = "Распознаю…";
+
+    try {
+      const parsed = await parsePayrollSlipFile(file);
+      if (parsed.month !== month || parsed.year !== year) {
+        const foundPeriod = parsed.month !== null && parsed.year
+          ? `${monthNames[parsed.month]} ${parsed.year}`
+          : "не определён";
+        throw new Error(`В файле указан период «${foundPeriod}», а открыт табель «${monthNames[month]} ${year}».`);
+      }
+      if (parsed.errors.length) throw new Error(parsed.errors.join(" "));
+
+      const money = (value) => Number(value || 0).toLocaleString("ru-RU", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const approved = await confirmDialog({
+        title: "Проверьте распознанные суммы",
+        message: `${monthNames[month]} ${year}${parsed.employee ? ` · ${parsed.employee}` : ""}`,
+        note: [
+          `Аванс: ${money(parsed.advance)} ₽`,
+          `Остаток: ${money(parsed.remaining)} ₽`,
+          `Отпуск / межрасчёт: ${money(parsed.paidLeaveNet)} ₽`,
+          `Удержано налога: ${money(parsed.withheld)} ₽`,
+          `Контрольный итог: ${money(parsed.paidTotal)} ₽`,
+          "После переноса проверьте поля и отдельно нажмите «Подтвердить факт».",
+        ].join("\n"),
+        confirmText: "Перенести в поля",
+        cancelText: "Отмена",
+        tone: "info",
+      });
+      if (!approved) return;
+
+      suppressActualInputSync = true;
+      setMoneyInputValue(actualAdvanceInput, parsed.advance);
+      setMoneyInputValue(actualRemainingInput, parsed.remaining);
+      setMoneyInputValue(actualPaidLeaveNetInput, parsed.paidLeaveNet || null);
+      setMoneyInputValue(actualPaidLeaveTaxInput, parsed.withheld);
+      suppressActualInputSync = false;
+      syncActualNetInputUi();
+      syncActualStateFromInputs();
+      recalcAll();
+      scheduleSave();
+      setError(null);
+    } catch (error) {
+      setError(`Не удалось распознать расчётный листок. ${error?.message || "Проверьте файл и попробуйте снова."}`);
+    } finally {
+      recognizePayslipBtn.disabled = false;
+      recognizePayslipBtn.textContent = originalText;
+      payslipFileInput.value = "";
+    }
   });
 
   confirmActualBtn?.addEventListener("click", async () => {

@@ -1444,7 +1444,7 @@ export async function ownerRevokeDepartmentInvite(token) {
 }
 
 export async function ownerListClientErrors(limit = 20) {
-  const normalizedLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+  const normalizedLimit = Math.min(1000, Math.max(1, Number(limit) || 20));
   const { data, error } = await supabase.rpc("owner_list_client_errors", {
     p_limit: normalizedLimit,
   });

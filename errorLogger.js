@@ -1,8 +1,10 @@
 import { supabase } from "./supabaseClient.js";
+import { classifyClientError } from "./clientErrorInsights.js";
 
 const MAX_REPORTS_PER_SESSION = 3;
 const seen = new Set();
 let reportsSent = 0;
+let lastAction = null;
 
 const IGNORED_PATTERNS = [
   /abort(error|ed)?/i,
@@ -55,6 +57,7 @@ async function report(kind, reason, context = {}) {
     const { data } = await supabase.auth.getSession();
     if (!data?.session?.user?.id) return;
 
+    const insight = classifyClientError({ kind, message: error.message, stack: error.stack });
     await supabase.rpc("report_client_error", {
       p_kind: cleanText(kind, 40),
       p_message: error.message,
@@ -65,6 +68,8 @@ async function report(kind, reason, context = {}) {
         line: Number(context.line) || null,
         column: Number(context.column) || null,
         userAgent: cleanText(navigator.userAgent, 300),
+        code: insight.code,
+        lastAction,
       },
     });
   } catch {
@@ -73,6 +78,25 @@ async function report(kind, reason, context = {}) {
 }
 
 export function installErrorLogger() {
+  const rememberAction = (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    const identity = target.id
+      ? `#${target.id}`
+      : target.getAttribute("name")
+        ? `${target.tagName.toLowerCase()}[name=${target.getAttribute("name")}]`
+        : target.getAttribute("aria-label")
+          ? `${target.tagName.toLowerCase()}[aria-label=${target.getAttribute("aria-label")}]`
+          : target.tagName.toLowerCase();
+    lastAction = {
+      type: event.type,
+      target: cleanText(identity, 160),
+      at: new Date().toISOString(),
+    };
+  };
+  document.addEventListener("click", rememberAction, true);
+  document.addEventListener("change", rememberAction, true);
+
   window.addEventListener("error", (event) => {
     void report("window_error", event.error || event.message, {
       source: event.filename,

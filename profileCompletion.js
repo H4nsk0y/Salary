@@ -1,9 +1,23 @@
 const REQUIRED_PROFILE_FIELDS = Object.freeze([
-  ["display_name", "имя"],
+  ["display_name", "ФИО"],
   ["position", "должность"],
   ["gender", "пол"],
+  ["branch", "филиал"],
+  ["employment_date", "дата трудоустройства"],
   ["oklad", "оклад"],
 ]);
+
+function isValidEmploymentDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+}
 
 const FIELD_LABEL_BY_KEY = Object.fromEntries(REQUIRED_PROFILE_FIELDS);
 
@@ -18,6 +32,12 @@ export function getMissingRequiredProfileFields(profile) {
 
   const gender = String(profile?.gender ?? "").trim();
   if (gender !== "male" && gender !== "female") missing.push("gender");
+
+  const branch = String(profile?.branch ?? "").trim();
+  if (!branch) missing.push("branch");
+
+  const employmentDate = String(profile?.employment_date ?? "").trim();
+  if (!isValidEmploymentDate(employmentDate)) missing.push("employment_date");
 
   const oklad = Number(profile?.oklad);
   if (!(Number.isFinite(oklad) && oklad > 0)) missing.push("oklad");

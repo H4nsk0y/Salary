@@ -129,6 +129,7 @@ function ensureModalStyles() {
       color: rgba(226, 232, 240, 0.86);
       font-size: 0.84rem;
       line-height: 1.5;
+      white-space: pre-line;
     }
 
     .app-modal-actions {

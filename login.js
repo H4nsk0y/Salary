@@ -7,11 +7,13 @@ import {
   requestPasswordReset,
   updateMyPassword,
 } from "./auth.js";
-import { acceptDepartmentInvite } from "./db.js";
-import { normalizeInternalNextUrl } from "./profileCompletion.js";
-
-const PASSWORD_REGEX =
-  /^(?=.*[a-zа-яё])(?=.*[A-ZА-ЯЁ])(?=.*\d)(?=.*[^A-Za-zА-Яа-яЁё0-9]).{10,}$/;
+import { acceptDepartmentInvite, getMyProfile } from "./db.js";
+import {
+  buildProfileCompletionUrl,
+  getMissingRequiredProfileFields,
+  normalizeInternalNextUrl,
+} from "./profileCompletion.js";
+import { getPasswordChecks, validatePasswordPolicy } from "./passwordPolicy.js";
 
 const REMEMBER_ME_KEY = "alvisa_remember_me";
 const REMEMBERED_EMAIL_KEY = "alvisa_remembered_email";
@@ -87,8 +89,22 @@ function validateEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function validatePassword(password) {
-  return PASSWORD_REGEX.test(String(password ?? ""));
+function updatePasswordRequirements() {
+  const checks = getPasswordChecks(passwordInput.value);
+  for (const check of checks) {
+    const item = pwHint.querySelector(`[data-password-rule="${check.key}"]`);
+    item?.classList.toggle("is-passed", check.passed);
+  }
+}
+
+async function resolveDestinationAfterAuth(nextUrl = getNextUrl()) {
+  try {
+    const profile = await getMyProfile();
+    const missing = getMissingRequiredProfileFields(profile);
+    return missing.length ? buildProfileCompletionUrl(nextUrl, missing) : nextUrl;
+  } catch {
+    return nextUrl;
+  }
 }
 
 function getNextUrl() {
@@ -192,6 +208,7 @@ function resetPasswordInputs() {
   passwordInput.value = "";
   confirmPasswordInput.value = "";
   syncPasswordVisibility(true);
+  updatePasswordRequirements();
 }
 
 function setConfirmVisible(visible) {
@@ -251,6 +268,7 @@ function setMode(nextMode) {
   updateRememberMeVisibility();
 
   pwHint.classList.toggle("hidden", !(isSignUp || isReset));
+  updatePasswordRequirements();
 
   syncPasswordVisibility(true);
 
@@ -350,7 +368,7 @@ async function handleSignIn() {
   if (inviteResult?.department_name) {
     setInfo(`Приглашение принято: ${inviteResult.department_name}.`);
   }
-  window.location.href = getNextUrl();
+  window.location.href = await resolveDestinationAfterAuth();
 }
 
 async function handleSignUp() {
@@ -361,16 +379,23 @@ async function handleSignUp() {
   if (!validateEmail(email)) {
     throw new Error("Введите корректный email.");
   }
-  if (!validatePassword(password)) {
-    throw new Error("Пароль не соответствует требованиям.");
+  const passwordValidation = validatePasswordPolicy(password);
+  if (!passwordValidation.valid) {
+    throw new Error(`Пароль пока не подходит: ${passwordValidation.missing.join(", ")}.`);
   }
   if (password !== confirmPassword) {
     throw new Error("Пароли не совпадают.");
   }
 
   const hadInvite = Boolean(getInviteToken());
-  await signUp(email, password);
+  const signUpResult = await signUp(email, password);
   const inviteResult = await acceptPendingInvite({ allowNoSession: true });
+  if (signUpResult?.session) {
+    window.location.href = buildProfileCompletionUrl(getNextUrl(), [
+      "display_name", "position", "gender", "branch", "employment_date", "oklad",
+    ]);
+    return;
+  }
   passwordInput.value = "";
   confirmPasswordInput.value = "";
   setMode("signin");
@@ -398,8 +423,9 @@ async function handleResetPassword() {
   const password = String(passwordInput.value ?? "");
   const confirmPassword = String(confirmPasswordInput.value ?? "");
 
-  if (!validatePassword(password)) {
-    throw new Error("Пароль не соответствует требованиям.");
+  const passwordValidation = validatePasswordPolicy(password);
+  if (!passwordValidation.valid) {
+    throw new Error(`Пароль пока не подходит: ${passwordValidation.missing.join(", ")}.`);
   }
   if (password !== confirmPassword) {
     throw new Error("Пароли не совпадают.");
@@ -447,7 +473,7 @@ async function redirectIfAlreadyLoggedIn() {
   const session = await getSession();
   if (session) {
     await acceptPendingInvite();
-    window.location.href = getNextUrl();
+    window.location.href = await resolveDestinationAfterAuth();
     return true;
   }
 
@@ -504,6 +530,7 @@ function bindEvents() {
       localStorage.setItem(REMEMBERED_EMAIL_KEY, normalizeEmail(emailInput.value));
     }
   });
+  passwordInput.addEventListener("input", updatePasswordRequirements);
 
   authForm.addEventListener("submit", handleSubmit);
 

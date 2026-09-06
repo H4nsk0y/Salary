@@ -7,6 +7,7 @@ import {
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { setUiStatus } from "./uiStatus.js";
+import { buildClientErrorsCsv, classifyClientError } from "./clientErrorInsights.js";
 
 document.body.classList.add("is-loaded");
 
@@ -42,6 +43,7 @@ const emptyState = document.getElementById("emptyState");
 const clientErrorsCount = document.getElementById("clientErrorsCount");
 const clientErrorsList = document.getElementById("clientErrorsList");
 const clientErrorsEmpty = document.getElementById("clientErrorsEmpty");
+const exportClientErrorsBtn = document.getElementById("exportClientErrorsBtn");
 
 const MONTHS = [
   "Январь",
@@ -95,9 +97,12 @@ function renderClientErrors() {
   if (!clientErrorsList) return;
   clientErrorsList.replaceChildren();
   if (clientErrorsCount) clientErrorsCount.textContent = `${clientErrors.length} последних`;
+  if (exportClientErrorsBtn) exportClientErrorsBtn.disabled = clientErrors.length === 0;
   clientErrorsEmpty?.classList.toggle("hidden", clientErrors.length > 0);
 
   for (const row of clientErrors) {
+    const insight = classifyClientError(row);
+    const context = row.context || {};
     const item = document.createElement("article");
     item.className = "rounded-xl border border-white/10 bg-black/15 p-4";
 
@@ -108,11 +113,50 @@ function renderClientErrors() {
       text(formatDateTime(row.created_at), "text-xs text-slate-500")
     );
 
-    const message = text(row.message || "Неизвестная ошибка", "mt-2 break-words text-sm text-rose-200");
+    const titleRow = document.createElement("div");
+    titleRow.className = "mt-3 flex flex-wrap items-center gap-2";
+    titleRow.append(
+      text(insight.code, "rounded bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-200 ring-1 ring-rose-400/20"),
+      text(insight.title, "text-sm font-semibold text-slate-100"),
+      text(insight.confidence, "text-[11px] text-slate-500")
+    );
+
+    const explanation = text(insight.explanation, "mt-2 text-sm leading-6 text-slate-300");
     const page = text(row.page || "Страница не определена", "mt-2 break-all text-xs text-slate-500");
-    item.append(head, message, page);
+    const lastAction = context.lastAction?.target
+      ? text(`Последнее действие: ${context.lastAction.type === "change" ? "изменение" : "нажатие"} · ${context.lastAction.target}`, "mt-1 break-all text-xs text-amber-200/80")
+      : null;
+
+    const details = document.createElement("details");
+    details.className = "mt-3 text-xs text-slate-400";
+    const summary = document.createElement("summary");
+    summary.className = "cursor-pointer select-none font-semibold text-slate-300";
+    summary.textContent = "Технические детали";
+    const technical = text([
+      row.message || "Нет сообщения",
+      context.source ? `Источник: ${context.source}${context.line ? `:${context.line}:${context.column || 0}` : ""}` : "Источник не передан браузером",
+      row.stack || "Стек вызовов не сохранён",
+      insight.recommendation,
+    ].join("\n"), "mt-2 whitespace-pre-wrap break-words rounded-md bg-black/20 p-3 leading-5");
+    details.append(summary, technical);
+    item.append(head, titleRow, explanation, page);
+    if (lastAction) item.append(lastAction);
+    item.append(details);
     clientErrorsList.append(item);
   }
+}
+
+function exportClientErrors() {
+  if (!clientErrors.length) return;
+  const blob = new Blob([buildClientErrorsCsv(clientErrors)], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `alvisa-errors-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function setStatus(text, tone = "neutral") {
@@ -746,7 +790,7 @@ async function loadAnalytics(options = {}) {
         year: yearFilter?.value || null,
         departmentKey: departmentFilter?.value || null,
       }),
-      ownerListClientErrors(20).catch(() => []),
+      ownerListClientErrors(1000).catch(() => []),
     ]);
 
     renderAll();
@@ -780,6 +824,7 @@ function bindEvents() {
   });
 
   refreshBtn?.addEventListener("click", () => void loadAnalytics());
+  exportClientErrorsBtn?.addEventListener("click", exportClientErrors);
 
   resetFiltersBtn?.addEventListener("click", () => {
     const currentYear = new Date().getFullYear();

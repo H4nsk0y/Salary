@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/driver.js@0.9.8/dist/driver.min.css" />
-  <script src="https://unpkg.com/driver.js@0.9.8/dist/driver.min.js"></script>
+  <script src="https://unpkg.com/driver.js@0.9.8/dist/driver.min.js" crossorigin="anonymous"></script>
 
   <style>
     html, body {
@@ -1449,26 +1449,6 @@
           </div>
 
           <div>
-            <label class="mb-1.5 block text-sm font-medium text-slate-200" for="tabNumberInput">Табельный номер</label>
-            <input
-              id="tabNumberInput"
-              type="text"
-              class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
-              inputmode="text"
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="off"
-              spellcheck="false"
-              data-lpignore="true"
-              data-1p-ignore="true"
-              data-form-type="other"
-              maxlength="64"
-              placeholder="Напр. ТДЗК-01758"
-            />
-            <p class="mt-1.5 text-xs text-slate-400/80">Необязательное поле для внутреннего учета.</p>
-          </div>
-
-          <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="branchSelect">Филиал</label>
             <span class="select-wrap w-full">
               <select id="branchSelect" class="ui-select text-sm w-full" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other">
@@ -1679,8 +1659,8 @@
     })();
   </script>
 
-<script type="module" src="./nav.js?v=20260823-1"></script>
-  <script type="module" src="./profile.js?v=20260906-3"></script>
+<script type="module" src="./nav.js?v=20260906-2"></script>
+  <script type="module" src="./profile.js?v=20260906-4"></script>
 
   <script type="module">
     import { startTour } from './tour.js';

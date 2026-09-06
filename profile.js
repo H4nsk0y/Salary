@@ -80,7 +80,6 @@ const displayNameInput = document.getElementById("displayNameInput");
 const positionSelect = document.getElementById("positionSelect");
 const okladInput = document.getElementById("okladInput");
 const genderSelect = document.getElementById("genderSelect");
-const tabNumberInput = document.getElementById("tabNumberInput");
 const branchSelect = document.getElementById("branchSelect");
 const weeklyHoursSelect = document.getElementById("weeklyHoursSelect");
 const employmentDateInput = document.getElementById("employmentDateInput");
@@ -126,7 +125,8 @@ const avatarHint = document.getElementById("avatarHint");
 const displayNameLabel = document.querySelector('label[for="displayNameInput"]');
 const positionLabel = document.querySelector('label[for="positionSelect"]');
 const genderLabel = document.querySelector('label[for="genderSelect"]');
-const tabNumberLabel = document.querySelector('label[for="tabNumberInput"]');
+const branchLabel = document.querySelector('label[for="branchSelect"]');
+const employmentDateLabel = document.querySelector('label[for="employmentDateInput"]');
 const okladLabel = document.querySelector('label[for="okladInput"]');
 
 const profileRequiredNotice = document.getElementById("profileRequiredNotice");
@@ -230,7 +230,6 @@ function getProfileAutofillFields() {
     displayNameInput,
     positionSelect,
     genderSelect,
-    tabNumberInput,
     branchSelect,
     weeklyHoursSelect,
     employmentDateInput,
@@ -255,7 +254,6 @@ function getExpectedProfileFieldValues(profile) {
     displayName: profile?.display_name ?? "",
     position: profile?.position ?? "",
     gender: profile?.gender ?? "",
-    tabNumber: profile?.tab_number ?? "",
     branch: profile?.branch ?? "",
     weeklyHours: String(normalizeWeeklyHours(profile?.weekly_hours) ?? DEFAULT_WEEKLY_HOURS),
     employmentDate: profile?.employment_date ?? "",
@@ -271,7 +269,6 @@ function applyExpectedProfileFieldValues(values) {
     positionSelect.value = position;
   }
   if (genderSelect) genderSelect.value = values.gender;
-  if (tabNumberInput) tabNumberInput.value = values.tabNumber;
   if (branchSelect) branchSelect.value = values.branch;
   if (weeklyHoursSelect) weeklyHoursSelect.value = values.weeklyHours;
   if (employmentDateInput) {
@@ -286,7 +283,10 @@ function ensureCustomPositionOption(position) {
   const normalized = normalizeCustomPosition(position);
   if (!normalized || POSITION_VALUES.has(normalized)) return;
 
-  const customOptions = Array.from(customPositionGroup.querySelectorAll("option"));
+  const optionNodes = customPositionGroup?.querySelectorAll
+    ? customPositionGroup.querySelectorAll("option")
+    : [];
+  const customOptions = Array.from(optionNodes);
   let option = customOptions.find((item) => item.value === normalized);
   if (!option) {
     option = document.createElement("option");
@@ -962,6 +962,8 @@ function clearRequiredFieldHighlights() {
     [displayNameInput, displayNameLabel],
     [positionSelect, positionLabel],
     [genderSelect, genderLabel],
+    [branchSelect, branchLabel],
+    [employmentDateInput, employmentDateLabel],
     [okladInput, okladLabel],
   ];
 
@@ -979,6 +981,8 @@ function applyRequiredFieldHighlights(profile) {
     display_name: [displayNameInput, displayNameLabel],
     position: [positionSelect, positionLabel],
     gender: [genderSelect, genderLabel],
+    branch: [branchSelect, branchLabel],
+    employment_date: [employmentDateInput, employmentDateLabel],
     oklad: [okladInput, okladLabel],
   };
 
@@ -1047,6 +1051,8 @@ function focusFirstMissingRequiredField(profile) {
     display_name: displayNameInput,
     position: positionSelect,
     gender: genderSelect,
+    branch: branchSelect,
+    employment_date: employmentDateInput,
     oklad: okladInput,
   };
 
@@ -1513,7 +1519,7 @@ function fillYearOptions(currentYear) {
 
 function ensureYearOption(y) {
   if (!yearSelect) return;
-  const exists = Array.from(yearSelect.options).some((o) => Number(o.value) === y);
+  const exists = Array.from(yearSelect.options || []).some((o) => Number(o.value) === y);
   if (exists) return;
   const opt = document.createElement("option");
   opt.value = String(y);
@@ -1869,12 +1875,14 @@ async function refreshProfile() {
 
   const profile = await getMyProfile();
   currentProfile = profile ?? null;
+  window.dispatchEvent(new CustomEvent("alvisa:profile-updated", {
+    detail: { profile: currentProfile },
+  }));
 
-    const effectiveProfile = profile ?? {
+  const effectiveProfile = profile ?? {
     display_name: "",
     position: "",
     gender: "",
-    tab_number: "",
     branch: "",
     weekly_hours: DEFAULT_WEEKLY_HOURS,
     employment_date: "",
@@ -1884,7 +1892,7 @@ async function refreshProfile() {
     hide_money: false,
   };
 
-    if (effectiveProfile.role === "owner") {
+  if (effectiveProfile.role === "owner") {
     ownerLink?.classList.remove("hidden");
   } else {
     ownerLink?.classList.add("hidden");
@@ -1894,7 +1902,6 @@ async function refreshProfile() {
 
   if (!requireDom(displayNameEl, "displayName")) return;
   if (!requireDom(displayNameInput, "displayNameInput")) return;
-  if (!requireDom(tabNumberInput, "tabNumberInput")) return;
   if (!requireDom(branchSelect, "branchSelect")) return;
   if (!requireDom(weeklyHoursSelect, "weeklyHoursSelect")) return;
   if (!requireDom(employmentDateInput, "employmentDateInput")) return;
@@ -2244,13 +2251,11 @@ async function refreshTimesheets() {
 
 async function saveProfile() {
   if (!requireDom(displayNameInput, "displayNameInput")) return;
-  if (!requireDom(tabNumberInput, "tabNumberInput")) return;
   if (!requireDom(branchSelect, "branchSelect")) return;
   if (!requireDom(employmentDateInput, "employmentDateInput")) return;
   if (!requireDom(okladInput, "okladInput")) return;
 
   const displayName = displayNameInput.value.trim();
-  const tabNumber = String(tabNumberInput.value || "").trim();
   const branch = branchSelect ? String(branchSelect.value || "") : "";
   const weeklyHours = normalizeWeeklyHours(weeklyHoursSelect?.value);
   const employmentDate = String(employmentDateInput?.value || "").trim();
@@ -2310,18 +2315,12 @@ async function saveProfile() {
     }
   }
 
-  if (tabNumber.length > 64) {
-    setError("Табельный номер слишком длинный.");
-    return;
-  }
-
   setStatus("Сохраняю…", "busy");
   setError(null);
 
   try {
     await updateMyProfile({
       displayName: displayName || null,
-      tabNumber: tabNumber || null,
       branch: branch || null,
       weeklyHours,
       employmentDate: employmentDate || null,
@@ -2503,7 +2502,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 hardenProfileAutofill();
-for (const field of [displayNameInput, tabNumberInput, okladInput].filter(Boolean)) {
+for (const field of [displayNameInput, okladInput].filter(Boolean)) {
   field.addEventListener("beforeinput", markProfileTextInputTouched);
   field.addEventListener("keydown", markProfileFieldsTouched);
   field.addEventListener("paste", markProfileFieldsTouched);

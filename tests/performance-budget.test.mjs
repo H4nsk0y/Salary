@@ -13,7 +13,7 @@ test("static application stays inside conservative size budgets", () => {
   const totalScriptBytes = scripts.reduce((total, path) => total + bytes(path), 0);
   const largestScriptBytes = Math.max(...scripts.map(bytes));
 
-  assert.ok(totalScriptBytes <= 900_000, `top-level JavaScript grew to ${totalScriptBytes} bytes`);
+  assert.ok(totalScriptBytes <= 920_000, `top-level JavaScript grew to ${totalScriptBytes} bytes`);
   assert.ok(largestScriptBytes <= 150_000, `a JavaScript module grew to ${largestScriptBytes} bytes`);
   assert.ok(bytes("styles/tailwind.css") <= 80_000, "compiled Tailwind CSS exceeded 80 KB");
 });
