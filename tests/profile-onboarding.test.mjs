@@ -18,10 +18,11 @@ test("profile completion requires payroll-critical fields but not tab number or 
   assert.deepEqual(getMissingRequiredProfileFields({ ...complete, employment_date: "2026-02-31" }), ["employment_date"]);
 });
 
-test("password policy is understandable and does not require uppercase or symbols", () => {
-  assert.equal(validatePasswordPolicy("salary26").valid, true);
-  assert.equal(validatePasswordPolicy("12345678").valid, false);
-  assert.equal(validatePasswordPolicy("password").valid, false);
+test("password policy requires length without arbitrary character classes", () => {
+  assert.equal(validatePasswordPolicy("password").valid, true);
+  assert.equal(validatePasswordPolicy("12345678").valid, true);
+  assert.equal(validatePasswordPolicy("........").valid, true);
+  assert.equal(validatePasswordPolicy("short7").valid, false);
 });
 
 test("common navigation redirects incomplete profiles without another request per click", async () => {

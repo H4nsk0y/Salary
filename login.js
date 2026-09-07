@@ -310,6 +310,11 @@ function setMode(nextMode) {
 
 function mapAuthError(error) {
   const message = String(error?.message ?? "").trim();
+  const errorCode = String(error?.code ?? "").trim();
+
+  if (errorCode === "weak_password" || /weak password/i.test(message)) {
+    return "Пароль не прошёл требования безопасности. Проверьте подсказки под полем пароля.";
+  }
 
   if (/invalid login credentials/i.test(message)) {
     return "Неверный email или пароль.";
