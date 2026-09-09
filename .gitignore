@@ -1,3 +1,9 @@
 supabase/.temp/
 db-dump/
 node_modules/
+www/
+
+# Local Android/Gradle output
+android/.gradle/
+android/app/build/
+android/build/

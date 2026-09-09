@@ -305,6 +305,14 @@ function applyPwaState(state, message = "") {
 
   pwaInstallBtn.disabled = false;
 
+  if (state?.native) {
+    pwaInstallBtn.disabled = true;
+    pwaInstallBtn.textContent = "Установлено";
+    pwaStatusBadge.textContent = "Android-приложение";
+    pwaInstallHint.textContent = "Обновления Android-версии устанавливаются вместе с новой сборкой приложения.";
+    return;
+  }
+
   if (!state?.supported) {
     pwaInstallBtn.disabled = true;
     pwaInstallBtn.textContent = "Недоступно";

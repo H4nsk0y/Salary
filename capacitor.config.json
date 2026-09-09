@@ -1,0 +1,8 @@
+{
+  "appId": "ru.h4nsk0y.alvisasalary",
+  "appName": "ALVISA SALARY",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

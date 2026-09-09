@@ -14,6 +14,7 @@ import {
   normalizeInternalNextUrl,
 } from "./profileCompletion.js";
 import { getPasswordChecks, validatePasswordPolicy } from "./passwordPolicy.js";
+import { isNativeApp } from "./platform.js";
 
 const REMEMBER_ME_KEY = "alvisa_remember_me";
 const REMEMBERED_EMAIL_KEY = "alvisa_remembered_email";
@@ -147,6 +148,10 @@ async function acceptPendingInvite({ allowNoSession = false } = {}) {
 }
 
 function getResetRedirectUrl() {
+  if (isNativeApp()) {
+    return "https://h4nsk0y.ru/login.html";
+  }
+
   const url = new URL(window.location.href);
   url.searchParams.delete("mode");
   url.hash = "";

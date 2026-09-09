@@ -5,6 +5,7 @@ import {
   upsertMyPushSubscription,
 } from "./db.js";
 import { VAPID_PUBLIC_KEY } from "./pushConfig.js";
+import { isNativeApp } from "./platform.js";
 
 function isLocalhost() {
   return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
@@ -29,6 +30,10 @@ function isStandaloneDisplay() {
 }
 
 function getPushUnsupportedReason() {
+  if (isNativeApp()) {
+    return "Push-уведомления Android-версии будут подключены на следующем этапе.";
+  }
+
   if (!isSecureContextForPush()) {
     return "Сайт открыт без HTTPS. Для push-уведомлений нужен защищённый адрес.";
   }
@@ -56,7 +61,8 @@ function getPushUnsupportedReason() {
 
 export function isPushNotificationSupported() {
   return Boolean(
-    isSecureContextForPush() &&
+    !isNativeApp() &&
+      isSecureContextForPush() &&
       (!isIosDevice() || isStandaloneDisplay()) &&
       "Notification" in window &&
       "serviceWorker" in navigator &&

@@ -1,3 +1,5 @@
+import { isNativeApp } from "./platform.js";
+
 const PWA_STATE_EVENT = "alvisa:pwa-state";
 const UPDATE_BANNER_ID = "alvisaPwaUpdateBanner";
 const UPDATE_STYLE_ID = "alvisaPwaUpdateStyles";
@@ -19,7 +21,8 @@ function isIosDevice() {
 
 export function isPwaInstalled() {
   return Boolean(
-    window.matchMedia?.("(display-mode: standalone)")?.matches ||
+    isNativeApp() ||
+      window.matchMedia?.("(display-mode: standalone)")?.matches ||
       window.navigator.standalone === true
   );
 }
@@ -29,6 +32,19 @@ function isSecurePwaContext() {
 }
 
 export function getPwaState() {
+  const native = isNativeApp();
+  if (native) {
+    return {
+      supported: true,
+      installed: true,
+      native: true,
+      ios: false,
+      canPromptInstall: false,
+      updateAvailable: false,
+      reason: "",
+    };
+  }
+
   const supported = "serviceWorker" in navigator && isSecurePwaContext();
   const installed = isPwaInstalled();
   const ios = isIosDevice();
@@ -37,6 +53,7 @@ export function getPwaState() {
   return {
     supported,
     installed,
+    native: false,
     ios,
     canPromptInstall: Boolean(deferredInstallPrompt) && !installed,
     updateAvailable,
@@ -138,6 +155,11 @@ function handleWaitingWorker() {
 }
 
 async function registerPwa() {
+  if (isNativeApp()) {
+    emitState();
+    return;
+  }
+
   if (!("serviceWorker" in navigator) || !isSecurePwaContext()) {
     emitState();
     return;
@@ -208,6 +230,7 @@ export function activatePwaUpdate() {
 }
 
 window.addEventListener("beforeinstallprompt", (event) => {
+  if (isNativeApp()) return;
   event.preventDefault();
   deferredInstallPrompt = event;
   emitState();
@@ -218,7 +241,7 @@ window.addEventListener("appinstalled", () => {
   emitState();
 });
 
-navigator.serviceWorker?.addEventListener("controllerchange", () => {
+if (!isNativeApp()) navigator.serviceWorker?.addEventListener("controllerchange", () => {
   if (!reloadAfterControllerChange) return;
   reloadAfterControllerChange = false;
   window.location.reload();

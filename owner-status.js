@@ -8,6 +8,7 @@ import {
 import { startPresenceHeartbeat } from "./presence.js";
 import { getPushNotificationState } from "./pushNotifications.js";
 import { classifyClientError } from "./clientErrorInsights.js";
+import { isNativeApp } from "./platform.js";
 
 document.body.classList.add("is-loaded");
 
@@ -91,6 +92,7 @@ async function checkDatabaseUsage() {
 
 async function checkServiceWorker() {
   try {
+    if (isNativeApp()) return makeCheck("Обновления и офлайн-кеш", "ok", "Запущена нативная Android-оболочка приложения.");
     if (!("serviceWorker" in navigator)) return makeCheck("Обновления и офлайн-кеш", "warn", "Этот браузер не поддерживает Service Worker.");
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) return makeCheck("Обновления и офлайн-кеш", "warn", "Service Worker ещё не зарегистрирован на этом устройстве.");
