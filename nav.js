@@ -12,6 +12,7 @@ import {
   normalizeInternalNextUrl,
 } from "./profileCompletion.js";
 import { installErrorLogger } from "./errorLogger.js";
+import { createSiteSearchWidget } from "./siteSearch.js";
 import "./pwa.js";
 import "./scrollbar.js";
 import "./footer.js?v=20260802-2";
@@ -1388,8 +1389,10 @@ function renderHeader(mount) {
   menuButton.append(createMenuIcon(), document.createTextNode("Меню"));
 
   const mobileMenu = createMobileMenu(activeKey, links);
+  const siteSearch = createSiteSearchWidget();
+  header._siteSearch = siteSearch;
 
-  actions.append(nav, createNotificationsWidget(), menuButton);
+  actions.append(nav, siteSearch.element, createNotificationsWidget(), menuButton);
   inner.append(home, actions);
   header.appendChild(inner);
   header.appendChild(mobileMenu);
@@ -1410,6 +1413,7 @@ async function enhanceNavForProfile(header) {
 
   try {
     const profile = await getMyProfile();
+    header._siteSearch?.setProfile(profile);
     installProfileCompletionNavigationGate(header, profile);
     applyProfileNavPreferences(header, profile);
 
