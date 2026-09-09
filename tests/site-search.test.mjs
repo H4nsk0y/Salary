@@ -24,7 +24,7 @@ test("search query has its own easter egg", () => {
 
 test("search easter egg opens the requested image result safely", async () => {
   const search = await read("siteSearch.js");
-  assert.match(search, /yandex\.ru\/images\/search/);
+  assert.match(search, /i\.pinimg\.com\/originals\/4d\/5e\/24\/4d5e242dc61c09864ffa546fe8c14c95\.png\?nii=t/);
   assert.match(search, /message\.target = "_blank"/);
   assert.match(search, /message\.rel = "noopener noreferrer"/);
 });

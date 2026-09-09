@@ -1,5 +1,5 @@
 const SEARCH_STYLE_ID = "alvisa-site-search-style";
-const SEARCH_EASTER_EGG_URL = "https://yandex.ru/images/search?img_url=https%3A%2F%2Fyt3.googleusercontent.com%2Fte4KezxUjBKQD0AUKH-K-tciqntCsriu8hH1_EI9sqZHMt4vHU2OxbBkBnXrffALFTlHWUpLFrs%3Ds900-c-k-c0x00ffffff-no-rj&lr=11007&pos=0&rpt=simage&source=serp&text=%D1%84%D0%B0%D1%80%D0%B8%D1%82%20%D0%BC%D0%B5%D0%BC";
+const SEARCH_EASTER_EGG_URL = "https://i.pinimg.com/originals/4d/5e/24/4d5e242dc61c09864ffa546fe8c14c95.png?nii=t";
 
 const PUBLIC_SEARCH_ENTRIES = [
   { title: "Главная", href: "index.html", description: "Основные разделы ALVISA SALARY", keywords: "начало рабочее пространство разделы" },
