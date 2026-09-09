@@ -912,6 +912,19 @@ export async function sendPushNotifications({
   return data ?? null;
 }
 
+export async function removeManagedDepartmentMember(departmentKey, userId) {
+  const key = String(departmentKey ?? "").trim();
+  const uid = String(userId ?? "").trim();
+  if (!key) throw new Error("Не указан отдел.");
+  if (!uid) throw new Error("Не указан сотрудник.");
+
+  const { error } = await supabase.rpc("remove_managed_department_member", {
+    p_department_key: key,
+    p_user_id: uid,
+  });
+  if (error) throw error;
+}
+
 export async function sendDepartmentAnnouncement({
   departmentKey = null,
   title,

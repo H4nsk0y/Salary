@@ -6,6 +6,7 @@ import { computePaymentSplit, computeSalary } from "../calc.js";
 import { createSerialTaskQueue } from "../asyncTasks.js";
 import {
   getProductionCalendarMonth,
+  isPlausibleProductionCalendar,
   mergeProductionCalendarDefaults,
 } from "../productionCalendar.js";
 import {
@@ -284,6 +285,20 @@ test("calendar defaults apply once and preserve later manual removal", async () 
   assert.equal(migrated.isHoliday[14], true);
   migrated.isHoliday[14] = false;
   assert.equal(mergeProductionCalendarDefaults(migrated, calendar).isHoliday[14], false);
+});
+
+test("future all-workday API response is rejected and January keeps statutory holidays", async () => {
+  assert.equal(isPlausibleProductionCalendar(new Array(31).fill(0), 2027, 0), false);
+
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: true, text: async () => "0".repeat(31) });
+  try {
+    const calendar = await getProductionCalendarMonth(2027, 0, { branch: "chateau_alvisa" });
+    assert.equal(calendar.source, "statutory-fallback");
+    assert.deepEqual(calendar.isHoliday.slice(0, 8), new Array(8).fill(true));
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
 });
 
 test("temporary push failures remain eligible for retry", async () => {

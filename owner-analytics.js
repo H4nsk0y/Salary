@@ -693,6 +693,29 @@ function createFeatureCell(row) {
   return cell;
 }
 
+function createTimesheetCell(row) {
+  const cell = document.createElement("td");
+  if (!row.department_key || !row.user_id) {
+    cell.textContent = "—";
+    cell.className = "text-slate-500";
+    return cell;
+  }
+
+  const link = document.createElement("a");
+  const params = new URLSearchParams({
+    department: String(row.department_key),
+    year: String(row.year),
+    month: String(row.month),
+    employee: String(row.user_id),
+  });
+  link.href = `admin.html?${params.toString()}`;
+  link.className = "inline-flex items-center rounded-xl bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-200 ring-1 ring-sky-400/20 transition hover:bg-sky-500/15 hover:ring-sky-300/35";
+  link.textContent = "Табель";
+  link.setAttribute("aria-label", `Открыть табель: ${getDisplayName(row)}, ${formatMonth(row)}`);
+  cell.appendChild(link);
+  return cell;
+}
+
 function renderTable() {
   const metric = getMetric();
   const sorted = [...filteredRows].sort((a, b) => {
@@ -731,7 +754,8 @@ function renderTable() {
       createMoneyCell(row[metric.autoKey], true),
       createMoneyCell(row[metric.actualKey]),
       createDiffCell(row, metric),
-      createFeatureCell(row)
+      createFeatureCell(row),
+      createTimesheetCell(row)
     );
     fragment.appendChild(tr);
   }

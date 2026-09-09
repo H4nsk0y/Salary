@@ -83,3 +83,16 @@ test("latest user update is announced once until the updates page is opened", as
   assert.match(nav, /scheduleUnreadUpdatesPrompt/);
   assert.match(nav, /markCurrentUpdatesSeen/);
 });
+
+test("owner analytics links each comparable record to the employee timesheet", async () => {
+  const [html, script] = await Promise.all([source("owner-analytics.html"), source("owner-analytics.js")]);
+  assert.match(html, /<th>Действия<\/th>/);
+  assert.match(script, /employee: String\(row\.user_id\)/);
+  assert.match(script, /link\.textContent = "Табель"/);
+});
+
+test("EGAIS reminder setting uses the concise audience label", async () => {
+  const html = await source("settings.html");
+  assert.match(html, />\s*Уведомлять о проверках суточных файлов\s*</);
+  assert.match(html, />\s*Для сотрудников ЕГАИС\s*</);
+});

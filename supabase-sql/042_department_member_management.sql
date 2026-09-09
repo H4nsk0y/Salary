@@ -1,31 +1,5 @@
--- Read-only department timesheet for EGAIS employees.
--- The RPC returns schedule data only and never exposes salary or actual payment fields.
-
-create or replace function public.can_view_egais_department_timesheet()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select
-    auth.uid() is not null
-    and (
-      public.is_owner()
-      or exists (
-        select 1
-        from public.department_members dm
-        where dm.user_id = auth.uid()
-          and dm.department_key = 'egais'
-      )
-      or exists (
-        select 1
-        from public.department_editors de
-        where de.user_id = auth.uid()
-          and de.department_key = 'egais'
-      )
-    );
-$$;
+-- Keep the EGAIS read-only view aligned with saved department calendar marks,
+-- and allow department editors to remove ordinary members from their department.
 
 create or replace function public.list_egais_department_timesheet_view(
   p_year integer,
@@ -116,10 +90,61 @@ begin
 end;
 $$;
 
-revoke all on function public.can_view_egais_department_timesheet() from public;
-revoke all on function public.can_view_egais_department_timesheet() from anon;
+create or replace function public.remove_managed_department_member(
+  p_department_key text,
+  p_user_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_department_key text := nullif(btrim(p_department_key), '');
+begin
+  if auth.uid() is null then
+    raise exception 'NO_SESSION';
+  end if;
+
+  if v_department_key is null or p_user_id is null then
+    raise exception 'INVALID_ARGUMENT';
+  end if;
+
+  if not public.can_edit_department(v_department_key) then
+    raise exception 'ACCESS_DENIED';
+  end if;
+
+  if p_user_id = auth.uid() then
+    raise exception 'CANNOT_REMOVE_SELF';
+  end if;
+
+  if not exists (
+    select 1 from public.department_members dm
+    where dm.department_key = v_department_key and dm.user_id = p_user_id
+  ) then
+    raise exception 'MEMBER_NOT_FOUND';
+  end if;
+
+  if exists (
+    select 1 from public.profiles p
+    where p.user_id = p_user_id and p.role = 'owner'
+  ) or exists (
+    select 1 from public.department_editors de
+    where de.user_id = p_user_id and de.department_key = v_department_key
+  ) then
+    raise exception 'PROTECTED_MEMBER';
+  end if;
+
+  delete from public.department_members dm
+  where dm.department_key = v_department_key
+    and dm.user_id = p_user_id;
+end;
+$$;
+
 revoke all on function public.list_egais_department_timesheet_view(integer, integer) from public;
 revoke all on function public.list_egais_department_timesheet_view(integer, integer) from anon;
-
-grant execute on function public.can_view_egais_department_timesheet() to authenticated;
 grant execute on function public.list_egais_department_timesheet_view(integer, integer) to authenticated;
+
+revoke all on function public.remove_managed_department_member(text, uuid) from public;
+revoke all on function public.remove_managed_department_member(text, uuid) from anon;
+grant execute on function public.remove_managed_department_member(text, uuid) to authenticated;

@@ -1,5 +1,9 @@
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
-const STANDARD_CACHE_PREFIX = "alvisa_prodcal_v2";
+const STANDARD_CACHE_PREFIX = "alvisa_prodcal_v3";
+const FIXED_RUSSIAN_HOLIDAYS = new Set([
+  "01-01", "01-02", "01-03", "01-04", "01-05", "01-06", "01-07", "01-08",
+  "02-23", "03-08", "05-01", "05-09", "06-12", "11-04",
+]);
 
 // Verified against GdeRabota's 2026 production calendar for the Republic of Dagestan on 2026-09-06.
 const DAGESTAN_2026_SPECIAL_DAYS = Object.freeze({
@@ -33,6 +37,8 @@ function emptyMarks(year, month) {
 function weekendFallback(year, month) {
   const length = monthLength(year, month);
   return Array.from({ length }, (_, index) => {
+    const monthDay = `${String(month + 1).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`;
+    if (FIXED_RUSSIAN_HOLIDAYS.has(monthDay)) return 8;
     const day = new Date(year, month, index + 1).getDay();
     return day === 0 || day === 6 ? 1 : 0;
   });
@@ -43,7 +49,18 @@ export function parseIsDayOffMonth(text, expectedLength) {
   if (source.length < expectedLength) return null;
 
   const result = Array.from(source.slice(0, expectedLength), (char) => Number(char));
-  return result.every(Number.isInteger) ? result : null;
+  return result.every((code) => [0, 1, 2, 4, 8].includes(code)) ? result : null;
+}
+
+export function isPlausibleProductionCalendar(codes, year, month) {
+  if (!Array.isArray(codes) || codes.length !== monthLength(year, month)) return false;
+
+  for (let index = 0; index < codes.length; index += 1) {
+    const monthDay = `${String(month + 1).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`;
+    if (FIXED_RUSSIAN_HOLIDAYS.has(monthDay) && codes[index] === 0) return false;
+  }
+
+  return true;
 }
 
 function marksFromIsDayOff(codes, year, month) {
@@ -90,10 +107,11 @@ async function getStandardMonth(year, month) {
   const length = monthLength(year, month);
   const key = `${STANDARD_CACHE_PREFIX}_${year}_${String(month + 1).padStart(2, "0")}`;
   let codes = null;
+  let source = "isdayoff";
 
   try {
     const cached = JSON.parse(localStorage.getItem(key) || "null");
-    if (Array.isArray(cached?.data) && cached.data.length === length) codes = cached.data;
+    if (isPlausibleProductionCalendar(cached?.data, year, month)) codes = cached.data;
   } catch {}
 
   if (!codes) {
@@ -102,20 +120,23 @@ async function getStandardMonth(year, month) {
       const response = await fetch(`https://isdayoff.ru/api/getdata?year=${year}&month=${mm}&pre=1&holiday=1`);
       if (!response.ok) throw new Error(`HTTP_${response.status}`);
       codes = parseIsDayOffMonth(await response.text(), length);
-      if (!codes) throw new Error("BAD_PRODUCTION_CALENDAR_DATA");
+      if (!isPlausibleProductionCalendar(codes, year, month)) {
+        throw new Error("BAD_PRODUCTION_CALENDAR_DATA");
+      }
       try {
         localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), data: codes }));
       } catch {}
     } catch {
       codes = weekendFallback(year, month);
+      source = "statutory-fallback";
     }
   }
 
   return {
     ...marksFromIsDayOff(codes, year, month),
     codes,
-    version: `isdayoff-${year}-${String(month + 1).padStart(2, "0")}-v1`,
-    source: "isdayoff",
+    version: `${source}-${year}-${String(month + 1).padStart(2, "0")}-v1`,
+    source,
   };
 }
 

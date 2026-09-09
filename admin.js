@@ -12,11 +12,13 @@ import {
   managedListTimesheetsBefore,
   managedLoadTimesheet,
   managedSaveManyTimesheets,
+  removeManagedDepartmentMember,
   notifyPersonalTimesheetChanges,
   ownerCreateDepartmentInvite,
   sendPushNotifications,
   setDepartmentMemberOrder,
 } from "./db.js";
+import { confirmDialog } from "./modal.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { createSerialTaskQueue } from "./asyncTasks.js";
 import { setUiStatus } from "./uiStatus.js";
@@ -89,8 +91,10 @@ const departmentViewNotice = document.getElementById("departmentViewNotice");
 const backToTableLink = document.getElementById("backToTableLink");
 const pageParams = new URLSearchParams(window.location.search);
 const requestedDepartmentKey = String(pageParams.get("department") || "").trim();
+const requestedEmployeeId = String(pageParams.get("employee") || "").trim();
 
 let currentProfile = null;
+let currentUserId = null;
 let departmentViewOnly = false;
 
 let year = new Date().getFullYear();
@@ -820,6 +824,24 @@ function makeLabelCell(state) {
 
   titleRow.append(dragHandle, main, overtimeBadge);
 
+  if (!departmentViewOnly && String(state.userId) !== String(currentUserId)) {
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "member-remove-button";
+    removeButton.textContent = "×";
+    removeButton.title = `Убрать ${state.name} из отдела`;
+    removeButton.setAttribute("aria-label", removeButton.title);
+    for (const eventName of ["pointerdown", "mousedown", "dragstart"]) {
+      removeButton.addEventListener(eventName, (event) => event.stopPropagation());
+    }
+    removeButton.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await removeDepartmentMember(state, removeButton);
+    });
+    td.append(removeButton);
+  }
+
   const sub = document.createElement("span");
   sub.className = "label-sub";
   sub.textContent = "День / Ночь";
@@ -834,6 +856,49 @@ function makeLabelCell(state) {
 
   td.append(avatar, titleRow, sub);
   return td;
+}
+
+async function removeDepartmentMember(state, button) {
+  if (!state?.userId || !managedDepartment?.key || departmentViewOnly) return;
+  if (dirty) {
+    setError("Сначала сохраните изменения табеля, затем уберите сотрудника из отдела.");
+    return;
+  }
+
+  const confirmed = await confirmDialog({
+    title: "Убрать сотрудника из отдела?",
+    message: `${state.name} исчезнет из общего табеля. Аккаунт и сохраненные табели останутся в системе.`,
+    confirmText: "Убрать из отдела",
+    cancelText: "Отмена",
+    tone: "danger",
+  });
+  if (!confirmed) return;
+
+  button.disabled = true;
+  setSaveStatus("Убираю сотрудника…", "busy");
+  setError(null);
+  try {
+    await removeManagedDepartmentMember(managedDepartment.key, state.userId);
+    await loadCurrentMonth(year, month);
+    setSaveStatus("Сотрудник убран из отдела", "ok");
+  } catch (error) {
+    const message = String(error?.message || "");
+    if (message.includes("CANNOT_REMOVE_SELF")) {
+      setError("Нельзя убрать из отдела самого себя.");
+    } else if (message.includes("PROTECTED_MEMBER")) {
+      setError("Сначала снимите с сотрудника права редактора отдела.");
+    } else if (message.includes("MEMBER_NOT_FOUND")) {
+      setError("Сотрудник уже не состоит в этом отделе. Обновите табель.");
+    } else if (message.includes("ACCESS_DENIED")) {
+      setError("Недостаточно прав для удаления сотрудника из отдела.");
+    } else if (/remove_managed_department_member|schema cache|PGRST202/i.test(message)) {
+      setError("В базе нужно запустить supabase-sql/042_department_member_management.sql.");
+    } else {
+      setError(message || "Не удалось убрать сотрудника из отдела.");
+    }
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function setSharedDayMarkByCycle(dayIndex, clickCount) {
@@ -2554,7 +2619,8 @@ function applyDepartmentViewOnlyUi() {
 
 async function guardManagedDepartment() {
   try {
-    await requireSession();
+    const session = await requireSession();
+    currentUserId = session?.user?.id ?? null;
   } catch {
     const next = requestedDepartmentKey
       ? `admin.html?department=${encodeURIComponent(requestedDepartmentKey)}`
@@ -2638,10 +2704,11 @@ async function loadCurrentMonth(targetYear = year, targetMonth = month) {
     });
     productionCalendarVersion = productionCalendar?.version ?? null;
     const savedPayloads = Array.from(payloadsByUserId.values()).filter(Boolean);
+    const hasSavedDepartmentMarks = savedPayloads.some(hasDepartmentSharedMarks);
     const hasCurrentCalendar = savedPayloads.some(
       (payload) => !shouldApplyProductionCalendar(payload, productionCalendar)
     );
-    if (!hasCurrentCalendar) {
+    if (!hasSavedDepartmentMarks && !hasCurrentCalendar) {
       sharedHoliday = productionCalendar.isHoliday.map(Boolean);
       sharedTransferredOff = productionCalendar.isTransferredOff.map(Boolean);
       sharedShortDay = productionCalendar.isShortDay.map(Boolean);
@@ -2670,6 +2737,7 @@ async function loadCurrentMonth(targetYear = year, targetMonth = month) {
     );
 
     initCurrentDaySelection();
+    focusRequestedEmployee();
     setError(null);
     return true;
   } catch (e) {
@@ -2682,6 +2750,16 @@ async function loadCurrentMonth(targetYear = year, targetMonth = month) {
     );
     return false;
   }
+}
+
+function focusRequestedEmployee() {
+  if (!requestedEmployeeId) return;
+  const state = teamStates.find((item) => String(item.userId) === requestedEmployeeId);
+  if (!state?.labelCell) return;
+  state.labelCell.classList.add("member-focus-target");
+  requestAnimationFrame(() => {
+    state.labelCell.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+  });
 }
 
 // === Mobile toolbar events ===
