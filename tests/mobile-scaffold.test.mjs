@@ -46,6 +46,7 @@ test("manual Android workflow builds an isolated debug APK without repository se
 
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /npm run cap:sync/);
+  assert.match(workflow, /chmod \+x gradlew/);
   assert.match(workflow, /assembleDebug/);
   assert.match(workflow, /app-debug\.apk/);
   assert.doesNotMatch(workflow, /secrets\./);
