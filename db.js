@@ -812,9 +812,11 @@ export async function managedListTimesheetsBefore(userIds, year, month) {
   return data ?? [];
 }
 
-export async function managedSaveManyTimesheets(items) {
+export async function managedSaveManyTimesheets(departmentKey, items) {
+  const key = String(departmentKey ?? "").trim();
   const rows = Array.isArray(items) ? items : [];
   if (!rows.length) return;
+  if (!key) throw new Error("Не указан отдел.");
 
   const normalizedRows = rows.map((item) => {
     const normalized = assertValidYearMonth(item?.year, item?.month);
@@ -827,11 +829,33 @@ export async function managedSaveManyTimesheets(items) {
     };
   });
 
-  const { error } = await supabase
-    .from("timesheets")
-    .upsert(normalizedRows, { onConflict: "user_id,year,month" });
+  const { error } = await supabase.rpc("managed_save_department_timesheets", {
+    p_department_key: key,
+    p_items: normalizedRows,
+  });
 
   if (error) throw error;
+}
+
+export async function ownerListDepartmentTimesheetAudit({
+  departmentKey,
+  year,
+  month,
+  limit = 50,
+} = {}) {
+  const key = String(departmentKey ?? "").trim();
+  const normalized = assertValidYearMonth(year, month);
+  if (!key) throw new Error("Не указан отдел.");
+
+  const { data, error } = await supabase.rpc("owner_list_department_timesheet_audit", {
+    p_department_key: key,
+    p_year: normalized.year,
+    p_month: normalized.month,
+    p_limit: Math.min(Math.max(Number(limit) || 50, 1), 200),
+  });
+
+  if (error) throw error;
+  return data ?? [];
 }
 
 function isMissingNotificationReadAtColumnError(error) {
@@ -1464,6 +1488,20 @@ export async function ownerListClientErrors(limit = 20) {
 
   if (error) throw error;
   return data ?? [];
+}
+
+export async function ownerGetDatabaseHealth() {
+  const { data, error } = await supabase.rpc("owner_get_database_health");
+  if (error) throw error;
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error("База не вернула сведения о размере.");
+
+  return {
+    usedBytes: Number(row.used_bytes) || 0,
+    limitBytes: Number(row.limit_bytes) || 0,
+    usedPercent: Number(row.used_percent) || 0,
+  };
 }
 
 export async function ownerDeleteDepartmentInvite(token) {

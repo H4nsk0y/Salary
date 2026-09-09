@@ -1,5 +1,10 @@
 import { requireSession } from "./auth.js";
-import { getMyProfile, listAllDepartments, ownerListClientErrors } from "./db.js";
+import {
+  getMyProfile,
+  listAllDepartments,
+  ownerGetDatabaseHealth,
+  ownerListClientErrors,
+} from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { getPushNotificationState } from "./pushNotifications.js";
 import { classifyClientError } from "./clientErrorInsights.js";
@@ -17,8 +22,14 @@ function elapsed(startedAt) {
   return `${Math.max(1, Math.round(performance.now() - startedAt))} мс`;
 }
 
-function makeCheck(name, status, detail, timing = "") {
-  return { name, status, detail, timing };
+function makeCheck(name, status, detail, timing = "", usagePercent = null) {
+  return { name, status, detail, timing, usagePercent };
+}
+
+function formatMegabytes(bytes) {
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }).format(
+    Math.max(0, Number(bytes) || 0) / (1024 * 1024)
+  );
 }
 
 async function checkDatabase() {
@@ -28,6 +39,53 @@ async function checkDatabase() {
     return makeCheck("База данных", "ok", `Соединение установлено, доступно отделов: ${departments.length}.`, elapsed(startedAt));
   } catch (error) {
     return makeCheck("База данных", "error", `Нет ответа: ${error?.message || "неизвестная ошибка"}.`, elapsed(startedAt));
+  }
+}
+
+async function checkDatabaseUsage() {
+  const startedAt = performance.now();
+  try {
+    const usage = await ownerGetDatabaseHealth();
+    const percent = Math.max(0, usage.usedPercent);
+    const used = formatMegabytes(usage.usedBytes);
+    const limit = formatMegabytes(usage.limitBytes);
+    const remaining = formatMegabytes(Math.max(0, usage.limitBytes - usage.usedBytes));
+
+    if (percent >= 80) {
+      return makeCheck(
+        "Размер базы данных",
+        "error",
+        `Критично: использовано ${used} из ${limit} МБ (${percent.toFixed(1)}%). Осталось около ${remaining} МБ. Нужны архивирование и очистка старых данных.`,
+        elapsed(startedAt),
+        percent
+      );
+    }
+    if (percent >= 70) {
+      return makeCheck(
+        "Размер базы данных",
+        "warn",
+        `Использовано ${used} из ${limit} МБ (${percent.toFixed(1)}%). Осталось около ${remaining} МБ. Пора запланировать архивирование.`,
+        elapsed(startedAt),
+        percent
+      );
+    }
+    return makeCheck(
+      "Размер базы данных",
+      "ok",
+      `Использовано ${used} из ${limit} МБ (${percent.toFixed(1)}%). Свободно около ${remaining} МБ.`,
+      elapsed(startedAt),
+      percent
+    );
+  } catch (error) {
+    const message = String(error?.message || "");
+    return makeCheck(
+      "Размер базы данных",
+      "warn",
+      /owner_get_database_health|schema cache|PGRST202/i.test(message)
+        ? "Проверка ещё не подключена. Запустите supabase-sql/044_owner_database_health.sql."
+        : `Не удалось получить размер: ${message || "неизвестная ошибка"}.`,
+      elapsed(startedAt)
+    );
   }
 }
 
@@ -95,6 +153,20 @@ function renderChecks(checks) {
     detail.className = "mt-1 text-sm leading-6 text-[#969ca2]";
     detail.textContent = check.detail;
     content.append(title, detail);
+    if (Number.isFinite(check.usagePercent)) {
+      const track = document.createElement("div");
+      track.className = "status-usage-track";
+      track.setAttribute("role", "progressbar");
+      track.setAttribute("aria-label", "Заполнение базы данных");
+      track.setAttribute("aria-valuemin", "0");
+      track.setAttribute("aria-valuemax", "100");
+      track.setAttribute("aria-valuenow", String(Math.min(100, Math.max(0, check.usagePercent))));
+      const fill = document.createElement("span");
+      fill.className = `status-usage-fill ${check.status}`;
+      fill.style.width = `${Math.min(100, Math.max(0, check.usagePercent))}%`;
+      track.append(fill);
+      content.append(track);
+    }
     const timing = document.createElement("span");
     timing.className = "status-check-time text-xs text-[#72787e]";
     timing.textContent = check.timing;
@@ -108,7 +180,7 @@ function renderChecks(checks) {
   warnCount.textContent = String(counts.warn);
   errorCount.textContent = String(counts.error);
   summaryText.textContent = counts.error
-    ? "Есть недоступные компоненты. Проверьте подробности ниже."
+    ? "Есть критические или недоступные компоненты. Проверьте подробности ниже."
     : counts.warn
       ? "Основные компоненты доступны, но есть пункты, требующие внимания."
       : "Все проверенные компоненты работают штатно.";
@@ -121,7 +193,14 @@ async function runChecks() {
     ? makeCheck("Интернет и защищённое соединение", window.isSecureContext ? "ok" : "warn", window.isSecureContext ? "Устройство онлайн, страница открыта по защищённому соединению." : "Устройство онлайн, но защищённый контекст недоступен.")
     : makeCheck("Интернет и защищённое соединение", "error", "Браузер сообщает об отсутствии сети.");
   try {
-    const results = await Promise.all([checkDatabase(), checkServiceWorker(), checkPush(), checkErrors(), checkStorage()]);
+    const results = await Promise.all([
+      checkDatabase(),
+      checkDatabaseUsage(),
+      checkServiceWorker(),
+      checkPush(),
+      checkErrors(),
+      checkStorage(),
+    ]);
     renderChecks([connection, ...results]);
   } finally {
     refreshButton.disabled = false;

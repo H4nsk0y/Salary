@@ -12,6 +12,7 @@ import {
   managedListTimesheetsBefore,
   managedLoadTimesheet,
   managedSaveManyTimesheets,
+  ownerListDepartmentTimesheetAudit,
   removeManagedDepartmentMember,
   notifyPersonalTimesheetChanges,
   ownerCreateDepartmentInvite,
@@ -87,6 +88,11 @@ const inviteLinkInput = document.getElementById("inviteLinkInput");
 const copyInviteBtn = document.getElementById("copyInviteBtn");
 const adminPageHeading = document.getElementById("adminPageHeading");
 const departmentViewNotice = document.getElementById("departmentViewNotice");
+const auditLogBtn = document.getElementById("auditLogBtn");
+const auditLogModal = document.getElementById("auditLogModal");
+const auditLogCloseBtn = document.getElementById("auditLogCloseBtn");
+const auditLogPeriod = document.getElementById("auditLogPeriod");
+const auditLogList = document.getElementById("auditLogList");
 
 const backToTableLink = document.getElementById("backToTableLink");
 const pageParams = new URLSearchParams(window.location.search);
@@ -167,6 +173,155 @@ function syncHorizontalScrollState() {
   if (next === isScrolledX) return;
   isScrolledX = next;
   tableScrollable.classList.toggle("is-scrolled-x", next);
+}
+
+function auditShiftLabel(state) {
+  const leave = leaveTypeToCode(state?.leave, state?.leave);
+  if (leave) return `код ${leave}`;
+
+  const day = sanitizeHourNumber(Number(state?.day));
+  const night = sanitizeHourNumber(Number(state?.night));
+  if (day > 0 && night > 0) return `день ${fmtHours(day)} / ночь ${fmtHours(night)}`;
+  if (day > 0) return `день ${fmtHours(day)} ч`;
+  if (night > 0) return `ночь ${fmtHours(night)} ч`;
+  return "выходной";
+}
+
+function auditCalendarLabel(state) {
+  if (state?.holiday) return "праздничный день";
+  if (state?.transferred) return "перенесённый выходной";
+  if (state?.short) return "сокращённый день";
+  return "обычный день";
+}
+
+function appendAuditChange(parent, text) {
+  const line = document.createElement("p");
+  line.className = "timesheet-audit-change";
+  line.textContent = text;
+  parent.append(line);
+}
+
+function auditCommentExcerpt(value) {
+  const text = String(value || "").trim();
+  return text.length > 120 ? `${text.slice(0, 117)}…` : text;
+}
+
+function renderAuditEntry(entry) {
+  const article = document.createElement("article");
+  article.className = "timesheet-audit-entry";
+
+  const meta = document.createElement("div");
+  meta.className = "timesheet-audit-meta";
+  const actor = document.createElement("span");
+  actor.className = "timesheet-audit-actor";
+  actor.textContent = entry?.actor_name || "Пользователь";
+  const time = document.createElement("time");
+  time.className = "timesheet-audit-time";
+  const createdAt = new Date(entry?.created_at);
+  time.textContent = Number.isNaN(createdAt.getTime())
+    ? "Время неизвестно"
+    : createdAt.toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+  meta.append(actor, time);
+  article.append(meta);
+
+  const calendarChanges = Array.isArray(entry?.calendar_changes) ? entry.calendar_changes : [];
+  if (calendarChanges.length) {
+    const group = document.createElement("div");
+    group.className = "timesheet-audit-group";
+    const title = document.createElement("div");
+    title.className = "timesheet-audit-group-title";
+    title.textContent = "Календарь отдела";
+    group.append(title);
+    for (const change of calendarChanges) {
+      appendAuditChange(
+        group,
+        `${change.day} число: ${auditCalendarLabel(change.before)} → ${auditCalendarLabel(change.after)}`
+      );
+    }
+    article.append(group);
+  }
+
+  const employeeChanges = Array.isArray(entry?.employee_changes) ? entry.employee_changes : [];
+  for (const employee of employeeChanges) {
+    const group = document.createElement("div");
+    group.className = "timesheet-audit-group";
+    const title = document.createElement("div");
+    title.className = "timesheet-audit-group-title";
+    title.textContent = employee?.name || "Сотрудник";
+    group.append(title);
+
+    for (const change of Array.isArray(employee?.days) ? employee.days : []) {
+      const details = [];
+      if (auditShiftLabel(change.before) !== auditShiftLabel(change.after)) {
+        details.push(`${auditShiftLabel(change.before)} → ${auditShiftLabel(change.after)}`);
+      }
+      const beforeComment = String(change?.before?.comment || "").trim();
+      const afterComment = String(change?.after?.comment || "").trim();
+      if (beforeComment !== afterComment) {
+        if (beforeComment && afterComment) {
+          details.push(`комментарий «${auditCommentExcerpt(beforeComment)}» → «${auditCommentExcerpt(afterComment)}»`);
+        } else if (afterComment) {
+          details.push(`добавлен комментарий «${auditCommentExcerpt(afterComment)}»`);
+        } else {
+          details.push(`удалён комментарий «${auditCommentExcerpt(beforeComment)}»`);
+        }
+      }
+      appendAuditChange(group, `${change.day} число: ${details.join("; ") || "данные изменены"}`);
+    }
+    article.append(group);
+  }
+
+  return article;
+}
+
+async function openAuditLog() {
+  if (currentProfile?.role !== "owner" || !managedDepartment?.key) return;
+  auditLogModal?.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  auditLogPeriod.textContent = `${monthNames[month]} ${year} • ${managedDepartment.name || managedDepartment.key}`;
+  auditLogList.replaceChildren();
+  const loading = document.createElement("div");
+  loading.className = "timesheet-audit-empty";
+  loading.textContent = "Загружаю журнал…";
+  auditLogList.append(loading);
+  auditLogCloseBtn?.focus();
+
+  try {
+    const entries = await ownerListDepartmentTimesheetAudit({
+      departmentKey: managedDepartment.key,
+      year,
+      month,
+      limit: 50,
+    });
+    auditLogList.replaceChildren();
+    if (!entries.length) {
+      const empty = document.createElement("div");
+      empty.className = "timesheet-audit-empty";
+      empty.textContent = "В этом месяце изменений пока нет.";
+      auditLogList.append(empty);
+      return;
+    }
+    auditLogList.append(...entries.map(renderAuditEntry));
+  } catch (error) {
+    const empty = document.createElement("div");
+    empty.className = "timesheet-audit-empty";
+    empty.textContent = /owner_list_department_timesheet_audit|schema cache|PGRST202/i.test(String(error?.message || ""))
+      ? "В базе нужно запустить supabase-sql/043_department_timesheet_audit.sql."
+      : error?.message || "Не удалось загрузить журнал.";
+    auditLogList.replaceChildren(empty);
+  }
+}
+
+function closeAuditLog() {
+  auditLogModal?.classList.add("hidden");
+  document.body.style.overflow = "";
+  auditLogBtn?.focus();
 }
 
 function syncTopTableScrollWidth() {
@@ -2459,7 +2614,7 @@ async function saveAllNow({ notify = false } = {}) {
       : null;
     const saveRevision = changeRevision;
     const items = structuredClone(currentSaveItems({ changedOnly: true }));
-    if (items.length) await managedSaveManyTimesheets(items);
+    if (items.length) await managedSaveManyTimesheets(managedDepartment?.key, items);
 
     for (const item of items) {
       const key = String(item.user_id);
@@ -2526,7 +2681,12 @@ async function saveAllNow({ notify = false } = {}) {
     );
   } catch (e) {
     setSaveStatus("Ошибка сохранения", "err");
-    setError(e?.message || "Не удалось сохранить табели.");
+    const message = String(e?.message || "");
+    setError(
+      /managed_save_department_timesheets|schema cache|PGRST202/i.test(message)
+        ? "В базе нужно запустить supabase-sql/043_department_timesheet_audit.sql."
+        : message || "Не удалось сохранить табели."
+    );
   }
 }
 
@@ -2552,6 +2712,7 @@ async function resolveManagedDepartment() {
   currentProfile = await getMyProfile();
   const isOwner = currentProfile?.role === "owner";
   saveSilentBtn?.classList.toggle("hidden", !isOwner);
+  auditLogBtn?.classList.toggle("hidden", !isOwner);
 
   if (isOwner) {
     if (!requestedDepartmentKey) {
@@ -2834,6 +2995,17 @@ saveBtn?.addEventListener("click", async () => {
 
 saveSilentBtn?.addEventListener("click", async () => {
   await doSaveAll({ notify: false });
+});
+
+auditLogBtn?.addEventListener("click", openAuditLog);
+auditLogCloseBtn?.addEventListener("click", closeAuditLog);
+auditLogModal?.addEventListener("click", (event) => {
+  if (event.target === auditLogModal) closeAuditLog();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !auditLogModal?.classList.contains("hidden")) {
+    closeAuditLog();
+  }
 });
 
 createInviteBtn?.addEventListener("click", async () => {
