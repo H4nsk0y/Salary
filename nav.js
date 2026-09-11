@@ -23,7 +23,7 @@ installErrorLogger();
 const NAV_STYLE_ID = "alvisa-common-nav-style";
 const NOTIFICATION_READ_STORAGE_KEY = "alvisa.notificationReadIds.v1";
 const NOTIFICATION_POLL_INTERVAL_MS = 45000;
-const CURRENT_UPDATES_VERSION = "29.0";
+const CURRENT_UPDATES_VERSION = "31.0";
 const UPDATES_SEEN_STORAGE_KEY = "alvisa.updatesSeenVersion.v1";
 const UPDATES_PROMPT_SESSION_KEY = "alvisa.updatesPromptedVersion.v1";
 
