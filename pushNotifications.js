@@ -1,5 +1,4 @@
 import {
-  createMyPushTestNotification,
   disableMyPushSubscription,
   sendPushNotifications,
   upsertMyPushSubscription,
@@ -196,7 +195,6 @@ export async function sendPushTestNotification() {
     throw new Error("Сначала включите уведомления на этом устройстве.");
   }
 
-  await createMyPushTestNotification();
   const result = await sendPushNotifications({ type: "push_test" });
   if (Number(result?.sent) < 1) {
     throw new Error(result?.message || "Сервер не нашёл активную push-подписку этого устройства.");

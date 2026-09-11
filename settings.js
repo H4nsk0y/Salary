@@ -9,8 +9,13 @@ import {
   getPushNotificationState,
   sendPushTestNotification,
 } from "./pushNotifications.js";
+import { reportHandledClientError } from "./errorLogger.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { setUiStatus } from "./uiStatus.js";
+import {
+  getScreenWakeState,
+  setScreenWakeEnabled,
+} from "./screenWakeLock.js";
 import {
   activatePwaUpdate,
   checkForPwaUpdate,
@@ -30,6 +35,8 @@ const errorBox = document.getElementById("errorBox");
 const hideMoneyToggle = document.getElementById("hideMoneyToggle");
 const autoCollapseTablePanelsToggle = document.getElementById("autoCollapseTablePanelsToggle");
 const hideCalculatorNavToggle = document.getElementById("hideCalculatorNavToggle");
+const screenWakeToggle = document.getElementById("screenWakeToggle");
+const screenWakeHint = document.getElementById("screenWakeHint");
 const egaisFileRemindersRow = document.getElementById("egaisFileRemindersRow");
 const egaisFileRemindersToggle = document.getElementById("egaisFileRemindersToggle");
 const pushNotificationsBtn = document.getElementById("pushNotificationsBtn");
@@ -101,6 +108,52 @@ function setStatus(text, tone = "neutral") {
     baseClassName: "status-pill",
     accent: "border",
   });
+}
+
+function applyScreenWakeState(state) {
+  if (!screenWakeToggle || !screenWakeHint) return;
+
+  screenWakeToggle.checked = state?.enabled === true;
+  screenWakeToggle.disabled = !state?.supported;
+
+  if (!state?.supported) {
+    screenWakeHint.textContent = "Этот браузер не поддерживает удержание экрана активным.";
+    return;
+  }
+
+  if (state.enabled && state.active) {
+    screenWakeHint.textContent = "Включено на этом устройстве и действует на всех открытых страницах ALVISA SALARY.";
+    return;
+  }
+
+  if (state.enabled) {
+    screenWakeHint.textContent = state.error
+      ? "Настройка включена, но браузер или системная политика сейчас не разрешили удерживать экран."
+      : "Настройка включена. Она возобновится, когда страница снова будет видна на экране.";
+    return;
+  }
+
+  screenWakeHint.textContent = "Пока ALVISA SALARY открыт, браузер будет удерживать экран активным, если это разрешено системой.";
+}
+
+async function handleScreenWakeToggleChange() {
+  if (!screenWakeToggle) return;
+
+  screenWakeToggle.disabled = true;
+  setError(null);
+  try {
+    const state = await setScreenWakeEnabled(screenWakeToggle.checked);
+    applyScreenWakeState(state);
+    if (state.enabled && !state.active) {
+      setStatus("Удержание экрана сейчас недоступно", "err");
+    } else {
+      setStatus(state.active ? "Экран останется включён" : "Настройка устройства изменена", "ok");
+    }
+  } catch (error) {
+    applyScreenWakeState(getScreenWakeState());
+    setStatus("Не удалось изменить настройку", "err");
+    setError(error?.message || "Браузер не разрешил удерживать экран активным.");
+  }
 }
 
 function setError(msg) {
@@ -443,6 +496,7 @@ async function handlePushNotificationsClick() {
     applyPushButtonState(nextState);
     setStatus(nextState.subscribed ? "Уведомления включены" : "Уведомления отключены", "ok");
   } catch (e) {
+    void reportHandledClientError("push_settings_error", e, { source: "settings:toggle-push" });
     await refreshPushNotificationState();
     setStatus("Ошибка уведомлений", "err");
     setError(e?.message || "Не удалось изменить настройки уведомлений.");
@@ -460,6 +514,7 @@ async function handlePushTestClick() {
     setStatus("Тест отправлен", "ok");
     pushNotificationsHint.textContent = "Сервер принял отправку. Уведомление должно появиться в течение нескольких секунд.";
   } catch (e) {
+    void reportHandledClientError("push_test_error", e, { source: "settings:test-push" });
     setStatus("Тест не прошёл", "err");
     setError(e?.message || "Не удалось отправить тестовое уведомление.");
   } finally {
@@ -478,6 +533,14 @@ autoCollapseTablePanelsToggle?.addEventListener("change", () => {
 
 hideCalculatorNavToggle?.addEventListener("change", () => {
   handleHideCalculatorNavToggleChange();
+});
+
+screenWakeToggle?.addEventListener("change", () => {
+  void handleScreenWakeToggleChange();
+});
+
+window.addEventListener("alvisa:screen-wake-state", (event) => {
+  applyScreenWakeState(event.detail);
 });
 
 egaisFileRemindersToggle?.addEventListener("change", () => {
@@ -514,6 +577,7 @@ saveSettingsBtn?.addEventListener("click", () => void saveSettings());
 
   try {
     await loadSettings();
+    applyScreenWakeState(getScreenWakeState());
     applyPwaState(getPwaState());
     await refreshPushNotificationState();
   } catch (e) {

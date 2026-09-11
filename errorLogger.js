@@ -77,6 +77,10 @@ async function report(kind, reason, context = {}) {
   }
 }
 
+export function reportHandledClientError(kind, reason, context = {}) {
+  return report(kind, reason, context);
+}
+
 export function installErrorLogger() {
   const rememberAction = (event) => {
     const target = event.target instanceof Element ? event.target : null;

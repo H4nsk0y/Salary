@@ -189,6 +189,35 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
 
+    if (isPushTest && pushTestUserId) {
+      const testSince = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { data: existingTests, error: existingTestsError } = await serviceClient
+        .from("user_notifications")
+        .select("id")
+        .eq("user_id", pushTestUserId)
+        .eq("type", "push_test")
+        .is("push_sent_at", null)
+        .gte("created_at", testSince)
+        .limit(1);
+      if (existingTestsError) throw existingTestsError;
+
+      if (!existingTests?.length) {
+        const { error: createTestError } = await serviceClient
+          .from("user_notifications")
+          .insert({
+            user_id: pushTestUserId,
+            actor_user_id: pushTestUserId,
+            type: "push_test",
+            title: "Тестовое уведомление",
+            body: "Push-уведомления ALVISA SALARY работают на этом устройстве.",
+            url: "settings.html",
+            expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+          });
+
+        if (createTestError) throw createTestError;
+      }
+    }
+
     const since = new Date(Date.now() - lookbackMinutes * 60 * 1000).toISOString();
     const now = new Date().toISOString();
 

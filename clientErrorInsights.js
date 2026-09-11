@@ -6,6 +6,16 @@ export function classifyClientError(row) {
   const message = normalizedMessage(row);
   const combined = `${message} ${row?.stack || ""}`;
 
+  if (/could not find the function|schema cache.*function|PGRST202/i.test(combined)) {
+    return {
+      code: "DB-RPC-001",
+      title: "На сервере отсутствует необходимая функция",
+      explanation: "Страница обратилась к функции базы данных, которая ещё не установлена или не успела обновиться в серверном кеше.",
+      recommendation: "Проверьте применение последней SQL-миграции и обновление Edge Function для этой возможности.",
+      confidence: "Причина определена",
+    };
+  }
+
   if (/^script error\.?$/i.test(message)) {
     return {
       code: "JS-OPAQUE-001",

@@ -1087,13 +1087,6 @@ export async function getMyDepartmentMembershipKey() {
   return memberRow?.department_key ?? null;
 }
 
-export async function createMyPushTestNotification() {
-  await requireUserId();
-  const { data, error } = await supabase.rpc("create_my_push_test_notification");
-  if (error) throw error;
-  return Number(data) || null;
-}
-
 export async function getMyDepartmentKey() {
   const memberDepartmentKey = await getMyDepartmentMembershipKey();
   if (memberDepartmentKey) return memberDepartmentKey;

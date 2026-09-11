@@ -14,6 +14,7 @@ import {
 import { installErrorLogger } from "./errorLogger.js";
 import { createSiteSearchWidget } from "./siteSearch.js";
 import "./pwa.js";
+import "./screenWakeLock.js";
 import "./scrollbar.js";
 import "./footer.js?v=20260802-2";
 

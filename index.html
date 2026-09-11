@@ -169,6 +169,30 @@
       margin-top: 2rem;
     }
 
+    .hero-next-shift {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: .8rem;
+      width: min(100%, 430px);
+      margin-top: 1.15rem;
+      padding: .8rem .9rem;
+      border-left: 2px solid var(--steel);
+      background: rgba(7, 9, 10, .72);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+      color: inherit;
+      text-decoration: none;
+      transition: border-color 180ms ease, background-color 180ms ease;
+    }
+
+    .hero-next-shift[hidden] { display: none; }
+    .hero-next-shift:hover { border-color: #a9cff5; background: rgba(7, 9, 10, .86); }
+    .hero-next-shift-label { color: #a9cff5; font-size: .65rem; font-weight: 800; text-transform: uppercase; }
+    .hero-next-shift-date { margin-top: .2rem; color: var(--porcelain); font-size: .92rem; font-weight: 700; }
+    .hero-next-shift-detail { color: #c6c9cc; font-size: .78rem; text-align: right; }
+    .hero-next-shift-arrow { color: var(--steel); font-size: 1rem; }
+
     .button-primary,
     .button-secondary {
       display: inline-flex;
@@ -445,6 +469,12 @@
       .home-cta-inner { align-items: flex-start; flex-direction: column; }
     }
 
+    @media (max-width: 520px) {
+      .hero-next-shift { grid-template-columns: minmax(0, 1fr) auto; }
+      .hero-next-shift-detail { grid-column: 1; text-align: left; }
+      .hero-next-shift-arrow { grid-column: 2; grid-row: 1 / span 2; }
+    }
+
     @media (max-width: 640px) {
       .home-hero {
         min-height: 690px;
@@ -524,6 +554,15 @@
               Личный кабинет
             </a>
           </div>
+
+          <a id="homeNextShift" class="hero-next-shift" href="table.html" hidden>
+            <div>
+              <div class="hero-next-shift-label">Ближайшая смена</div>
+              <div class="hero-next-shift-date" data-next-shift-date></div>
+            </div>
+            <div class="hero-next-shift-detail" data-next-shift-detail></div>
+            <span class="hero-next-shift-arrow" aria-hidden="true">→</span>
+          </a>
 
         </div>
       </div>
@@ -633,6 +672,7 @@
   <div data-app-footer></div>
 
 <script type="module" src="./nav.js?v=20260909-1"></script>
+  <script type="module" src="./homeDashboard.js?v=20260911-1"></script>
   <script>
     const revealElements = document.querySelectorAll(".reveal");
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
