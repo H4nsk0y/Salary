@@ -5,10 +5,7 @@ import { test } from "node:test";
 import {
   checklistProgress,
   createChecklistItem,
-  EGAIS_REQUIRED_CHECKLIST_ITEM,
-  ensureRequiredChecklistItems,
   getDepartmentChecklistTemplates,
-  isRequiredChecklistItem,
   normalizeChecklistItems,
 } from "../shiftChecklist.js";
 
@@ -17,25 +14,21 @@ const source = (path) => readFile(new URL(path, root), "utf8");
 
 test("EGAIS receives its standard operational checklist", () => {
   const templates = getDepartmentChecklistTemplates("egais");
-  assert.equal(templates.length, 9);
+  assert.equal(templates.length, 8);
   assert.ok(templates.includes("Проверить суточные на отправку"));
   assert.ok(templates.includes("Принять дистиллят"));
+  assert.ok(!templates.includes("Покрутить марку сменщику"));
   assert.deepEqual(getDepartmentChecklistTemplates("warehouse"), []);
 });
 
-test("EGAIS brand handover task is always present and canonical", () => {
-  const items = ensureRequiredChecklistItems([
-    { id: "legacy", text: "Покрутить марку для сменщика", done: true, source: "custom" },
+test("existing handover item remains ordinary and removable", () => {
+  const items = normalizeChecklistItems([
+    { id: "legacy", text: "Покрутить марку сменщику", done: true, source: "standard" },
     { id: "other", text: "Проверить суточные", done: false, source: "custom" },
-  ], "egais");
+  ]);
 
-  assert.equal(items.length, 2);
-  assert.equal(items[0].text, EGAIS_REQUIRED_CHECKLIST_ITEM);
   assert.equal(items[0].done, true);
-  assert.equal(items[0].source, "standard");
-  assert.equal(isRequiredChecklistItem(items[0], "egais"), true);
-  assert.equal(isRequiredChecklistItem(items[0], "warehouse"), false);
-  assert.equal(ensureRequiredChecklistItems([], "egais")[0].text, EGAIS_REQUIRED_CHECKLIST_ITEM);
+  assert.deepEqual(items.filter((item) => item.id !== "legacy").map((item) => item.id), ["other"]);
 });
 
 test("checklist items are normalized and progress is calculated", () => {
@@ -100,15 +93,15 @@ test("completed checklist notifies only the actual next shift", async () => {
   assert.match(edge, /type === "shift_handover_ready"/);
 });
 
-test("server keeps the required EGAIS item and off-shift completion has no recipient", async () => {
-  const [requiredSql, handoverSql] = await Promise.all([
-    source("supabase-sql/037_required_egais_checklist_item.sql"),
+test("server no longer forces the EGAIS item and off-shift completion has no recipient", async () => {
+  const [optionalSql, handoverSql] = await Promise.all([
+    source("supabase-sql/046_remove_required_egais_checklist_item.sql"),
     source("supabase-sql/034_shift_handover_notifications.sql"),
   ]);
 
-  assert.match(requiredSql, /Покрутить марку сменщику/);
-  assert.match(requiredSql, /new\.items := public\.ensure_required_shift_checklist_items/i);
-  assert.match(requiredSql, /where department_key = 'egais'[\s\S]*status = 'active'/i);
+  assert.match(optionalSql, /drop function if exists public\.ensure_required_shift_checklist_items/i);
+  assert.match(optionalSql, /if not public\.validate_shift_checklist_items\(new\.items\)/i);
+  assert.doesNotMatch(optionalSql, /new\.items := public\.ensure_required_shift_checklist_items/i);
   assert.match(handoverSql, /elsif v_outgoing_day > 0 and v_outgoing_night = 0/i);
   assert.match(handoverSql, /if v_handover_kind is not null then[\s\S]*insert into public\.user_notifications/i);
 });
