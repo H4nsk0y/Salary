@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#080a0b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; upgrade-insecure-requests" />
+  <title>Антивыгорание — ALVISA SALARY</title>
+  <link rel="icon" type="image/png" href="./images/favicon-32.png" />
+  <style>
+    @font-face { font-family: Anticva; src: url('./fonts/Anticva-Regular.otf') format('opentype'); font-display: swap; }
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #080a0b; color: #f1eee8; }
+    canvas { display: block; width: 100vw; height: 100dvh; }
+    .controls { position: fixed; z-index: 2; top: max(16px, env(safe-area-inset-top)); left: 16px; right: 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 11px 14px; border: 1px solid rgba(241,238,232,.16); border-radius: 7px; background: rgba(11,13,15,.84); backdrop-filter: blur(14px); }
+    .controls { transition: opacity 450ms ease; }
+    body.is-idle .controls:not(:focus-within) { opacity: 0; }
+    .brand { margin-right: auto; font-family: Anticva, Georgia, serif; font-size: 20px; white-space: nowrap; }
+    .modes { display: flex; gap: 2px; padding: 3px; border: 1px solid rgba(241,238,232,.12); border-radius: 5px; }
+    button, a { color: inherit; text-decoration: none; font: inherit; cursor: pointer; }
+    button { border: 0; }
+    .modes button { min-height: 36px; padding: 0 10px; border-radius: 3px; background: transparent; font-size: 13px; }
+    .modes button[aria-pressed="true"] { background: #7a1638; }
+    .action { min-height: 42px; padding: 0 12px; display: inline-flex; align-items: center; border: 1px solid rgba(241,238,232,.16); border-radius: 5px; background: rgba(241,238,232,.06); font-size: 13px; }
+    .action:hover, .modes button:hover { background: rgba(241,238,232,.15); }
+    button:focus-visible, a:focus-visible { outline: 2px solid #6ea8e8; outline-offset: 3px; }
+    @media (max-width: 640px) { .controls { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; gap: 7px; padding: 8px; } .brand { width: 100%; font-size: 17px; } .modes { order: 3; width: 100%; } .modes button { flex: 1; padding-inline: 4px; font-size: 12px; } .action { min-height: 36px; font-size: 12px; } }
+  </style>
+</head>
+<body>
+  <canvas id="scene" aria-label="Движущаяся анимация для экрана"></canvas>
+  <div class="controls">
+    <span class="brand">Антивыгорание</span>
+    <div class="modes" role="group" aria-label="Вид анимации">
+      <button type="button" data-mode="ribbons" aria-pressed="true">Ленты</button>
+      <button type="button" data-mode="building" aria-pressed="false">Корпус</button>
+      <button type="button" data-mode="orbit" aria-pressed="false">Орбиты</button>
+    </div>
+    <button id="fullscreenBtn" class="action" type="button">На весь экран</button>
+    <a class="action" href="settings.html">В настройки</a>
+  </div>
+  <script type="module" src="./screen-saver.js"></script>
+</body>
+</html>

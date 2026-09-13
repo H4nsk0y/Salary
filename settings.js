@@ -1,7 +1,7 @@
 // FILE: /settings.js
 
 import { requireSession } from "./auth.js";
-import "./scrollbar.js";
+import "./scrollbar.js?v=20260913-2";
 import { getMyDepartmentMembershipKey, getMyProfile, updateMyProfileFields } from "./db.js";
 import {
   disablePushNotifications,

@@ -24,7 +24,7 @@ body.owner-console {
   background-image: none !important;
   color: var(--owner-porcelain);
   letter-spacing: 0;
-  scrollbar-color: rgba(110, 168, 232, 0.5) #111519;
+  scrollbar-color: #7a1638 #111519;
   scrollbar-width: thin;
 }
 
@@ -45,11 +45,11 @@ body.owner-console::after {
 .owner-console *::-webkit-scrollbar-thumb {
   border: 2px solid #111519;
   border-radius: 999px;
-  background: rgba(110, 168, 232, 0.5);
+  background: #7a1638;
 }
 
 .owner-console *::-webkit-scrollbar-thumb:hover {
-  background: rgba(110, 168, 232, 0.72);
+  background: #a62a52;
 }
 
 .owner-console .app-top-safe-area-cover {

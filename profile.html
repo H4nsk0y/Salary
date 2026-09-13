@@ -195,10 +195,10 @@
     }
 
     ::-webkit-scrollbar { width: 10px; height: 10px; }
-    ::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.55); border-radius: 999px; }
-    ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.55); border-radius: 999px; border: 2px solid rgba(30,41,59,0.55); }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.8); }
-    * { scrollbar-width: thin; scrollbar-color: rgba(99,102,241,0.55) rgba(30,41,59,0.55); }
+    ::-webkit-scrollbar-track { background: #111519; border-radius: 5px; }
+    ::-webkit-scrollbar-thumb { background: #7a1638; border-radius: 5px; border: 2px solid #111519; }
+    ::-webkit-scrollbar-thumb:hover { background: #a62a52; }
+    * { scrollbar-width: thin; scrollbar-color: #7a1638 #111519; }
 
     .nav-link {
       position: relative;
@@ -1095,25 +1095,40 @@
       gap: 5px !important;
     }
 
+    .cal-dow { color: var(--profile-muted) !important; font-weight: 700; }
+
     .cal-cell {
       height: 40px;
       border-color: var(--profile-border) !important;
       border-radius: 6px !important;
-      background: #0e1113 !important;
+      background: #15191d !important;
       transform: none !important;
     }
 
+    .cal-cell:hover { border-color: rgba(198, 161, 91, 0.58) !important; background: #20252a !important; }
+    .cal-cell:focus-visible { outline: 2px solid var(--profile-steel); outline-offset: 2px; }
+    .cal-daynum { color: var(--profile-porcelain) !important; }
+    .cal-off-weekend { background: #171417 !important; }
+    .cal-off-holiday, .cal-ts-holiday { background: #30261d !important; border-color: rgba(198, 161, 91, 0.46) !important; }
+    .cal-off-short, .cal-ts-short { background: #1d2926 !important; border-color: rgba(109, 153, 137, 0.5) !important; }
+    .cal-ts-transferred { background: #1a252d !important; border-color: rgba(110, 168, 232, 0.5) !important; }
+    .cal-ts-holiday.cal-ts-short { background: #30261d !important; }
+    .cal-today { box-shadow: inset 0 0 0 2px var(--profile-steel) !important; }
+
     .cal-cell::after {
       border-radius: 6px !important;
+      background: rgba(198, 161, 91, calc(var(--heat) * 0.22)) !important;
     }
 
     .cal-empty {
       background: transparent !important;
+      border-color: transparent !important;
     }
 
     .cal-tag {
       border-radius: 3px !important;
       background: rgba(11, 13, 15, 0.8) !important;
+      color: var(--profile-porcelain) !important;
     }
 
     .cal-legend {
@@ -1659,7 +1674,7 @@
     })();
   </script>
 
-<script type="module" src="./nav.js?v=20260911-1"></script>
+<script type="module" src="./nav.js?v=20260913-1"></script>
   <script type="module" src="./profile.js?v=20260909-1"></script>
 
   <script type="module">

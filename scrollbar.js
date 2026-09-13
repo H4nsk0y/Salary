@@ -7,12 +7,12 @@ export function injectCommonScrollbarStyles() {
   style.id = SCROLLBAR_STYLE_ID;
   style.textContent = `
     :root {
-      scrollbar-color: rgba(99, 102, 241, 0.55) rgba(30, 41, 59, 0.55);
+      scrollbar-color: #7a1638 #111519;
       scrollbar-width: thin;
     }
 
     * {
-      scrollbar-color: rgba(99, 102, 241, 0.55) rgba(30, 41, 59, 0.55);
+      scrollbar-color: #7a1638 #111519;
       scrollbar-width: thin;
     }
 
@@ -22,18 +22,18 @@ export function injectCommonScrollbarStyles() {
     }
 
     *::-webkit-scrollbar-track {
-      border-radius: 999px;
-      background: rgba(30, 41, 59, 0.55);
+      border-radius: 5px;
+      background: #111519;
     }
 
     *::-webkit-scrollbar-thumb {
-      border: 2px solid rgba(30, 41, 59, 0.55);
-      border-radius: 999px;
-      background: rgba(99, 102, 241, 0.55);
+      border: 2px solid #111519;
+      border-radius: 5px;
+      background: #7a1638;
     }
 
     *::-webkit-scrollbar-thumb:hover {
-      background: rgba(99, 102, 241, 0.8);
+      background: #a62a52;
     }
   `;
 
