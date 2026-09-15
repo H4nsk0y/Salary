@@ -11,6 +11,16 @@ test("home workspace contains the checklist and current product name", async () 
   assert.match(html, /ALVISA SALARY/);
 });
 
+test("desktop navigation renders profile as an accessible icon", async () => {
+  const script = await source("nav.js");
+  assert.match(script, /variant === "desktop" && link\.key === "profile"/);
+  assert.match(script, /classList\.add\("nav-profile-icon"\)/);
+  assert.match(script, /a\.setAttribute\("aria-label", link\.label\)/);
+  assert.match(script, /function createProfileIcon\(\)/);
+  assert.match(script, /\[\.\.\.regularLinks, \.\.\.OWNER_LINKS, profileLink\]/);
+  assert.match(script, /insertBefore\(renderLink\(link, activeKey, "desktop"\), desktopProfile \?\? null\)/);
+});
+
 test("schedule controls share a desktop baseline and legacy badge is gone", async () => {
   const html = await source("schedule.html");
   assert.match(html, /@media \(min-width: 768px\)[\s\S]*\.schedule-department-label[\s\S]*height: 42px/);
@@ -74,11 +84,21 @@ test("personal timesheet offers classic, calendar and agenda views", async () =>
   assert.match(script, /syncClassicFilterState/);
 });
 
+test("department timesheet shows day and night totals for both periods", async () => {
+  const script = await source("admin.js");
+  assert.match(script, /<span>Норма месяца<\/span>[\s\S]*<span>Отработал<\/span>/);
+  assert.match(script, /День \/ ночь \(1–15\)/);
+  assert.match(script, /День \/ ночь \(месяц\)/);
+  assert.match(script, /const dayFH = sumRange\(state\.dayHours, 0, endIdx\)/);
+  assert.match(script, /const nightFH = sumRange\(state\.nightHours, 0, endIdx\)/);
+  assert.doesNotMatch(script, /ОТ \/ Б \/ НТ \/ проч\./);
+});
+
 test("latest user update is announced once until the updates page is opened", async () => {
   const [updates, nav] = await Promise.all([source("updates.html"), source("nav.js")]);
   assert.match(updates, /Обновление 31\.0/);
   assert.match(updates, /Напоминания о ближайшей смене/);
-  assert.match(nav, /CURRENT_UPDATES_VERSION = "31\.0"/);
+  assert.match(nav, /CURRENT_UPDATES_VERSION = "32\.0"/);
   assert.match(nav, /UPDATES_SEEN_STORAGE_KEY/);
   assert.match(nav, /scheduleUnreadUpdatesPrompt/);
   assert.match(nav, /markCurrentUpdatesSeen/);

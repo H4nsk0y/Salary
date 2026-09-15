@@ -26,6 +26,7 @@ import {
 import { buildPayDifferenceInsight } from "./payDifference.js";
 import {
   calculateVacationPayFromHistory,
+  countPaidVacationDays,
   VACATION_PAY_MONTHS_REQUIRED,
 } from "./vacationPay.js";
 import { downloadShiftCalendar } from "./calendarExport.js";
@@ -1290,6 +1291,7 @@ function setupActualMoneyControls() {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
+      const optionalMoney = (value) => Number.isFinite(value) ? `${money(value)} ₽` : "Не найден";
       const approved = await confirmDialog({
         title: "Проверьте распознанные суммы",
         message: `${monthNames[month]} ${year}${parsed.employee ? ` · ${parsed.employee}` : ""}`,
@@ -1297,7 +1299,7 @@ function setupActualMoneyControls() {
           `Аванс: ${money(parsed.advance)} ₽`,
           `Остаток: ${money(parsed.remaining)} ₽`,
           `Отпуск / межрасчёт: ${money(parsed.paidLeaveNet)} ₽`,
-          `Удержано налога: ${money(parsed.withheld)} ₽`,
+          `Удержано налога: ${optionalMoney(parsed.withheld)}`,
           `Контрольный итог: ${money(parsed.paidTotal)} ₽`,
           "После переноса проверьте поля и отдельно нажмите «Подтвердить факт».",
         ].join("\n"),
@@ -1621,49 +1623,12 @@ function formatRuDays(value) {
   return "дней";
 }
 
-function isVacationCalendarBridgeDay(index) {
-  return isWeekendByIndex(year, month, index) || Boolean(isHoliday[index] || isTransferredOff[index]);
-}
-
 function countCurrentVacationPayDays() {
-  const periods = [];
-  let active = null;
-
-  for (let i = 0; i < daysInMonth; i += 1) {
-    if (normalizeLeaveTypeLegacy(leaveType[i]) !== "vac_paid") continue;
-
-    if (!active) {
-      active = { start: i, end: i };
-      continue;
-    }
-
-    let canBridge = true;
-    for (let gap = active.end + 1; gap < i; gap += 1) {
-      if (!isVacationCalendarBridgeDay(gap)) {
-        canBridge = false;
-        break;
-      }
-    }
-
-    if (canBridge) {
-      active.end = i;
-    } else {
-      periods.push(active);
-      active = { start: i, end: i };
-    }
-  }
-
-  if (active) periods.push(active);
-
-  let payableDays = 0;
-  for (const period of periods) {
-    for (let i = period.start; i <= period.end; i += 1) {
-      if (isHoliday[i]) continue;
-      payableDays += 1;
-    }
-  }
-
-  return payableDays;
+  return countPaidVacationDays(year, month, {
+    leaveType,
+    isHoliday,
+    isTransferredOff,
+  });
 }
 
 async function getVacationPayHistoryRows(baseYear, baseMonth) {

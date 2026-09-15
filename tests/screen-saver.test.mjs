@@ -16,6 +16,8 @@ test("settings link opens three screen saver modes", async () => {
   assert.match(script, /navigator\.wakeLock\.request\("screen"\)/);
   assert.match(script, /fullscreenchange/);
   assert.match(script, /is-idle/);
+  assert.match(script, /5000/);
+  assert.match(page, /body\.is-idle \.controls:not\(:focus-within\)[^{]*\{[^}]*pointer-events: none/);
   assert.match(script, /app-icon-512\.png/);
   assert.match(script, /setPointerCapture/);
   assert.doesNotMatch(page, /id="wakeStatus"/);

@@ -2174,26 +2174,6 @@ function updateDayMarkClasses(index) {
   }
 }
 
-function countLeaves(state) {
-  let ot = 0;
-  let sick = 0;
-  let nt = 0;
-  let other = 0;
-
-  for (let i = 0; i < daysInMonth; i++) {
-    const lt = normalizeLeaveTypeLegacy(state.leaveType[i]);
-    if (!lt) continue;
-    if (lt === DISMISSED_LEAVE_TYPE) continue;
-
-    if (lt === "vac_paid") ot++;
-    else if (lt === "sick") sick++;
-    else if (lt === NOT_EMPLOYED_LEAVE_TYPE) nt++;
-    else other++;
-  }
-
-  return { ot, sick, nt, other };
-}
-
 function updateStateShiftCommentCells(state, index) {
   const comment = String(state.shiftComments?.[index] ?? "").trim();
   updateShiftCommentCell(state.dayInputs[index]?.closest("td"), comment);
@@ -2352,9 +2332,11 @@ function firstHalfStats(state) {
     shortWeekdays * SHORT_DAY_REDUCTION_HOURS;
 
   const personalHalfNorm = Math.max(0, monthHalfNorm - leaveEffectiveHours);
-  const workedFH = sumRange(state.dayHours, 0, endIdx) + sumRange(state.nightHours, 0, endIdx);
+  const dayFH = sumRange(state.dayHours, 0, endIdx);
+  const nightFH = sumRange(state.nightHours, 0, endIdx);
+  const workedFH = dayFH + nightFH;
 
-  return { personalHalfNorm, workedFH };
+  return { personalHalfNorm, workedFH, dayFH, nightFH };
 }
 
 function updatePersonSummary(state) {
@@ -2363,8 +2345,7 @@ function updatePersonSummary(state) {
   const workedTotal = totalDay + totalNight;
 
   const { personalNorm } = personalNormHours(state);
-  const { personalHalfNorm, workedFH } = firstHalfStats(state);
-  const leaves = countLeaves(state);
+  const { personalHalfNorm, workedFH, dayFH, nightFH } = firstHalfStats(state);
 
   const overtime = workedTotal - personalNorm;
   const hasOvertime = overtime > 0.0001;
@@ -2398,20 +2379,20 @@ function updatePersonSummary(state) {
   state.summaryEl.innerHTML = `
     <div class="summary-box">
       <div class="summary-main">
-        <span>Часы</span>
-        <strong>${fmtHours(workedFH)} / ${fmtHours(workedTotal)}</strong>
-      </div>
-      <div class="summary-line">
-        <span>Норма</span>
+        <span>Норма месяца</span>
         <strong>${fmtHours(personalHalfNorm)} / ${fmtHours(personalNorm)}</strong>
       </div>
       <div class="summary-line">
-        <span>День / ночь</span>
-        <strong>${fmtHours(totalDay)} / ${fmtHours(totalNight)}</strong>
+        <span>Отработал</span>
+        <strong>${fmtHours(workedFH)} / ${fmtHours(workedTotal)}</strong>
+      </div>
+      <div class="summary-line">
+        <span>День / ночь (1–15)</span>
+        <strong>${fmtHours(dayFH)} / ${fmtHours(nightFH)}</strong>
       </div>
       <div class="summary-line muted">
-        <span>ОТ / Б / НТ / проч.</span>
-        <strong>${leaves.ot} / ${leaves.sick} / ${leaves.nt} / ${leaves.other}</strong>
+        <span>День / ночь (месяц)</span>
+        <strong>${fmtHours(totalDay)} / ${fmtHours(totalNight)}</strong>
       </div>
     </div>
   `;

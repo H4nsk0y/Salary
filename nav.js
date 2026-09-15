@@ -23,7 +23,7 @@ installErrorLogger();
 const NAV_STYLE_ID = "alvisa-common-nav-style";
 const NOTIFICATION_READ_STORAGE_KEY = "alvisa.notificationReadIds.v1";
 const NOTIFICATION_POLL_INTERVAL_MS = 45000;
-const CURRENT_UPDATES_VERSION = "31.0";
+const CURRENT_UPDATES_VERSION = "32.0";
 const UPDATES_SEEN_STORAGE_KEY = "alvisa.updatesSeenVersion.v1";
 const UPDATES_PROMPT_SESSION_KEY = "alvisa.updatesPromptedVersion.v1";
 
@@ -557,6 +557,30 @@ function injectNavStyles() {
       color: #f1eee8 !important;
     }
 
+    .app-top-header .desktop-top-nav .nav-profile-icon {
+      width: 40px;
+      height: 40px;
+      min-height: 40px;
+      justify-content: center;
+      margin-left: 5px;
+      padding: 0 !important;
+      border: 1px solid rgba(241, 238, 232, 0.14);
+      border-radius: 8px !important;
+      background: rgba(241, 238, 232, 0.04) !important;
+      color: #c6c9cc !important;
+    }
+
+    .app-top-header .desktop-top-nav .nav-profile-icon:hover,
+    .app-top-header .desktop-top-nav .nav-profile-icon.active {
+      border-color: rgba(110, 168, 232, 0.35);
+      background: rgba(110, 168, 232, 0.08) !important;
+      color: #d8ebff !important;
+    }
+
+    .app-top-header .desktop-top-nav .nav-profile-icon::after {
+      display: none;
+    }
+
     .app-top-header .nav-link::after {
       bottom: 1px;
       left: 11px;
@@ -896,8 +920,28 @@ function renderLink(link, activeKey, variant = "desktop") {
   a.href = link.href;
   a.className = linkClass(link.key === activeKey, variant);
   a.dataset.navKey = link.key;
-  a.textContent = link.label;
+  if (variant === "desktop" && link.key === "profile") {
+    a.classList.add("nav-profile-icon");
+    a.setAttribute("aria-label", link.label);
+    a.title = link.label;
+    a.append(createProfileIcon());
+  } else {
+    a.textContent = link.label;
+  }
   return a;
+}
+
+function createProfileIcon() {
+  const span = document.createElement("span");
+  span.setAttribute("aria-hidden", "true");
+  span.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="8" r="4"></circle>
+      <path d="M4 21a8 8 0 0 1 16 0"></path>
+    </svg>
+  `;
+  return span;
 }
 
 function createMenuIcon() {
@@ -1348,7 +1392,11 @@ function renderHeader(mount) {
   const activeKey = mount.dataset.active || detectActiveKey();
   const ownerNavMode = mount.dataset.ownerNav || "auto";
   const showOwnerNav = ownerNavMode === "true";
-  const links = showOwnerNav ? [...MAIN_LINKS, ...OWNER_LINKS] : MAIN_LINKS;
+  const profileLink = MAIN_LINKS.find((link) => link.key === "profile");
+  const regularLinks = MAIN_LINKS.filter((link) => link.key !== "profile");
+  const links = showOwnerNav
+    ? [...regularLinks, ...OWNER_LINKS, profileLink].filter(Boolean)
+    : MAIN_LINKS;
 
   const header = document.createElement("header");
   header.className =
@@ -1426,8 +1474,12 @@ async function enhanceNavForProfile(header) {
     if (header.dataset.ownerNavEnhanced === "true") return;
     if (profile?.role !== "owner") return;
 
-    desktopNav?.append(...OWNER_LINKS.map((link) => renderLink(link, activeKey, "desktop")));
-    mobileNav?.append(...OWNER_LINKS.map((link) => renderLink(link, activeKey, "mobile")));
+    const desktopProfile = desktopNav?.querySelector('[data-nav-key="profile"]');
+    const mobileProfile = mobileNav?.querySelector('[data-nav-key="profile"]');
+    OWNER_LINKS.forEach((link) => {
+      desktopNav?.insertBefore(renderLink(link, activeKey, "desktop"), desktopProfile ?? null);
+      mobileNav?.insertBefore(renderLink(link, activeKey, "mobile"), mobileProfile ?? null);
+    });
     header.dataset.ownerNavEnhanced = "true";
   } catch {
     // Public or expired sessions keep the regular navigation.

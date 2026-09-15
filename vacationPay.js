@@ -46,6 +46,52 @@ function isExcludedLeaveDay(type, payload, dayIndex) {
   return true;
 }
 
+export function countPaidVacationDays(year, month, payload = {}) {
+  const y = Number(year);
+  const m = Number(month);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || m < 0 || m > 11) return 0;
+
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const leaveTypes = Array.from({ length: daysInMonth }, (_, index) =>
+    normalizeLeaveType(payload?.leaveType?.[index])
+  );
+  const periods = [];
+  let active = null;
+
+  for (let index = 0; index < daysInMonth; index += 1) {
+    if (leaveTypes[index] !== PAID_VACATION) continue;
+
+    if (!active) {
+      active = { start: index, end: index };
+      continue;
+    }
+
+    let canBridge = true;
+    for (let gap = active.end + 1; gap < index; gap += 1) {
+      if (!isBridgeDay(payload, y, m, gap)) {
+        canBridge = false;
+        break;
+      }
+    }
+
+    if (canBridge) active.end = index;
+    else {
+      periods.push(active);
+      active = { start: index, end: index };
+    }
+  }
+
+  if (active) periods.push(active);
+
+  let payableDays = 0;
+  for (const period of periods) {
+    for (let index = period.start; index <= period.end; index += 1) {
+      if (!payload?.isHoliday?.[index]) payableDays += 1;
+    }
+  }
+  return payableDays;
+}
+
 export function calculateVacationPayCalendarDays(year, month, payload = {}) {
   const y = Number(year);
   const m = Number(month);

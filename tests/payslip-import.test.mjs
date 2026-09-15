@@ -34,6 +34,20 @@ test("accepts a payroll slip without an advance row", () => {
   assert.equal(result.errors.length, 0);
 });
 
+test("accepts a payroll slip without an income-tax row", () => {
+  const result = parsePayrollSlipText(`
+    РАСЧЕТНЫЙ ЛИСТОК ЗА НОЯБРЬ 2026
+    Начислено: 54 000,00
+    За первую половину месяца 20 000,00
+    Зарплата за месяц 34 000,00
+    Выплачено: 54 000,00
+  `);
+
+  assert.equal(result.withheld, null);
+  assert.equal(result.errors.length, 0);
+  assert.match(result.warnings.join(" "), /НДФЛ/i);
+});
+
 test("blocks an arithmetically inconsistent payroll slip", () => {
   const result = parsePayrollSlipText(`
     РАСЧЕТНЫЙ ЛИСТОК ЗА АПРЕЛЬ 2025

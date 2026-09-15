@@ -19,7 +19,7 @@ let idleTimer = null;
 function showControls() {
   document.body.classList.remove("is-idle");
   clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => document.body.classList.add("is-idle"), 8000);
+  idleTimer = setTimeout(() => document.body.classList.add("is-idle"), 5000);
 }
 
 function resize() {

@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   calculateVacationPayCalendarDays,
   calculateVacationPayFromHistory,
+  countPaidVacationDays,
   extractConfirmedVacationPayIncome,
   VACATION_PAY_AVERAGE_CALENDAR_DAYS,
 } from "../vacationPay.js";
@@ -48,6 +49,24 @@ test("public holiday inside annual vacation remains a payable-period exclusion e
   });
 
   assert.equal(result, (29.3 / 31) * 30);
+});
+
+test("November vacation bridges weekends and excludes the November 4 holiday", () => {
+  const leaveType = {};
+  for (const day of [2, 3, 5, 6, 9, 10, 11, 12, 13, 16]) {
+    leaveType[day - 1] = "vac_paid";
+  }
+
+  const result = calculateVacationPayCalendarDays(2026, 10, {
+    leaveType,
+    isHoliday: { 3: true },
+  });
+
+  assert.equal(result, (29.3 / 30) * 16);
+  assert.equal(countPaidVacationDays(2026, 10, {
+    leaveType,
+    isHoliday: { 3: true },
+  }), 14);
 });
 
 test("confirmed income excludes separately recorded vacation and sick-leave payments", () => {
