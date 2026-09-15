@@ -31,7 +31,7 @@ test("only the owner can read department timesheet history", async () => {
   assert.match(sql, /owner_list_department_timesheet_audit[\s\S]*if not public\.is_owner\(\)/i);
   assert.match(sql, /revoke all on public\.department_timesheet_audit_log from public, anon, authenticated/i);
   assert.match(sql, /revoke all on function public\.owner_list_department_timesheet_audit[\s\S]*from public, anon/i);
-  assert.match(html, /id="auditLogBtn"[\s\S]*>Журнал<\/button>/);
+  assert.match(html, /id="auditLogBtn"[\s\S]{0,300}aria-label="Журнал изменений"/);
   assert.match(html, /id="auditLogModal"[\s\S]*aria-modal="true"/);
   assert.match(admin, /auditLogBtn\?\.classList\.toggle\("hidden", !isOwner\)/);
   assert.match(admin, /currentProfile\?\.role !== "owner"/);

@@ -507,8 +507,9 @@
 
     @media (prefers-reduced-motion: reduce) {
       .profile-updates-arrow,
-      .profile-updates-badge {
-        animation: none;
+      .profile-updates-badge,
+      .profile-updates-link::before {
+        animation: none !important;
       }
     }
 
@@ -610,6 +611,7 @@
     }
 
     .profile-updates-link {
+      position: relative;
       width: auto !important;
       min-width: 0 !important;
       max-width: none !important;
@@ -622,6 +624,20 @@
       background: rgba(198, 161, 91, 0.06) !important;
       box-shadow: none !important;
       transform: none !important;
+    }
+
+    .profile-updates-link::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      pointer-events: none;
+      animation: profileUpdatesAttention 2.6s ease-in-out infinite;
+    }
+
+    @keyframes profileUpdatesAttention {
+      0%, 58%, 100% { box-shadow: 0 0 0 0 rgba(198, 161, 91, 0); }
+      72% { box-shadow: 0 0 0 5px rgba(198, 161, 91, 0.09), 0 0 22px rgba(198, 161, 91, 0.12); }
     }
 
     .profile-updates-link:hover {
@@ -661,9 +677,31 @@
       justify-content: flex-end;
     }
 
+    .profile-header-controls {
+      display: flex;
+      flex: 0 0 auto;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    @media (min-width: 640px) {
+      .profile-header > div:first-child { align-items: stretch; }
+      .profile-header-controls { justify-content: space-between; }
+      .profile-header-controls .profile-actions { order: -1; }
+    }
+
     .profile-actions > a,
     .profile-actions > button {
-      min-height: 40px;
+      position: relative;
+      display: inline-flex;
+      width: 42px;
+      height: 42px;
+      min-height: 42px;
+      flex: 0 0 42px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 !important;
       border: 1px solid var(--profile-border) !important;
       border-radius: 7px !important;
       background: rgba(241, 238, 232, 0.04) !important;
@@ -698,6 +736,14 @@
     }
 
     .profile-action-icon { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border: 1px solid var(--profile-border); border-radius: 5px; background: transparent; }
+    .profile-actions > a::after,
+    .profile-actions > button::after { content: attr(data-tooltip); position: absolute; z-index: 30; bottom: calc(100% + 9px); left: 50%; width: max-content; padding: 7px 9px; border: 1px solid var(--profile-border); border-radius: 5px; background: #080a0b; color: var(--profile-porcelain); font-size: 11px; font-weight: 700; line-height: 1.2; opacity: 0; pointer-events: none; transform: translate(-50%, 4px); transition: opacity .15s ease, transform .15s ease; }
+    .profile-actions > a:hover::after,
+    .profile-actions > button:hover::after,
+    .profile-actions > a:focus-visible::after,
+    .profile-actions > button:focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
+    .profile-actions > a.hidden { display: none; }
+    .profile-actions > a:first-child .profile-action-icon { color: var(--profile-gold); }
     #ownerLink .profile-action-icon { color: var(--profile-steel); }
     #logoutBtn .profile-action-icon { color: #d99aad; }
     #employmentDateInput { display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; color-scheme: dark; }
@@ -1160,16 +1206,20 @@
       }
 
       .profile-actions {
-        width: 100%;
-        display: grid !important;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: auto;
+        display: flex !important;
+        flex-wrap: nowrap;
       }
 
       .profile-actions > a,
       .profile-actions > button {
-        justify-content: center;
-        padding-inline: 10px !important;
+        width: 40px;
+        height: 40px;
+        flex-basis: 40px;
       }
+
+      .profile-actions > a::after,
+      .profile-actions > button::after { display: none; }
 
       #employmentDateInput { min-inline-size: 0 !important; padding-left: 12px !important; padding-right: 8px !important; font-size: 16px; }
       .position-modal-actions { align-items: stretch; flex-direction: column; }
@@ -1263,38 +1313,46 @@
           </a>
         </div>
 
-       <div class="profile-actions flex flex-wrap items-center gap-2">
+       <div class="profile-header-controls">
+        <div class="flex items-center gap-2 text-xs">
+          <span id="statusPill" class="inline-flex items-center rounded-full bg-white/5 px-4 py-1.5 ring-1 ring-white/10 text-slate-300 backdrop-blur-sm">—</span>
+        </div>
+
+        <div class="profile-actions flex flex-wrap items-center gap-2">
           <a
             href="settings.html"
-            class="group inline-flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:bg-white/10 hover:text-white hover:ring-sky-400/35 active:translate-y-0"
+            class="group inline-flex items-center rounded-2xl bg-white/5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/10 hover:text-white hover:ring-sky-400/35"
+            aria-label="Настройки"
+            title="Настройки"
+            data-tooltip="Настройки"
           >
-            <span class="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-sky-400/10 text-sky-200 ring-1 ring-sky-300/15 transition-all group-hover:bg-sky-400/15 group-hover:ring-sky-300/30">
+            <span class="profile-action-icon" aria-hidden="true">
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"></path>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.4 1v.17a2 2 0 1 1-4 0V21a1.65 1.65 0 0 0-.4-1 1.65 1.65 0 0 0-1-.6 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1-.4h-.17a2 2 0 1 1 0-4H3a1.65 1.65 0 0 0 1-.4 1.65 1.65 0 0 0 .6-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6c.38-.14.73-.35 1-.6.26-.26.4-.62.4-1v-.17a2 2 0 1 1 4 0V3c0 .38.14.74.4 1 .27.25.62.46 1 .6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.38.35.73.6 1 .26.26.62.4 1 .4h.17a2 2 0 1 1 0 4H21c-.38 0-.74.14-1 .4-.25.27-.46.62-.6 1Z"></path>
               </svg>
             </span>
-            <span>Настройки</span>
+            <span class="sr-only">Настройки</span>
           </a>
 
           <a
             id="ownerLink"
             href="owner.html"
-            class="hidden inline-flex items-center gap-2 rounded-2xl bg-indigo-500/15 px-4 py-2.5 text-sm font-semibold text-indigo-200 ring-1 ring-indigo-400/30 backdrop-blur-sm transition-all hover:bg-indigo-500/20 hover:ring-indigo-300/50"
+            class="hidden inline-flex items-center rounded-2xl bg-indigo-500/15 text-sm font-semibold text-indigo-200 ring-1 ring-indigo-400/30 backdrop-blur-sm transition-all hover:bg-indigo-500/20 hover:ring-indigo-300/50"
+            aria-label="Управление"
+            title="Управление"
+            data-tooltip="Управление"
           >
-            <span class="profile-action-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M6 21V7l6-4 6 4v14"></path><path d="M9 10h6"></path><path d="M9 14h6"></path></svg></span>
-            <span>Управление</span>
+            <span class="profile-action-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.68 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+            <span class="sr-only">Управление</span>
           </a>
 
-          <button id="logoutBtn" class="inline-flex items-center gap-2 rounded-2xl bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 ring-1 ring-red-500/30 backdrop-blur-sm transition-all hover:bg-red-500/20 hover:ring-red-400/50">
+          <button id="logoutBtn" class="inline-flex items-center rounded-2xl bg-red-500/10 text-sm font-semibold text-red-200 ring-1 ring-red-500/30 backdrop-blur-sm transition-all hover:bg-red-500/20 hover:ring-red-400/50" aria-label="Выйти" title="Выйти" data-tooltip="Выйти">
             <span class="profile-action-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path></svg></span>
-            <span>Выйти</span>
+            <span class="sr-only">Выйти</span>
           </button>
         </div>
       </div>
-
-      <div class="mt-3 flex items-center gap-2 text-xs">
-        <span id="statusPill" class="inline-flex items-center rounded-full bg-white/5 px-4 py-1.5 ring-1 ring-white/10 text-slate-300 backdrop-blur-sm">—</span>
       </div>
     </header>
 
@@ -1675,7 +1733,7 @@
   </script>
 
 <script type="module" src="./nav.js?v=20260915-2"></script>
-  <script type="module" src="./profile.js?v=20260909-1"></script>
+  <script type="module" src="./profile.js?v=20260915-1"></script>
 
   <script type="module">
     import { startTour } from './tour.js';

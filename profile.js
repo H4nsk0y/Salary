@@ -44,6 +44,7 @@ import {
   setRevealButtonState,
 } from "./moneyPrivacy.js";
 import { confirmDialog } from "./modal.js";
+import { bindLogoutConfirmation } from "./features/logoutConfirmation.js";
 import { openIdeaDialog } from "./ideaDialog.js?v=20260822-1";
 import { buildDecemberForecast, estimateYearEndReserve } from "./yearEndReserve.js?v=20260822-1";
 
@@ -2359,12 +2360,13 @@ async function saveProfile() {
 
 /* ========= events ========= */
 
-logoutBtn?.addEventListener("click", async () => {
-  try {
-    await signOut();
-  } finally {
+bindLogoutConfirmation({
+  button: logoutBtn,
+  confirmDialog,
+  signOut,
+  redirect: () => {
     location.href = "login.html?next=profile.html";
-  }
+  },
 });
 
 saveProfileBtn?.addEventListener("click", async (e) => {

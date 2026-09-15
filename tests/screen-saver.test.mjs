@@ -5,8 +5,9 @@ import test from "node:test";
 const read = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8");
 
 test("settings link opens three screen saver modes", async () => {
-  const [settings, page, script] = await Promise.all([
+  const [settings, page, script, shortcuts] = await Promise.all([
     read("settings.html"), read("screen-saver.html"), read("screen-saver.js"),
+    read("features/fullscreenShortcuts.js"),
   ]);
   assert.match(settings, /href="screen-saver\.html"/);
   for (const mode of ["ribbons", "building", "orbit"]) {
@@ -16,6 +17,10 @@ test("settings link opens three screen saver modes", async () => {
   assert.match(script, /requestAnimationFrame\(frame\)/);
   assert.match(script, /navigator\.wakeLock\.request\("screen"\)/);
   assert.match(script, /fullscreenchange/);
+  assert.match(script, /installDoubleRightClickFullscreen/);
+  assert.match(shortcuts, /window\.addEventListener\("contextmenu"/);
+  assert.match(shortcuts, /isDoubleRightClick/);
+  assert.match(shortcuts, /document\.exitFullscreen\(\)/);
   assert.match(script, /is-idle/);
   assert.match(script, /5000/);
   assert.match(page, /body\.is-idle \.controls[^{]*\{[^}]*pointer-events: none/);

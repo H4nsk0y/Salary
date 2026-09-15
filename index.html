@@ -278,21 +278,33 @@
     .workspace-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      border-top: 1px solid var(--line);
-      border-left: 1px solid var(--line);
+      gap: 12px;
+      padding-bottom: clamp(3rem, 5vw, 5rem);
     }
 
     .workspace-link {
       position: relative;
-      min-height: 240px;
+      min-height: 230px;
       overflow: hidden;
-      border-right: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-      background: var(--graphite);
+      border: 1px solid rgba(241, 238, 232, .1);
+      border-radius: 8px;
+      background: #111519;
       padding: 1.55rem;
       color: inherit;
       text-decoration: none;
-      transition: background-color 220ms ease;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025), 0 12px 28px rgba(0, 0, 0, .14);
+      transition: border-color 220ms ease, background-color 220ms ease, box-shadow 220ms ease, transform 220ms ease;
+    }
+
+    .workspace-link::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 1.55rem;
+      width: 38px;
+      height: 2px;
+      background: var(--accent, var(--steel));
+      opacity: .85;
     }
 
     .workspace-link::after {
@@ -309,7 +321,10 @@
     }
 
     .workspace-link:hover {
-      background: var(--graphite-soft);
+      border-color: color-mix(in srgb, var(--accent, var(--steel)) 42%, transparent);
+      background: #181d21;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .045), 0 18px 34px rgba(0, 0, 0, .22);
+      transform: translateY(-3px);
     }
 
     .workspace-link:hover::after {
@@ -355,7 +370,7 @@
       display: grid;
       grid-template-columns: .9fr 1.1fr;
       gap: 4rem;
-      padding: 6rem 0;
+      padding: 5rem 0 6rem;
     }
 
     .principles-lead h2 {
@@ -512,7 +527,8 @@
       .principles-lead h2 { font-size: 2.45rem; }
 
       .workspace-grid { grid-template-columns: 1fr; }
-      .workspace-link { min-height: 200px; padding: 1.3rem; }
+      .workspace-link { min-height: 190px; padding: 1.3rem; }
+      .workspace-link::before { left: 1.3rem; }
       .workspace-title { margin-top: 2.8rem; }
 
       .principles { padding: 4.25rem 0; }

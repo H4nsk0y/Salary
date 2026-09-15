@@ -1310,11 +1310,59 @@ td.shift-comment-cell.has-shift-comment::after {
         box-shadow: none;
       }
 
-      .admin-action-buttons button {
-        min-height: 40px;
+      .admin-icon-action {
+        position: relative;
+        display: inline-flex;
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+        align-items: center;
+        justify-content: center;
         border-radius: 7px !important;
-        padding: 9px 14px;
+        padding: 0 !important;
         box-shadow: none !important;
+      }
+
+      .admin-icon-action.hidden {
+        display: none;
+      }
+
+      .admin-icon-action svg {
+        width: 19px;
+        height: 19px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .admin-icon-action::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        z-index: 30;
+        bottom: calc(100% + 9px);
+        left: 50%;
+        width: max-content;
+        max-width: 230px;
+        padding: 7px 9px;
+        border: 1px solid rgba(241, 238, 232, 0.14);
+        border-radius: 5px;
+        background: #080a0b;
+        color: var(--alvisa-porcelain);
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.25;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%, 4px);
+        transition: opacity 150ms ease, transform 150ms ease;
+      }
+
+      .admin-icon-action:hover::after,
+      .admin-icon-action:focus-visible::after {
+        opacity: 1;
+        transform: translate(-50%, 0);
       }
 
       #reloadBtn {
@@ -1333,6 +1381,12 @@ td.shift-comment-cell.has-shift-comment::after {
         border: 1px solid rgba(198, 161, 91, 0.25) !important;
         background: rgba(198, 161, 91, 0.07) !important;
         color: #cfbc96 !important;
+      }
+
+      #auditLogBtn {
+        border: 1px solid var(--alvisa-line) !important;
+        background: rgba(241, 238, 232, 0.04) !important;
+        color: #c9ced3 !important;
       }
 
       #announcementLink {
@@ -1532,6 +1586,27 @@ td.shift-comment-cell.has-shift-comment::after {
         box-shadow: 0 0 0 3px rgba(110, 168, 232, 0.13);
       }
 
+      td.matrix-cell-selected {
+        position: relative;
+      }
+
+      td.matrix-cell-selected::after {
+        content: "";
+        position: absolute;
+        z-index: 2;
+        inset: 2px;
+        border: 2px solid rgba(110, 168, 232, 0.95);
+        border-radius: 6px;
+        background: rgba(110, 168, 232, 0.16);
+        pointer-events: none;
+      }
+
+      body.is-selecting-matrix-cells,
+      body.is-selecting-matrix-cells * {
+        cursor: cell !important;
+        user-select: none !important;
+      }
+
       td.night-cell .input-hour {
         color: #bcd8f6;
       }
@@ -1640,15 +1715,14 @@ td.shift-comment-cell.has-shift-comment::after {
           min-height: 26px;
         }
 
-        .admin-action-buttons button {
-          flex: 1 1 calc(50% - 4px);
-          padding-left: 10px;
-          padding-right: 10px;
-          font-size: 12px;
+        .admin-icon-action {
+          width: 40px;
+          height: 40px;
+          flex: 0 0 40px;
         }
 
-        #saveSilentBtn {
-          flex-basis: 100%;
+        .admin-icon-action::after {
+          display: none;
         }
 
         .admin-stats {
@@ -1788,38 +1862,57 @@ td.shift-comment-cell.has-shift-comment::after {
           <div class="admin-action-buttons flex flex-wrap items-center gap-2">
             <button
               id="reloadBtn"
-              class="rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10"
-            >Обновить</button>
+              type="button"
+              class="admin-icon-action text-slate-200 transition"
+              aria-label="Обновить табель"
+              title="Обновить табель"
+              data-tooltip="Обновить табель"
+            ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg><span class="sr-only">Обновить табель</span></button>
 
             <button
               id="saveBtn"
-              class="rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-5 py-2.5 text-sm font-semibold text-slate-100 ring-1 ring-white/10 transition hover:shadow-[0_0_20px_rgba(99,102,241,0.45)]"
-            >Сохранить всем</button>
+              type="button"
+              class="admin-icon-action text-slate-100 transition"
+              aria-label="Сохранить всем"
+              title="Сохранить всем"
+              data-tooltip="Сохранить всем"
+            ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.2 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.8a2 2 0 0 0-.6-1.4l-3.8-3.8a2 2 0 0 0-1.4-.6Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span class="sr-only">Сохранить всем</span></button>
 
             <button
               id="saveSilentBtn"
               type="button"
-              class="hidden rounded-2xl bg-amber-500/10 px-5 py-2.5 text-sm font-semibold text-amber-100 ring-1 ring-amber-300/20 transition hover:bg-amber-500/15 hover:ring-amber-300/35"
+              class="admin-icon-action hidden text-amber-100 transition"
+              aria-label="Сохранить без уведомлений"
               title="Сохранить табели без уведомлений сотрудникам"
-            >Сохранить всем без отправки уведомления</button>
+              data-tooltip="Сохранить без уведомлений"
+            ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.73 21a2 2 0 0 1-3.46 0M18.63 18H4a1 1 0 0 1-.78-1.63A8.7 8.7 0 0 0 5 11V8M6.26 6.26A6 6 0 0 1 18 8v3a8.7 8.7 0 0 0 .3 2.27M2 2l20 20"/></svg><span class="sr-only">Сохранить без уведомлений</span></button>
 
             <button
               id="auditLogBtn"
               type="button"
-              class="hidden rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10"
-            >Журнал</button>
+              class="admin-icon-action hidden text-slate-200 transition"
+              aria-label="Журнал изменений"
+              title="Журнал изменений"
+              data-tooltip="Журнал изменений"
+            ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h4M2 10h4M2 14h4M2 18h4M6 4v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2Z"/><path d="M10 8h6M10 12h6M10 16h4"/></svg><span class="sr-only">Журнал изменений</span></button>
 
             <a
               id="announcementLink"
               href="announcements.html"
-              class="inline-flex items-center rounded-2xl bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 ring-1 ring-emerald-400/20 transition hover:bg-emerald-500/15"
-            >Объявление</a>
+              class="admin-icon-action text-emerald-200 transition"
+              aria-label="Объявления"
+              title="Объявления"
+              data-tooltip="Объявления"
+            ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3Z"/><path d="M11.6 16.1 13 21H8l-1.3-6"/></svg><span class="sr-only">Объявления</span></a>
 
             <button
               id="createInviteBtn"
               type="button"
-              class="rounded-2xl bg-sky-500/10 px-5 py-2.5 text-sm font-semibold text-sky-200 ring-1 ring-sky-400/20 transition hover:bg-sky-500/15"
-            >Пригласить</button>
+              class="admin-icon-action text-sky-200 transition"
+              aria-label="Пригласить сотрудника"
+              title="Пригласить сотрудника"
+              data-tooltip="Пригласить сотрудника"
+            ><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 6L2 7"/></svg><span class="sr-only">Пригласить сотрудника</span></button>
           </div>
         </div>
       </section>
@@ -1939,6 +2032,6 @@ td.shift-comment-cell.has-shift-comment::after {
     </div>
 
 <script type="module" src="./nav.js?v=20260915-2"></script>
-  <script type="module" src="./admin.js?v=20260915-1"></script>
+  <script type="module" src="./admin.js?v=20260915-2"></script>
   </body>
 </html>

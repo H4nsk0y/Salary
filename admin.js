@@ -36,6 +36,10 @@ import {
   openShiftCommentDialog,
   updateShiftCommentCell,
 } from "./shiftComments.js";
+import {
+  getMatrixSelectionBounds,
+  isMatrixCellInBounds,
+} from "./features/matrixSelection.js";
 
 document.body.classList.add("is-loaded");
 
@@ -123,6 +127,8 @@ let isSyncingHorizontalScroll = false;
 let tableDragState = null;
 let memberDragState = null;
 let memberOrderSaveSeq = 0;
+let matrixSelectionDrag = null;
+let matrixSelectionWasDragged = false;
 
 // Mobile toolbar
 let mobileSelectedIdx = 0;
@@ -1573,6 +1579,154 @@ function getInputContext(inputEl) {
   return { state, memberIndex, rowType, index };
 }
 
+function getMatrixSelectionCell(target) {
+  if (!(target instanceof Element)) return null;
+  const input = getMatrixInput(target)
+    || target.closest("td.shift-comment-cell")?.querySelector("input.input-hour");
+  const ctx = input ? getInputContext(input) : null;
+  if (!input || !ctx) return null;
+
+  return {
+    ...ctx,
+    input,
+    cell: input.closest("td.shift-comment-cell"),
+    rowIndex: matrixRowIndex(ctx.memberIndex, ctx.rowType),
+    columnIndex: ctx.index,
+  };
+}
+
+function clearMatrixSelection() {
+  matrixBody?.querySelectorAll("td.matrix-cell-selected")
+    .forEach((cell) => cell.classList.remove("matrix-cell-selected"));
+  matrixSelectionWasDragged = false;
+}
+
+function renderMatrixSelection(anchor, current) {
+  const bounds = getMatrixSelectionBounds(anchor, current);
+  if (!bounds || !matrixBody) return;
+
+  for (const input of matrixBody.querySelectorAll("input.input-hour")) {
+    const candidate = getMatrixSelectionCell(input);
+    const selected = candidate && !candidate.input.disabled && isMatrixCellInBounds(candidate, bounds);
+    candidate?.cell?.classList.toggle("matrix-cell-selected", selected);
+  }
+}
+
+function startMatrixSelection(event) {
+  if (departmentViewOnly || isMobileNow() || event.pointerType !== "mouse" || event.button !== 0) return;
+
+  const anchor = getMatrixSelectionCell(event.target);
+  if (!anchor || anchor.input.disabled) return;
+
+  clearMatrixSelection();
+  matrixSelectionDrag = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    anchor,
+    hasMoved: false,
+  };
+  renderMatrixSelection(anchor, anchor);
+}
+
+function moveMatrixSelection(event) {
+  const drag = matrixSelectionDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+
+  if (!drag.hasMoved) {
+    const dx = Math.abs(event.clientX - drag.startX);
+    const dy = Math.abs(event.clientY - drag.startY);
+    if (dx < TABLE_DRAG_THRESHOLD_PX && dy < TABLE_DRAG_THRESHOLD_PX) return;
+    drag.hasMoved = true;
+    matrixSelectionWasDragged = true;
+    document.body.classList.add("is-selecting-matrix-cells");
+    window.getSelection?.()?.removeAllRanges?.();
+  }
+
+  const pointedElement = document.elementFromPoint(event.clientX, event.clientY);
+  const current = getMatrixSelectionCell(pointedElement);
+  if (!current) return;
+
+  renderMatrixSelection(drag.anchor, current);
+  event.preventDefault();
+}
+
+function endMatrixSelection(event) {
+  if (!matrixSelectionDrag) return;
+  if (event?.pointerId !== undefined && matrixSelectionDrag.pointerId !== event.pointerId) return;
+  matrixSelectionDrag = null;
+  document.body.classList.remove("is-selecting-matrix-cells");
+}
+
+function selectedMatrixCells() {
+  return [...(matrixBody?.querySelectorAll("td.matrix-cell-selected input.input-hour") || [])]
+    .map((input) => getMatrixSelectionCell(input))
+    .filter((cell) => cell && !cell.input.disabled);
+}
+
+function clearSelectedMatrixCells() {
+  const selected = selectedMatrixCells();
+  if (departmentViewOnly || !selected.length) return;
+
+  const changedStates = new Set();
+
+  for (const cell of selected) {
+    const { state, rowType, index } = cell;
+
+    if (rowType === "night") {
+      if (state.leaveType[index] || !state.nightHours[index]) continue;
+      state.nightHours[index] = 0;
+      changedStates.add(state);
+      continue;
+    }
+
+    if (findDismissalIndex(state) === index) {
+      clearDismissalTailForState(state, index);
+      changedStates.add(state);
+      continue;
+    }
+
+    if (!state.dayHours[index] && !state.leaveType[index]) continue;
+    state.dayHours[index] = 0;
+    if (state.leaveType[index]) {
+      state.leaveType[index] = null;
+      state.nightHours[index] = 0;
+    }
+    changedStates.add(state);
+  }
+
+  if (!changedStates.size) return;
+
+  for (const state of changedStates) applyDismissalLockToState(state, { clearFuture: true });
+  applyStateToDom();
+  for (const state of changedStates) scheduleSave({ state });
+}
+
+function handleMatrixSelectionKeyDown(event) {
+  if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+  if (event.key === "Escape" && selectedMatrixCells().length) {
+    clearMatrixSelection();
+    return;
+  }
+  if (event.key !== "Delete" && event.key !== "Backspace") return;
+
+  const selected = selectedMatrixCells();
+  const activeInput = getMatrixInput(document.activeElement);
+  if (selected.length < 2 && !matrixSelectionWasDragged && activeInput) return;
+  if (!selected.length) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  clearSelectedMatrixCells();
+}
+
+function clearMatrixSelectionOutside(event) {
+  if (!matrixSelectionDrag && event.target instanceof Element && !event.target.closest("#matrixBody")) {
+    clearMatrixSelection();
+  }
+}
+
 function handleMatrixFocusIn(e) {
   const inputEl = getMatrixInput(e.target);
   if (!inputEl) return;
@@ -2053,6 +2207,8 @@ function createNightInput(state, i, memberIndex) {
 }
 
 function buildTable() {
+  clearMatrixSelection();
+  endMatrixSelection();
   headerRow.innerHTML = "";
   matrixBody.innerHTML = "";
   headerCells = [];
@@ -3028,6 +3184,7 @@ matrixBody?.addEventListener("focusin", handleMatrixFocusIn);
 matrixBody?.addEventListener("focusout", handleMatrixFocusOut);
 matrixBody?.addEventListener("input", handleMatrixInput);
 matrixBody?.addEventListener("keydown", handleMatrixKeyDown);
+matrixBody?.addEventListener("pointerdown", startMatrixSelection);
 matrixBody?.addEventListener("contextmenu", handleShiftCommentContextMenu);
 matrixBody?.addEventListener("pointerdown", handleShiftCommentPointerDown);
 matrixBody?.addEventListener("pointerup", clearShiftCommentLongPress);
@@ -3037,6 +3194,11 @@ matrixBody?.addEventListener("dragstart", handleMemberDragStart);
 matrixBody?.addEventListener("dragover", handleMemberDragOver);
 matrixBody?.addEventListener("drop", handleMemberDrop);
 matrixBody?.addEventListener("dragend", clearMemberDragState);
+window.addEventListener("pointermove", moveMatrixSelection, { passive: false });
+window.addEventListener("pointerup", endMatrixSelection);
+window.addEventListener("pointercancel", endMatrixSelection);
+document.addEventListener("pointerdown", clearMatrixSelectionOutside);
+document.addEventListener("keydown", handleMatrixSelectionKeyDown);
 
 async function changeDepartmentMonth() {
   if (monthTransitionPending) return;

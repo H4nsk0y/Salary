@@ -1,3 +1,5 @@
+import { installDoubleRightClickFullscreen } from "./features/fullscreenShortcuts.js";
+
 const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d", { alpha: false });
 const fullButton = document.getElementById("fullscreenBtn");
@@ -134,6 +136,8 @@ fullButton.addEventListener("click", async () => {
     fullButton.title = "Полноэкранный режим недоступен в этом браузере.";
   }
 });
+
+installDoubleRightClickFullscreen(showControls, fullButton);
 
 document.addEventListener("fullscreenchange", () => {
   fullButton.textContent = document.fullscreenElement ? "Выйти из полного экрана" : "На весь экран";
