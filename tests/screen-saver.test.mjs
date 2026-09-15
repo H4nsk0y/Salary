@@ -12,12 +12,14 @@ test("settings link opens three screen saver modes", async () => {
   for (const mode of ["ribbons", "building", "orbit"]) {
     assert.match(page, new RegExp(`data-mode="${mode}"`));
   }
+  assert.match(page, /href="profile\.html">В профиль<\/a>/);
   assert.match(script, /requestAnimationFrame\(frame\)/);
   assert.match(script, /navigator\.wakeLock\.request\("screen"\)/);
   assert.match(script, /fullscreenchange/);
   assert.match(script, /is-idle/);
   assert.match(script, /5000/);
-  assert.match(page, /body\.is-idle \.controls:not\(:focus-within\)[^{]*\{[^}]*pointer-events: none/);
+  assert.match(page, /body\.is-idle \.controls[^{]*\{[^}]*pointer-events: none/);
+  assert.doesNotMatch(page, /body\.is-idle \.controls:not\(:focus-within\)/);
   assert.match(script, /app-icon-512\.png/);
   assert.match(script, /setPointerCapture/);
   assert.doesNotMatch(page, /id="wakeStatus"/);
