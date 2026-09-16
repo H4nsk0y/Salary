@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outputDir = path.join(projectRoot, "www");
-const copiedDirectories = ["fonts", "images", "styles", "vendor"];
+const copiedDirectories = ["features", "fonts", "images", "styles", "vendor"];
 const copiedRootExtensions = new Set([".html", ".js", ".webmanifest", ".ico"]);
 const copiedRootNames = new Set([".nojekyll"]);
 

@@ -6,8 +6,10 @@ import {
   ownerDeleteDepartmentInvite,
   ownerListDepartmentInvites,
   ownerListUsers,
+  ownerListDepartmentLeaders,
   ownerRevokeDepartmentInvite,
   ownerSetDepartmentEditor,
+  ownerSetDepartmentLeader,
   ownerSetUserDepartment,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
@@ -49,6 +51,8 @@ const editorsCount = document.getElementById("editorsCount");
 
 let departments = [];
 let users = [];
+let leadersByDepartment = new Map();
+let leaderControlsReady = false;
 let filteredUsers = [];
 let invites = [];
 let isLoading = false;
@@ -570,7 +574,9 @@ function createUserCard(row) {
   const displayName = getDisplayName(row);
   const isBusy = busyUserIds.has(row.user_id);
   const editorNames = normalizeArray(row.editor_department_names);
-  const primaryEditor = isEditorInPrimaryDepartment(row);
+  const leaderRow = leadersByDepartment.get(row.department_key);
+  const isLeader = leaderRow?.user_id === row.user_id;
+  const primaryEditor = isLeader ? leaderRow.is_manual_editor : isEditorInPrimaryDepartment(row);
   const complete = isProfileComplete(row);
   const missingFields = normalizeArray(row.missing_fields);
 
@@ -612,6 +618,7 @@ function createUserCard(row) {
   if (editorNames.length) {
     badges.appendChild(createBadge(`Редактор: ${editorNames.join(", ")}`, "indigo"));
   }
+  if (isLeader) badges.appendChild(createBadge("Руководитель отдела", "ok"));
 
   body.append(nameRow, meta, email, badges);
   top.append(createAvatar(row, displayName), body);
@@ -699,6 +706,45 @@ function createUserCard(row) {
 
   actionStack.appendChild(editorBtn);
 
+  const leaderBtn = document.createElement("button");
+  leaderBtn.type = "button";
+  leaderBtn.className = isLeader
+    ? "rounded-2xl bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-200 ring-1 ring-amber-400/20 transition hover:bg-amber-500/15 disabled:opacity-50"
+    : "rounded-2xl bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-200 ring-1 ring-emerald-400/20 transition hover:bg-emerald-500/15 disabled:opacity-50";
+  leaderBtn.textContent = isLeader ? "Снять руководителя" : "Назначить руководителем";
+  leaderBtn.disabled = isBusy || !row.department_key || !leaderControlsReady ||
+    Boolean(leaderRow && !isLeader);
+  leaderBtn.title = !leaderControlsReady ? "Сначала примените SQL 047_department_leaders.sql" :
+    leaderRow && !isLeader ? "Сначала снимите действующего руководителя отдела" : "";
+  leaderBtn.addEventListener("click", async () => {
+    const confirmed = await confirmDialog({
+      title: isLeader ? "Снять руководителя?" : "Назначить руководителя?",
+      message: isLeader
+        ? `У ${displayName} исчезнет подтверждение руководителя. Отдельно выданные права редактора сохранятся.`
+        : `Сверьте UID сотрудника с UID в его настройках. Назначение даст доступ к общему табелю отдела «${row.department_name || row.department_key}».`,
+      confirmText: isLeader ? "Снять" : "Назначить",
+      cancelText: "Отмена",
+      tone: isLeader ? "warning" : "info",
+    });
+    if (!confirmed) return;
+    await runUserAction(row.user_id, () => ownerSetDepartmentLeader(row.department_key, row.user_id, !isLeader),
+      isLeader ? "Руководитель снят" : "Руководитель назначен");
+  });
+  actionStack.appendChild(leaderBtn);
+
+  const uidBtn = document.createElement("button");
+  uidBtn.type = "button";
+  uidBtn.className = "rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10";
+  uidBtn.textContent = "Посмотреть UID";
+  const uidValue = document.createElement("code");
+  uidValue.className = "hidden w-full break-all text-xs text-slate-300";
+  uidValue.textContent = String(row.user_id);
+  uidBtn.addEventListener("click", () => {
+    uidValue.classList.toggle("hidden");
+    uidBtn.textContent = uidValue.classList.contains("hidden") ? "Посмотреть UID" : "Скрыть UID";
+  });
+  actionStack.append(uidBtn, uidValue);
+
   if (row.department_key) {
     const timesheetLink = document.createElement("a");
     timesheetLink.href = `admin.html?department=${encodeURIComponent(row.department_key)}`;
@@ -759,6 +805,8 @@ function mapError(error) {
   if (message.includes("USER_NOT_FOUND")) return "Пользователь не найден.";
   if (message.includes("DEPARTMENT_NOT_FOUND")) return "Отдел не найден.";
   if (message.includes("USER_NOT_IN_DEPARTMENT")) return "Сначала добавьте сотрудника в этот отдел.";
+  if (message.includes("DEPARTMENT_LEADER_ALREADY_ASSIGNED")) return "В отделе уже назначен руководитель. Сначала снимите его.";
+  if (message.includes("DEPARTMENT_LEADER_POSITION_RESERVED")) return "Эта должность уже закреплена за подтвержденным руководителем отдела.";
   if (message.includes("INVITE_NOT_FOUND")) return "Приглашение не найдено.";
   if (message.includes("INVITE_REVOKED")) return "Приглашение уже отозвано.";
   if (message.includes("INVITE_EXPIRED")) return "Срок приглашения истек.";
@@ -804,7 +852,19 @@ async function loadUsers(options = {}) {
       setError(null);
     }
 
-    users = await ownerListUsers();
+    const [loadedUsers, leaders] = await Promise.all([
+      ownerListUsers(),
+      ownerListDepartmentLeaders().catch((error) => {
+        if (/owner_list_department_leaders|PGRST202|schema cache/i.test(String(error?.message || ""))) return null;
+        throw error;
+      }),
+    ]);
+    users = loadedUsers;
+    leaderControlsReady = leaders !== null;
+    leadersByDepartment = new Map((leaders ?? []).map((leader) => [leader.department_key, leader]));
+    if (!leaderControlsReady) {
+      setError("Для назначения руководителей запустите supabase-sql/047_department_leaders.sql в Supabase SQL Editor.");
+    }
     renderUsers();
 
     const now = new Date();

@@ -9,6 +9,7 @@ import {
   getDepartmentByKey,
   listEgaisDepartmentTimesheetView,
   listManagedDepartmentMembers,
+  listDepartmentLeader,
   managedListTimesheetsBefore,
   managedLoadTimesheet,
   managedSaveManyTimesheets,
@@ -40,6 +41,7 @@ import {
   getMatrixSelectionBounds,
   isMatrixCellInBounds,
 } from "./features/matrixSelection.js";
+import { initAdminScheduleTools } from "./features/adminScheduleTools.js";
 
 document.body.classList.add("is-loaded");
 
@@ -968,7 +970,8 @@ function makeLabelCell(state) {
 
   const main = document.createElement("span");
   main.className = "label-main";
-  main.textContent = state.name;
+  const nameParts = String(state.name || "").trim().split(/\s+/);
+  main.textContent = nameParts.length >= 3 ? nameParts.slice(0, 2).join(" ") : state.name;
 
   const overtimeBadge = document.createElement("span");
   overtimeBadge.className = "label-overtime-badge is-hidden";
@@ -983,7 +986,7 @@ function makeLabelCell(state) {
   dragHandle.setAttribute("aria-hidden", "true");
   dragHandle.classList.toggle("hidden", departmentViewOnly);
 
-  titleRow.append(dragHandle, main, overtimeBadge);
+  titleRow.append(dragHandle, main);
 
   if (!departmentViewOnly && String(state.userId) !== String(currentUserId)) {
     const removeButton = document.createElement("button");
@@ -1003,9 +1006,9 @@ function makeLabelCell(state) {
     td.append(removeButton);
   }
 
-  const sub = document.createElement("span");
-  sub.className = "label-sub";
-  sub.textContent = "День / Ночь";
+  const patronymic = document.createElement("span");
+  patronymic.className = "label-patronymic";
+  patronymic.textContent = nameParts.length >= 3 ? nameParts.slice(2).join(" ") : "";
 
   const avatar = document.createElement("span");
   avatar.className = "label-avatar";
@@ -1015,7 +1018,9 @@ function makeLabelCell(state) {
     if (isMobileNow()) setMobileEmployee(state);
   });
 
-  td.append(avatar, titleRow, sub);
+  td.append(avatar, titleRow);
+  if (patronymic.textContent) td.append(patronymic);
+  td.append(overtimeBadge);
   return td;
 }
 
@@ -2914,6 +2919,62 @@ function applyDepartmentViewOnlyUi() {
   setSaveStatus("Только просмотр", "busy");
 }
 
+async function setupScheduleTools() {
+  if (departmentViewOnly) return;
+  let leaderId;
+  try {
+    leaderId = await listDepartmentLeader(managedDepartment.key);
+  } catch (error) {
+    setError(/list_department_leader|PGRST202|schema cache/i.test(String(error?.message || ""))
+      ? "Для инструментов графика нужно запустить supabase-sql/047_department_leaders.sql."
+      : error?.message || "Не удалось проверить руководителя отдела.");
+    return;
+  }
+  const labLink = document.getElementById("scheduleLabLink");
+  if (labLink && managedDepartment?.key) {
+    labLink.href = `schedule-lab.html?department=${encodeURIComponent(managedDepartment.key)}`;
+  }
+  initAdminScheduleTools({
+    isOwner: currentProfile?.role === "owner",
+    leaderId,
+    getContext: () => ({
+      year, month, teamStates,
+      holiday: sharedHoliday,
+      transferredOff: sharedTransferredOff,
+      personalNorm: (state) => personalNormHours(state).personalNorm,
+    }),
+    signature: currentSignature,
+    loadPrevious: (userId, currentYear, currentMonth) => {
+      const previous = new Date(currentYear, currentMonth, 0);
+      return managedLoadTimesheet(userId, previous.getFullYear(), previous.getMonth());
+    },
+    applyChanges: (plans, tool) => {
+      const highlightChanges = tool === "fillNorm" || tool === "reduceOvertime";
+      for (const { state, changes } of plans) {
+        if (!changes.length) continue;
+        for (const { index, from, to } of changes) {
+          state.dayHours[index] = to.dayHours;
+          state.nightHours[index] = to.nightHours;
+          const dayInput = state.dayInputs[index];
+          const nightInput = state.nightInputs[index];
+          if (dayInput) dayInput.value = dayInput.dataset.prev = formatHourForInput(to.dayHours);
+          if (nightInput) nightInput.value = nightInput.dataset.prev = formatHourForInput(to.nightHours);
+          if (highlightChanges) {
+            if (Number(from.dayHours) !== Number(to.dayHours)) {
+              dayInput?.closest("td")?.classList.add("schedule-tool-changed");
+            }
+            if (Number(from.nightHours) !== Number(to.nightHours)) {
+              nightInput?.closest("td")?.classList.add("schedule-tool-changed");
+            }
+          }
+        }
+        recalcPerson(state);
+        scheduleSave({ state });
+      }
+    },
+  });
+}
+
 
 async function guardManagedDepartment() {
   try {
@@ -2934,6 +2995,8 @@ async function guardManagedDepartment() {
   }
 
   applyDepartmentViewOnlyUi();
+
+  await setupScheduleTools();
 
   if (announcementLink) {
     announcementLink.href = `announcements.html?department=${encodeURIComponent(managedDepartment.key)}`;

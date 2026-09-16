@@ -1473,6 +1473,35 @@ export async function ownerRevokeDepartmentInvite(token) {
   if (error) throw error;
 }
 
+export async function ownerSetDepartmentLeader(departmentKey, userId, isLeader) {
+  const { error } = await supabase.rpc("owner_set_department_leader", {
+    p_department_key: String(departmentKey ?? "").trim(),
+    p_user_id: userId,
+    p_is_leader: Boolean(isLeader),
+  });
+  if (error) throw error;
+}
+
+export async function ownerListDepartmentLeaders() {
+  const { data, error } = await supabase.rpc("owner_list_department_leaders");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listDepartmentLeader(departmentKey) {
+  const { data, error } = await supabase.rpc("list_department_leader", {
+    p_department_key: String(departmentKey ?? "").trim(),
+  });
+  if (error) throw error;
+  return data?.[0]?.user_id ?? null;
+}
+
+export async function listReservedLeaderPositions() {
+  const { data, error } = await supabase.rpc("list_reserved_leader_positions");
+  if (error) throw error;
+  return (data ?? []).map((row) => row.position);
+}
+
 export async function ownerListClientErrors(limit = 20) {
   const normalizedLimit = Math.min(1000, Math.max(1, Number(limit) || 20));
   const { data, error } = await supabase.rpc("owner_list_client_errors", {

@@ -6,6 +6,7 @@ import {
   getMyProfile,
   updateMyProfile,
   listMyTimesheetsByYear,
+  listReservedLeaderPositions,
   deleteMyTimesheet,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
@@ -1876,6 +1877,16 @@ async function refreshProfile() {
 
   const profile = await getMyProfile();
   currentProfile = profile ?? null;
+  try {
+    const reserved = new Set(await listReservedLeaderPositions());
+    for (const option of positionSelect?.options ?? []) {
+      option.dataset.originalLabel ??= option.textContent;
+      option.disabled = reserved.has(option.value) && option.value !== profile?.position;
+      option.textContent = option.disabled ? `${option.dataset.originalLabel} (занято)` : option.dataset.originalLabel;
+    }
+  } catch {
+    // The older database schema has no reserved-position list.
+  }
   window.dispatchEvent(new CustomEvent("alvisa:profile-updated", {
     detail: { profile: currentProfile },
   }));
@@ -2354,7 +2365,9 @@ async function saveProfile() {
     setStatus("Сохранено", "ok");
   } catch (e) {
     setStatus("Ошибка сохранения", "err");
-    setError(e?.message || "Не удалось сохранить профиль.");
+    setError(String(e?.message || "").includes("DEPARTMENT_LEADER_POSITION_RESERVED")
+      ? "Эта должность закреплена за подтвержденным руководителем отдела. Выберите другую должность."
+      : e?.message || "Не удалось сохранить профиль.");
   }
 }
 

@@ -566,12 +566,16 @@ window.addEventListener("alvisa:pwa-state", (event) => {
 saveSettingsBtn?.addEventListener("click", () => void saveSettings());
 
 (async () => {
+  let session;
   try {
-    await requireSession();
+    session = await requireSession();
   } catch {
     location.href = "login.html?next=settings.html";
     return;
   }
+
+  const uid = document.getElementById("myUid");
+  if (uid) uid.textContent = session.user.id;
 
   startPresenceHeartbeat("Настройки");
 
