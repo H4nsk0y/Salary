@@ -160,9 +160,7 @@
 }
 
 .top-table-scroll {
-  position: sticky;
-  top: calc(148px + env(safe-area-inset-top, 0px));
-  z-index: 35;
+  position: relative;
   height: 16px;
   margin-bottom: 10px;
   overflow-x: auto;
@@ -632,7 +630,7 @@ td.shift-comment-cell.has-shift-comment::after {
         display: flex;
         align-items: baseline;
         justify-content: space-between;
-        gap: 12px;
+        gap: 6px;
         font-size: 0.78rem;
         color: rgba(148, 163, 184, 0.95);
       }
@@ -647,7 +645,7 @@ td.shift-comment-cell.has-shift-comment::after {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        gap: 6px;
         font-size: 0.76rem;
         color: rgba(148, 163, 184, 0.95);
       }
@@ -655,6 +653,17 @@ td.shift-comment-cell.has-shift-comment::after {
       .summary-line strong {
         color: rgba(226, 232, 240, 0.98);
         font-weight: 700;
+      }
+
+      .summary-main > span,
+      .summary-line > span {
+        min-width: 0;
+      }
+
+      .summary-main strong,
+      .summary-line strong {
+        flex-shrink: 0;
+        white-space: nowrap;
       }
 
       .summary-line.muted strong {
@@ -1743,12 +1752,34 @@ td.shift-comment-cell.has-shift-comment::after {
           position: static;
         }
 
+        .admin-tool-groups {
+          width: 100%;
+          justify-content: center;
+        }
+
+        .admin-schedule-actions {
+          justify-content: center;
+          padding-right: 0;
+          border-right: 0;
+        }
+
         .admin-action-buttons {
           width: 100%;
+          justify-content: center;
         }
       }
 
       @media (max-width: 767px) {
+        .admin-matrix .label-overtime-badge:not(.is-hidden) {
+          display: none;
+        }
+
+        .admin-matrix .summary-head,
+        .admin-matrix .summary-cell {
+          min-width: 230px;
+          width: 230px;
+        }
+
         .admin-shell {
           padding-left: 12px;
           padding-right: 12px;
