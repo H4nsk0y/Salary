@@ -691,6 +691,36 @@
       .profile-header-controls .profile-actions { order: -1; }
     }
 
+    @media (max-width: 639px) {
+      .profile-header-controls {
+        width: 100%;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .profile-header-controls .profile-actions {
+        order: 0;
+        flex: 0 0 auto;
+        justify-content: flex-start;
+      }
+
+      .profile-status-wrap {
+        order: 1;
+        min-width: 0;
+        justify-content: flex-end;
+      }
+
+      #statusPill {
+        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
     .profile-actions > a,
     .profile-actions > button {
       position: relative;
@@ -1314,7 +1344,7 @@
         </div>
 
        <div class="profile-header-controls">
-        <div class="flex items-center gap-2 text-xs">
+        <div class="profile-status-wrap flex items-center gap-2 text-xs">
           <span id="statusPill" class="inline-flex items-center rounded-full bg-white/5 px-4 py-1.5 ring-1 ring-white/10 text-slate-300 backdrop-blur-sm">—</span>
         </div>
 

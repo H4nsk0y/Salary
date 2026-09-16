@@ -70,6 +70,14 @@ test("employment date is constrained inside the mobile profile grid", async () =
   assert.match(html, /#employmentDateInput \{[^}]*min-inline-size: 0 !important/);
 });
 
+test("mobile profile puts status opposite the action icons", async () => {
+  const html = await source("profile.html");
+  assert.match(html, /@media \(max-width: 639px\) \{\s*\.profile-header-controls \{[^}]*flex-direction: row;[^}]*justify-content: space-between;/);
+  assert.match(html, /\.profile-header-controls \.profile-actions \{[^}]*order: 0;[^}]*justify-content: flex-start;/);
+  assert.match(html, /\.profile-status-wrap \{[^}]*order: 1;[^}]*justify-content: flex-end;/);
+  assert.match(html, /class="profile-status-wrap flex items-center gap-2 text-xs"/);
+});
+
 test("personal timesheet offers classic, calendar and agenda views", async () => {
   const [html, script] = await Promise.all([source("table.html"), source("table.js")]);
   assert.match(html, /data-timesheet-view-button="classic"[^>]*>Классический</);
@@ -98,6 +106,7 @@ test("latest user update is announced once until the updates page is opened", as
   const [updates, nav] = await Promise.all([source("updates.html"), source("nav.js")]);
   assert.match(updates, /Обновление 31\.0/);
   assert.match(updates, /Напоминания о ближайшей смене/);
+  assert.doesNotMatch(updates, /Учебный табель|учебном табеле/i);
   assert.match(nav, /CURRENT_UPDATES_VERSION = "33\.0"/);
   assert.match(nav, /UPDATES_SEEN_STORAGE_KEY/);
   assert.match(nav, /scheduleUnreadUpdatesPrompt/);
