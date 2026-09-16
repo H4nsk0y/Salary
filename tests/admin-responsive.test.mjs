@@ -14,8 +14,9 @@ test("summary values remain on one line in the wider mobile summary column", () 
   assert.match(html, /\.admin-matrix \.summary-head,\s*\.admin-matrix \.summary-cell \{\s*min-width: 230px;\s*width: 230px;/);
 });
 
-test("mobile action groups are centered and top scrollbar is not sticky", () => {
+test("mobile action groups are centered and only touch screens disable the sticky scrollbar", () => {
   assert.match(html, /\.admin-tool-groups \{\s*width: 100%;\s*justify-content: center;/);
   assert.match(html, /\.admin-action-buttons \{\s*width: 100%;\s*justify-content: center;/);
-  assert.match(html, /\.top-table-scroll \{\s*position: relative;/);
+  assert.match(html, /\.top-table-scroll \{\s*position: sticky;\s*top: calc\(148px \+ env\(safe-area-inset-top, 0px\)\);/);
+  assert.match(html, /@media \(hover: none\) and \(pointer: coarse\) \{\s*\.top-table-scroll \{\s*position: relative;/);
 });

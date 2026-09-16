@@ -160,7 +160,9 @@
 }
 
 .top-table-scroll {
-  position: relative;
+  position: sticky;
+  top: calc(148px + env(safe-area-inset-top, 0px));
+  z-index: 35;
   height: 16px;
   margin-bottom: 10px;
   overflow-x: auto;
@@ -170,6 +172,12 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   scrollbar-width: thin;
   scrollbar-color: #7a1638 #111519;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .top-table-scroll {
+    position: relative;
+  }
 }
 
 .top-table-scroll.is-hidden {
