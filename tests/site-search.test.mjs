@@ -17,16 +17,20 @@ test("owner-only destinations are hidden from ordinary search", () => {
 });
 
 test("search query has its own easter egg", () => {
-  assert.equal(isSearchEasterEgg("Поиск"), true);
-  assert.equal(isSearchEasterEgg("  поиск  "), true);
+  for (const query of ["Поиск", "  поиск  ", "пои", "поис", "gj", "gjb", "gjbc", "gjbcr"]) {
+    assert.equal(isSearchEasterEgg(query), true, query);
+  }
+  assert.equal(isSearchEasterEgg("по"), false);
   assert.equal(isSearchEasterEgg("поиск по сайту"), false);
 });
 
-test("search easter egg opens the requested image result safely", async () => {
+test("search easter egg opens a local image dialog without leaving the page", async () => {
   const search = await read("siteSearch.js");
-  assert.match(search, /i\.pinimg\.com\/originals\/4d\/5e\/24\/4d5e242dc61c09864ffa546fe8c14c95\.png\?nii=t/);
-  assert.match(search, /message\.target = "_blank"/);
-  assert.match(search, /message\.rel = "noopener noreferrer"/);
+  assert.match(search, /SEARCH_EASTER_EGG_IMAGE = "\.\/images\/pashalka\.jpg"/);
+  assert.match(search, /message\.addEventListener\("click", \(\) => imageDialog\.showModal\(\)\)/);
+  assert.match(search, /imageClose\.addEventListener\("click", \(\) => imageDialog\.close\(\)\)/);
+  assert.match(search, /::-webkit-search-cancel-button/);
+  assert.doesNotMatch(search, /i\.pinimg\.com/);
 });
 
 test("common header places search beside notifications and keeps browser Ctrl+F", async () => {

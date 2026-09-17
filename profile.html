@@ -873,21 +873,21 @@
     #displayName {
       color: var(--profile-porcelain);
       font-family: Anticva, Georgia, serif;
-      font-size: 1.4rem !important;
+      font-size: 1.1rem !important;
       font-weight: 400 !important;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
     }
 
-    #trainingAchievement {
-      color: var(--profile-muted) !important;
+    #displayName span { display: block; }
+    #displayNamePatronymic {
+      margin-top: 3px;
+      color: var(--profile-muted);
+      font-family: Inter, system-ui, sans-serif;
+      font-size: .78rem;
+      font-weight: 400;
     }
-
-    #trainingAchievement.profile-training-achievement {
-      border: 1px solid rgba(198, 161, 91, 0.3);
-      border-radius: 6px;
-      background: rgba(198, 161, 91, 0.08);
-      color: #d9c18d !important;
-      box-shadow: none;
-    }
+    #displayNamePatronymic[hidden] { display: none; }
 
     #avatarUploadBtn,
     #avatarRemoveBtn {
@@ -1422,8 +1422,7 @@
             </div>
           </div>
           <div class="min-w-0 flex-1">
-            <div id="displayName" class="truncate text-lg font-semibold">—</div>
-            <div id="trainingAchievement" class="mt-1 truncate text-xs text-slate-400/80">—</div>
+            <div id="displayName" class="text-lg font-semibold"><span id="displayNamePrimary">—</span> <span id="displayNamePatronymic"></span></div>
           </div>
         </div>
 
@@ -1436,7 +1435,7 @@
           <div class="profile-training mt-4 border-t border-white/10 pt-4 w-full">
             <label class="mb-2 block text-sm font-medium text-slate-200">Обучение</label>
             <div class="flex flex-wrap gap-2">
-              <a href="timesheet-training.html" class="group inline-flex items-center gap-2 rounded-xl bg-emerald-500/15 px-4 py-2 text-xs font-bold text-emerald-100 ring-1 ring-emerald-400/30 transition-all hover:bg-emerald-500/25 hover:ring-emerald-300/45">
+              <a id="profileTrainingLink" href="timesheet-training.html" class="group inline-flex items-center gap-2 rounded-xl bg-emerald-500/15 px-4 py-2 text-xs font-bold text-emerald-100 ring-1 ring-emerald-400/30 transition-all hover:bg-emerald-500/25 hover:ring-emerald-300/45">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M9 11 12 14 22 4"></path>
                   <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>

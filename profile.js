@@ -55,7 +55,6 @@ const OVERTIME_LIMIT_DEFAULT_YEAR = 120;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const HAZARD_POSITION_RATE = 0.04;
 const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
-const TRAINING_ACHIEVEMENT_KEY_PREFIX = "alvisa.timesheetTraining.completedOnce.v1";
 const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 const DISMISSED_LEAVE_TYPE = "dismissed";
 
@@ -76,7 +75,8 @@ const errorBox = document.getElementById("errorBox");
 const avatarImg = document.getElementById("avatarImg");
 const avatarFallback = document.getElementById("avatarFallback");
 const displayNameEl = document.getElementById("displayName");
-const trainingAchievementEl = document.getElementById("trainingAchievement");
+const displayNamePrimaryEl = document.getElementById("displayNamePrimary");
+const displayNamePatronymicEl = document.getElementById("displayNamePatronymic");
 
 const displayNameInput = document.getElementById("displayNameInput");
 const positionSelect = document.getElementById("positionSelect");
@@ -1913,6 +1913,8 @@ async function refreshProfile() {
   const name = effectiveProfile.display_name || "Пользователь";
 
   if (!requireDom(displayNameEl, "displayName")) return;
+  if (!requireDom(displayNamePrimaryEl, "displayNamePrimary")) return;
+  if (!requireDom(displayNamePatronymicEl, "displayNamePatronymic")) return;
   if (!requireDom(displayNameInput, "displayNameInput")) return;
   if (!requireDom(branchSelect, "branchSelect")) return;
   if (!requireDom(weeklyHoursSelect, "weeklyHoursSelect")) return;
@@ -1922,7 +1924,12 @@ async function refreshProfile() {
 
   const hideMoney = isMoneyProtectionEnabled(effectiveProfile);
 
-  displayNameEl.textContent = name;
+  const nameParts = String(name).trim().split(/\s+/);
+  displayNamePrimaryEl.textContent = nameParts.slice(0, 2).join(" ");
+  displayNamePatronymicEl.textContent = nameParts.slice(2).join(" ");
+  displayNamePatronymicEl.hidden = nameParts.length < 3;
+  displayNameEl.setAttribute("aria-label", name);
+  displayNameEl.title = name;
   profileFieldsTouched = false;
   applyExpectedProfileFieldValues(getExpectedProfileFieldValues(effectiveProfile));
 
@@ -2537,29 +2544,6 @@ employmentDateInput?.addEventListener("change", updateEmploymentDateHint);
 
 setupProfileMoneyControls();
 
-function renderTrainingAchievement(userId) {
-  if (!trainingAchievementEl) return;
-
-  const completedAt = userId
-    ? localStorage.getItem(`${TRAINING_ACHIEVEMENT_KEY_PREFIX}:${userId}`)
-    : null;
-
-  if (!completedAt) {
-    trainingAchievementEl.textContent = "—";
-    trainingAchievementEl.className = "mt-1 truncate text-xs text-slate-400/80";
-    trainingAchievementEl.removeAttribute("title");
-    return;
-  }
-
-  trainingAchievementEl.textContent = "Обучение успешно пройдено";
-  trainingAchievementEl.className = "profile-training-achievement mt-1 inline-flex max-w-full items-center px-2.5 py-1 text-[11px] font-semibold";
-
-  const date = new Date(completedAt);
-  if (!Number.isNaN(date.getTime())) {
-    trainingAchievementEl.title = `Пройдено ${date.toLocaleDateString("ru-RU")}`;
-  }
-}
-
 /* ========= boot ========= */
 
 (async () => {
@@ -2571,7 +2555,6 @@ function renderTrainingAchievement(userId) {
     return;
   }
 
-  renderTrainingAchievement(session?.user?.id);
   startPresenceHeartbeat("Профиль");
 
   const now = new Date();

@@ -222,6 +222,7 @@ const LESSONS = [
 ];
 
 const elements = {
+  achievement: document.getElementById("trainingAchievement"),
   modeButtons: [...document.querySelectorAll("[data-mode]")],
   modeHint: document.getElementById("modeHint"),
   stepCounter: document.getElementById("stepCounter"),
@@ -348,6 +349,17 @@ function rememberTrainingCompletion() {
   localStorage.setItem(`${ACHIEVEMENT_KEY_PREFIX}:${currentUserId}`, new Date().toISOString());
 }
 
+function renderTrainingAchievement() {
+  if (!elements.achievement) return;
+  const completedAt = currentUserId ? localStorage.getItem(`${ACHIEVEMENT_KEY_PREFIX}:${currentUserId}`) : null;
+  const achieved = Boolean(courseFinished || completedAt);
+  elements.achievement.textContent = achieved ? "Обучение успешно пройдено" : "Практика";
+  elements.achievement.classList.toggle("is-achieved", achieved);
+  const date = completedAt ? new Date(completedAt) : null;
+  elements.achievement.title = date && !Number.isNaN(date.getTime())
+    ? `Пройдено ${date.toLocaleDateString("ru-RU")}` : "";
+}
+
 function readTrainingResult() {
   if (!currentUserId) return { masteredLessons: [], bestExamScore: 0 };
 
@@ -382,8 +394,10 @@ async function resolveTrainingUser() {
     currentUserId = session?.user?.id || null;
     rememberTrainingProgress();
     if (courseFinished) rememberTrainingCompletion();
+    renderTrainingAchievement();
   } catch {
     currentUserId = null;
+    renderTrainingAchievement();
   }
 }
 
@@ -1057,6 +1071,7 @@ function renderLessonStrip() {
 
 function renderLesson() {
   courseFinished = false;
+  renderTrainingAchievement();
   attempts = 0;
   const lesson = currentLesson();
 
@@ -1105,6 +1120,7 @@ function renderLesson() {
 function renderCompletion() {
   courseFinished = true;
   rememberTrainingCompletion();
+  renderTrainingAchievement();
   rememberTrainingProgress();
   elements.lessonArea.classList.add("hidden");
   elements.completion.classList.remove("hidden");

@@ -1,5 +1,5 @@
 const SEARCH_STYLE_ID = "alvisa-site-search-style";
-const SEARCH_EASTER_EGG_URL = "https://i.pinimg.com/originals/4d/5e/24/4d5e242dc61c09864ffa546fe8c14c95.png?nii=t";
+const SEARCH_EASTER_EGG_IMAGE = "./images/pashalka.jpg";
 
 const PUBLIC_SEARCH_ENTRIES = [
   { title: "Главная", href: "index.html", description: "Основные разделы ALVISA SALARY", keywords: "начало рабочее пространство разделы" },
@@ -37,7 +37,9 @@ function normalizeSearchText(value) {
 }
 
 export function isSearchEasterEgg(query) {
-  return normalizeSearchText(query) === "поиск";
+  const value = normalizeSearchText(query);
+  return (value.length >= 3 && "поиск".startsWith(value))
+    || (value.length >= 2 && "gjbcr".startsWith(value));
 }
 
 function scoreEntry(entry, query, tokens) {
@@ -92,6 +94,7 @@ function injectSearchStyles() {
     .app-search-head svg { flex: 0 0 auto; color: #858b90; }
     .app-search-input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #f1eee8; font: inherit; font-size: 1rem; }
     .app-search-input::placeholder { color: #777d82; }
+    .app-search-input::-webkit-search-cancel-button, .app-search-input::-webkit-search-decoration { display: none; -webkit-appearance: none; }
     .app-search-close { flex: 0 0 auto; width: 34px; height: 34px; border: 1px solid rgba(241,238,232,.12); border-radius: 6px; background: rgba(241,238,232,.04); color: #a8adb2; font-size: 1.25rem; line-height: 1; }
     .app-search-close:hover { color: #f1eee8; background: rgba(241,238,232,.08); }
     .app-search-meta { padding: 11px 16px 5px; color: #777d82; font-size: .7rem; font-weight: 700; text-transform: uppercase; }
@@ -102,8 +105,16 @@ function injectSearchStyles() {
     .app-search-result-copy { margin-top: 3px; color: #92979c; font-size: .76rem; line-height: 1.35; }
     .app-search-result-arrow { color: #6ea8e8; font-size: 1rem; }
     .app-search-empty { padding: 34px 18px 38px; text-align: center; color: #92979c; font-size: .86rem; }
-    .app-search-easter-egg { display: block; margin: 6px 8px 12px; padding: 28px 18px; border: 1px solid rgba(110,168,232,.25); border-radius: 7px; background: rgba(110,168,232,.07); color: #d8ebff; font-size: .96rem; font-weight: 700; line-height: 1.55; text-align: center; text-decoration: none; }
-    .app-search-easter-egg:hover { border-color: rgba(110,168,232,.48); background: rgba(110,168,232,.12); }
+    .app-search-easter-egg { display: grid; justify-items: center; gap: 8px; width: calc(100% - 16px); margin: 6px 8px 12px; padding: 24px 16px; border: 1px solid rgba(198,161,91,.45); border-radius: 6px; background: rgba(122,22,56,.17); color: #f1eee8; font: inherit; font-size: .96rem; font-weight: 700; line-height: 1.5; text-align: center; cursor: pointer; animation: app-search-pulse 2.6s ease-in-out infinite; }
+    .app-search-easter-egg:hover, .app-search-easter-egg:focus-visible { border-color: #c6a15b; background: rgba(122,22,56,.27); outline: none; }
+    .app-search-easter-hint { color: #c6a15b; font-size: .64rem; font-weight: 500; }
+    @keyframes app-search-pulse { 50% { box-shadow: 0 0 0 4px rgba(198,161,91,.14), 0 0 20px rgba(198,161,91,.2); } }
+    .app-search-image-dialog { width: min(720px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); margin: auto; padding: 10px; overflow: hidden; border: 1px solid rgba(198,161,91,.4); border-radius: 8px; background: #111417; box-shadow: 0 28px 90px rgba(0,0,0,.65); animation: app-search-image-enter .24s ease-out; }
+    .app-search-image-dialog::backdrop { background: rgba(4,5,6,.86); backdrop-filter: blur(8px); }
+    .app-search-image-dialog img { display: block; max-width: 100%; max-height: calc(100dvh - 44px); margin: auto; object-fit: contain; }
+    .app-search-image-close { position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; border: 1px solid rgba(241,238,232,.35); border-radius: 5px; background: rgba(11,13,15,.82); color: #f1eee8; font-size: 24px; cursor: pointer; }
+    @keyframes app-search-image-enter { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+    @media (prefers-reduced-motion: reduce) { .app-search-easter-egg, .app-search-image-dialog { animation: none; } }
     @media (max-width: 520px) {
       .app-search-dialog { width: calc(100vw - 20px); max-height: calc(100dvh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom))); }
       .app-search-result { min-height: 62px; }
@@ -138,6 +149,20 @@ export function createSiteSearchWidget() {
   const dialog = document.createElement("dialog");
   dialog.className = "app-search-dialog";
   dialog.setAttribute("aria-label", "Поиск по сайту");
+
+  const imageDialog = document.createElement("dialog");
+  imageDialog.className = "app-search-image-dialog";
+  imageDialog.setAttribute("aria-label", "Найденная картинка");
+  const image = document.createElement("img");
+  image.src = SEARCH_EASTER_EGG_IMAGE;
+  image.alt = "Мем: не балуйся, сладкий";
+  const imageClose = document.createElement("button");
+  imageClose.type = "button";
+  imageClose.className = "app-search-image-close";
+  imageClose.setAttribute("aria-label", "Закрыть картинку");
+  imageClose.textContent = "×";
+  imageDialog.append(image, imageClose);
+  document.body.append(imageDialog);
 
   const head = document.createElement("div");
   head.className = "app-search-head";
@@ -185,12 +210,16 @@ export function createSiteSearchWidget() {
     if (isSearchEasterEgg(query)) {
       renderedEntries = [];
       meta.textContent = "Найдено кое-что особенное";
-      const message = document.createElement("a");
+      const message = document.createElement("button");
+      message.type = "button";
       message.className = "app-search-easter-egg";
-      message.href = SEARCH_EASTER_EGG_URL;
-      message.target = "_blank";
-      message.rel = "noopener noreferrer";
-      message.textContent = "Поздравляю! Вы такой умный! Нашли в поиске поиск. ВАУ!";
+      const title = document.createElement("span");
+      title.textContent = "Поздравляю! Вы такой умный! Нашли в поиске поиск. ВАУ!";
+      const hint = document.createElement("span");
+      hint.className = "app-search-easter-hint";
+      hint.textContent = "На кнопку не нажимать!";
+      message.append(title, hint);
+      message.addEventListener("click", () => imageDialog.showModal());
       results.append(message);
       return;
     }
@@ -245,11 +274,18 @@ export function createSiteSearchWidget() {
 
   button.addEventListener("click", open);
   close.addEventListener("click", closeDialog);
+  imageClose.addEventListener("click", () => imageDialog.close());
+  imageDialog.addEventListener("click", (event) => {
+    if (event.target === imageDialog) imageDialog.close();
+  });
   input.addEventListener("input", render);
   input.addEventListener("keydown", (event) => {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       setActive(activeIndex + (event.key === "ArrowDown" ? 1 : -1));
+    } else if (event.key === "Enter" && isSearchEasterEgg(input.value)) {
+      event.preventDefault();
+      results.querySelector(".app-search-easter-egg")?.click();
     } else if (event.key === "Enter" && renderedEntries[activeIndex]) {
       event.preventDefault();
       results.querySelectorAll(".app-search-result")[activeIndex]?.click();

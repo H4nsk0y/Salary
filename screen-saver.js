@@ -4,11 +4,14 @@ const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d", { alpha: false });
 const fullButton = document.getElementById("fullscreenBtn");
 const modeButtons = [...document.querySelectorAll("[data-mode]")];
+const returnToPage = document.getElementById("returnToPage");
+const pageParams = new URLSearchParams(location.search);
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 let width = 0;
 let height = 0;
-let mode = "ribbons";
+let mode = modeButtons.some((button) => button.dataset.mode === pageParams.get("mode"))
+  ? pageParams.get("mode") : "ribbons";
 let time = 0;
 let lastFrame = 0;
 let wakeLock = null;
@@ -17,6 +20,21 @@ const buildingImage = new Image();
 buildingImage.src = "./images/app-icon-512.png";
 const pointer = { x: 0, y: 0, active: false, dragging: false };
 let idleTimer = null;
+
+modeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.mode === mode)));
+const requestedReturn = pageParams.get("from");
+if (requestedReturn && returnToPage) {
+  try {
+    const returnUrl = new URL(requestedReturn, location.href);
+    if (returnUrl.origin === location.origin && returnUrl.pathname.endsWith(".html")
+        && !returnUrl.pathname.endsWith("/screen-saver.html")) {
+      returnToPage.href = returnUrl.href;
+      returnToPage.textContent = "Вернуться";
+    }
+  } catch {
+    // An invalid return URL must not stop the animation.
+  }
+}
 
 function showControls() {
   document.body.classList.remove("is-idle");

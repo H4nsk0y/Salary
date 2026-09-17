@@ -615,6 +615,18 @@
       text-transform: uppercase;
     }
 
+    .training-kicker.is-achieved {
+      gap: 8px;
+      padding: 8px 11px !important;
+      border: 1px solid rgba(198,161,91,.48) !important;
+      border-radius: 6px !important;
+      background: rgba(198,161,91,.11) !important;
+      color: #ead3a5 !important;
+      box-shadow: 0 0 18px rgba(198,161,91,.14) !important;
+      text-transform: none;
+    }
+    .training-kicker.is-achieved::before { content: "✓"; font-size: 15px; line-height: 1; }
+
     .training-title,
     #lessonTitle,
     #managerMissionTitle,
@@ -966,8 +978,8 @@
   <main class="training-shell relative z-10 mx-auto pt-safe pb-12 md:pb-16">
     <header class="training-hero">
       <div class="max-w-3xl">
-        <div class="training-kicker inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20">
-          Безопасная тренировка
+        <div id="trainingAchievement" class="training-kicker inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20">
+          Практика
         </div>
         <h1 class="training-title mt-4 text-3xl font-bold text-slate-100 md:text-4xl">Тренажёр табеля</h1>
         <p id="trainingPageLead" class="mt-2 text-sm leading-6 text-slate-300/85">

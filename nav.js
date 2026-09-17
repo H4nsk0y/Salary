@@ -13,6 +13,7 @@ import {
 } from "./profileCompletion.js";
 import { installErrorLogger } from "./errorLogger.js";
 import { createSiteSearchWidget } from "./siteSearch.js";
+import { startIdleScreenSaver } from "./idleScreenSaver.js";
 import "./pwa.js";
 import "./screenWakeLock.js";
 import "./scrollbar.js?v=20260913-2";
@@ -1467,7 +1468,10 @@ async function enhanceNavForProfile(header) {
     applyProfileNavPreferences(header, profile);
 
     const activeKey = header.dataset.activeKey || detectActiveKey();
-    if (profile?.user_id) scheduleUnreadUpdatesPrompt(activeKey);
+    if (profile?.user_id) {
+      scheduleUnreadUpdatesPrompt(activeKey);
+      startIdleScreenSaver();
+    }
     const desktopNav = header.querySelector('[data-nav-slot="desktop"]');
     const mobileNav = header.querySelector('[data-nav-slot="mobile"]');
     if (header.dataset.ownerNavMode === "false") return;

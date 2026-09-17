@@ -189,7 +189,7 @@ serve(async (req) => {
         actor_user_id: null,
         type: REMINDER_TYPE,
         title: "Ближайшая смена",
-        body: `${tonightNight ? "Сегодня" : "Завтра"} у вас ${shift.text}. Проверьте график перед выходом.`,
+        body: `${tonightNight ? "Сегодня" : "Завтра"} у вас ${shift.text}. Проверьте график и не забудьте заполнить чек-лист.`,
         url: "table.html",
         expires_at: new Date(now.getTime() + 36 * 60 * 60 * 1000).toISOString(),
       });

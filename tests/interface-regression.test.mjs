@@ -70,6 +70,28 @@ test("employment date is constrained inside the mobile profile grid", async () =
   assert.match(html, /#employmentDateInput \{[^}]*min-inline-size: 0 !important/);
 });
 
+test("profile name separates patronymic and training achievement lives on the training page", async () => {
+  const [profile, training, tour] = await Promise.all([
+    source("profile.html"), source("timesheet-training.html"), source("tour.js"),
+  ]);
+  assert.match(profile, /id="displayNamePrimary"/);
+  assert.match(profile, /id="displayNamePatronymic"/);
+  assert.doesNotMatch(profile, /id="trainingAchievement"/);
+  assert.match(training, /id="trainingAchievement"/);
+  assert.match(tour, /element: "#profileTrainingLink"/);
+});
+
+test("one department invite can restore membership for an existing account", async () => {
+  const [admin, login, sql] = await Promise.all([
+    source("admin.html"), source("login.js"), source("supabase-sql/005_shift_overview_and_department_invites.sql"),
+  ]);
+  assert.match(admin, /Одна ссылка подходит и новым, и уже зарегистрированным сотрудникам/);
+  assert.match(login, /if \(session\) \{\s*await acceptPendingInvite\(\)/);
+  assert.match(login, /await signIn\(email, password\);\s*const inviteResult = await acceptPendingInvite\(\)/);
+  assert.match(sql, /insert into public\.department_members \(department_key, user_id\)/);
+  assert.match(sql, /on conflict do nothing;/);
+});
+
 test("mobile profile puts status opposite the action icons", async () => {
   const html = await source("profile.html");
   assert.match(html, /@media \(max-width: 639px\) \{\s*\.profile-header-controls \{[^}]*flex-direction: row;[^}]*justify-content: space-between;/);

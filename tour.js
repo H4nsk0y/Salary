@@ -223,10 +223,10 @@ const tourSteps = {
       },
     },
     {
-      element: "#trainingAchievement",
+      element: "#profileTrainingLink",
       popover: {
         title: "Обучение",
-        description: "После полного прохождения интерактивного тренажёра здесь появится отметка об успешном обучении.",
+        description: "Откройте интерактивный тренажёр табеля. Отметка об успешном прохождении появится на его странице.",
         position: "bottom",
       },
     },
