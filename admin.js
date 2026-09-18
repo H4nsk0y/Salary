@@ -2949,7 +2949,7 @@ async function setupScheduleTools() {
       return managedLoadTimesheet(userId, previous.getFullYear(), previous.getMonth());
     },
     applyChanges: (plans, tool) => {
-      const highlightChanges = tool === "fillNorm" || tool === "reduceOvertime";
+      const highlightChanges = tool === "fillNorm" || tool === "reduceOvertime" || tool === "bottling";
       for (const { state, changes } of plans) {
         if (!changes.length) continue;
         for (const { index, from, to } of changes) {

@@ -1,5 +1,6 @@
 import { SHIFT_CYCLES, planCoveredShiftCycle } from "./shiftCycles.js";
 import { planEightHourTemplate, planTeamNormFills, planTeamOvertimeReductions } from "./scheduleTools.js";
+import { planBottlingSchedule } from "./bottlingSchedule.js";
 
 const TITLES = {
   dayNight48: "День / ночь / 48",
@@ -8,6 +9,7 @@ const TITLES = {
   alternating: "Чередование 8 / 6+2",
   fillNorm: "Добить до нормы",
   reduceOvertime: "Сократить переработку",
+  bottling: "Составить график от розлива",
 };
 
 function daysForState(state) {
@@ -107,8 +109,9 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
     operation++;
     returnFocus = trigger;
     document.getElementById("scheduleToolsTitle").textContent = TITLES[tool];
-    document.getElementById("scheduleToolsNote").textContent =
-      "Выберите операторов. Фазы распределяются автоматически. Их заполненные дни не заменяются; рабочие смены руководителя приводятся к 5/2.";
+    document.getElementById("scheduleToolsNote").textContent = tool === "bottling"
+      ? "Выберите от двух до четырёх операторов. Будние день и ночь будут закрыты доступными людьми; праздники пропускаются. Заполненные дни и коды отсутствия не заменяются."
+      : "Выберите операторов. При четырёх доступных работает выбранный цикл; при трёх — день/ночь/отсыпной, при двух — постоянные день и ночь. Коды отсутствия и заполненные дни не заменяются.";
     summary.textContent = "";
     applyButton.disabled = true;
     people.replaceChildren();
@@ -161,7 +164,7 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
 
     try {
       const previous = new Map();
-      if (SHIFT_CYCLES[activeTool] || activeTool === "fillNorm") {
+      if (SHIFT_CYCLES[activeTool] || activeTool === "fillNorm" || activeTool === "bottling") {
         await Promise.all(chosen.map(async ({ id }) => {
           previous.set(id, daysForPayload(await loadPrevious(id, context.year, context.month)));
         }));
@@ -178,7 +181,7 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
       const teamMembers = context.teamStates.map((state) => {
         const id = String(state.userId);
         const selection = selected.find((row) => row.id === id);
-        return { id, days: daysForState(state), norm: context.personalNorm(state),
+        return { id, name: state.name, days: daysForState(state), norm: context.personalNorm(state),
           selected: Boolean(selection?.checked) && id !== String(leaderId), excluded: id === String(leaderId),
           previousDay: previous.get(id)?.at(-1) };
       });
@@ -186,14 +189,24 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
         activeTool === "reduceOvertime" ? planTeamOvertimeReductions(teamMembers) : [])
         .map(({ id, plan }) => [id, plan]));
       let cyclePlans = new Map();
+      let cycleStartIndex = null;
       if (SHIFT_CYCLES[activeTool]) {
         const coverage = planCoveredShiftCycle({ cycleId: activeTool, year: context.year, month: context.month,
           members: teamMembers.filter((member) => member.selected).map((member) => ({
             ...member, previousDays: previous.get(member.id),
           })) });
+        cycleStartIndex = coverage.startIndex ?? null;
         if (coverage.error) errors.push(coverage.error);
-        if (coverage.gaps.length) errors.push(`Не закрыты смены: ${coverage.gaps.slice(0, 12).map(({ index, kind }) =>
-          `${index + 1} ${kind === "day" ? "день" : "ночь"}`).join(", ")}${coverage.gaps.length > 12 ? "…" : ""}.`);
+        if (coverage.gaps.length) errors.push(`На этих датах после расчёта не осталось оператора на дневной или ночной смене: ${coverage.gaps.slice(0, 12).map(({ index, kind }) =>
+          `${index + 1}-е (${kind === "day" ? "день" : "ночь"})`).join(", ")}${coverage.gaps.length > 12 ? "…" : ""}. Проверьте отсутствие сотрудников и уже заполненные смены.`);
+        cyclePlans = new Map(coverage.plans.map(({ id, plan }) => [id, plan]));
+      } else if (activeTool === "bottling") {
+        const coverage = planBottlingSchedule({ year: context.year, month: context.month, holiday: context.holiday,
+          members: teamMembers.filter((member) => member.selected).map((member) => ({
+            ...member, previousDay: previous.get(member.id)?.at(-1),
+          })) });
+        cycleStartIndex = coverage.startIndex;
+        if (coverage.error) errors.push(coverage.error);
         cyclePlans = new Map(coverage.plans.map(({ id, plan }) => [id, plan]));
       }
 
@@ -202,7 +215,7 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
         if (!state) continue;
         const existingDays = daysForState(state);
         let plan;
-        if (SHIFT_CYCLES[activeTool]) {
+        if (SHIFT_CYCLES[activeTool] || activeTool === "bottling") {
           plan = cyclePlans.get(id);
           if (!plan) continue;
         } else if (activeTool === "fiveTwo" || activeTool === "alternating") {
@@ -215,8 +228,11 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
           plan = teamPlans.get(id);
         }
         result.push({ state, changes: plan.changes });
-        if (activeTool === "fillNorm" || activeTool === "reduceOvertime") {
+        if (activeTool === "fillNorm" || activeTool === "reduceOvertime" || activeTool === "bottling") {
           if (plan.changes.length) lines.push(formatScheduleChangeReport(state, plan.changes, context.personalNorm(state)));
+          if (activeTool === "bottling" && plan.shortage > 0) {
+            lines.push(`${state.name}: после автоматического добора всё ещё не хватает ${hourText(plan.shortage)}. Проверьте вручную.`);
+          }
         }
       }
 
@@ -234,7 +250,12 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
       summary.replaceChildren();
       const intro = document.createElement("div");
       const count = result.reduce((sum, item) => sum + item.changes.length, 0);
-      intro.textContent = `Изменений: ${count}.${SHIFT_CYCLES[activeTool] ? " Проверьте покрытие смен перед применением." : ""}`;
+      intro.textContent = `Изменений: ${count}.`;
+      if (SHIFT_CYCLES[activeTool] && cycleStartIndex !== null) {
+        intro.textContent += ` Переход на 2/2 с ${cycleStartIndex + 1}-го числа. Проверьте покрытие смен перед применением.`;
+      } else if (activeTool === "bottling" && cycleStartIndex !== null) {
+        intro.textContent += ` График от розлива с ${cycleStartIndex + 1}-го числа; суббота и воскресенье без новых выходов, кроме завершения пятничной ночи.`;
+      }
       summary.appendChild(intro);
       if (errors.length || lines.length) {
         const list = document.createElement("ul");
@@ -262,7 +283,7 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
     pending = null;
     applyButton.disabled = true;
     applyChanges(applied.result, applied.tool);
-    if (applied.tool === "fillNorm" || applied.tool === "reduceOvertime") {
+    if (applied.tool === "fillNorm" || applied.tool === "reduceOvertime" || applied.tool === "bottling") {
       summary.prepend(document.createTextNode("Изменения применены и сохраняются. "));
     } else {
       close();

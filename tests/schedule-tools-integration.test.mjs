@@ -18,6 +18,8 @@ test("cycle preview stays compact and the modal body scrolls within a fixed heig
   const tools = read("../features/adminScheduleTools.js");
   const html = read("../admin.html");
   assert.match(tools, /if \(activeTool === "fillNorm" \|\| activeTool === "reduceOvertime"\) \{\s*if \(plan\.changes\.length\) lines\.push\(formatScheduleChangeReport/);
+  assert.match(tools, /cycleStartIndex = coverage\.startIndex/);
+  assert.match(tools, /Переход на 2\/2 с/);
   assert.match(tools, /document\.body\.appendChild\(modal\)/);
   assert.match(html, /\.schedule-tools-dialog \{[^}]*height: min\(680px, calc\(100dvh - 32px\)\)/);
   assert.match(html, /\.schedule-tools-body \{[^}]*overflow: auto/);
@@ -28,10 +30,20 @@ test("tool changes highlight only affected day or night cells until table reload
   const admin = read("../admin.js");
   const html = read("../admin.html");
   assert.match(admin, /applyChanges: \(plans, tool\)/);
-  assert.match(admin, /highlightChanges = tool === "fillNorm" \|\| tool === "reduceOvertime"/);
+  assert.match(admin, /highlightChanges = tool === "fillNorm" \|\| tool === "reduceOvertime" \|\| tool === "bottling"/);
   assert.match(admin, /Number\(from\.dayHours\) !== Number\(to\.dayHours\)[\s\S]*?dayInput\?\.closest\("td"\)\?\.classList\.add\("schedule-tool-changed"\)/);
   assert.match(admin, /Number\(from\.nightHours\) !== Number\(to\.nightHours\)[\s\S]*?nightInput\?\.closest\("td"\)\?\.classList\.add\("schedule-tool-changed"\)/);
   assert.match(html, /td\.schedule-tool-changed \.input-hour/);
+});
+
+test("bottling tool is offered in both the admin table and isolated owner lab", () => {
+  const admin = read("../admin.html");
+  const lab = read("../schedule-lab.html");
+  const tools = read("../features/adminScheduleTools.js");
+  assert.match(admin, /data-schedule-tool="bottling"/);
+  assert.match(lab, /data-tool="bottling"/);
+  assert.match(tools, /planBottlingSchedule\(/);
+  assert.match(tools, /holiday: context\.holiday/);
 });
 
 test("employee selection uses full-row labels and larger themed checkboxes", () => {

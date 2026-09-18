@@ -3,6 +3,7 @@ import { getMyProfile } from "../db.js";
 import { getProductionCalendarMonth } from "../productionCalendar.js";
 import { SHIFT_CYCLES, planCoveredShiftCycle } from "./shiftCycles.js";
 import { planEightHourTemplate, planTeamNormFills, planTeamOvertimeReductions } from "./scheduleTools.js";
+import { planBottlingSchedule } from "./bottlingSchedule.js";
 
 const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
 const monthSelect = document.getElementById("labMonth");
@@ -195,14 +196,17 @@ function buildPreview() {
   const coverage = SHIFT_CYCLES[activeTool]
     ? planCoveredShiftCycle({ cycleId: activeTool, year, month,
       members: people.map((person) => ({ id: person.id, days: person.days, isLeader: person.isLeader })) })
-    : null;
+    : activeTool === "bottling" ? planBottlingSchedule({ year, month, holiday: calendar?.isHoliday,
+      members: people.filter((person) => !person.isLeader).map((person) => ({
+        id: person.id, name: person.name, days: person.days, norm: person.norm,
+      })) }) : null;
   const cyclePlans = new Map((coverage?.plans ?? []).map(({ id, plan }) => [id, plan]));
   for (const [order, person] of people.entries()) {
     let plan;
     if (person.isLeader) {
       plan = planEightHourTemplate({ mode: "fiveTwo", year, month, existingDays: person.days,
         holiday: calendar?.isHoliday, transferredOff: calendar?.isTransferredOff, replaceWorked: true });
-    } else if (SHIFT_CYCLES[activeTool]) {
+    } else if (SHIFT_CYCLES[activeTool] || activeTool === "bottling") {
       plan = cyclePlans.get(person.id);
       if (!plan) continue;
     } else if (activeTool === "fiveTwo" || activeTool === "alternating") {
