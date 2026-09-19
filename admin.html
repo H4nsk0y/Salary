@@ -434,6 +434,57 @@ td.shift-comment-cell.has-shift-comment::after {
   padding: 10px 22px 22px;
 }
 
+.timesheet-audit-search-wrap {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 14px 22px 4px;
+}
+
+.timesheet-audit-search-wrap svg {
+  position: absolute;
+  top: 50%;
+  left: 37px;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+  color: rgba(198, 161, 91, 0.9);
+  transform: translateY(-36%);
+}
+
+.timesheet-audit-search {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(241, 238, 232, 0.16);
+  border-radius: 7px;
+  padding: 10px 42px;
+  background: #15191d;
+  color: #f1eee8;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.timesheet-audit-search::placeholder {
+  color: rgba(148, 163, 184, 0.82);
+}
+
+.timesheet-audit-search:focus {
+  border-color: rgba(198, 161, 91, 0.68);
+  box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.1);
+}
+
+.timesheet-audit-search:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.timesheet-audit-search::-webkit-search-cancel-button {
+  cursor: pointer;
+  filter: invert(1);
+  opacity: 0.72;
+}
+
 .timesheet-audit-empty {
   padding: 48px 16px;
   text-align: center;
@@ -505,6 +556,14 @@ td.shift-comment-cell.has-shift-comment::after {
 
   .timesheet-audit-list {
     padding: 8px 16px 18px;
+  }
+
+  .timesheet-audit-search-wrap {
+    padding: 12px 16px 4px;
+  }
+
+  .timesheet-audit-search-wrap svg {
+    left: 30px;
   }
 }
 
@@ -1416,6 +1475,16 @@ td.shift-comment-cell.has-shift-comment::after {
       .schedule-tools-summary { margin-top: 14px; color: #c9ced3; font-size: .78rem; line-height: 1.6; }
       .schedule-tools-summary ul { max-height: 220px; overflow: auto; margin: 9px 0 0; padding-left: 18px; }
       .schedule-tools-summary li { margin: 4px 0; }
+      .schedule-tools-warehouse { margin-top: 14px; padding: 13px; border: 1px solid rgba(198, 161, 91, .28); border-radius: 6px; background: rgba(198, 161, 91, .06); }
+      .schedule-tools-option { display: flex; align-items: center; gap: 10px; color: #f1eee8; font-size: .82rem; font-weight: 700; cursor: pointer; }
+      .schedule-tools-option input { appearance: none; width: 26px; height: 26px; margin: 0; display: grid; flex: 0 0 auto; place-items: center; border: 2px solid #7e878f; border-radius: 5px; background: #0e1215; cursor: pointer; }
+      .schedule-tools-option input:checked { border-color: #c6a15b; background: #7a1638; }
+      .schedule-tools-option input:checked::after { content: ""; width: 7px; height: 12px; margin-top: -3px; border: solid #fff4db; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+      .schedule-tools-option input:focus-visible { outline: 2px solid rgba(198, 161, 91, .7); outline-offset: 2px; }
+      .schedule-tools-dates { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px; margin-top: 12px; }
+      .schedule-tools-date { display: grid; place-items: center; min-height: 38px; border: 1px solid rgba(241, 238, 232, .14); border-radius: 5px; background: #15191d; color: #c9ced3; font-size: .76rem; cursor: pointer; }
+      .schedule-tools-date:has(input:checked) { border-color: #c6a15b; background: rgba(122, 22, 56, .34); color: #fff4db; }
+      .schedule-tools-date input { position: absolute; opacity: 0; pointer-events: none; }
       .schedule-tools-button { min-height: 36px; border: 1px solid rgba(241, 238, 232, .2); border-radius: 6px; padding: 7px 12px; background: rgba(241, 238, 232, .05); color: #f1eee8; font-size: .76rem; font-weight: 700; }
       .schedule-tools-button-primary { border-color: rgba(198, 161, 91, .45); background: rgba(198, 161, 91, .14); color: #ead3a5; }
       .schedule-tools-button:disabled { opacity: .45; cursor: not-allowed; }
@@ -2014,6 +2083,14 @@ td.shift-comment-cell.has-shift-comment::after {
             ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.73 21a2 2 0 0 1-3.46 0M18.63 18H4a1 1 0 0 1-.78-1.63A8.7 8.7 0 0 0 5 11V8M6.26 6.26A6 6 0 0 1 18 8v3a8.7 8.7 0 0 0 .3 2.27M2 2l20 20"/></svg><span class="sr-only">Сохранить без уведомлений</span></button>
 
             <button
+              id="clearMonthBtn"
+              type="button"
+              class="admin-icon-action text-rose-200 transition"
+              aria-label="Очистить весь месяц"
+              data-tooltip="Очистить весь месяц"
+            ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m-9 0 1 15h8l1-15M10 10v7m4-7v7"/></svg><span class="sr-only">Очистить весь месяц</span></button>
+
+            <button
               id="auditLogBtn"
               type="button"
               class="admin-icon-action hidden text-slate-200 transition"
@@ -2048,6 +2125,17 @@ td.shift-comment-cell.has-shift-comment::after {
             <p id="scheduleToolsNote" class="m-0 text-xs text-slate-300"></p>
             <div class="mt-3 flex flex-wrap items-center gap-2"><button id="scheduleToolsSelectAll" type="button" class="schedule-tools-button">Выбрать всех</button><button id="scheduleToolsSelectNone" type="button" class="schedule-tools-button">Снять выбор</button></div>
             <div id="scheduleToolsPeople" class="schedule-tools-people mt-3"></div>
+            <div id="scheduleToolsWarehouse" class="schedule-tools-warehouse hidden">
+              <p class="mt-0 mb-3 text-xs text-slate-300">В обычные дни в дневной смене должно быть минимум 3 грузчика.</p>
+              <label class="schedule-tools-option" for="scheduleToolsTwoLines">
+                <input id="scheduleToolsTwoLines" type="checkbox" />
+                <span>Планируется розлив 2-ух линий?</span>
+              </label>
+              <div id="scheduleToolsTwoLinesDates" class="hidden">
+                <p class="mt-3 mb-0 text-xs text-slate-300">Выберите даты: в эти дни понадобится минимум 5 грузчиков в дневной смене.</p>
+                <div id="scheduleToolsDateGrid" class="schedule-tools-dates"></div>
+              </div>
+            </div>
             <div id="scheduleToolsSummary" class="schedule-tools-summary" role="status" aria-live="polite"></div>
           </div>
           <div class="schedule-tools-foot"><button id="scheduleToolsPreview" type="button" class="schedule-tools-button">Предпросмотр</button><button id="scheduleToolsApply" type="button" class="schedule-tools-button schedule-tools-button-primary" disabled>Применить</button></div>
@@ -2164,6 +2252,11 @@ td.shift-comment-cell.has-shift-comment::after {
           </div>
           <button id="auditLogCloseBtn" type="button" class="timesheet-audit-close" aria-label="Закрыть журнал" title="Закрыть">×</button>
         </header>
+        <label class="timesheet-audit-search-wrap" for="auditLogSearch">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+          <span class="sr-only">Поиск по журналу</span>
+          <input id="auditLogSearch" class="timesheet-audit-search" type="search" placeholder="Имя, фамилия или текст изменения" autocomplete="off" disabled />
+        </label>
         <div id="auditLogList" class="timesheet-audit-list" aria-live="polite"></div>
       </section>
     </div>

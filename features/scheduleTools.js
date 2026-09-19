@@ -68,7 +68,8 @@ function mondayWeekIndex(year, month, index) {
 }
 
 export function planEightHourTemplate({
-  mode, year, month, existingDays, holiday = [], transferredOff = [], group = 0, replaceWorked = false,
+  mode, year, month, existingDays, holiday = [], transferredOff = [], shortDay = [], group = 0,
+  replaceWorked = false, noNight = false,
 }) {
   validateMonth(year, month, existingDays);
   if (mode !== "fiveTwo" && mode !== "alternating") throw new RangeError("Unknown eight-hour template");
@@ -76,7 +77,8 @@ export function planEightHourTemplate({
 
   const targets = existingDays.map((_, index) => {
     if (!isWorkday(year, month, index, holiday, transferredOff)) return OFF;
-    if (mode === "fiveTwo") return DAY_8;
+    if (mode === "fiveTwo") return shortDay?.[index] ? { dayHours: 7, nightHours: 0 } : DAY_8;
+    if (noNight) return DAY_8;
     return (mondayWeekIndex(year, month, index) + group) % 2 === 0 ? DAY_8 : EVENING_8;
   });
   return planTargets(existingDays, targets, replaceWorked);

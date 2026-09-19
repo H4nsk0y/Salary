@@ -47,3 +47,21 @@ test("audit UI renders changed shifts, comments and department calendar marks", 
   assert.match(admin, /employee_changes/);
   assert.match(admin, /calendar_changes/);
 });
+
+test("audit search supports partial names across the full month history", async () => {
+  const [sql, html, admin, db] = await Promise.all([
+    read("supabase-sql/050_search_department_timesheet_audit.sql"),
+    read("admin.html"),
+    read("admin.js"),
+    read("db.js"),
+  ]);
+
+  assert.match(html, /id="auditLogSearch"[^>]*type="search"/);
+  assert.match(admin, /filterAuditEntries\(auditLogEntries, query\)/);
+  assert.match(admin, /setTimeout\(\(\) => void searchAuditLog\(\), 250\)/);
+  assert.match(db, /supabase\.rpc\("owner_search_department_timesheet_audit"/);
+  assert.match(sql, /if not public\.is_owner\(\)/i);
+  assert.match(sql, /position\(v_query in lower\(translate/i);
+  assert.match(sql, /limit least\(greatest\(coalesce\(p_limit, 200\), 1\), 200\)/i);
+  assert.match(sql, /revoke all on function public\.owner_search_department_timesheet_audit[\s\S]*from public, anon/i);
+});

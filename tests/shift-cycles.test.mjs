@@ -71,6 +71,22 @@ test("two operators cover every day without sending a night worker straight to d
     { dayHours: 4, nightHours: 7 });
 });
 
+test("both continuous cycles keep a restricted employee out of night shifts", () => {
+  for (const cycleId of ["dayNight48", "twoDaysTwoNights48"]) {
+    const members = Array.from({ length: 4 }, (_, id) => ({
+      id,
+      noNight: id === 0,
+      days: emptyMonth(),
+    }));
+    const result = planCoveredShiftCycle({ cycleId, members, year: 2026, month: 9 });
+    assert.equal(result.error, null, cycleId);
+    assert.deepEqual(result.gaps, [], cycleId);
+    const restricted = result.plans.find(({ id }) => id === 0);
+    assert.ok(restricted.plan.changes.some(({ to }) => to.dayHours >= 8 && to.nightHours === 0));
+    assert.ok(restricted.plan.changes.every(({ to }) => to.nightHours === 0), cycleId);
+  }
+});
+
 test("fourth operator returns from leave to a day shift and restores the four-person cycle", () => {
   const members = Array.from({ length: 4 }, (_, id) => ({ id, days: emptyMonth() }));
   for (let index = 0; index < 14; index++) members[3].days[index].leaveType = "ОТ";

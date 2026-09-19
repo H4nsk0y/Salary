@@ -217,7 +217,7 @@ export function planCoveredShiftCycle({ cycleId, members, year, month }) {
       members.some((member) => !Array.isArray(member.days) || member.days.length !== dayCount)) {
     throw new RangeError("Expected a complete calendar month");
   }
-  if (operators.length < 4 || operators.length === 4 &&
+  if (operators.length < 4 || operators.some((member) => member.noNight) || operators.length === 4 &&
       operators.some((member) => member.days.some((day) => day?.leaveType))) {
     return planAdaptiveCoverage({ members: operators.map((member) => ({ ...member,
       previousDay: member.previousDay ?? member.previousDays?.at(-1),

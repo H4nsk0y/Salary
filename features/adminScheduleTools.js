@@ -1,6 +1,7 @@
 import { SHIFT_CYCLES, planCoveredShiftCycle } from "./shiftCycles.js";
 import { planEightHourTemplate, planTeamNormFills, planTeamOvertimeReductions } from "./scheduleTools.js";
 import { planBottlingSchedule } from "./bottlingSchedule.js";
+import { enforceDayCoverage } from "./dayCoverage.js";
 
 const TITLES = {
   dayNight48: "День / ночь / 48",
@@ -80,6 +81,10 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
   const previewButton = document.getElementById("scheduleToolsPreview");
   const applyButton = document.getElementById("scheduleToolsApply");
   const closeButton = document.getElementById("scheduleToolsClose");
+  const warehouseOptions = document.getElementById("scheduleToolsWarehouse");
+  const twoLinesToggle = document.getElementById("scheduleToolsTwoLines");
+  const twoLinesDates = document.getElementById("scheduleToolsTwoLinesDates");
+  const dateGrid = document.getElementById("scheduleToolsDateGrid");
   if (!buttons || !modal || !people || !summary || !previewButton || !applyButton) return;
 
   document.body.appendChild(modal);
@@ -92,6 +97,40 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
   let pending = null;
   let operation = 0;
   let returnFocus = null;
+
+  function invalidatePreview() {
+    operation++;
+    pending = null;
+    applyButton.disabled = true;
+  }
+
+  function renderWarehouseDates(context) {
+    if (!dateGrid) return;
+    dateGrid.replaceChildren();
+    const count = new Date(context.year, context.month + 1, 0).getDate();
+    for (let index = 0; index < count; index++) {
+      const dayOfWeek = new Date(context.year, context.month, index + 1).getDay();
+      const unavailable = activeTool === "bottling" &&
+        (dayOfWeek === 0 || dayOfWeek === 6 || Boolean(context.holiday?.[index]));
+      const label = document.createElement("label");
+      label.className = "schedule-tools-date";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.dataset.dayIndex = String(index);
+      input.disabled = unavailable;
+      const weekday = new Intl.DateTimeFormat("ru-RU", { weekday: "short" })
+        .format(new Date(context.year, context.month, index + 1));
+      const caption = document.createElement("span");
+      caption.textContent = `${index + 1} ${weekday}`;
+      if (unavailable) {
+        label.classList.add("opacity-40");
+        label.title = "Выходной или официальный праздник";
+      }
+      input.addEventListener("change", invalidatePreview);
+      label.append(input, caption);
+      dateGrid.appendChild(label);
+    }
+  }
 
   function close() {
     operation++;
@@ -110,11 +149,18 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
     returnFocus = trigger;
     document.getElementById("scheduleToolsTitle").textContent = TITLES[tool];
     document.getElementById("scheduleToolsNote").textContent = tool === "bottling"
-      ? "Выберите от двух до четырёх операторов. Будние день и ночь будут закрыты доступными людьми; праздники пропускаются. Заполненные дни и коды отсутствия не заменяются."
+      ? "Выберите не меньше двух сотрудников. Будние день и ночь будут закрыты доступными людьми; праздники пропускаются. Заполненные дни и коды отсутствия не заменяются."
       : "Выберите операторов. При четырёх доступных работает выбранный цикл; при трёх — день/ночь/отсыпной, при двух — постоянные день и ночь. Коды отсутствия и заполненные дни не заменяются.";
     summary.textContent = "";
     applyButton.disabled = true;
     people.replaceChildren();
+    const warehouseStaffing = context.departmentKey === "warehouse" &&
+      (tool === "bottling" || Boolean(SHIFT_CYCLES[tool]));
+    warehouseOptions?.classList.toggle("hidden", !warehouseStaffing);
+    if (twoLinesToggle) twoLinesToggle.checked = false;
+    twoLinesDates?.classList.add("hidden");
+    if (warehouseStaffing) renderWarehouseDates(context);
+    else dateGrid?.replaceChildren();
 
     for (const state of context.teamStates) {
       const row = document.createElement("label");
@@ -127,7 +173,9 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
       checkbox.checked = true;
       checkbox.disabled = isLeader;
       const name = document.createElement("span");
-      name.textContent = `${state.name}${state.position ? ` · ${state.position}` : ""}${isLeader ? " · руководитель, 5/2" : ""}`;
+      const dayOnly = context.noNightShiftUserIds?.has(id) === true;
+      name.textContent = `${state.name}${state.position ? ` · ${state.position}` : ""}` +
+        `${isLeader ? " · руководитель, 5/2" : dayOnly ? " · только день" : ""}`;
       const deficit = document.createElement("span");
       deficit.className = "schedule-tools-deficit";
       if (!isLeader) deficit.textContent = selectedHoursLabel(tool, state, context.personalNorm(state));
@@ -135,7 +183,7 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
         deficit.hidden = !deficit.textContent || !checkbox.checked || isLeader;
       };
       checkbox.addEventListener("change", () => {
-        operation++; pending = null; applyButton.disabled = true;
+        invalidatePreview();
         updateDeficit();
       });
       row.append(checkbox, name, deficit);
@@ -181,28 +229,60 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
       const teamMembers = context.teamStates.map((state) => {
         const id = String(state.userId);
         const selection = selected.find((row) => row.id === id);
-        return { id, name: state.name, days: daysForState(state), norm: context.personalNorm(state),
+        return { id, name: state.name, position: state.position ?? "",
+          noNight: context.noNightShiftUserIds?.has(id) === true,
+          days: daysForState(state), norm: context.personalNorm(state),
           selected: Boolean(selection?.checked) && id !== String(leaderId), excluded: id === String(leaderId),
           previousDay: previous.get(id)?.at(-1) };
       });
       const teamPlans = new Map((activeTool === "fillNorm" ? planTeamNormFills(teamMembers, context) :
         activeTool === "reduceOvertime" ? planTeamOvertimeReductions(teamMembers) : [])
         .map(({ id, plan }) => [id, plan]));
+      const selectedScheduleMembers = teamMembers.filter((member) => member.selected);
+      const warehouseStaffing = context.departmentKey === "warehouse" &&
+        (activeTool === "bottling" || Boolean(SHIFT_CYCLES[activeTool]));
+      const boostedDayIndices = warehouseStaffing && twoLinesToggle?.checked
+        ? Array.from(dateGrid?.querySelectorAll("input:checked") ?? [], (input) => Number(input.dataset.dayIndex))
+        : [];
+      if (warehouseStaffing && twoLinesToggle?.checked && !boostedDayIndices.length) {
+        errors.push("Выберите хотя бы одну дату розлива двух линий.");
+      }
+      const coverageEligibleIds = warehouseStaffing
+        ? selectedScheduleMembers.filter((member) =>
+          member.position === "loader" || /грузчик/i.test(member.position)).map((member) => member.id)
+        : undefined;
       let cyclePlans = new Map();
       let cycleStartIndex = null;
       if (SHIFT_CYCLES[activeTool]) {
-        const coverage = planCoveredShiftCycle({ cycleId: activeTool, year: context.year, month: context.month,
-          members: teamMembers.filter((member) => member.selected).map((member) => ({
+        let coverage = planCoveredShiftCycle({ cycleId: activeTool, year: context.year, month: context.month,
+          members: selectedScheduleMembers.map((member) => ({
             ...member, previousDays: previous.get(member.id),
           })) });
         cycleStartIndex = coverage.startIndex ?? null;
+        if (!coverage.error && !coverage.gaps.length && warehouseStaffing) {
+          const staffed = enforceDayCoverage({
+            members: selectedScheduleMembers,
+            plans: coverage.plans,
+            minimum: 3,
+            boosted: 5,
+            boostedIndices: boostedDayIndices,
+            eligibleIds: coverageEligibleIds,
+            startIndex: cycleStartIndex ?? 0,
+          });
+          if (staffed.error) errors.push(staffed.error);
+          else coverage = { ...coverage, plans: staffed.plans };
+        }
         if (coverage.error) errors.push(coverage.error);
         if (coverage.gaps.length) errors.push(`На этих датах после расчёта не осталось оператора на дневной или ночной смене: ${coverage.gaps.slice(0, 12).map(({ index, kind }) =>
           `${index + 1}-е (${kind === "day" ? "день" : "ночь"})`).join(", ")}${coverage.gaps.length > 12 ? "…" : ""}. Проверьте отсутствие сотрудников и уже заполненные смены.`);
         cyclePlans = new Map(coverage.plans.map(({ id, plan }) => [id, plan]));
       } else if (activeTool === "bottling") {
         const coverage = planBottlingSchedule({ year: context.year, month: context.month, holiday: context.holiday,
-          members: teamMembers.filter((member) => member.selected).map((member) => ({
+          minimumDayCoverage: warehouseStaffing ? 3 : 1,
+          boostedDayCoverage: warehouseStaffing ? 5 : 1,
+          boostedDayIndices,
+          coverageEligibleIds,
+          members: selectedScheduleMembers.map((member) => ({
             ...member, previousDay: previous.get(member.id)?.at(-1),
           })) });
         cycleStartIndex = coverage.startIndex;
@@ -220,7 +300,8 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
           if (!plan) continue;
         } else if (activeTool === "fiveTwo" || activeTool === "alternating") {
           plan = planEightHourTemplate({ mode: activeTool, year: context.year, month: context.month, existingDays,
-            holiday: context.holiday, transferredOff: context.transferredOff, group: order % 2 });
+            holiday: context.holiday, transferredOff: context.transferredOff, group: order % 2,
+            noNight: context.noNightShiftUserIds?.has(id) === true });
         } else if (activeTool === "fillNorm") {
           plan = teamPlans.get(id);
           if (plan.shortage) errors.push(`${state.name}: недостаточно свободных дней для добавления смен.`);
@@ -240,7 +321,7 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
       if (leaderState) {
         const plan = planEightHourTemplate({ mode: "fiveTwo", year: context.year, month: context.month,
           existingDays: daysForState(leaderState), holiday: context.holiday,
-          transferredOff: context.transferredOff, replaceWorked: true });
+          transferredOff: context.transferredOff, shortDay: context.shortDay, replaceWorked: true });
         result.push({ state: leaderState, changes: plan.changes });
         if (activeTool === "fillNorm" || activeTool === "reduceOvertime") {
           if (plan.changes.length) lines.push(formatScheduleChangeReport(leaderState, plan.changes, context.personalNorm(leaderState)));
@@ -300,16 +381,16 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
       const deficit = row.querySelector(".schedule-tools-deficit");
       deficit.hidden = !deficit.textContent || row.querySelector("input").disabled;
     });
-    operation++;
-    pending = null;
-    applyButton.disabled = true;
+    invalidatePreview();
   });
   document.getElementById("scheduleToolsSelectNone")?.addEventListener("click", () => {
     people.querySelectorAll("input:not(:disabled)").forEach((input) => { input.checked = false; });
     people.querySelectorAll(".schedule-tools-deficit").forEach((deficit) => { deficit.hidden = true; });
-    operation++;
-    pending = null;
-    applyButton.disabled = true;
+    invalidatePreview();
+  });
+  twoLinesToggle?.addEventListener("change", () => {
+    twoLinesDates?.classList.toggle("hidden", !twoLinesToggle.checked);
+    invalidatePreview();
   });
   previewButton.addEventListener("click", preview);
   applyButton.addEventListener("click", apply);

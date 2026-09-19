@@ -28,6 +28,40 @@ test("confirmed leader converts existing work to five-two but preserves absence"
   assert.ok(!plan.changes.some(({ index }) => index === 5));
 });
 
+test("confirmed leader receives seven hours on a shortened workday", () => {
+  const shortDay = Array(31).fill(false);
+  shortDay[0] = true;
+  const plan = planEightHourTemplate({ mode: "fiveTwo", year: 2026, month: 9,
+    existingDays: days(31), shortDay, replaceWorked: true });
+  assert.deepEqual(plan.changes.find(({ index }) => index === 0)?.to, { dayHours: 7, nightHours: 0 });
+  assert.deepEqual(plan.changes.find(({ index }) => index === 1)?.to, { dayHours: 8, nightHours: 0 });
+});
+
+test("night restriction keeps the alternating template entirely in daytime", () => {
+  const plan = planEightHourTemplate({
+    mode: "alternating",
+    year: 2026,
+    month: 9,
+    existingDays: days(31),
+    group: 1,
+    noNight: true,
+  });
+  assert.ok(plan.changes.length > 0);
+  assert.ok(plan.changes.every(({ to }) => to.dayHours === 8 && to.nightHours === 0));
+});
+
+test("fractional personal norms still add only full eight or eleven hour shifts", () => {
+  const plan = planFillToNorm({
+    existingDays: days(31),
+    personalNorm: 151.2,
+    previousDay: { dayHours: 0, nightHours: 0 },
+    year: 2026,
+    month: 9,
+  });
+  assert.equal(plan.shortage, 0);
+  assert.ok(plan.changes.every(({ to }) => [8, 11].includes(to.dayHours) && to.nightHours === 0));
+});
+
 test("alternating eight-hour groups swap day and evening each Monday", () => {
   const first = planEightHourTemplate({ mode: "alternating", year: 2026, month: 9, existingDays: days(31), group: 0 });
   const second = planEightHourTemplate({ mode: "alternating", year: 2026, month: 9, existingDays: days(31), group: 1 });

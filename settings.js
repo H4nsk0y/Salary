@@ -29,12 +29,17 @@ import {
   requestMoneyPin,
   requestVerifiedMoneyPin,
 } from "./moneyPrivacy.js";
+import {
+  isTimesheetAutosaveDisabled,
+  setTimesheetAutosaveDisabled,
+} from "./features/autosavePreference.js";
 
 const statusPill = document.getElementById("statusPill");
 const errorBox = document.getElementById("errorBox");
 const hideMoneyToggle = document.getElementById("hideMoneyToggle");
 const autoCollapseTablePanelsToggle = document.getElementById("autoCollapseTablePanelsToggle");
 const hideCalculatorNavToggle = document.getElementById("hideCalculatorNavToggle");
+const disableTimesheetAutosaveToggle = document.getElementById("disableTimesheetAutosaveToggle");
 const screenWakeToggle = document.getElementById("screenWakeToggle");
 const screenWakeHint = document.getElementById("screenWakeHint");
 const egaisFileRemindersRow = document.getElementById("egaisFileRemindersRow");
@@ -90,6 +95,10 @@ function syncToggle() {
 
   if (hideCalculatorNavToggle) {
     hideCalculatorNavToggle.checked = pendingSettings.hide_calculator_nav === true;
+  }
+
+  if (disableTimesheetAutosaveToggle) {
+    disableTimesheetAutosaveToggle.checked = isTimesheetAutosaveDisabled();
   }
 
   egaisFileRemindersRow?.classList.toggle("hidden", !canUseEgaisFileReminders);
@@ -533,6 +542,16 @@ autoCollapseTablePanelsToggle?.addEventListener("change", () => {
 
 hideCalculatorNavToggle?.addEventListener("change", () => {
   handleHideCalculatorNavToggleChange();
+});
+
+disableTimesheetAutosaveToggle?.addEventListener("change", () => {
+  setTimesheetAutosaveDisabled(disableTimesheetAutosaveToggle.checked);
+  setStatus(
+    disableTimesheetAutosaveToggle.checked
+      ? "Автосохранение отключено на этом устройстве"
+      : "Автосохранение включено",
+    "ok"
+  );
 });
 
 screenWakeToggle?.addEventListener("change", () => {

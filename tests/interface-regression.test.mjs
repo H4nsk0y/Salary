@@ -34,7 +34,8 @@ test("schedule sends users with department access to the shared timesheet", asyn
   assert.match(script, /timesheetLink\.textContent = "Табель отдела"/);
   assert.match(script, /admin\.html\?department=/);
   assert.match(script, /profile\?\.role === "owner"/);
-  assert.match(script, /membershipDepartmentKey === "egais"/);
+  assert.match(script, /managedDepartment\?\.key/);
+  assert.doesNotMatch(script, /membershipDepartmentKey === "egais"/);
 });
 
 test("personal schedule notifications contain only the new state", async () => {

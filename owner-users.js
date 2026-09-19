@@ -7,9 +7,11 @@ import {
   ownerListDepartmentInvites,
   ownerListUsers,
   ownerListDepartmentLeaders,
+  ownerListUserNightShiftRestrictions,
   ownerRevokeDepartmentInvite,
   ownerSetDepartmentEditor,
   ownerSetDepartmentLeader,
+  ownerSetUserNightShiftRestriction,
   ownerSetUserDepartment,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
@@ -53,6 +55,8 @@ let departments = [];
 let users = [];
 let leadersByDepartment = new Map();
 let leaderControlsReady = false;
+let nightRestrictionsReady = false;
+let noNightShiftUserIds = new Set();
 let filteredUsers = [];
 let invites = [];
 let isLoading = false;
@@ -576,6 +580,7 @@ function createUserCard(row) {
   const editorNames = normalizeArray(row.editor_department_names);
   const leaderRow = leadersByDepartment.get(row.department_key);
   const isLeader = leaderRow?.user_id === row.user_id;
+  const noNightShifts = noNightShiftUserIds.has(String(row.user_id));
   const primaryEditor = isLeader ? leaderRow.is_manual_editor : isEditorInPrimaryDepartment(row);
   const complete = isProfileComplete(row);
   const missingFields = normalizeArray(row.missing_fields);
@@ -619,6 +624,7 @@ function createUserCard(row) {
     badges.appendChild(createBadge(`Редактор: ${editorNames.join(", ")}`, "indigo"));
   }
   if (isLeader) badges.appendChild(createBadge("Руководитель отдела", "ok"));
+  if (noNightShifts) badges.appendChild(createBadge("Без ночных смен", "warn"));
 
   body.append(nameRow, meta, email, badges);
   top.append(createAvatar(row, displayName), body);
@@ -732,6 +738,34 @@ function createUserCard(row) {
   });
   actionStack.appendChild(leaderBtn);
 
+  const nightRestrictionBtn = document.createElement("button");
+  nightRestrictionBtn.type = "button";
+  nightRestrictionBtn.className = noNightShifts
+    ? "rounded-2xl bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-200 ring-1 ring-amber-400/20 transition hover:bg-amber-500/15 disabled:opacity-50"
+    : "rounded-2xl bg-violet-500/10 px-4 py-2.5 text-sm font-semibold text-violet-200 ring-1 ring-violet-400/20 transition hover:bg-violet-500/15 disabled:opacity-50";
+  nightRestrictionBtn.textContent = noNightShifts ? "Разрешить ночные смены" : "Запретить ночные смены";
+  nightRestrictionBtn.disabled = isBusy || !nightRestrictionsReady;
+  nightRestrictionBtn.title = nightRestrictionsReady
+    ? ""
+    : "Сначала примените SQL 049_night_shift_restrictions.sql";
+  nightRestrictionBtn.addEventListener("click", async () => {
+    const next = !noNightShifts;
+    const confirmed = await confirmDialog({
+      title: next ? "Запретить ночные смены?" : "Снять запрет ночных смен?",
+      message: next
+        ? `Автоматические инструменты будут ставить ${displayName} только в дневные смены. Уже заполненные ночи не изменятся.`
+        : `${displayName} снова сможет попадать в дневные и ночные смены при автоматическом заполнении.`,
+      confirmText: next ? "Запретить" : "Снять запрет",
+      cancelText: "Отмена",
+      tone: next ? "warning" : "info",
+    });
+    if (!confirmed) return;
+    await runUserAction(row.user_id,
+      () => ownerSetUserNightShiftRestriction(row.user_id, next),
+      next ? "Ночные смены запрещены" : "Запрет ночных смен снят");
+  });
+  actionStack.appendChild(nightRestrictionBtn);
+
   const uidBtn = document.createElement("button");
   uidBtn.type = "button";
   uidBtn.className = "rounded-2xl bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 ring-1 ring-white/15 transition hover:bg-white/10";
@@ -807,6 +841,9 @@ function mapError(error) {
   if (message.includes("USER_NOT_IN_DEPARTMENT")) return "Сначала добавьте сотрудника в этот отдел.";
   if (message.includes("DEPARTMENT_LEADER_ALREADY_ASSIGNED")) return "В отделе уже назначен руководитель. Сначала снимите его.";
   if (message.includes("DEPARTMENT_LEADER_POSITION_RESERVED")) return "Эта должность уже закреплена за подтвержденным руководителем отдела.";
+  if (/night_shift_restriction|user_schedule_constraints/i.test(message)) {
+    return "Для ограничений ночных смен нужно запустить supabase-sql/049_night_shift_restrictions.sql в Supabase SQL Editor.";
+  }
   if (message.includes("INVITE_NOT_FOUND")) return "Приглашение не найдено.";
   if (message.includes("INVITE_REVOKED")) return "Приглашение уже отозвано.";
   if (message.includes("INVITE_EXPIRED")) return "Срок приглашения истек.";
@@ -852,18 +889,29 @@ async function loadUsers(options = {}) {
       setError(null);
     }
 
-    const [loadedUsers, leaders] = await Promise.all([
+    const [loadedUsers, leaders, nightRestrictions] = await Promise.all([
       ownerListUsers(),
       ownerListDepartmentLeaders().catch((error) => {
         if (/owner_list_department_leaders|PGRST202|schema cache/i.test(String(error?.message || ""))) return null;
+        throw error;
+      }),
+      ownerListUserNightShiftRestrictions().catch((error) => {
+        if (/night_shift_restriction|PGRST202|schema cache/i.test(String(error?.message || ""))) return null;
         throw error;
       }),
     ]);
     users = loadedUsers;
     leaderControlsReady = leaders !== null;
     leadersByDepartment = new Map((leaders ?? []).map((leader) => [leader.department_key, leader]));
+    nightRestrictionsReady = nightRestrictions !== null;
+    noNightShiftUserIds = new Set((nightRestrictions ?? [])
+      .filter((row) => row.no_night_shifts !== false)
+      .map((row) => String(row.user_id)));
     if (!leaderControlsReady) {
       setError("Для назначения руководителей запустите supabase-sql/047_department_leaders.sql в Supabase SQL Editor.");
+    }
+    if (!nightRestrictionsReady) {
+      setError("Для ограничений ночных смен запустите supabase-sql/049_night_shift_restrictions.sql в Supabase SQL Editor.");
     }
     renderUsers();
 

@@ -4,6 +4,7 @@ import { requireSession, signOut } from "./auth.js";
 import { getMyProfile, getMyDepartmentMembershipKey, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, saveMyTimesheetActual, saveTimesheet } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { setUiStatus } from "./uiStatus.js";
+import { isTimesheetAutosaveDisabled } from "./features/autosavePreference.js";
 import { createSerialTaskQueue } from "./asyncTasks.js";
 import {
   normalizeShiftComments,
@@ -2880,6 +2881,11 @@ function scheduleSave() {
   if (!monthDataLoaded) return;
   markDirty();
   if (timesheetSaveTimer) clearTimeout(timesheetSaveTimer);
+  if (isTimesheetAutosaveDisabled()) {
+    timesheetSaveTimer = null;
+    setSaveStatus("Не сохранено — нажмите кнопку сохранения", "busy");
+    return;
+  }
   timesheetSaveTimer = setTimeout(async () => {
     const json = JSON.stringify(currentPayload());
     if (json === lastSavedJSON) {
@@ -3848,11 +3854,7 @@ updateUrlForMonth();
   applyPersonalTimesheetEditability();
   applyAutoCollapsedPanels(profile);
 
-  const departmentTableAccess = managedDepartment ?? (
-    membershipDepartmentKey === "egais"
-      ? { key: "egais", name: "Отдел ЕГАИС", readOnly: true }
-      : null
-  );
+  const departmentTableAccess = managedDepartment ?? null;
 
   if (departmentTableAccess) {
   adminLink?.classList.remove("hidden");

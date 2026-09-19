@@ -4,16 +4,16 @@
 import { requireSession, signOut } from "./auth.js";
 import {
   getMyManagedDepartment,
-  getMyDepartmentMembershipKey,
   getMyProfile,
   getDepartmentByKey,
-  listEgaisDepartmentTimesheetView,
   listManagedDepartmentMembers,
   listDepartmentLeader,
+  listManagedDepartmentNightShiftRestrictions,
   managedListTimesheetsBefore,
   managedLoadTimesheet,
   managedSaveManyTimesheets,
   ownerListDepartmentTimesheetAudit,
+  ownerSearchDepartmentTimesheetAudit,
   removeManagedDepartmentMember,
   notifyPersonalTimesheetChanges,
   ownerCreateDepartmentInvite,
@@ -42,6 +42,8 @@ import {
   isMatrixCellInBounds,
 } from "./features/matrixSelection.js";
 import { initAdminScheduleTools } from "./features/adminScheduleTools.js";
+import { isTimesheetAutosaveDisabled } from "./features/autosavePreference.js";
+import { filterAuditEntries } from "./features/auditSearch.js";
 
 document.body.classList.add("is-loaded");
 
@@ -72,6 +74,7 @@ const logoutBtn = document.getElementById("logoutBtn");
 const saveBtn = document.getElementById("saveBtn");
 const saveSilentBtn = document.getElementById("saveSilentBtn");
 const reloadBtn = document.getElementById("reloadBtn");
+const clearMonthBtn = document.getElementById("clearMonthBtn");
 const saveStatus = document.getElementById("saveStatus");
 
 const monthSelect = document.getElementById("monthSelect");
@@ -99,6 +102,7 @@ const auditLogModal = document.getElementById("auditLogModal");
 const auditLogCloseBtn = document.getElementById("auditLogCloseBtn");
 const auditLogPeriod = document.getElementById("auditLogPeriod");
 const auditLogList = document.getElementById("auditLogList");
+const auditLogSearch = document.getElementById("auditLogSearch");
 
 const backToTableLink = document.getElementById("backToTableLink");
 const pageParams = new URLSearchParams(window.location.search);
@@ -156,6 +160,9 @@ let saveTimer = null;
 const runTimesheetTask = createSerialTaskQueue();
 let monthTransitionPending = false;
 let monthDataLoaded = false;
+let auditLogEntries = [];
+let auditLogSearchTimer = null;
+let auditLogRequest = 0;
 
 function setError(msg) {
   if (!msg) {
@@ -288,17 +295,65 @@ function renderAuditEntry(entry) {
   return article;
 }
 
+function renderAuditEntries(entries, query = "") {
+  if (!auditLogList) return;
+  auditLogList.replaceChildren();
+  if (!entries.length) {
+    const empty = document.createElement("div");
+    empty.className = "timesheet-audit-empty";
+    empty.textContent = String(query).trim()
+      ? "По вашему запросу ничего не найдено."
+      : "В этом месяце изменений пока нет.";
+    auditLogList.append(empty);
+    return;
+  }
+  auditLogList.append(...entries.map(renderAuditEntry));
+}
+
+async function searchAuditLog() {
+  const query = String(auditLogSearch?.value || "").trim();
+  renderAuditEntries(filterAuditEntries(auditLogEntries, query), query);
+  if (query.length < 2 || !managedDepartment?.key) return;
+
+  const request = ++auditLogRequest;
+  auditLogSearch?.setAttribute("aria-busy", "true");
+  try {
+    const entries = await ownerSearchDepartmentTimesheetAudit({
+      departmentKey: managedDepartment.key,
+      year,
+      month,
+      query,
+      limit: 200,
+    });
+    if (request !== auditLogRequest || query !== String(auditLogSearch?.value || "").trim()) return;
+    renderAuditEntries(entries, query);
+  } catch (error) {
+    if (request !== auditLogRequest) return;
+    if (!/owner_search_department_timesheet_audit|schema cache|PGRST202/i.test(String(error?.message || ""))) {
+      setError(error?.message || "Не удалось выполнить поиск по журналу.");
+    }
+  } finally {
+    if (request === auditLogRequest) auditLogSearch?.removeAttribute("aria-busy");
+  }
+}
+
 async function openAuditLog() {
   if (currentProfile?.role !== "owner" || !managedDepartment?.key) return;
   auditLogModal?.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   auditLogPeriod.textContent = `${monthNames[month]} ${year} • ${managedDepartment.name || managedDepartment.key}`;
+  auditLogEntries = [];
+  if (auditLogSearch) {
+    auditLogSearch.value = "";
+    auditLogSearch.disabled = true;
+    auditLogSearch.removeAttribute("aria-busy");
+  }
   auditLogList.replaceChildren();
   const loading = document.createElement("div");
   loading.className = "timesheet-audit-empty";
   loading.textContent = "Загружаю журнал…";
   auditLogList.append(loading);
-  auditLogCloseBtn?.focus();
+  const request = ++auditLogRequest;
 
   try {
     const entries = await ownerListDepartmentTimesheetAudit({
@@ -307,16 +362,15 @@ async function openAuditLog() {
       month,
       limit: 50,
     });
-    auditLogList.replaceChildren();
-    if (!entries.length) {
-      const empty = document.createElement("div");
-      empty.className = "timesheet-audit-empty";
-      empty.textContent = "В этом месяце изменений пока нет.";
-      auditLogList.append(empty);
-      return;
+    if (request !== auditLogRequest) return;
+    auditLogEntries = entries;
+    renderAuditEntries(entries);
+    if (auditLogSearch) {
+      auditLogSearch.disabled = false;
+      auditLogSearch.focus();
     }
-    auditLogList.append(...entries.map(renderAuditEntry));
   } catch (error) {
+    if (request !== auditLogRequest) return;
     const empty = document.createElement("div");
     empty.className = "timesheet-audit-empty";
     empty.textContent = /owner_list_department_timesheet_audit|schema cache|PGRST202/i.test(String(error?.message || ""))
@@ -327,6 +381,9 @@ async function openAuditLog() {
 }
 
 function closeAuditLog() {
+  auditLogRequest++;
+  if (auditLogSearchTimer) clearTimeout(auditLogSearchTimer);
+  auditLogSearchTimer = null;
   auditLogModal?.classList.add("hidden");
   document.body.style.overflow = "";
   auditLogBtn?.focus();
@@ -1707,6 +1764,45 @@ function clearSelectedMatrixCells() {
   for (const state of changedStates) scheduleSave({ state });
 }
 
+async function clearEntireMonth() {
+  if (departmentViewOnly || !monthDataLoaded) return;
+  const confirmed = await confirmDialog({
+    title: "Очистить весь месяц?",
+    message: `Будут удалены смены, коды отсутствия и комментарии всех сотрудников за ${monthNames[month].toLowerCase()} ${year}. Праздники, переносы и сокращённые дни останутся.`,
+    confirmText: "Очистить месяц",
+    cancelText: "Отмена",
+    tone: "danger",
+  });
+  if (!confirmed) return;
+
+  const changedStates = new Set();
+  for (const state of teamStates) {
+    for (let index = 0; index < daysInMonth; index++) {
+      if (state.dayInputs[index]?.disabled) continue;
+      const hasValue = Boolean(state.dayHours[index] || state.nightHours[index] ||
+        state.leaveType[index] || String(state.shiftComments[index] || "").trim());
+      if (!hasValue) continue;
+      state.dayHours[index] = 0;
+      state.nightHours[index] = 0;
+      state.leaveType[index] = null;
+      state.shiftComments[index] = "";
+      changedStates.add(state);
+    }
+  }
+  if (!changedStates.size) {
+    setSaveStatus("Месяц уже пуст", "ok");
+    return;
+  }
+  applyStateToDom();
+  for (const state of changedStates) scheduleSave({ state });
+  setSaveStatus(
+    isTimesheetAutosaveDisabled()
+      ? "Месяц очищен — сохраните изменения вручную"
+      : "Месяц очищен, сохраняю…",
+    "busy"
+  );
+}
+
 function handleMatrixSelectionKeyDown(event) {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
 
@@ -2837,6 +2933,12 @@ function scheduleSave({ state = null, shared = false } = {}) {
   markDirty({ state, shared });
   if (saveTimer) clearTimeout(saveTimer);
 
+  if (isTimesheetAutosaveDisabled()) {
+    saveTimer = null;
+    setSaveStatus("Не сохранено — нажмите кнопку сохранения", "busy");
+    return;
+  }
+
   saveTimer = setTimeout(async () => {
     const nextSignature = currentSignature();
     if (nextSignature === lastSavedSignature) {
@@ -2875,10 +2977,7 @@ async function resolveManagedDepartment() {
     return ownerDepartment;
   }
 
-  const [managedDepartment, membershipDepartmentKey] = await Promise.all([
-    getMyManagedDepartment(),
-    getMyDepartmentMembershipKey(),
-  ]);
+  const managedDepartment = await getMyManagedDepartment();
 
   if (backToTableLink) {
     backToTableLink.href = "table.html";
@@ -2886,13 +2985,6 @@ async function resolveManagedDepartment() {
   }
 
   if (managedDepartment) return managedDepartment;
-
-  if (requestedDepartmentKey === "egais" && membershipDepartmentKey === "egais") {
-    const egaisDepartment = await getDepartmentByKey("egais");
-    if (!egaisDepartment) throw new Error("Отдел ЕГАИС не найден.");
-    departmentViewOnly = true;
-    return egaisDepartment;
-  }
 
   return null;
 }
@@ -2922,8 +3014,22 @@ function applyDepartmentViewOnlyUi() {
 async function setupScheduleTools() {
   if (departmentViewOnly) return;
   let leaderId;
+  let noNightShiftUserIds = new Set();
   try {
-    leaderId = await listDepartmentLeader(managedDepartment.key);
+    const [loadedLeaderId, restrictions] = await Promise.all([
+      listDepartmentLeader(managedDepartment.key),
+      listManagedDepartmentNightShiftRestrictions(managedDepartment.key).catch((error) => {
+        if (/night_shift_restriction|PGRST202|schema cache/i.test(String(error?.message || ""))) return null;
+        throw error;
+      }),
+    ]);
+    leaderId = loadedLeaderId;
+    noNightShiftUserIds = new Set((restrictions ?? [])
+      .filter((row) => row.no_night_shifts !== false)
+      .map((row) => String(row.user_id)));
+    if (restrictions === null) {
+      setError("Для ограничений ночных смен нужно запустить supabase-sql/049_night_shift_restrictions.sql.");
+    }
   } catch (error) {
     setError(/list_department_leader|PGRST202|schema cache/i.test(String(error?.message || ""))
       ? "Для инструментов графика нужно запустить supabase-sql/047_department_leaders.sql."
@@ -2941,6 +3047,9 @@ async function setupScheduleTools() {
       year, month, teamStates,
       holiday: sharedHoliday,
       transferredOff: sharedTransferredOff,
+      shortDay: sharedShortDay,
+      departmentKey: managedDepartment?.key ?? "",
+      noNightShiftUserIds,
       personalNorm: (state) => personalNormHours(state).personalNorm,
     }),
     signature: currentSignature,
@@ -3197,8 +3306,20 @@ saveSilentBtn?.addEventListener("click", async () => {
   await doSaveAll({ notify: false });
 });
 
+clearMonthBtn?.addEventListener("click", () => void clearEntireMonth());
+
 auditLogBtn?.addEventListener("click", openAuditLog);
 auditLogCloseBtn?.addEventListener("click", closeAuditLog);
+auditLogSearch?.addEventListener("input", () => {
+  if (auditLogSearchTimer) clearTimeout(auditLogSearchTimer);
+  auditLogSearch.removeAttribute("aria-busy");
+  const query = String(auditLogSearch.value || "").trim();
+  renderAuditEntries(filterAuditEntries(auditLogEntries, query), query);
+  auditLogRequest++;
+  if (query.length >= 2) {
+    auditLogSearchTimer = setTimeout(() => void searchAuditLog(), 250);
+  }
+});
 auditLogModal?.addEventListener("click", (event) => {
   if (event.target === auditLogModal) closeAuditLog();
 });

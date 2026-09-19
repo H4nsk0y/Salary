@@ -858,6 +858,31 @@ export async function ownerListDepartmentTimesheetAudit({
   return data ?? [];
 }
 
+export async function ownerSearchDepartmentTimesheetAudit({
+  departmentKey,
+  year,
+  month,
+  query,
+  limit = 200,
+} = {}) {
+  const key = String(departmentKey ?? "").trim();
+  const searchQuery = String(query ?? "").trim();
+  const normalized = assertValidYearMonth(year, month);
+  if (!key) throw new Error("Не указан отдел.");
+  if (!searchQuery) return ownerListDepartmentTimesheetAudit({ departmentKey: key, year, month, limit });
+
+  const { data, error } = await supabase.rpc("owner_search_department_timesheet_audit", {
+    p_department_key: key,
+    p_year: normalized.year,
+    p_month: normalized.month,
+    p_query: searchQuery,
+    p_limit: Math.min(Math.max(Number(limit) || 200, 1), 200),
+  });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 function isMissingNotificationReadAtColumnError(error) {
   const text = [
     error?.message,
@@ -1484,6 +1509,28 @@ export async function ownerSetDepartmentLeader(departmentKey, userId, isLeader) 
 
 export async function ownerListDepartmentLeaders() {
   const { data, error } = await supabase.rpc("owner_list_department_leaders");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function ownerSetUserNightShiftRestriction(userId, forbidden) {
+  const { error } = await supabase.rpc("owner_set_user_night_shift_restriction", {
+    p_user_id: String(userId ?? "").trim(),
+    p_forbidden: Boolean(forbidden),
+  });
+  if (error) throw error;
+}
+
+export async function ownerListUserNightShiftRestrictions() {
+  const { data, error } = await supabase.rpc("owner_list_user_night_shift_restrictions");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listManagedDepartmentNightShiftRestrictions(departmentKey) {
+  const { data, error } = await supabase.rpc("list_managed_department_night_shift_restrictions", {
+    p_department_key: String(departmentKey ?? "").trim(),
+  });
   if (error) throw error;
   return data ?? [];
 }

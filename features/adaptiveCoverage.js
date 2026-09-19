@@ -170,10 +170,12 @@ export function planAdaptiveCoverage({ members, year, month, weekdaysOnly = fals
         !node.working[person][index]?.leaveType &&
         (!node.working[person][index]?.locked || isActive(node.working[person][index])));
       if (available.length < 2) continue;
-      const continuingTwoNightCycle = cycleId === "twoDaysTwoNights48" && available.length === 4 &&
+      const strictTwoNightCycle = cycleId === "twoDaysTwoNights48" && members.every((member) => !member.noNight);
+      const continuingTwoNightCycle = strictTwoNightCycle && available.length === 4 &&
         node.phases && node.phaseStart !== null;
       for (const dayPerson of available) for (const nightPerson of available) {
         if (dayPerson === nightPerson) continue;
+        if (members[nightPerson]?.noNight) continue;
         if (continuingTwoNightCycle) {
           const expected = (person) => TWO_DAYS_TWO_NIGHTS[(node.phases[person] + index - node.phaseStart) % 8];
           if (expected(dayPerson) !== DAY || ![NIGHT, SECOND_NIGHT].includes(expected(nightPerson))) continue;
@@ -182,7 +184,7 @@ export function planAdaptiveCoverage({ members, year, month, weekdaysOnly = fals
         if (!pair) continue;
         const next = applyPair(members, node, index, dayPerson, nightPerson, pair.nightTarget);
         if (!next) continue;
-        if (cycleId === "twoDaysTwoNights48" && available.length === 4 && !continuingTwoNightCycle) {
+        if (strictTwoNightCycle && available.length === 4 && !continuingTwoNightCycle) {
           const others = available.filter((person) => person !== dayPerson && person !== nightPerson);
           others.sort((a, b) => Number(startsNight(previousFor(members, node, b, index))) -
             Number(startsNight(previousFor(members, node, a, index))));
@@ -205,8 +207,11 @@ export function planAdaptiveCoverage({ members, year, month, weekdaysOnly = fals
     }
     if (!expanded.length) {
       const eligible = members.filter((member) => !member.days[index]?.leaveType).length;
+      const nightEligible = members.filter((member) => !member.noNight && !member.days[index]?.leaveType).length;
       return { plans: [], gaps: [], startIndex,
-        error: `${index + 1}-го числа доступно ${operatorCount(eligible)}; не получается закрыть день и ночь без выхода из ночи в день или изменения уже заполненных ячеек.` };
+        error: eligible > 0 && nightEligible === 0
+          ? `${index + 1}-го числа нет доступного сотрудника, которому разрешена ночная смена.`
+          : `${index + 1}-го числа доступно ${operatorCount(eligible)}; не получается закрыть день и ночь без выхода из ночи в день или изменения уже заполненных ячеек.` };
     }
     expanded.sort((a, b) => a.score - b.score);
     nodes = expanded.slice(0, 48);

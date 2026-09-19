@@ -1,6 +1,5 @@
 import { requireSession } from "./auth.js";
 import {
-  getMyDepartmentMembershipKey,
   getMyDepartmentKey,
   getMyManagedDepartment,
   getMyProfile,
@@ -582,12 +581,11 @@ refreshBtn?.addEventListener("click", () => void loadSchedule());
   setStatus("Загружаю отделы…", "busy");
 
   try {
-    const [departmentRows, myDepartmentKey, profile, managedDepartment, membershipDepartmentKey] = await Promise.all([
+    const [departmentRows, myDepartmentKey, profile, managedDepartment] = await Promise.all([
       listAllDepartments(),
       getMyDepartmentKey(),
       getMyProfile().catch(() => null),
       getMyManagedDepartment().catch(() => null),
-      getMyDepartmentMembershipKey().catch(() => null),
     ]);
     departments = departmentRows ?? [];
 
@@ -595,9 +593,7 @@ refreshBtn?.addEventListener("click", () => void loadSchedule());
       ? { owner: true }
       : managedDepartment?.key
         ? { key: managedDepartment.key }
-        : membershipDepartmentKey === "egais"
-          ? { key: "egais", readOnly: true }
-          : null;
+        : null;
 
     const requestedKey = new URL(window.location.href).searchParams.get("department") || "";
     selectedDepartmentKey = departments.some((item) => item.key === requestedKey)

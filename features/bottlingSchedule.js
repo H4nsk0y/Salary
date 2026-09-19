@@ -79,17 +79,29 @@ function elevenStreak(days, index, value) {
   return length;
 }
 
-export function planBottlingSchedule({ members, year, month, holiday = [] }) {
+export function planBottlingSchedule({
+  members,
+  year,
+  month,
+  holiday = [],
+  minimumDayCoverage = 1,
+  boostedDayCoverage = minimumDayCoverage,
+  boostedDayIndices = [],
+  coverageEligibleIds = null,
+}) {
   const count = new Date(year, month + 1, 0).getDate();
   if (!Number.isInteger(year) || !Number.isInteger(month) || month < 0 || month > 11 ||
       !Array.isArray(members) || members.some((member) => !Array.isArray(member.days) || member.days.length !== count)) {
     throw new RangeError("Expected a complete calendar month");
   }
-  if (members.length < 2 || members.length > 4) return { plans: [], startIndex: null,
-    error: "Выберите от двух до четырёх операторов для графика от розлива." };
+  if (members.length < 2) return { plans: [], startIndex: null,
+    error: "Выберите минимум двух сотрудников для графика от розлива." };
 
-  const adaptive = members.length < 4 || members.some((member) => member.days.some((day) => day?.leaveType))
-    ? planAdaptiveCoverage({ members, year, month, weekdaysOnly: true, holiday }) : null;
+  const hasAbsences = members.some((member) => member.days.some((day) => day?.leaveType));
+  const hasNightRestrictions = members.some((member) => member.noNight);
+  const coverageMembers = members.length > 4 && !hasAbsences && !hasNightRestrictions ? members.slice(0, 4) : members;
+  const adaptive = members.length !== 4 || hasAbsences || hasNightRestrictions
+    ? planAdaptiveCoverage({ members: coverageMembers, year, month, weekdaysOnly: true, holiday }) : null;
   if (adaptive?.error) return adaptive;
   const startIndex = adaptive?.startIndex ?? Array.from({ length: count }, (_, index) => index).find((index) => {
     const day = weekday(year, month, index);
@@ -103,7 +115,9 @@ export function planBottlingSchedule({ members, year, month, holiday = [] }) {
   const seedOrder = [...members.keys()].sort((a, b) => stableScore(`${year}-${month}-${members[a].id}`) -
     stableScore(`${year}-${month}-${members[b].id}`));
   if (adaptive) {
-    for (const [person, item] of adaptive.plans.entries()) {
+    for (const item of adaptive.plans) {
+      const person = members.findIndex((member) => String(member.id) === String(item.id));
+      if (person < 0) continue;
       changes[person].push(...item.plan.changes);
       for (const { index, to } of item.plan.changes) working[person][index] = { ...working[person][index], ...to };
     }
@@ -241,6 +255,54 @@ export function planBottlingSchedule({ members, year, month, holiday = [] }) {
   }
   }
 
+  for (const [person, member] of members.entries()) {
+    if (!nightStart(member.previousDay) || nightRest(working[person][0])) continue;
+    if (!empty(working[person][0])) {
+      return { plans: [], startIndex,
+        error: `${member.name || "Сотрудник"}: после ночной смены прошлого месяца первое число занято.` };
+    }
+    changes[person].push({ index: 0, from: OFF, to: REST });
+    working[person][0] = { ...working[person][0], ...REST };
+  }
+
+  const boosted = new Set(boostedDayIndices.map(Number));
+  const eligibleIds = coverageEligibleIds == null
+    ? new Set(members.map((member) => String(member.id)))
+    : new Set(coverageEligibleIds.map(String));
+  const eligiblePeople = seedOrder.filter((person) => eligibleIds.has(String(members[person].id)));
+  const maximumRequired = boosted.size ? Math.max(minimumDayCoverage, boostedDayCoverage) : minimumDayCoverage;
+  if (maximumRequired > eligiblePeople.length) {
+    return { plans: [], startIndex,
+      error: `Для выбранного режима нужно минимум ${maximumRequired} грузчиков, выбрано ${eligiblePeople.length}.` };
+  }
+
+  for (let index = startIndex; index < count; index++) {
+    const dayOfWeek = weekday(year, month, index);
+    if (dayOfWeek === 0 || dayOfWeek === 6 || holiday[index]) continue;
+    const required = boosted.has(index) ? boostedDayCoverage : minimumDayCoverage;
+    let covered = eligiblePeople.filter((person) =>
+      shift(working[person][index]).dayHours >= 7 && !shift(working[person][index]).nightHours).length;
+    if (covered >= required) continue;
+    const candidates = eligiblePeople.filter((person) => {
+      if (!empty(working[person][index])) return false;
+      const preceding = index ? working[person][index - 1] : members[person].previousDay;
+      return !nightStart(preceding);
+    }).sort((a, b) => total(working[a]) - total(working[b]) ||
+      elevenStreak(working[a], index, 11) - elevenStreak(working[b], index, 11) ||
+      stableScore(`${year}-${month}-${index}-warehouse-${members[a].id}`) -
+        stableScore(`${year}-${month}-${index}-warehouse-${members[b].id}`));
+    while (covered < required && candidates.length) {
+      const person = candidates.shift();
+      changes[person].push({ index, from: OFF, to: DAY });
+      working[person][index] = { ...working[person][index], ...DAY };
+      covered++;
+    }
+    if (covered < required) {
+      return { plans: [], startIndex,
+        error: `${index + 1}-го числа не удалось поставить ${required} грузчиков в дневную смену: проверьте отсутствия и уже заполненные смены.` };
+    }
+  }
+
   // Keep supplemental shifts in the day unless that would create a long 11-hour run.
   for (const person of seedOrder) {
     const member = members[person];
@@ -262,7 +324,7 @@ export function planBottlingSchedule({ members, year, month, holiday = [] }) {
       const dayIndex = dayCandidates[0];
       if (dayIndex === undefined) break;
       const nightIndex = size === 11 && elevenStreak(working[person], dayIndex, 11) >= 3
-        ? available.find((index) => index + 1 < count && empty(working[person][index]) &&
+        ? available.find((index) => !member.noNight && index + 1 < count && empty(working[person][index]) &&
           empty(working[person][index + 1]) &&
           working.filter((days) => nightStart(days[index])).length < 2 &&
           !nightStart(index ? working[person][index - 1] : member.previousDay))

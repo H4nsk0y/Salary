@@ -84,16 +84,80 @@ test("night from the previous month finishes on a weekend before the first workw
     { dayHours: 2, nightHours: 5 });
 });
 
-test("only zero, one or more than four operators are rejected, and codes stay intact", () => {
+test("only fewer than two operators are rejected, and codes stay intact", () => {
   const members = team(2026, 5);
   assert.equal(planBottlingSchedule({ members: members.slice(0, 3), year: 2026, month: 5 }).error, null);
-  assert.match(planBottlingSchedule({ members: members.slice(0, 1), year: 2026, month: 5 }).error, /от двух до четырёх/);
+  assert.match(planBottlingSchedule({ members: members.slice(0, 1), year: 2026, month: 5 }).error, /минимум двух/);
   members[0].days[0].leaveType = "ОТ";
   const days = members[0].days;
   assert.ok(!planEightHourTemplate({ mode: "fiveTwo", year: 2026, month: 5, existingDays: days }).changes.some((change) => change.index === 0));
   assert.ok(!planFillToNorm({ existingDays: days, personalNorm: 8, year: 2026, month: 5 }).changes.some((change) => change.index === 0));
   assert.ok(!planReduceOvertime({ existingDays: days, personalNorm: 0 }).changes.some((change) => change.index === 0));
   assert.ok(!planShiftCycle({ cycleId: "dayNight48", firstPhase: 0, existingDays: days }).changes.some((change) => change.index === 0));
+});
+
+test("larger bottling teams are distributed without a four-person limit", () => {
+  const count = 8;
+  const members = Array.from({ length: count }, (_, id) => ({
+    id: String(id), name: `Оператор ${id}`, norm: 176,
+    days: Array.from({ length: 31 }, blank),
+  }));
+  const result = planBottlingSchedule({ members, year: 2026, month: 9 });
+  assert.equal(result.error, null);
+  assert.equal(result.plans.length, count);
+  assert.ok(result.plans.every(({ plan }) => plan.changes.length > 0));
+});
+
+test("an additional operator still receives rest after a previous-month night", () => {
+  const members = Array.from({ length: 6 }, (_, id) => ({
+    id: String(id), name: `Оператор ${id}`, norm: 176,
+    days: Array.from({ length: 31 }, blank),
+  }));
+  members[5].previousDay = { dayHours: 2, nightHours: 2 };
+  const result = planBottlingSchedule({ members, year: 2026, month: 9 });
+  assert.equal(result.error, null);
+  assert.deepEqual(result.plans[5].plan.changes.find(({ index }) => index === 0)?.to,
+    { dayHours: 2, nightHours: 5 });
+});
+
+test("previous month night becomes one rest day while an existing rest is not repeated", () => {
+  const members = team(2026, 9, 0);
+  members[0].previousDay = { dayHours: 2, nightHours: 2 };
+  members[1].previousDay = { dayHours: 2, nightHours: 5 };
+  const result = planBottlingSchedule({ members, year: 2026, month: 9 });
+  assert.equal(result.error, null);
+  assert.deepEqual(result.plans[0].plan.changes.find(({ index }) => index === 0)?.to,
+    { dayHours: 2, nightHours: 5 });
+  assert.notDeepEqual(result.plans[1].plan.changes.find(({ index }) => index === 0)?.to,
+    { dayHours: 2, nightHours: 5 });
+});
+
+test("warehouse bottling coverage keeps three loaders by day and five on selected two-line dates", () => {
+  const members = Array.from({ length: 6 }, (_, id) => ({
+    id: String(id), name: `Грузчик ${id}`, norm: 176,
+    days: Array.from({ length: 31 }, blank),
+  }));
+  const result = planBottlingSchedule({
+    members, year: 2026, month: 9,
+    minimumDayCoverage: 3,
+    boostedDayCoverage: 5,
+    boostedDayIndices: [0],
+    coverageEligibleIds: members.map(({ id }) => id),
+  });
+  assert.equal(result.error, null);
+  const schedule = resultDays(members, result);
+  assert.equal(schedule.filter((person) => person[0].dayHours >= 8 && !person[0].nightHours).length, 5);
+  assert.ok(schedule.filter((person) => person[1].dayHours >= 8 && !person[1].nightHours).length >= 3);
+});
+
+test("bottling planner assigns a restricted employee only to day shifts", () => {
+  const members = team(2026, 9, 176);
+  members[0].noNight = true;
+  const result = planBottlingSchedule({ members, year: 2026, month: 9 });
+  assert.equal(result.error, null);
+  const restricted = result.plans.find(({ id }) => id === members[0].id);
+  assert.ok(restricted.plan.changes.some(({ to }) => to.dayHours >= 8 && to.nightHours === 0));
+  assert.ok(restricted.plan.changes.every(({ to }) => to.nightHours === 0));
 });
 
 test("when the target norm cannot be reached, available weekdays still get filled", () => {

@@ -28,7 +28,14 @@ let calendarRequest = 0;
 function dayCount() { return new Date(year, month + 1, 0).getDate(); }
 function blankDays() { return Array.from({ length: dayCount() }, () => ({ dayHours: 0, nightHours: 0, leaveType: null })); }
 function blankPerson(index) {
-  return { id: index + 1, name: `Сотрудник-${index + 1}`, isLeader: false, norm: defaultNorm(), days: blankDays() };
+  return {
+    id: index + 1,
+    name: `Сотрудник-${index + 1}`,
+    isLeader: false,
+    noNight: false,
+    norm: defaultNorm(),
+    days: blankDays(),
+  };
 }
 function defaultNorm() {
   let total = 0;
@@ -121,7 +128,25 @@ function render() {
       clearPreview();
       updateTotals();
     });
-    settings.append(role, norm);
+    const nightMode = document.createElement("select");
+    nightMode.setAttribute("aria-label", `Допуск к ночным сменам ${person.name}`);
+    for (const [value, label] of [["allowed", "С ночами"], ["forbidden", "Только день"]]) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      nightMode.appendChild(option);
+    }
+    nightMode.value = person.noNight ? "forbidden" : "allowed";
+    nightMode.disabled = person.isLeader;
+    nightMode.addEventListener("change", () => {
+      person.noNight = nightMode.value === "forbidden";
+      person.days = blankDays();
+      render();
+      setStatus(person.noNight
+        ? "Учебная строка очищена: сотруднику будут назначаться только дневные смены."
+        : "Учебная строка очищена: ночные смены снова разрешены.");
+    });
+    settings.append(role, nightMode, norm);
     personBox.append(name, settings);
     nameCell.appendChild(personBox);
     dayRow.appendChild(nameCell);
@@ -189,29 +214,34 @@ function buildPreview() {
   const result = [];
   let changeCount = 0;
   const members = people.map((person) => ({ id: person.id, days: person.days, norm: person.norm,
+    noNight: person.noNight,
     selected: !person.isLeader, excluded: person.isLeader }));
   const teamPlans = new Map((activeTool === "fillNorm" ? planTeamNormFills(members, { year, month }) :
     activeTool === "reduceOvertime" ? planTeamOvertimeReductions(members) : [])
     .map(({ id, plan }) => [id, plan]));
   const coverage = SHIFT_CYCLES[activeTool]
     ? planCoveredShiftCycle({ cycleId: activeTool, year, month,
-      members: people.map((person) => ({ id: person.id, days: person.days, isLeader: person.isLeader })) })
+      members: people.map((person) => ({
+        id: person.id, days: person.days, isLeader: person.isLeader, noNight: person.noNight,
+      })) })
     : activeTool === "bottling" ? planBottlingSchedule({ year, month, holiday: calendar?.isHoliday,
       members: people.filter((person) => !person.isLeader).map((person) => ({
-        id: person.id, name: person.name, days: person.days, norm: person.norm,
+        id: person.id, name: person.name, days: person.days, norm: person.norm, noNight: person.noNight,
       })) }) : null;
   const cyclePlans = new Map((coverage?.plans ?? []).map(({ id, plan }) => [id, plan]));
   for (const [order, person] of people.entries()) {
     let plan;
     if (person.isLeader) {
       plan = planEightHourTemplate({ mode: "fiveTwo", year, month, existingDays: person.days,
-        holiday: calendar?.isHoliday, transferredOff: calendar?.isTransferredOff, replaceWorked: true });
+        holiday: calendar?.isHoliday, transferredOff: calendar?.isTransferredOff,
+        shortDay: calendar?.isShortDay, replaceWorked: true });
     } else if (SHIFT_CYCLES[activeTool] || activeTool === "bottling") {
       plan = cyclePlans.get(person.id);
       if (!plan) continue;
     } else if (activeTool === "fiveTwo" || activeTool === "alternating") {
       plan = planEightHourTemplate({ mode: activeTool, year, month, existingDays: person.days,
-        holiday: calendar?.isHoliday, transferredOff: calendar?.isTransferredOff, group: order % 2 });
+        holiday: calendar?.isHoliday, transferredOff: calendar?.isTransferredOff,
+        group: order % 2, noNight: person.noNight });
     } else if (activeTool === "fillNorm") {
       plan = teamPlans.get(person.id);
     } else {

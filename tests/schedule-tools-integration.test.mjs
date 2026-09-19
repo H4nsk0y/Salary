@@ -52,6 +52,41 @@ test("employee selection uses full-row labels and larger themed checkboxes", () 
   assert.match(tools, /row = document\.createElement\("label"\)/);
   assert.match(html, /\.schedule-tools-person input\[type="checkbox"\] \{[^}]*width: 26px; height: 26px/);
   assert.match(html, /\.schedule-tools-person:has\(input:checked\)/);
+  assert.match(html, /\.schedule-tools-option input \{[^}]*width: 26px; height: 26px/);
+});
+
+test("warehouse staffing controls apply to bottling and both continuous cycles", () => {
+  const tools = read("../features/adminScheduleTools.js");
+  const html = read("../admin.html");
+  assert.match(tools, /tool === "bottling" \|\| Boolean\(SHIFT_CYCLES\[tool\]\)/);
+  assert.match(tools, /enforceDayCoverage\(/);
+  assert.match(tools, /minimum: 3/);
+  assert.match(tools, /boosted: 5/);
+  assert.match(html, /id="scheduleToolsTwoLines"/);
+  assert.match(html, /Планируется розлив 2-ух линий\?/);
+});
+
+test("owner-managed night restrictions are protected and reach every automatic planner", () => {
+  const migration = read("../supabase-sql/049_night_shift_restrictions.sql");
+  const users = read("../owner-users.js");
+  const admin = read("../admin.js");
+  const tools = read("../features/adminScheduleTools.js");
+  const lab = read("../features/scheduleLab.js");
+  assert.match(migration, /create table if not exists public\.user_schedule_constraints/);
+  assert.match(migration, /owner_set_user_night_shift_restriction/);
+  assert.match(migration, /if auth\.uid\(\) is null or not public\.is_owner\(\)/);
+  assert.match(migration, /revoke all on table public\.user_schedule_constraints from public, anon, authenticated/);
+  assert.match(users, /Запретить ночные смены/);
+  assert.match(admin, /listManagedDepartmentNightShiftRestrictions/);
+  assert.match(tools, /noNight: context\.noNightShiftUserIds/);
+  assert.match(lab, /Только день/);
+});
+
+test("personal norms feed automatic tools while generated shifts stay full length", () => {
+  const admin = read("../admin.js");
+  assert.match(admin, /normalizeWeeklyHours\(weeklyHours\) === REDUCED_WEEKLY_HOURS/);
+  assert.match(admin, /gender === "female" && branch === CHATEAU_ALVISA_BRANCH/);
+  assert.match(admin, /personalNorm: \(state\) => personalNormHours\(state\)\.personalNorm/);
 });
 
 test("admin icon buttons show only the lower custom tooltip", () => {
