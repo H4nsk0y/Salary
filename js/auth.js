@@ -1,9 +1,40 @@
 import { supabase } from "./supabaseClient.js";
 
-export async function getSession() {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  return data.session ?? null;
+let cachedSession = null;
+let sessionResolved = false;
+let sessionPromise = null;
+
+function rememberSession(session) {
+  cachedSession = session ?? null;
+  sessionResolved = true;
+  sessionPromise = Promise.resolve(cachedSession);
+  return cachedSession;
+}
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  rememberSession(session);
+});
+
+export function getSession({ fresh = false } = {}) {
+  if (fresh) {
+    sessionResolved = false;
+    sessionPromise = null;
+  }
+
+  if (sessionResolved) return Promise.resolve(cachedSession);
+  if (!sessionPromise) {
+    sessionPromise = supabase.auth.getSession()
+      .then(({ data, error }) => {
+        if (error) throw error;
+        return rememberSession(data.session);
+      })
+      .catch((error) => {
+        sessionPromise = null;
+        throw error;
+      });
+  }
+
+  return sessionPromise;
 }
 
 export async function requireSession() {
@@ -15,18 +46,21 @@ export async function requireSession() {
 export async function signUp(email, password) {
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) throw error;
+  if (data.session) rememberSession(data.session);
   return data;
 }
 
 export async function signIn(email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
+  rememberSession(data.session);
   return data;
 }
 
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
+  rememberSession(null);
 }
 
 export async function verifyCurrentPassword(password) {

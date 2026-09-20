@@ -1,8 +1,13 @@
 import { installDoubleRightClickFullscreen } from "./features/fullscreenShortcuts.js";
+import {
+  isBackgroundMusicEnabled,
+  toggleBackgroundMusic,
+} from "./backgroundMusic.js";
 
 const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d", { alpha: false });
 const fullButton = document.getElementById("fullscreenBtn");
+const musicButton = document.getElementById("musicToggleBtn");
 const modeButtons = [...document.querySelectorAll("[data-mode]")];
 const returnToPage = document.getElementById("returnToPage");
 const pageParams = new URLSearchParams(location.search);
@@ -40,6 +45,18 @@ function showControls() {
   document.body.classList.remove("is-idle");
   clearTimeout(idleTimer);
   idleTimer = setTimeout(() => document.body.classList.add("is-idle"), 5000);
+}
+
+function syncMusicButton() {
+  if (!musicButton) return;
+  const isEnabled = isBackgroundMusicEnabled();
+  const label = isEnabled ? "Выключить музыку" : "Включить музыку";
+  musicButton.classList.toggle("is-active", isEnabled);
+  musicButton.setAttribute("aria-pressed", String(isEnabled));
+  musicButton.setAttribute("aria-label", label);
+  musicButton.title = label;
+  const hiddenLabel = musicButton.querySelector("[data-music-label]");
+  if (hiddenLabel) hiddenLabel.textContent = label;
 }
 
 function resize() {
@@ -146,6 +163,13 @@ modeButtons.forEach((button) => button.addEventListener("click", () => {
   modeButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
 }));
 
+musicButton?.addEventListener("click", async () => {
+  await toggleBackgroundMusic();
+  syncMusicButton();
+});
+
+window.addEventListener("alvisa:background-music-change", syncMusicButton);
+
 fullButton.addEventListener("click", async () => {
   try {
     if (document.fullscreenElement) await document.exitFullscreen();
@@ -194,6 +218,7 @@ window.addEventListener("keydown", showControls);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void holdScreen(); });
 window.addEventListener("resize", resize);
 resize();
+syncMusicButton();
 showControls();
 requestAnimationFrame(frame);
 void holdScreen();

@@ -88,12 +88,36 @@ test("retired heavyweight features cannot return through active pages", () => {
 });
 
 test("profile reads are shared and admin saves only changed employees", () => {
+  const auth = read("js/auth.js");
   const db = read("js/db.js");
   const admin = read("js/admin.js");
 
+  assert.match(auth, /let sessionPromise = null/);
+  assert.match(auth, /if \(!sessionPromise\)/);
   assert.match(db, /let myProfilePromise = null/);
   assert.match(db, /myProfilePromise = loadMyProfile\(\)/);
+  assert.match(db, /let allDepartmentsPromise = null/);
+  assert.match(db, /let myDepartmentMembershipPromise = null/);
+  assert.match(db, /let myEditorDepartmentKeyPromise = null/);
+  assert.match(db, /const timesheetPayloadPromises = new Map\(\)/);
+  assert.match(db, /timesheetPayloadPromises\.has\(cacheKey\)/);
+  assert.match(db, /timesheetPayloadPromises\.delete\(cacheKey\)/);
+  assert.match(db, /export async function managedLoadTimesheets/);
+  assert.match(db, /\.select\("user_id, payload"\)[\s\S]*?\.in\("user_id", ids\)/);
+  assert.match(admin, /managedLoadTimesheets\(userIds, targetYear, targetMonth\)/);
+  assert.doesNotMatch(admin, /Promise\.all\(userIds\.map\([^\n]*managedLoadTimesheet/);
   assert.match(admin, /currentSaveItems\(\{ changedOnly: true \}\)/);
   assert.match(admin, /dirtyUserRevisions\.has/);
   assert.match(admin, /sharedMarksRevision/);
+});
+
+test("database reads request explicit columns and share the auth gateway", () => {
+  const scripts = listJavaScriptFiles().map(read).join("\n");
+  const db = read("js/db.js");
+
+  assert.doesNotMatch(scripts, /\.select\(\s*["'`]\*["'`]\s*\)/);
+  assert.equal((scripts.match(/supabase\.auth\.getSession\(/g) ?? []).length, 1);
+  assert.match(db, /const PROFILE_SELECT =\s*\n\s*"user_id,/);
+  assert.match(db, /if \(allDepartmentsPromise\)/);
+  assert.match(db, /return getMyEditorDepartmentKey\(\)/);
 });

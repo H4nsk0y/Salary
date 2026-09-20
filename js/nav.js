@@ -9,6 +9,7 @@ import { installErrorLogger } from "./errorLogger.js";
 import { createSiteSearchWidget } from "./siteSearch.js";
 import "./pwa.js";
 import "./screenWakeLock.js";
+import "./backgroundMusic.js";
 import "./scrollbar.js?v=20260913-2";
 import "./footer.js?v=20260802-2";
 

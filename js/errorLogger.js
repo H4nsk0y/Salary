@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { getSession } from "./auth.js";
 import { classifyClientError } from "./clientErrorInsights.js";
 
 const MAX_REPORTS_PER_SESSION = 3;
@@ -54,8 +55,8 @@ async function report(kind, reason, context = {}) {
   reportsSent += 1;
 
   try {
-    const { data } = await supabase.auth.getSession();
-    if (!data?.session?.user?.id) return;
+    const session = await getSession();
+    if (!session?.user?.id) return;
 
     const insight = classifyClientError({ kind, message: error.message, stack: error.stack });
     await supabase.rpc("report_client_error", {

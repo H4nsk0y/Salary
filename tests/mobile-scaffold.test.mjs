@@ -14,6 +14,7 @@ test("mobile build uses an isolated allowlisted web directory", async () => {
   assert.equal(JSON.parse(config).webDir, "www");
   assert.match(buildScript, /copiedRootExtensions/);
   assert.match(buildScript, /copiedDirectories/);
+  assert.match(buildScript, /"media"/);
   assert.doesNotMatch(buildScript, /supabase-sql|db-dump|docs|tests/);
   assert.match(gitignore, /^www\/$/m);
 });

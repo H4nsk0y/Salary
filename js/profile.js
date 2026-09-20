@@ -1593,11 +1593,8 @@ function guessExt(file) {
 }
 
 async function getUserIdOrThrow() {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  const uid = data?.session?.user?.id;
-  if (!uid) throw new Error("NO_SESSION");
-  return uid;
+  const session = await requireSession();
+  return session.user.id;
 }
 
 function extractAvatarPath(storedValue) {

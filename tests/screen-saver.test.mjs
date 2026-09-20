@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
 import { buildIdleScreenSaverUrl } from "../js/idleScreenSaver.js";
 
@@ -46,4 +46,27 @@ test("idle screen saver preserves the return page and selects the building", asy
   const [nav, script] = await Promise.all([read("js/nav.js"), read("js/screen-saver.js")]);
   assert.match(nav, /if \(profile\?\.user_id\) \{[\s\S]*startIdleScreenSaver\(\)/);
   assert.match(script, /returnUrl\.origin === location\.origin/);
+});
+
+test("screen saver music loops and follows the user across application pages", async () => {
+  const [page, script, controller, nav, worker, track] = await Promise.all([
+    read("screen-saver.html"),
+    read("js/screen-saver.js"),
+    read("js/backgroundMusic.js"),
+    read("js/nav.js"),
+    read("service-worker.js"),
+    stat(new URL("../media/almost-here.mp3", import.meta.url)),
+  ]);
+
+  assert.ok(track.size > 1_000_000);
+  assert.match(page, /id="musicToggleBtn"/);
+  assert.match(page, /class="music-note"[^>]*>♪</);
+  assert.match(script, /toggleBackgroundMusic\(\)/);
+  assert.match(script, /alvisa:background-music-change/);
+  assert.match(controller, /new Audio\(TRACK_URL\)/);
+  assert.match(controller, /audio\.loop = true/);
+  assert.match(controller, /MUSIC_POSITION_KEY/);
+  assert.match(controller, /localStorage\.setItem\(MUSIC_ENABLED_KEY/);
+  assert.match(nav, /import "\.\/backgroundMusic\.js"/);
+  assert.match(worker, /"audio"/);
 });

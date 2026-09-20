@@ -10,7 +10,7 @@ import {
   listDepartmentLeader,
   listManagedDepartmentNightShiftRestrictions,
   managedListTimesheetsBefore,
-  managedLoadTimesheet,
+  managedLoadTimesheets,
   managedSaveManyTimesheets,
   ownerListDepartmentTimesheetAudit,
   ownerSearchDepartmentTimesheetAudit,
@@ -2901,9 +2901,14 @@ async function setupScheduleTools() {
       personalNorm: (state) => personalNormHours(state).personalNorm,
     }),
     signature: currentSignature,
-    loadPrevious: (userId, currentYear, currentMonth) => {
+    loadPreviousMany: async (userIds, currentYear, currentMonth) => {
       const previous = new Date(currentYear, currentMonth, 0);
-      return managedLoadTimesheet(userId, previous.getFullYear(), previous.getMonth());
+      const rows = await managedLoadTimesheets(
+        userIds,
+        previous.getFullYear(),
+        previous.getMonth()
+      );
+      return new Map(rows.map((row) => [String(row.user_id), row.payload ?? null]));
     },
     applyChanges: (plans, tool) => {
       const highlightChanges = tool === "fillNorm" || tool === "reduceOvertime" || tool === "bottling";
@@ -2996,18 +3001,17 @@ async function loadCurrentMonth(targetYear = year, targetMonth = month) {
       const members = await listManagedDepartmentMembers(managedDepartment.key);
 
       const userIds = members.map((member) => member.user_id);
-      const [payloads, previousRows] = await Promise.all([
-        Promise.all(userIds.map((userId) => managedLoadTimesheet(userId, targetYear, targetMonth))),
+      const [payloadRows, previousRows] = await Promise.all([
+        managedLoadTimesheets(userIds, targetYear, targetMonth),
         managedListTimesheetsBefore(userIds, targetYear, targetMonth),
       ]);
 
       year = targetYear;
       month = targetMonth;
       resetMonthArrays(members);
-      payloadsByUserId = new Map();
-      for (let i = 0; i < teamStates.length; i++) {
-        payloadsByUserId.set(teamStates[i].userId, payloads[i]);
-      }
+      payloadsByUserId = new Map(
+        payloadRows.map((row) => [String(row.user_id), row.payload ?? null])
+      );
       applyDismissalsBeforeMonth(previousRows);
     }
 

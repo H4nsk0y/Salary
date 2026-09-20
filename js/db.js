@@ -1,22 +1,23 @@
 import { supabase } from "./supabaseClient.js";
+import { getSession } from "./auth.js";
 
 const PROFILE_SELECT =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours, egais_file_reminders_enabled, hide_calculator_nav";
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours, egais_file_reminders_enabled, hide_calculator_nav";
 
 const PROFILE_SELECT_WITHOUT_HIDE_CALCULATOR_NAV =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours, egais_file_reminders_enabled";
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours, egais_file_reminders_enabled";
 
 const PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours, hide_calculator_nav";
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours, hide_calculator_nav";
 
 const PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS_AND_HIDE_CALCULATOR_NAV =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours";
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours";
 
 const PROFILE_SELECT_WITH_BRANCH =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, weekly_hours";
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, weekly_hours";
 
 const PROFILE_SELECT_LEGACY =
-  "role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number";
+  "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number";
 
 const ADMIN_PROFILE_SELECT =
   "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number, branch, employment_date, weekly_hours";
@@ -44,6 +45,23 @@ const MY_PROFILE_MUTABLE_FIELDS = new Set([
 
 let currentUserIdPromise = null;
 let myProfilePromise = null;
+let allDepartmentsPromise = null;
+let myDepartmentMembershipPromise = null;
+let myEditorDepartmentKeyPromise = null;
+let myManagedDepartmentPromise = null;
+const departmentByKeyPromises = new Map();
+const timesheetPayloadPromises = new Map();
+
+function invalidateMyDepartmentAccessCache() {
+  myDepartmentMembershipPromise = null;
+  myEditorDepartmentKeyPromise = null;
+  myManagedDepartmentPromise = null;
+}
+
+async function invalidateMyDepartmentAccessCacheFor(userId) {
+  const uid = String(userId ?? "").trim();
+  if (uid && uid === await requireUserId()) invalidateMyDepartmentAccessCache();
+}
 
 function invalidateMyProfileCache() {
   myProfilePromise = null;
@@ -146,10 +164,8 @@ function assertValidYearMonth(year, month) {
 async function requireUserId() {
   if (!currentUserIdPromise) {
     currentUserIdPromise = (async () => {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
-
-      const userId = sessionData.session?.user?.id;
+      const session = await getSession();
+      const userId = session?.user?.id;
       if (!userId) throw new Error("NO_SESSION");
       return userId;
     })().catch((error) => {
@@ -432,24 +448,39 @@ export async function updateMyMoneyPin({
   invalidateMyProfileCache();
 }
 
+async function loadTimesheetPayload(userId, normalized) {
+  const cacheKey = `${userId}:${normalized.year}:${normalized.month}`;
+  if (timesheetPayloadPromises.has(cacheKey)) {
+    return timesheetPayloadPromises.get(cacheKey);
+  }
+
+  const request = (async () => {
+    const { data, error } = await supabase
+      .from("timesheets")
+      .select("payload")
+      .eq("user_id", userId)
+      .eq("year", normalized.year)
+      .eq("month", normalized.month)
+      .maybeSingle();
+
+    if (error) {
+      if (isNotFoundError(error)) return null;
+      throw error;
+    }
+
+    return data?.payload ?? null;
+  })().finally(() => {
+    timesheetPayloadPromises.delete(cacheKey);
+  });
+
+  timesheetPayloadPromises.set(cacheKey, request);
+  return request;
+}
+
 export async function loadTimesheet(year, month) {
   const userId = await requireUserId();
   const normalized = assertValidYearMonth(year, month);
-
-  const { data, error } = await supabase
-    .from("timesheets")
-    .select("payload")
-    .eq("user_id", userId)
-    .eq("year", normalized.year)
-    .eq("month", normalized.month)
-    .maybeSingle();
-
-  if (error) {
-    if (isNotFoundError(error)) return null;
-    throw error;
-  }
-
-  return data?.payload ?? null;
+  return loadTimesheetPayload(userId, normalized);
 }
 
 export async function saveTimesheet(year, month, payload) {
@@ -564,65 +595,109 @@ export async function getTimesheetMeta(year, month) {
   return data ?? null;
 }
 
-export async function getMyManagedDepartment() {
+async function getMyEditorDepartmentKey() {
   const userId = await requireUserId();
+  if (!myEditorDepartmentKeyPromise) {
+    myEditorDepartmentKeyPromise = (async () => {
+      const { data: editorRow, error: editorError } = await supabase
+        .from("department_editors")
+        .select("department_key")
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle();
 
-  const { data: editorRow, error: editorError } = await supabase
-    .from("department_editors")
-    .select("department_key")
-    .eq("user_id", userId)
-    .limit(1)
-    .maybeSingle();
+      if (editorError) {
+        if (isNotFoundError(editorError)) return null;
+        throw editorError;
+      }
 
-  if (editorError) {
-    if (isNotFoundError(editorError)) return null;
-    throw editorError;
+      return editorRow?.department_key ?? null;
+    })().catch((error) => {
+      myEditorDepartmentKeyPromise = null;
+      throw error;
+    });
   }
 
-  if (!editorRow?.department_key) return null;
+  return myEditorDepartmentKeyPromise;
+}
 
-  const { data: departmentRow, error: departmentError } = await supabase
-    .from("departments")
-    .select("key, name")
-    .eq("key", editorRow.department_key)
-    .maybeSingle();
-
-  if (departmentError) {
-    if (isNotFoundError(departmentError)) {
-      return { key: editorRow.department_key, name: editorRow.department_key };
-    }
-    throw departmentError;
+export function getMyManagedDepartment({ fresh = false } = {}) {
+  if (fresh) {
+    myEditorDepartmentKeyPromise = null;
+    myManagedDepartmentPromise = null;
   }
 
-  return departmentRow ?? { key: editorRow.department_key, name: editorRow.department_key };
+  if (!myManagedDepartmentPromise) {
+    myManagedDepartmentPromise = (async () => {
+      const departmentKey = await getMyEditorDepartmentKey();
+      if (!departmentKey) return null;
+
+      const department = await getDepartmentByKey(departmentKey);
+      return department ?? { key: departmentKey, name: departmentKey };
+    })().catch((error) => {
+      myManagedDepartmentPromise = null;
+      throw error;
+    });
+  }
+
+  return myManagedDepartmentPromise;
 }
 
 export async function getDepartmentByKey(departmentKey) {
   const key = String(departmentKey ?? "").trim();
   if (!key) throw new Error("Не указан отдел.");
 
-  const { data, error } = await supabase
-    .from("departments")
-    .select("key, name")
-    .eq("key", key)
-    .maybeSingle();
-
-  if (error) {
-    if (isNotFoundError(error)) return null;
-    throw error;
+  if (allDepartmentsPromise) {
+    const departments = await allDepartmentsPromise;
+    return departments.find((department) => department.key === key) ?? null;
   }
 
-  return data ?? null;
+  if (!departmentByKeyPromises.has(key)) {
+    const request = (async () => {
+      const { data, error } = await supabase
+        .from("departments")
+        .select("key, name")
+        .eq("key", key)
+        .maybeSingle();
+
+      if (error) {
+        if (isNotFoundError(error)) return null;
+        throw error;
+      }
+
+      return data ?? null;
+    })().catch((error) => {
+      departmentByKeyPromises.delete(key);
+      throw error;
+    });
+    departmentByKeyPromises.set(key, request);
+  }
+
+  return departmentByKeyPromises.get(key);
 }
 
-export async function listAllDepartments() {
-  const { data, error } = await supabase
-    .from("departments")
-    .select("key, name, created_at")
-    .order("name", { ascending: true });
+export function listAllDepartments({ fresh = false } = {}) {
+  if (fresh) {
+    allDepartmentsPromise = null;
+    departmentByKeyPromises.clear();
+  }
 
-  if (error) throw error;
-  return data ?? [];
+  if (!allDepartmentsPromise) {
+    allDepartmentsPromise = (async () => {
+      const { data, error } = await supabase
+        .from("departments")
+        .select("key, name, created_at")
+        .order("name", { ascending: true });
+
+      if (error) throw error;
+      return data ?? [];
+    })().catch((error) => {
+      allDepartmentsPromise = null;
+      throw error;
+    });
+  }
+
+  return allDepartmentsPromise;
 }
 
 
@@ -769,23 +844,24 @@ export async function saveMyTimesheetActual(year, month, actual, status = "draft
   if (error) throw error;
 }
 
-export async function managedLoadTimesheet(userId, year, month) {
-  const normalized = assertValidYearMonth(year, month);
+export async function managedLoadTimesheets(userIds, year, month) {
+  const ids = [...new Set(
+    (Array.isArray(userIds) ? userIds : [])
+      .map((id) => String(id ?? "").trim())
+      .filter(Boolean)
+  )];
+  if (!ids.length) return [];
 
+  const normalized = assertValidYearMonth(year, month);
   const { data, error } = await supabase
     .from("timesheets")
-    .select("payload, updated_at")
-    .eq("user_id", userId)
+    .select("user_id, payload")
+    .in("user_id", ids)
     .eq("year", normalized.year)
-    .eq("month", normalized.month)
-    .maybeSingle();
+    .eq("month", normalized.month);
 
-  if (error) {
-    if (isNotFoundError(error)) return null;
-    throw error;
-  }
-
-  return data?.payload ?? null;
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function managedListTimesheetsBefore(userIds, year, month) {
@@ -972,6 +1048,7 @@ export async function removeManagedDepartmentMember(departmentKey, userId) {
     p_user_id: uid,
   });
   if (error) throw error;
+  await invalidateMyDepartmentAccessCacheFor(uid);
 }
 
 export async function sendDepartmentAnnouncement({
@@ -1098,7 +1175,20 @@ export async function disableMyPushSubscription(endpoint) {
   if (error) throw error;
 }
 
-export async function getMyDepartmentMembershipKey() {
+export function getMyDepartmentMembershipKey({ fresh = false } = {}) {
+  if (fresh) myDepartmentMembershipPromise = null;
+
+  if (!myDepartmentMembershipPromise) {
+    myDepartmentMembershipPromise = loadMyDepartmentMembershipKey().catch((error) => {
+      myDepartmentMembershipPromise = null;
+      throw error;
+    });
+  }
+
+  return myDepartmentMembershipPromise;
+}
+
+async function loadMyDepartmentMembershipKey() {
   const userId = await requireUserId();
 
   const { data: memberRow, error: memberError } = await supabase
@@ -1115,18 +1205,7 @@ export async function getMyDepartmentMembershipKey() {
 export async function getMyDepartmentKey() {
   const memberDepartmentKey = await getMyDepartmentMembershipKey();
   if (memberDepartmentKey) return memberDepartmentKey;
-
-  const userId = await requireUserId();
-
-  const { data: editorRow, error: editorError } = await supabase
-    .from("department_editors")
-    .select("department_key")
-    .eq("user_id", userId)
-    .limit(1)
-    .maybeSingle();
-
-  if (editorError && !isNotFoundError(editorError)) throw editorError;
-  return editorRow?.department_key ?? null;
+  return getMyEditorDepartmentKey();
 }
 
 export async function getMyShiftChecklistState() {
@@ -1441,6 +1520,7 @@ export async function ownerSetUserDepartment(userId, departmentKey = null) {
   });
 
   if (error) throw error;
+  await invalidateMyDepartmentAccessCacheFor(uid);
 }
 
 export async function ownerSetDepartmentEditor(departmentKey, userId, isEditor) {
@@ -1457,6 +1537,7 @@ export async function ownerSetDepartmentEditor(departmentKey, userId, isEditor) 
   });
 
   if (error) throw error;
+  await invalidateMyDepartmentAccessCacheFor(uid);
 }
 
 export async function ownerCreateDepartmentInvite({
@@ -1505,6 +1586,7 @@ export async function ownerSetDepartmentLeader(departmentKey, userId, isLeader) 
     p_is_leader: Boolean(isLeader),
   });
   if (error) throw error;
+  await invalidateMyDepartmentAccessCacheFor(userId);
 }
 
 export async function ownerListDepartmentLeaders() {
@@ -1593,6 +1675,7 @@ export async function acceptDepartmentInvite(token) {
   });
 
   if (error) throw error;
+  invalidateMyDepartmentAccessCache();
   return Array.isArray(data) ? data[0] ?? null : data ?? null;
 }
 
@@ -1633,6 +1716,7 @@ export async function ownerAddDepartmentMember(departmentKey, userId) {
   });
 
   if (error) throw error;
+  await invalidateMyDepartmentAccessCacheFor(uid);
 }
 
 export async function ownerRemoveDepartmentMember(departmentKey, userId) {
@@ -1648,6 +1732,7 @@ export async function ownerRemoveDepartmentMember(departmentKey, userId) {
   });
 
   if (error) throw error;
+  await invalidateMyDepartmentAccessCacheFor(uid);
 }
 
 export async function ownerListDepartmentEditors(departmentKey) {
@@ -1675,6 +1760,7 @@ export async function ownerAddDepartmentEditor(departmentKey, userId) {
   });
 
   if (error) throw error;
+  await invalidateMyDepartmentAccessCacheFor(uid);
 }
 
 export async function ownerRemoveDepartmentEditor(departmentKey, userId) {
@@ -1690,4 +1776,5 @@ export async function ownerRemoveDepartmentEditor(departmentKey, userId) {
   });
 
   if (error) throw error;
+  await invalidateMyDepartmentAccessCacheFor(uid);
 }

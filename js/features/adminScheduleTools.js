@@ -73,7 +73,7 @@ export function formatScheduleChangeReport(state, changes, norm) {
   return `${state.name} — изменено смен: ${changes.length}${dates.length ? `; ${dates.join("; ")}` : ""}; после: ${hourText(after)}; норма: ${hourText(norm)}`;
 }
 
-export function initAdminScheduleTools({ getContext, loadPrevious, signature, applyChanges, isOwner, leaderId }) {
+export function initAdminScheduleTools({ getContext, loadPreviousMany, signature, applyChanges, isOwner, leaderId }) {
   const buttons = document.getElementById("scheduleToolButtons");
   const modal = document.getElementById("scheduleToolsModal");
   const people = document.getElementById("scheduleToolsPeople");
@@ -213,9 +213,14 @@ export function initAdminScheduleTools({ getContext, loadPrevious, signature, ap
     try {
       const previous = new Map();
       if (SHIFT_CYCLES[activeTool] || activeTool === "fillNorm" || activeTool === "bottling") {
-        await Promise.all(chosen.map(async ({ id }) => {
-          previous.set(id, daysForPayload(await loadPrevious(id, context.year, context.month)));
-        }));
+        const payloads = await loadPreviousMany(
+          chosen.map(({ id }) => id),
+          context.year,
+          context.month
+        );
+        for (const { id } of chosen) {
+          previous.set(id, daysForPayload(payloads.get(id) ?? null));
+        }
       }
       if (request !== operation || modal.classList.contains("hidden")) return;
       if (periodKey(getContext(), signature) !== baseline) {
