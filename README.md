@@ -151,7 +151,7 @@ npm run cap:open:android
 - Content Security Policy ограничивает источники исполняемого содержимого;
 - автоматические тесты проверяют расчёты, графики, права и основные пользовательские сценарии.
 
-Материалы аудита доступны в [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) и [`docs/ACCESSIBILITY_AUDIT.md`](docs/ACCESSIBILITY_AUDIT.md).
+Действующие требования безопасности собраны в [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md), а инструкции серверных функций - в [`docs/EDGE_FUNCTIONS.md`](docs/EDGE_FUNCTIONS.md).
 
 ## Статус
 
