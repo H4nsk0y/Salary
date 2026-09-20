@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { buildIdleScreenSaverUrl } from "../idleScreenSaver.js";
+import { buildIdleScreenSaverUrl } from "../js/idleScreenSaver.js";
 
 const read = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8");
 
 test("settings link opens three screen saver modes", async () => {
   const [settings, page, script, shortcuts] = await Promise.all([
-    read("settings.html"), read("screen-saver.html"), read("screen-saver.js"),
-    read("features/fullscreenShortcuts.js"),
+    read("settings.html"), read("screen-saver.html"), read("js/screen-saver.js"),
+    read("js/features/fullscreenShortcuts.js"),
   ]);
   assert.match(settings, /href="screen-saver\.html"/);
   for (const mode of ["ribbons", "building", "orbit"]) {
@@ -43,7 +43,7 @@ test("idle screen saver preserves the return page and selects the building", asy
   assert.equal(target.pathname, "/screen-saver.html");
   assert.equal(target.searchParams.get("mode"), "building");
   assert.equal(target.searchParams.get("from"), "/admin.html?department=egais");
-  const [nav, script] = await Promise.all([read("nav.js"), read("screen-saver.js")]);
+  const [nav, script] = await Promise.all([read("js/nav.js"), read("js/screen-saver.js")]);
   assert.match(nav, /if \(profile\?\.user_id\) \{[\s\S]*startIdleScreenSaver\(\)/);
   assert.match(script, /returnUrl\.origin === location\.origin/);
 });

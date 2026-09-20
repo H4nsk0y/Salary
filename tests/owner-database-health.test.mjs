@@ -7,7 +7,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 test("database size is exposed through an owner-only RPC", async () => {
   const [sql, db] = await Promise.all([
     read("supabase-sql/044_owner_database_health.sql"),
-    read("db.js"),
+    read("js/db.js"),
   ]);
 
   assert.match(sql, /owner_get_database_health/);
@@ -22,7 +22,7 @@ test("database size is exposed through an owner-only RPC", async () => {
 test("system status warns at 70 percent and becomes critical at 80 percent", async () => {
   const [html, script] = await Promise.all([
     read("owner-status.html"),
-    read("owner-status.js"),
+    read("js/owner-status.js"),
   ]);
 
   assert.match(script, /percent >= 80/);

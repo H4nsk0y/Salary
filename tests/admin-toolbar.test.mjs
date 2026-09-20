@@ -5,13 +5,13 @@ import test from "node:test";
 const read = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8");
 
 test("admin actions use compact accessible icon buttons", async () => {
-  const page = await read("admin.html");
+  const [page, styles] = await Promise.all([read("admin.html"), read("styles/pages/admin.css")]);
   for (const id of ["reloadBtn", "saveBtn", "saveSilentBtn", "auditLogBtn", "announcementLink", "createInviteBtn"]) {
     assert.match(page, new RegExp(`id="${id}"[\\s\\S]{0,250}class="[^"]*admin-icon-action`));
   }
-  assert.match(page, /\.admin-icon-action::after/);
-  assert.match(page, /content: attr\(data-tooltip\)/);
-  assert.match(page, /\.admin-icon-action\.hidden/);
+  assert.match(styles, /\.admin-icon-action::after/);
+  assert.match(styles, /content: attr\(data-tooltip\)/);
+  assert.match(styles, /\.admin-icon-action\.hidden/);
 });
 
 test("home workspace cards use separated current-design surfaces", async () => {

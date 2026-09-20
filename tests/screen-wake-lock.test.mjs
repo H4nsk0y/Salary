@@ -6,9 +6,9 @@ const source = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8"
 
 test("screen wake preference is shared by pages through the common navigation", async () => {
   const [wakeLock, nav, settings, page] = await Promise.all([
-    source("screenWakeLock.js"),
-    source("nav.js"),
-    source("settings.js"),
+    source("js/screenWakeLock.js"),
+    source("js/nav.js"),
+    source("js/settings.js"),
     source("settings.html"),
   ]);
 
@@ -22,8 +22,8 @@ test("screen wake preference is shared by pages through the common navigation", 
 
 test("screen wake setting clearly handles unsupported browsers", async () => {
   const [wakeLock, settings] = await Promise.all([
-    source("screenWakeLock.js"),
-    source("settings.js"),
+    source("js/screenWakeLock.js"),
+    source("js/settings.js"),
   ]);
 
   assert.match(wakeLock, /supported: isSupported\(\)/);

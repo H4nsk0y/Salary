@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { planEightHourTemplate, planFillToNorm, planReduceOvertime, planTeamNormFills, planTeamOvertimeReductions } from "../features/scheduleTools.js";
-import { planCoveredShiftCycle } from "../features/shiftCycles.js";
-import { formatScheduleChangeReport, selectedHoursLabel } from "../features/adminScheduleTools.js";
+import { planEightHourTemplate, planFillToNorm, planReduceOvertime, planTeamNormFills, planTeamOvertimeReductions } from "../js/features/scheduleTools.js";
+import { planCoveredShiftCycle } from "../js/features/shiftCycles.js";
+import { formatScheduleChangeReport, selectedHoursLabel } from "../js/features/adminScheduleTools.js";
 
 const days = (count) => Array.from({ length: count }, () => ({ dayHours: 0, nightHours: 0 }));
 

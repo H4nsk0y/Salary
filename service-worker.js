@@ -1,10 +1,11 @@
 const CACHE_PREFIX = "alvisa-pwa";
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = new URL("./offline.html", self.registration.scope).href;
 const CORE_ASSETS = [
   OFFLINE_URL,
+  new URL("./js/offline.js?v=20260920-1", self.registration.scope).href,
   new URL("./manifest.webmanifest", self.registration.scope).href,
   new URL("./images/app-icon-192.png", self.registration.scope).href,
   new URL("./images/app-icon-512.png", self.registration.scope).href,

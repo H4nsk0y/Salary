@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getNightSequenceDisplay, isWorkDepartureDay } from "../timesheetView.js";
+import { getNightSequenceDisplay, isWorkDepartureDay } from "../js/timesheetView.js";
 
 test("single night is shown as a full night followed by a rest day", () => {
   const day = [2, 2];

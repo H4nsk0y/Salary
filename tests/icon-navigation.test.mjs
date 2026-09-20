@@ -16,17 +16,17 @@ test("owner hub uses distinct accessible icon navigation", async () => {
 });
 
 test("profile actions keep only icons visible and retain accessible labels", async () => {
-  const page = await read("profile.html");
+  const [page, styles] = await Promise.all([read("profile.html"), read("styles/pages/profile.css")]);
   for (const label of ["Настройки", "Управление", "Выйти"]) {
     assert.match(page, new RegExp(`aria-label="${label}"`));
     assert.match(page, new RegExp(`<span class="sr-only">${label}</span>`));
   }
-  assert.match(page, /\.profile-actions > a\.hidden \{ display: none; \}/);
+  assert.match(styles, /\.profile-actions > a\.hidden \{ display: none; \}/);
   assert.ok(
     page.indexOf('id="statusPill"') < page.indexOf('class="profile-actions'),
     "profile status must appear above the action icons",
   );
-  assert.match(page, /@media \(min-width: 640px\)[\s\S]*?\.profile-header-controls \.profile-actions \{ order: -1; \}/);
-  assert.match(page, /profileUpdatesAttention 2\.6s ease-in-out infinite/);
-  assert.match(page, /\.profile-updates-link::before/);
+  assert.match(styles, /@media \(min-width: 640px\)[\s\S]*?\.profile-header-controls \.profile-actions \{ order: -1; \}/);
+  assert.match(styles, /profileUpdatesAttention 2\.6s ease-in-out infinite/);
+  assert.match(styles, /\.profile-updates-link::before/);
 });

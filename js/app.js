@@ -49,15 +49,25 @@ const HOLIDAY_MULTIPLIER = 2;
 
 let profileRole = "user";
 let profileOklad = null;
+const rubFormatters = new Map();
+const numberAnimationFrames = new WeakMap();
+
+function getRubFormatter(digits = 0) {
+  const precision = Number.isInteger(digits) ? digits : 0;
+  if (!rubFormatters.has(precision)) {
+    rubFormatters.set(precision, new Intl.NumberFormat("ru-RU", {
+      style: "currency",
+      currency: "RUB",
+      maximumFractionDigits: precision,
+    }));
+  }
+  return rubFormatters.get(precision);
+}
 
 function formatRub(value, digits) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";
-  return new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency: "RUB",
-    maximumFractionDigits: digits,
-  }).format(n);
+  return getRubFormatter(digits).format(n);
 }
 
 function formatApproxRub(value, digits) {
@@ -80,6 +90,12 @@ function bump(el) {
 function animateNumber(el, to, formatter, durationMs = 520) {
   if (!el) return;
 
+  const activeFrame = numberAnimationFrames.get(el);
+  if (activeFrame) {
+    cancelAnimationFrame(activeFrame);
+    numberAnimationFrames.delete(el);
+  }
+
   if (prefersReducedMotion || !Number.isFinite(to)) {
     el.textContent = formatter(to);
     el.dataset.value = String(to);
@@ -99,13 +115,14 @@ function animateNumber(el, to, formatter, durationMs = 520) {
     const k = easeOutCubic(t);
     const v = from + (to - from) * k;
     el.textContent = formatter(v);
-    if (t < 1) requestAnimationFrame(tick);
+    if (t < 1) numberAnimationFrames.set(el, requestAnimationFrame(tick));
     else {
       el.textContent = formatter(to);
       el.dataset.value = String(to);
+      numberAnimationFrames.delete(el);
     }
   }
-  requestAnimationFrame(tick);
+  numberAnimationFrames.set(el, requestAnimationFrame(tick));
 }
 
 function setError(msg) {

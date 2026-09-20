@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { getMissingRequiredProfileFields } from "../profileCompletion.js";
-import { validatePasswordPolicy } from "../passwordPolicy.js";
+import { getMissingRequiredProfileFields } from "../js/profileCompletion.js";
+import { validatePasswordPolicy } from "../js/passwordPolicy.js";
 
 test("profile completion requires payroll-critical fields but not tab number or weekly norm", () => {
   const complete = {
@@ -26,7 +26,7 @@ test("password policy requires length without arbitrary character classes", () =
 });
 
 test("common navigation redirects incomplete profiles without another request per click", async () => {
-  const source = await readFile(new URL("../nav.js", import.meta.url), "utf8");
+  const source = await readFile(new URL("../js/nav.js", import.meta.url), "utf8");
   assert.match(source, /installProfileCompletionNavigationGate/);
   assert.match(source, /key === "calculator" \|\| key === "profile"/);
   assert.match(source, /buildProfileCompletionUrl/);
@@ -34,7 +34,7 @@ test("common navigation redirects incomplete profiles without another request pe
 });
 
 test("signup enters profile when Supabase returns a session", async () => {
-  const source = await readFile(new URL("../login.js", import.meta.url), "utf8");
+  const source = await readFile(new URL("../js/login.js", import.meta.url), "utf8");
   assert.match(source, /signUpResult\?\.session/);
   assert.match(source, /buildProfileCompletionUrl\(getNextUrl\(\)/);
 });

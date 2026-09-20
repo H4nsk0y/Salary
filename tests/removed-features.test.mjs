@@ -29,7 +29,7 @@ test("retired feature files are removed", () => {
 });
 
 test("retired features are absent from active entry points and data helpers", () => {
-  for (const path of ["nav.js", "index.html", "manifest.webmanifest", "db.js"]) {
+  for (const path of ["js/nav.js", "index.html", "manifest.webmanifest", "js/db.js"]) {
     const source = read(path);
     assert.doesNotMatch(source, /(?:chat|tasks|voting|instructions)\.html/i);
     assert.doesNotMatch(source, /department_messages|department_tasks|staff_votes/i);

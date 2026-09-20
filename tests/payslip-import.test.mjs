@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parsePayrollSlipText } from "../payslipImport.js";
+import { parsePayrollSlipText } from "../js/payslipImport.js";
 
 test("parses a payroll slip with advance, remainder and intersettlement payment", () => {
   const result = parsePayrollSlipText(`

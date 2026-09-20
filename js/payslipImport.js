@@ -133,8 +133,8 @@ function groupPdfText(items) {
 }
 
 async function pdfToText(file) {
-  const pdfjs = await import("./vendor/pdfjs/pdf.min.js");
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdfjs/pdf.worker.min.js", import.meta.url).href;
+  const pdfjs = await import("../vendor/pdfjs/pdf.min.js");
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL("../vendor/pdfjs/pdf.worker.min.js", import.meta.url).href;
   const loadingTask = pdfjs.getDocument({ data: await file.arrayBuffer() });
   const pdf = await loadingTask.promise;
   const pages = [];

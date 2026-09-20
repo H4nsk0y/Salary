@@ -20,9 +20,9 @@ test("mobile build uses an isolated allowlisted web directory", async () => {
 
 test("native shell does not register browser PWA or Web Push", async () => {
   const [pwa, push, settings] = await Promise.all([
-    read("pwa.js"),
-    read("pushNotifications.js"),
-    read("settings.js"),
+    read("js/pwa.js"),
+    read("js/pushNotifications.js"),
+    read("js/settings.js"),
   ]);
 
   assert.match(pwa, /if \(isNativeApp\(\)\) \{\s*emitState\(\);\s*return;/);
@@ -33,7 +33,7 @@ test("native shell does not register browser PWA or Web Push", async () => {
 test("Android shell keeps sessions out of backups and rejects cleartext traffic", async () => {
   const [manifest, login] = await Promise.all([
     read("android/app/src/main/AndroidManifest.xml"),
-    read("login.js"),
+    read("js/login.js"),
   ]);
 
   assert.match(manifest, /android:allowBackup="false"/);

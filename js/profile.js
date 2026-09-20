@@ -48,20 +48,32 @@ import { confirmDialog } from "./modal.js";
 import { bindLogoutConfirmation } from "./features/logoutConfirmation.js";
 import { openIdeaDialog } from "./ideaDialog.js?v=20260822-1";
 import { buildDecemberForecast, estimateYearEndReserve } from "./yearEndReserve.js?v=20260822-1";
+import {
+  CHATEAU_ALVISA_BRANCH,
+  DEFAULT_DAY_HOURS,
+  DEFAULT_WEEKLY_HOURS,
+  DISMISSED_LEAVE_TYPE,
+  FEMALE_DAY_HOURS,
+  getBaseDayHoursByProfile,
+  getWeeklyHoursByProfile,
+  leaveTypeToCode,
+  leaveTypeToLabel,
+  normalizeLeaveTypeLegacy,
+  normalizeWeeklyHours,
+  NOT_EMPLOYED_LEAVE_TYPE,
+  REDUCED_WEEKLY_HOURS,
+} from "./features/timesheetValues.js";
+import {
+  diffCalendarInclusive,
+  formatEmploymentDuration,
+  parseProfileDate,
+} from "./features/employmentDuration.js";
 
 document.body.classList.add("is-loaded");
 
 const OVERTIME_LIMIT_DEFAULT_YEAR = 120;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const HAZARD_POSITION_RATE = 0.04;
-const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
-const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
-const DISMISSED_LEAVE_TYPE = "dismissed";
-
-const DEFAULT_DAY_HOURS = 8;
-const FEMALE_DAY_HOURS = 7.2;
-const DEFAULT_WEEKLY_HOURS = 40;
-const REDUCED_WEEKLY_HOURS = 35;
 let BASE_DAY_HOURS = DEFAULT_DAY_HOURS;
 
 let currentProfile = null;
@@ -349,92 +361,6 @@ function saveCustomPosition() {
   closeCustomPositionModal({ restoreSelection: false });
 }
 
-function pluralRu(value, one, few, many) {
-  const n = Math.abs(Number(value)) % 100;
-  const n1 = n % 10;
-
-  if (n > 10 && n < 20) return many;
-  if (n1 > 1 && n1 < 5) return few;
-  if (n1 === 1) return one;
-  return many;
-}
-
-function formatEmploymentDuration({ years, months, days }) {
-  const parts = [];
-
-  if (years > 0) parts.push(`${years} ${pluralRu(years, "год", "года", "лет")}`);
-  if (months > 0) parts.push(`${months} ${pluralRu(months, "месяц", "месяца", "месяцев")}`);
-  if (days > 0 || !parts.length) parts.push(`${days} ${pluralRu(days, "день", "дня", "дней")}`);
-
-  return parts.join(", ");
-}
-
-function parseProfileDate(value) {
-  const raw = String(value ?? "").trim();
-  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-
-  const y = Number(match[1]);
-  const m = Number(match[2]) - 1;
-  const d = Number(match[3]);
-  const date = new Date(y, m, d);
-
-  if (date.getFullYear() !== y || date.getMonth() !== m || date.getDate() !== d) return null;
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function addDays(date, days) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function getDaysInMonth(year, monthIndex) {
-  return new Date(year, monthIndex + 1, 0).getDate();
-}
-
-function addYearsClamped(date, years) {
-  const year = date.getFullYear() + years;
-  const month = date.getMonth();
-  const day = Math.min(date.getDate(), getDaysInMonth(year, month));
-  return new Date(year, month, day);
-}
-
-function addMonthsClamped(date, months) {
-  const totalMonth = date.getMonth() + months;
-  const year = date.getFullYear() + Math.floor(totalMonth / 12);
-  const month = ((totalMonth % 12) + 12) % 12;
-  const day = Math.min(date.getDate(), getDaysInMonth(year, month));
-  return new Date(year, month, day);
-}
-
-function diffCalendarInclusive(startDate, endDate) {
-  const endExclusive = addDays(endDate, 1);
-
-  let years = endExclusive.getFullYear() - startDate.getFullYear();
-  let anchor = addYearsClamped(startDate, years);
-
-  if (anchor > endExclusive) {
-    years -= 1;
-    anchor = addYearsClamped(startDate, years);
-  }
-
-  let months = endExclusive.getMonth() - anchor.getMonth() +
-    (endExclusive.getFullYear() - anchor.getFullYear()) * 12;
-  let monthAnchor = addMonthsClamped(anchor, months);
-
-  if (monthAnchor > endExclusive) {
-    months -= 1;
-    monthAnchor = addMonthsClamped(anchor, months);
-  }
-
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const days = Math.max(0, Math.round((endExclusive - monthAnchor) / msPerDay));
-
-  return { years, months, days };
-}
-
 function updateEmploymentDateHint() {
   if (!employmentDateInput) return;
 
@@ -622,45 +548,6 @@ function sum(arr) {
   return arr.reduce((a, b) => a + (Number.isFinite(Number(b)) ? Number(b) : 0), 0);
 }
 
-function normalizeLeaveTypeLegacy(lt) {
-  if (!lt) return null;
-  if (lt === "vacation") return "vac_paid";
-  if (lt === "sick") return "sick";
-  if (lt === NOT_EMPLOYED_LEAVE_TYPE) return NOT_EMPLOYED_LEAVE_TYPE;
-  if (lt === DISMISSED_LEAVE_TYPE) return DISMISSED_LEAVE_TYPE;
-  if (String(lt).trim().toUpperCase() === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
-  if (String(lt).trim().toUpperCase() === "УВ") return DISMISSED_LEAVE_TYPE;
-  return String(lt);
-}
-
-function leaveTypeToCode(lt) {
-  const t = normalizeLeaveTypeLegacy(lt);
-  if (!t) return "";
-  if (t === "vac_paid") return "ОТ";
-  if (t === "vac_unpaid") return "ОД";
-  if (t === "vac_unpaid_required") return "ОЗ";
-  if (t === "edu_paid") return "У";
-  if (t === "edu_unpaid") return "УД";
-  if (t === "sick") return "Б";
-  if (t === NOT_EMPLOYED_LEAVE_TYPE) return "НТ";
-  if (t === DISMISSED_LEAVE_TYPE) return "УВ";
-  return "";
-}
-
-function leaveTypeToLabel(lt) {
-  const t = normalizeLeaveTypeLegacy(lt);
-  if (!t) return "";
-  if (t === "vac_paid") return "Отпуск (ОТ)";
-  if (t === "vac_unpaid") return "Отпуск без оплаты (ОД)";
-  if (t === "vac_unpaid_required") return "Отпуск без оплаты (ОЗ)";
-  if (t === "edu_paid") return "Учебный отпуск (У)";
-  if (t === "edu_unpaid") return "Учебный отпуск без оплаты (УД)";
-  if (t === "sick") return "Больничный (Б)";
-  if (t === NOT_EMPLOYED_LEAVE_TYPE) return "Не трудоустроен (НТ)";
-  if (t === DISMISSED_LEAVE_TYPE) return "Увольнение (УВ)";
-  return String(t);
-}
-
 function formatHoursSigned(h) {
   const n = Number(h);
   if (!Number.isFinite(n)) return "—";
@@ -700,27 +587,6 @@ function isTimesheetMonthStarted(year, month, now = new Date()) {
 function normalizeMoneyNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) ? Number(n.toFixed(2)) : null;
-}
-
-function normalizeWeeklyHours(value) {
-  const n = Number(value);
-  if (n === REDUCED_WEEKLY_HOURS) return REDUCED_WEEKLY_HOURS;
-  if (n === DEFAULT_WEEKLY_HOURS) return DEFAULT_WEEKLY_HOURS;
-  return null;
-}
-
-function getWeeklyHoursByProfile(profile) {
-  return normalizeWeeklyHours(profile?.weekly_hours) ?? DEFAULT_WEEKLY_HOURS;
-}
-
-function getBaseDayHoursByProfile(profile) {
-  if (getWeeklyHoursByProfile(profile) === REDUCED_WEEKLY_HOURS) {
-    return REDUCED_WEEKLY_HOURS / 5;
-  }
-
-  return profile?.gender === "female" && profile?.branch === CHATEAU_ALVISA_BRANCH
-    ? FEMALE_DAY_HOURS
-    : DEFAULT_DAY_HOURS;
 }
 
 function resolveBaseDayHoursForPayload(payload, profile = currentProfile) {

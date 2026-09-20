@@ -6,7 +6,7 @@ import {
   isValidCustomPosition,
   normalizeCustomPosition,
   validateCustomPositionSelection,
-} from "../profilePosition.js";
+} from "../js/profilePosition.js";
 
 const departments = new Set(["egais", "warehouse", "operations"]);
 
@@ -48,7 +48,7 @@ test("custom position rejects markup, control characters and invalid length", ()
 });
 
 test("profile inserts custom options through optgroup querySelectorAll", async () => {
-  const source = await readFile(new URL("../profile.js", import.meta.url), "utf8");
+  const source = await readFile(new URL("../js/profile.js", import.meta.url), "utf8");
   assert.match(source, /customPositionGroup\.querySelectorAll\("option"\)/);
   assert.doesNotMatch(source, /customPositionGroup\.options/);
   assert.match(source, /position: position \|\| null/);

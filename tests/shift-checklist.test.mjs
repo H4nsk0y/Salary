@@ -7,7 +7,7 @@ import {
   createChecklistItem,
   getDepartmentChecklistTemplates,
   normalizeChecklistItems,
-} from "../shiftChecklist.js";
+} from "../js/shiftChecklist.js";
 
 const root = new URL("../", import.meta.url);
 const source = (path) => readFile(new URL(path, root), "utf8");
@@ -74,7 +74,7 @@ test("reminder function is protected and advances reminders by three hours", asy
 test("completed checklist notifies only the actual next shift", async () => {
   const [sql, client, edge] = await Promise.all([
     source("supabase-sql/034_shift_handover_notifications.sql"),
-    source("checklist.js"),
+    source("js/checklist.js"),
     source("supabase/functions/send-push-notifications/index.ts"),
   ]);
 

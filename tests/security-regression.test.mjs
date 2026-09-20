@@ -9,7 +9,7 @@ async function source(path) {
 }
 
 globalThis.location = new URL("https://h4nsk0y.github.io/Salary/login.html");
-const profileCompletionSource = await source("profileCompletion.js");
+const profileCompletionSource = await source("js/profileCompletion.js");
 const profileCompletion = await import(
   `data:text/javascript;base64,${Buffer.from(profileCompletionSource).toString("base64")}`
 );
@@ -26,13 +26,13 @@ test("redirect helper allows only URLs inside the current application", () => {
 });
 
 test("login, notifications and service worker use safe navigation", async () => {
-  assert.match(await source("login.js"), /normalizeInternalNextUrl/);
-  assert.match(await source("nav.js"), /normalizeInternalNextUrl\(item\.url/);
+  assert.match(await source("js/login.js"), /normalizeInternalNextUrl/);
+  assert.match(await source("js/features/navigationNotifications.js"), /normalizeInternalNextUrl\(item\.url/);
   assert.match(await source("service-worker.js"), /safeNotificationUrl/);
 });
 
 test("profile updates are restricted on both client and database layers", async () => {
-  const db = await source("db.js");
+  const db = await source("js/db.js");
   const sql = await source("supabase-sql/026_security_hardening.sql");
 
   assert.match(db, /MY_PROFILE_MUTABLE_FIELDS/);
@@ -91,7 +91,7 @@ test("anonymous users cannot execute SECURITY DEFINER application RPCs", async (
 });
 
 test("money PIN uses a slow versioned hash while legacy PINs remain readable", async () => {
-  const money = await source("moneyPrivacy.js");
+  const money = await source("js/moneyPrivacy.js");
 
   assert.match(money, /PBKDF2/);
   assert.match(money, /PIN_HASH_ITERATIONS = 150000/);
@@ -101,13 +101,13 @@ test("money PIN uses a slow versioned hash while legacy PINs remain readable", a
 
 test("client source does not contain server-only credentials", async () => {
   const clientFiles = [
-    "config.js",
-    "auth.js",
-    "db.js",
-    "nav.js",
-    "profile.js",
-    "settings.js",
-    "table.js",
+    "js/config.js",
+    "js/auth.js",
+    "js/db.js",
+    "js/nav.js",
+    "js/profile.js",
+    "js/settings.js",
+    "js/table.js",
   ];
   const combined = (await Promise.all(clientFiles.map(source))).join("\n");
 

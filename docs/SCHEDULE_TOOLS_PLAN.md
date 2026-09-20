@@ -1,6 +1,6 @@
 # Инструменты заполнения общего табеля
 
-Статус: первая версия реализована 16.09.2026. Семь ручных инструментов подключены к общему табелю; owner-only учебный табель находится на `schedule-lab.html`. Логика и тесты находятся в `features/shiftCycles.js`, `features/adaptiveCoverage.js`, `features/bottlingSchedule.js`, `features/scheduleTools.js` и `tests/`. Это не универсальное автоматическое составление графика для всех отделов.
+Статус: первая версия реализована 16.09.2026. Семь ручных инструментов подключены к общему табелю; owner-only учебный табель находится на `schedule-lab.html`. Логика и тесты находятся в `js/features/shiftCycles.js`, `js/features/adaptiveCoverage.js`, `js/features/bottlingSchedule.js`, `js/features/scheduleTools.js` и `tests/`. Это не универсальное автоматическое составление графика для всех отделов.
 
 ## Общие правила для всех кнопок
 

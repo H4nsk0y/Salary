@@ -18,9 +18,9 @@ test("EGAIS department view is server-authorized and excludes payroll data", asy
 
 test("ordinary EGAIS members no longer receive a team schedule entry point", async () => {
   const [admin, table, schedule, restriction] = await Promise.all([
-    read("admin.js"),
-    read("table.js"),
-    read("schedule.js"),
+    read("js/admin.js"),
+    read("js/table.js"),
+    read("js/schedule.js"),
     read("supabase-sql/048_restrict_egais_department_view.sql"),
   ]);
 
@@ -35,8 +35,8 @@ test("ordinary EGAIS members no longer receive a team schedule entry point", asy
 test("department editors can remove ordinary members through a protected RPC", async () => {
   const [sql, admin, db] = await Promise.all([
     read("supabase-sql/042_department_member_management.sql"),
-    read("admin.js"),
-    read("db.js"),
+    read("js/admin.js"),
+    read("js/db.js"),
   ]);
 
   assert.match(sql, /can_edit_department\(v_department_key\)/);

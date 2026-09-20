@@ -2,18 +2,18 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import { test } from "node:test";
-import { computePaymentSplit, computeSalary } from "../calc.js";
-import { createSerialTaskQueue } from "../asyncTasks.js";
+import { computePaymentSplit, computeSalary } from "../js/calc.js";
+import { createSerialTaskQueue } from "../js/asyncTasks.js";
 import {
   getProductionCalendarMonth,
   isPlausibleProductionCalendar,
   mergeProductionCalendarDefaults,
-} from "../productionCalendar.js";
+} from "../js/productionCalendar.js";
 import {
   hardenTimesheetInput,
   rejectUnexpectedTimesheetAutofill,
   restoreUnfocusedNumericInput,
-} from "../timesheetInput.js";
+} from "../js/timesheetInput.js";
 
 // Run actual page functions with a small DOM/database boundary, without production access.
 async function pageFunction(file, name) {
@@ -52,7 +52,7 @@ test("salary rejects infinite, missing and nonnumeric inputs", () => {
 
 test("annual overtime limit remains 120 hours without an enterprise agreement", async () => {
   const context = vm.createContext({ OVERTIME_LIMIT_DEFAULT_YEAR: 120 });
-  vm.runInContext(await pageFunction("profile.js", "getOvertimeLimitForYear"), context);
+  vm.runInContext(await pageFunction("js/profile.js", "getOvertimeLimitForYear"), context);
   assert.equal(context.getOvertimeLimitForYear(2026), 120);
   assert.equal(context.getOvertimeLimitForYear(2027), 120);
 });
@@ -102,7 +102,7 @@ test("queued writes wait for the previous write and recover after rejection", as
 });
 
 for (const page of ["personal", "department"]) {
-  const file = page === "personal" ? "table.js" : "admin.js";
+  const file = page === "personal" ? "js/table.js" : "js/admin.js";
   const name = page === "personal" ? "changeTimesheetMonth" : "changeDepartmentMonth";
   for (const failure of [null, "save", "load"]) {
     test(`${page} month transition preserves the old month on ${failure || "no"} failure`, async () => {
@@ -152,7 +152,7 @@ test("editing during a save stays dirty and does not mutate the submitted payloa
     syncActualStateFromInputs() {}, currentPayload: () => data,
     async saveTimesheet(y, m, payload) { submitted = payload; await gate.promise; },
   });
-  vm.runInContext(await pageFunction("table.js", "saveTimesheetNow"), context);
+  vm.runInContext(await pageFunction("js/table.js", "saveTimesheetNow"), context);
   const pending = context.saveTimesheetNow();
   data.dayHours[0] = 11;
   gate.resolve();
@@ -178,7 +178,7 @@ test("a late department response cannot render or cache under another department
     saveScheduleSnapshot(snapshot) { caches.push(snapshot); },
     render() { renders.push(context.rows[0]); },
   });
-  vm.runInContext(await pageFunction("schedule.js", "loadSchedule"), context);
+  vm.runInContext(await pageFunction("js/schedule.js", "loadSchedule"), context);
   const pending = context.loadSchedule();
   context.selectedDepartmentKey = "warehouse";
   await context.loadSchedule();
@@ -209,7 +209,7 @@ test("personal month norm is recomputed from dates and saved day marks", async (
     isHoliday: [], isTransferredOff: [], isShortDay: [],
     isWeekendByIndex: (y, m, i) => [0, 6].includes(new Date(y, m, i + 1).getDay()),
   });
-  vm.runInContext(await pageFunction("table.js", "calendarNormHours"), context);
+  vm.runInContext(await pageFunction("js/table.js", "calendarNormHours"), context);
   assert.equal(context.calendarNormHours(), 184);
   context.month = 8;
   context.daysInMonth = 30;
@@ -226,7 +226,7 @@ test("profile ignores a superseded year response", async () => {
     timesheetsLoadRevision: 0, loadedYear: 2026,
     setStatus() {}, setError() {}, listMyTimesheetsByYear: () => gate.promise,
   });
-  vm.runInContext(await pageFunction("profile.js", "refreshTimesheets"), context);
+  vm.runInContext(await pageFunction("js/profile.js", "refreshTimesheets"), context);
   const pending = context.refreshTimesheets();
   context.timesheetsLoadRevision++;
   gate.resolve([]);
@@ -240,7 +240,7 @@ test("notification baseline remembers sent hours, not edits made during delivery
     teamStates: [{ userId: "mock", dayHours: [11] }],
     notificationBaselineByUserId: new Map(),
   });
-  vm.runInContext(await pageFunction("admin.js", "updateNotificationBaseline"), context);
+  vm.runInContext(await pageFunction("js/admin.js", "updateNotificationBaseline"), context);
   context.updateNotificationBaseline(["mock"], new Map([["mock", sentSnapshot]]));
   assert.equal(context.notificationBaselineByUserId.get("mock").dayHours[0], 8);
 });
@@ -254,7 +254,7 @@ test("profile calendar discards an obsolete production-calendar response", async
     getProductionMonth: () => gate.promise,
     getTimesheetForCalendarMonth() { assert.fail("Stale calendar must not render"); },
   });
-  vm.runInContext(await pageFunction("profile.js", "renderCalendar"), context);
+  vm.runInContext(await pageFunction("js/profile.js", "renderCalendar"), context);
   const pending = context.renderCalendar();
   context.calendarRenderRevision++;
   gate.resolve([]);

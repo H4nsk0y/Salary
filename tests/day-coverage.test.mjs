@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { enforceDayCoverage } from "../features/dayCoverage.js";
-import { planCoveredShiftCycle } from "../features/shiftCycles.js";
+import { enforceDayCoverage } from "../js/features/dayCoverage.js";
+import { planCoveredShiftCycle } from "../js/features/shiftCycles.js";
 
 const blankMonth = () => Array.from({ length: 31 }, () => ({ dayHours: 0, nightHours: 0 }));
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { findNextShift } from "../nextShift.js";
+import { findNextShift } from "../js/nextShift.js";
 
 const source = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -48,10 +48,10 @@ test("scheduled shift reminders are protected, daily and non-duplicating", async
 
 test("push test no longer depends on the client RPC and handled failures are reported", async () => {
   const [pushClient, pushEdge, settings, errors, html] = await Promise.all([
-    source("pushNotifications.js"),
+    source("js/pushNotifications.js"),
     source("supabase/functions/send-push-notifications/index.ts"),
-    source("settings.js"),
-    source("clientErrorInsights.js"),
+    source("js/settings.js"),
+    source("js/clientErrorInsights.js"),
     source("settings.html"),
   ]);
   assert.doesNotMatch(pushClient, /createMyPushTestNotification/);

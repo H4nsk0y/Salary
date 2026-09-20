@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { isSearchEasterEgg, searchSiteEntries } from "../siteSearch.js";
+import { isSearchEasterEgg, searchSiteEntries } from "../js/siteSearch.js";
 
 const read = (fileName) => readFile(new URL(`../${fileName}`, import.meta.url), "utf8");
 
@@ -25,7 +25,7 @@ test("search query has its own easter egg", () => {
 });
 
 test("search easter egg opens a local image dialog without leaving the page", async () => {
-  const search = await read("siteSearch.js");
+  const search = await read("js/siteSearch.js");
   assert.match(search, /SEARCH_EASTER_EGG_IMAGE = "\.\/images\/pashalka\.jpg"/);
   assert.match(search, /message\.addEventListener\("click", \(\) => imageDialog\.showModal\(\)\)/);
   assert.match(search, /imageClose\.addEventListener\("click", \(\) => imageDialog\.close\(\)\)/);
@@ -34,8 +34,9 @@ test("search easter egg opens a local image dialog without leaving the page", as
 });
 
 test("common header places search beside notifications and keeps browser Ctrl+F", async () => {
-  const [nav, search] = await Promise.all([read("nav.js"), read("siteSearch.js")]);
-  assert.match(nav, /siteSearch\.element, createNotificationsWidget\(\), menuButton/);
+  const [nav, search] = await Promise.all([read("js/nav.js"), read("js/siteSearch.js")]);
+  assert.match(nav, /siteSearch\.element, notificationsSlot, menuButton/);
+  assert.match(nav, /import\("\.\/features\/navigationNotifications\.js/);
   assert.match(search, /event\.key\.toLowerCase\(\) !== "k"/);
   assert.doesNotMatch(search, /event\.key\.toLowerCase\(\) !== "f"/);
   assert.match(search, /aria-label", "Поиск по сайту"/);

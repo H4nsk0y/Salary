@@ -7,8 +7,8 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 test("department timesheet saves are audited atomically on the server", async () => {
   const [sql, db, admin] = await Promise.all([
     read("supabase-sql/043_department_timesheet_audit.sql"),
-    read("db.js"),
-    read("admin.js"),
+    read("js/db.js"),
+    read("js/admin.js"),
   ]);
 
   assert.match(sql, /create table if not exists public\.department_timesheet_audit_log/i);
@@ -24,8 +24,8 @@ test("only the owner can read department timesheet history", async () => {
   const [sql, html, admin, db] = await Promise.all([
     read("supabase-sql/043_department_timesheet_audit.sql"),
     read("admin.html"),
-    read("admin.js"),
-    read("db.js"),
+    read("js/admin.js"),
+    read("js/db.js"),
   ]);
 
   assert.match(sql, /owner_list_department_timesheet_audit[\s\S]*if not public\.is_owner\(\)/i);
@@ -39,7 +39,7 @@ test("only the owner can read department timesheet history", async () => {
 });
 
 test("audit UI renders changed shifts, comments and department calendar marks", async () => {
-  const admin = await read("admin.js");
+  const admin = await read("js/admin.js");
 
   assert.match(admin, /auditShiftLabel/);
   assert.match(admin, /auditCalendarLabel/);
@@ -52,8 +52,8 @@ test("audit search supports partial names across the full month history", async 
   const [sql, html, admin, db] = await Promise.all([
     read("supabase-sql/050_search_department_timesheet_audit.sql"),
     read("admin.html"),
-    read("admin.js"),
-    read("db.js"),
+    read("js/admin.js"),
+    read("js/db.js"),
   ]);
 
   assert.match(html, /id="auditLogSearch"[^>]*type="search"/);

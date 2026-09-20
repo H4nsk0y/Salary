@@ -7,7 +7,7 @@ import {
   countPaidVacationDays,
   extractConfirmedVacationPayIncome,
   VACATION_PAY_AVERAGE_CALENDAR_DAYS,
-} from "../vacationPay.js";
+} from "../js/vacationPay.js";
 
 function confirmedPayload(net, extra = {}) {
   return {

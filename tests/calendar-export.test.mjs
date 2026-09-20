@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { buildShiftCalendarEvents, buildShiftCalendarIcs } from "../calendarExport.js";
+import { buildShiftCalendarEvents, buildShiftCalendarIcs } from "../js/calendarExport.js";
 
 test("exports an eleven-hour day shift with exact time", () => {
   const events = buildShiftCalendarEvents({

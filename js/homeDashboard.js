@@ -2,6 +2,31 @@ import { getSession } from "./auth.js";
 import { loadTimesheet } from "./db.js";
 import { findNextShift } from "./nextShift.js";
 
+function initializeRevealAnimations() {
+  const elements = document.querySelectorAll(".reveal");
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduceMotion || !("IntersectionObserver" in window)) {
+    elements.forEach((element) => element.classList.add("is-visible"));
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-visible");
+      observer.unobserve(entry.target);
+    });
+  }, { threshold: 0.12 });
+  elements.forEach((element) => {
+    const bounds = element.getBoundingClientRect();
+    if (bounds.bottom >= 0 && bounds.top <= window.innerHeight * 1.1) {
+      element.classList.add("is-visible");
+      return;
+    }
+    observer.observe(element);
+  });
+}
+
 function monthRef(date, offset) {
   const value = new Date(date.getFullYear(), date.getMonth() + offset, 1, 12);
   return { year: value.getFullYear(), month: value.getMonth() };
@@ -45,3 +70,4 @@ showNextShift().catch(() => {
   // The public home page stays unchanged when schedule data is unavailable.
 });
 
+initializeRevealAnimations();

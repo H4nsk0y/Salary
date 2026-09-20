@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildClientErrorsCsv, classifyClientError } from "../clientErrorInsights.js";
+import { buildClientErrorsCsv, classifyClientError } from "../js/clientErrorInsights.js";
 
 test("explains opaque cross-origin script errors honestly", () => {
   const result = classifyClientError({ message: "Script error.", kind: "window_error" });

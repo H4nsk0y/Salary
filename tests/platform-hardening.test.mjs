@@ -17,8 +17,8 @@ test("pages use compiled Tailwind and a baseline content security policy", async
 
 test("schedule cache is read-only, scoped and clearly labelled", async () => {
   const [cache, schedule] = await Promise.all([
-    source("scheduleCache.js"),
-    source("schedule.js"),
+    source("js/scheduleCache.js"),
+    source("js/schedule.js"),
   ]);
 
   assert.match(cache, /snapshot:\$\{userKey\(userId\)\}:\$\{departmentKey\}:\$\{startDate\}/);
@@ -29,7 +29,7 @@ test("schedule cache is read-only, scoped and clearly labelled", async () => {
 
 test("client error reports are authenticated, limited and filtered", async () => {
   const [client, sql] = await Promise.all([
-    source("errorLogger.js"),
+    source("js/errorLogger.js"),
     source("supabase-sql/035_client_error_logging.sql"),
   ]);
 

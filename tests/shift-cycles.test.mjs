@@ -6,7 +6,7 @@ import {
   inferNextShiftCyclePhase,
   planCoveredShiftCycle,
   planShiftCycle,
-} from "../features/shiftCycles.js";
+} from "../js/features/shiftCycles.js";
 
 const emptyMonth = (days = 31) => Array.from({ length: days }, () => ({ dayHours: 0, nightHours: 0 }));
 const fullMonth = (cycleId, startPhase, days = 31) =>

@@ -44,19 +44,32 @@ import {
 import { initAdminScheduleTools } from "./features/adminScheduleTools.js";
 import { isTimesheetAutosaveDisabled } from "./features/autosavePreference.js";
 import { filterAuditEntries } from "./features/auditSearch.js";
+import {
+  CHATEAU_ALVISA_BRANCH,
+  DEFAULT_DAY_HOURS,
+  DEFAULT_WEEKLY_HOURS,
+  DISMISSED_LEAVE_TYPE,
+  FEMALE_DAY_HOURS,
+  formatHourForInput,
+  getBaseDayHours,
+  leaveTypeToCode,
+  normalizeLeaveToken,
+  normalizeLeaveTypeLegacy,
+  normalizeNormSnapshot,
+  normalizeWeeklyHours,
+  NOT_EMPLOYED_LEAVE_TYPE,
+  REDUCED_WEEKLY_HOURS,
+  sanitizeDayCellValue,
+  sanitizeHourNumber,
+  sanitizeLeaveDisplayValue,
+  sanitizeNumericValue,
+} from "./features/timesheetValues.js";
 
 document.body.classList.add("is-loaded");
 
-const DEFAULT_DAY_HOURS = 8;
-const FEMALE_DAY_HOURS = 7.2;
-const DEFAULT_WEEKLY_HOURS = 40;
-const REDUCED_WEEKLY_HOURS = 35;
-const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 const MAX_HOURS_PER_DAY = 24;
 const MINOR_OVERTIME_LIMIT_HOURS = 10;
 const SHORT_DAY_REDUCTION_HOURS = 1;
-const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
-const DISMISSED_LEAVE_TYPE = "dismissed";
 const TABLE_DRAG_THRESHOLD_PX = 5;
 
 const monthNames = [
@@ -542,36 +555,6 @@ function isWeekendByIndex(y, m, dayIndex0) {
   return d === 0 || d === 6;
 }
 
-function normalizeWeeklyHours(value) {
-  const n = Number(value);
-  if (n === REDUCED_WEEKLY_HOURS) return REDUCED_WEEKLY_HOURS;
-  if (n === DEFAULT_WEEKLY_HOURS) return DEFAULT_WEEKLY_HOURS;
-  return null;
-}
-
-function getBaseDayHours(gender, branch, weeklyHours = null) {
-  if (normalizeWeeklyHours(weeklyHours) === REDUCED_WEEKLY_HOURS) {
-    return REDUCED_WEEKLY_HOURS / 5;
-  }
-
-  return gender === "female" && branch === CHATEAU_ALVISA_BRANCH
-    ? FEMALE_DAY_HOURS
-    : DEFAULT_DAY_HOURS;
-}
-
-function normalizeNormSnapshot(raw) {
-  if (!raw || typeof raw !== "object") return null;
-  const baseDayHours = Number(raw.baseDayHours);
-  if (!(Number.isFinite(baseDayHours) && baseDayHours > 0)) return null;
-
-  return {
-    weeklyHours: normalizeWeeklyHours(raw.weeklyHours),
-    baseDayHours,
-    gender: raw.gender ?? null,
-    branch: raw.branch ?? null,
-  };
-}
-
 function getBaseDayHoursForState(state) {
   if (normalizeWeeklyHours(state?.weeklyHours) !== null) {
     return getBaseDayHours(state?.gender, state?.branch, state?.weeklyHours);
@@ -670,112 +653,6 @@ function applyDismissalsBeforeMonth(rows) {
   }
 }
 
-function sanitizeDayCellValue(raw) {
-  let s = String(raw ?? "").toUpperCase();
-  s = s
-    .replaceAll("O", "О")
-    .replaceAll("T", "Т")
-    .replaceAll("B", "Б")
-    .replaceAll("D", "Д")
-    .replaceAll("Z", "З")
-    .replaceAll("U", "У")
-    .replaceAll("Y", "У")
-    .replaceAll("N", "Н")
-    .replaceAll("V", "В");
-
-  s = s.replace(/\s+/g, "");
-  const letters = s.replace(/[^ОТБДЗУЛНВ]/g, "");
-
-  if (letters) {
-    if (letters.includes("Б")) return "Б";
-    if (letters.startsWith("Н")) {
-      return "НТ";
-    }
-    if (letters.startsWith("О")) {
-      const second = letters[1] || "";
-      if (second === "Т") return "ОТ";
-      if (second === "Д") return "ОД";
-      if (second === "З") return "ОЗ";
-      return "О";
-    }
-    if (letters.startsWith("У")) {
-      const second = letters[1] || "";
-      if (second === "В") return "УВ";
-      if (second === "Д") return "УД";
-      return "У";
-    }
-    return "";
-  }
-
-  let num = s.replace(/[^0-9.,]/g, "");
-  if (!num) return "";
-
-  if (num.includes(".") && num.includes(",")) num = num.replace(/,/g, ".");
-  const sepIdx = num.search(/[.,]/);
-  if (sepIdx !== -1) {
-    num =
-      num.slice(0, sepIdx) +
-      num[sepIdx] +
-      num.slice(sepIdx + 1).replace(/[.,]/g, "");
-  }
-
-  return num;
-}
-
-function sanitizeNumericValue(raw) {
-  let s = String(raw ?? "").trim().replace(/\s+/g, "").replace(/[^0-9.,]/g, "");
-  if (!s) return "";
-
-  if (s.includes(".") && s.includes(",")) s = s.replace(/,/g, ".");
-  const sepIdx = s.search(/[.,]/);
-  if (sepIdx !== -1) {
-    s =
-      s.slice(0, sepIdx) +
-      s[sepIdx] +
-      s.slice(sepIdx + 1).replace(/[.,]/g, "");
-  }
-
-  return s;
-}
-
-function normalizeLeaveTypeLegacy(lt) {
-  if (!lt) return null;
-  if (lt === "vacation") return "vac_paid";
-  if (lt === "sick") return "sick";
-  if (lt === NOT_EMPLOYED_LEAVE_TYPE) return NOT_EMPLOYED_LEAVE_TYPE;
-  if (lt === DISMISSED_LEAVE_TYPE) return DISMISSED_LEAVE_TYPE;
-  if (String(lt).trim().toUpperCase() === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
-  if (String(lt).trim().toUpperCase() === "УВ") return DISMISSED_LEAVE_TYPE;
-  return String(lt);
-}
-
-function normalizeLeaveToken(raw) {
-  const s0 = String(raw ?? "").trim().toUpperCase();
-  if (!s0) return null;
-
-  const s = s0
-    .replaceAll("O", "О")
-    .replaceAll("T", "Т")
-    .replaceAll("B", "Б")
-    .replaceAll("D", "Д")
-    .replaceAll("Z", "З")
-    .replaceAll("U", "У")
-    .replaceAll("Y", "У")
-    .replaceAll("L", "Л")
-    .replaceAll("N", "Н")
-    .replaceAll("V", "В");
-
-  if (s === "О" || s === "ОТ") return "vac_paid";
-  if (s === "ОД") return "vac_unpaid";
-  if (s === "ОЗ") return "vac_unpaid_required";
-  if (s === "Б" || s === "БЛ") return "sick";
-  if (s === "У") return "edu_paid";
-  if (s === "УД") return "edu_unpaid";
-  if (s === "НТ") return NOT_EMPLOYED_LEAVE_TYPE;
-  if (s === "УВ") return DISMISSED_LEAVE_TYPE;
-  return null;
-}
-
 function parseHoursOrLeave(raw) {
   const leave = normalizeLeaveToken(raw);
   if (leave) return { kind: "leave", leave };
@@ -784,35 +661,6 @@ function parseHoursOrLeave(raw) {
   if (!Number.isFinite(n)) return { kind: "invalid" };
 
   return { kind: "hours", hours: n };
-}
-
-function leaveTypeToCode(lt, raw = "") {
-  const t = normalizeLeaveTypeLegacy(lt);
-  if (!t) return "";
-  if (t === "vac_paid") return String(raw ?? "").trim().toUpperCase() === "О" ? "О" : "ОТ";
-  if (t === "vac_unpaid") return "ОД";
-  if (t === "vac_unpaid_required") return "ОЗ";
-  if (t === "edu_paid") return "У";
-  if (t === "edu_unpaid") return "УД";
-  if (t === "sick") return "Б";
-  if (t === NOT_EMPLOYED_LEAVE_TYPE) return "НТ";
-  if (t === DISMISSED_LEAVE_TYPE) return "УВ";
-  return "";
-}
-
-function sanitizeLeaveDisplayValue(raw, leaveType) {
-  return leaveTypeToCode(leaveType, raw) || String(raw ?? "").trim().toUpperCase();
-}
-
-function sanitizeHourNumber(n) {
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, n);
-}
-
-function formatHourForInput(n) {
-  const x = Number(n);
-  if (!Number.isFinite(x) || Math.abs(x) < 1e-9) return "";
-  return String(x);
 }
 
 function markDirty({ state = null, shared = false } = {}) {

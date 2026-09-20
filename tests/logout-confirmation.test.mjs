@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { bindLogoutConfirmation } from "../features/logoutConfirmation.js";
+import { bindLogoutConfirmation } from "../js/features/logoutConfirmation.js";
 
 function buttonMock() {
   let clickHandler;

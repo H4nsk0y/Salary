@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 
-import { buildDecemberForecast, estimateYearEndReserve } from "../yearEndReserve.js";
+import { buildDecemberForecast, estimateYearEndReserve } from "../js/yearEndReserve.js";
 
 const root = new URL("../", import.meta.url);
 
@@ -58,7 +58,7 @@ test("December forecast adds the reserve without changing monthly calculation", 
 });
 
 test("profile exposes the forecast only on December and respects money protection", async () => {
-  const profile = await readFile(new URL("profile.js", root), "utf8");
+  const profile = await readFile(new URL("js/profile.js", root), "utf8");
   assert.match(profile, /if \(m === 11 && yearEndForecast\)/);
   assert.match(profile, /isMoneyProtectionEnabled\(currentProfile\)[\s\S]*ensureProfileMoneyAccess\(\)/);
   assert.match(profile, /Это ориентир, а не расчетный лист/);

@@ -28,8 +28,8 @@ test("only owner can list ideas and change their status", async () => {
 });
 
 test("idea UI renders user content as text instead of HTML", async () => {
-  const page = await source("owner-ideas.js");
-  const dialog = await source("ideaDialog.js");
+  const page = await source("js/owner-ideas.js");
+  const dialog = await source("js/ideaDialog.js");
 
   assert.match(page, /node\.textContent = String\(text\)/);
   assert.doesNotMatch(page, /innerHTML\s*=\s*row\./);
@@ -44,7 +44,7 @@ test("owner hub links to the idea inbox", async () => {
 test("reviewing an idea creates one personal notification and requests push delivery", async () => {
   const [sql, page] = await Promise.all([
     source("supabase-sql/038_idea_review_notifications.sql"),
-    source("owner-ideas.js"),
+    source("js/owner-ideas.js"),
   ]);
 
   assert.match(sql, /p_status = 'reviewed' and v_idea\.status is distinct from 'reviewed'/i);

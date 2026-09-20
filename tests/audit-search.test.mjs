@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { filterAuditEntries } from "../features/auditSearch.js";
+import { filterAuditEntries } from "../js/features/auditSearch.js";
 
 const entries = [
   {

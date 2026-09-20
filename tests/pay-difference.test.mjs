@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { buildPayDifferenceInsight } from "../payDifference.js";
+import { buildPayDifferenceInsight } from "../js/payDifference.js";
 
 test("reports whether the employee received more and finds the largest component", () => {
   const result = buildPayDifferenceInsight({

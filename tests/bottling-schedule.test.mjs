@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { planBottlingSchedule } from "../features/bottlingSchedule.js";
-import { planEightHourTemplate, planFillToNorm, planReduceOvertime } from "../features/scheduleTools.js";
-import { planShiftCycle } from "../features/shiftCycles.js";
+import { planBottlingSchedule } from "../js/features/bottlingSchedule.js";
+import { planEightHourTemplate, planFillToNorm, planReduceOvertime } from "../js/features/scheduleTools.js";
+import { planShiftCycle } from "../js/features/shiftCycles.js";
 
 const blank = () => ({ dayHours: 0, nightHours: 0 });
 const team = (year, month, norm = 160) => Array.from({ length: 4 }, (_, id) => ({
