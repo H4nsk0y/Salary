@@ -47,6 +47,7 @@ import {
 import { confirmDialog } from "./modal.js";
 import { bindLogoutConfirmation } from "./features/logoutConfirmation.js";
 import { openIdeaDialog } from "./ideaDialog.js?v=20260921-1";
+import { beginPageDataRequest, finishPageDataRequest } from "./pageLoader.js";
 import { buildDecemberForecast, estimateYearEndReserve } from "./yearEndReserve.js?v=20260822-1";
 import {
   CHATEAU_ALVISA_BRANCH,
@@ -2029,12 +2030,12 @@ async function shiftCalendarMonth(delta) {
 let timesheetsLoadRevision = 0;
 
 async function refreshTimesheets() {
-  if (!requireDom(yearSelect, "yearSelect")) return;
-  if (!requireDom(timesheetsList, "timesheetsList")) return;
-  if (!requireDom(overtimeYearEl, "overtimeYear")) return;
-  if (!requireDom(overtimeRemainingEl, "overtimeRemaining")) return;
-  if (!requireDom(yearNetIncomeEl, "yearNetIncome")) return;
-  if (!requireDom(yearTaxPaidEl, "yearTaxPaid")) return;
+  if (!requireDom(yearSelect, "yearSelect")) return false;
+  if (!requireDom(timesheetsList, "timesheetsList")) return false;
+  if (!requireDom(overtimeYearEl, "overtimeYear")) return false;
+  if (!requireDom(overtimeRemainingEl, "overtimeRemaining")) return false;
+  if (!requireDom(yearNetIncomeEl, "yearNetIncome")) return false;
+  if (!requireDom(yearTaxPaidEl, "yearTaxPaid")) return false;
 
   const y = Number(yearSelect.value);
   const revision = ++timesheetsLoadRevision;
@@ -2046,19 +2047,19 @@ async function refreshTimesheets() {
   try {
     rows = await listMyTimesheetsByYear(y, { withPayload: true });
   } catch (error) {
-    if (revision !== timesheetsLoadRevision) return;
+    if (revision !== timesheetsLoadRevision) return false;
     setStatus("Ошибка загрузки", "err");
     setError(error?.message || "Не удалось загрузить итоги года.");
-    return;
+    return false;
   }
-  if (revision !== timesheetsLoadRevision) return;
+  if (revision !== timesheetsLoadRevision) return false;
   if (currentProfile?.branch === CHATEAU_ALVISA_BRANCH && y === 2026) {
     rows = await Promise.all(rows.map(async (row) => {
       if (!row?.payload || !Number.isInteger(row.month)) return row;
       const calendar = await getProductionCalendarMonth(y, row.month, { branch: currentProfile.branch });
       return { ...row, payload: mergeProductionCalendarDefaults(row.payload, calendar) };
     }));
-    if (revision !== timesheetsLoadRevision) return;
+    if (revision !== timesheetsLoadRevision) return false;
   }
   loadedYear = y;
   const startedRows = rows.filter((row) => isTimesheetMonthStarted(row?.year, row?.month));
@@ -2115,7 +2116,7 @@ async function refreshTimesheets() {
     timesheetsList.appendChild(empty);
     setStatus(rows.length ? "Будущие табели пока не учитываются" : "Нечего показывать", "neutral");
     await renderCalendar();
-    return;
+    return true;
   }
 
   startedRows.sort((a, b) => (a.month ?? 0) - (b.month ?? 0));
@@ -2129,6 +2130,7 @@ async function refreshTimesheets() {
     calMonth = new Date().getMonth();
   }
   await renderCalendar();
+  return true;
 }
 
 async function saveProfile() {
@@ -2409,11 +2411,17 @@ setupProfileMoneyControls();
 
 /* ========= boot ========= */
 
+const profilePageLoadToken = beginPageDataRequest({
+  label: "Загружаем личный кабинет…",
+  critical: true,
+});
+
 (async () => {
   let session;
   try {
     session = await requireSession();
   } catch {
+    finishPageDataRequest(profilePageLoadToken);
     location.href = "login.html?next=profile.html";
     return;
   }
@@ -2428,10 +2436,15 @@ setupProfileMoneyControls();
 
   try {
     await refreshProfile();
-    await refreshTimesheets();
+    const timesheetsReady = await refreshTimesheets();
+    if (!timesheetsReady) {
+      throw new Error("Не удалось загрузить данные личного кабинета.");
+    }
+    finishPageDataRequest(profilePageLoadToken);
   } catch (e) {
     setStatus("Ошибка загрузки", "err");
     setError(e?.message || "Не удалось загрузить данные кабинета.");
+    finishPageDataRequest(profilePageLoadToken, { failed: true });
   }
 })();
 

@@ -696,6 +696,7 @@ function createState(member) {
     position: member?.position ?? "",
     tabNumber: member?.tab_number ?? "",
     sortOrder: member?.sort_order ?? null,
+    updatedAt: null,
     dayHours: new Array(daysInMonth).fill(0),
     nightHours: new Array(daysInMonth).fill(0),
     leaveType: new Array(daysInMonth).fill(null),
@@ -1125,7 +1126,19 @@ function currentSaveItems({ changedOnly = false } = {}) {
     year,
     month,
     payload: currentPayloadForState(state),
+    expected_updated_at: state.updatedAt,
   }));
+}
+
+function applySavedVersions(rows) {
+  const versions = new Map(
+    (rows ?? []).map((row) => [String(row.user_id), row.updated_at ?? null])
+  );
+  for (const state of teamStates) {
+    if (versions.has(String(state.userId))) {
+      state.updatedAt = versions.get(String(state.userId));
+    }
+  }
 }
 
 function currentSignature() {
@@ -2700,7 +2713,10 @@ async function saveAllNow({ notify = false } = {}) {
       : null;
     const saveRevision = changeRevision;
     const items = structuredClone(currentSaveItems({ changedOnly: true }));
-    if (items.length) await managedSaveManyTimesheets(managedDepartment?.key, items);
+    if (items.length) {
+      const savedRows = await managedSaveManyTimesheets(managedDepartment?.key, items);
+      applySavedVersions(savedRows);
+    }
 
     for (const item of items) {
       const key = String(item.user_id);
@@ -2769,9 +2785,13 @@ async function saveAllNow({ notify = false } = {}) {
     setSaveStatus("Ошибка сохранения", "err");
     const message = String(e?.message || "");
     setError(
-      /managed_save_department_timesheets|schema cache|PGRST202/i.test(message)
-        ? "В базе нужно запустить supabase-sql/043_department_timesheet_audit.sql."
-        : message || "Не удалось сохранить табели."
+      /TIMESHEET_CONFLICT/i.test(message)
+        ? "Этот табель уже изменил другой редактор. Ваши правки не затёрты и остаются на экране. Обновите страницу, проверьте свежую версию и внесите изменения повторно."
+        : /managed_save_department_timesheets_v2|schema cache|PGRST202/i.test(message)
+          ? "В базе нужно запустить supabase-sql/052_timesheet_edit_conflicts.sql."
+          : /managed_save_department_timesheets/i.test(message)
+            ? "В базе нужно запустить supabase-sql/043_department_timesheet_audit.sql."
+            : message || "Не удалось сохранить табели."
     );
   }
 }
@@ -3012,6 +3032,12 @@ async function loadCurrentMonth(targetYear = year, targetMonth = month) {
       payloadsByUserId = new Map(
         payloadRows.map((row) => [String(row.user_id), row.payload ?? null])
       );
+      const updatedAtByUserId = new Map(
+        payloadRows.map((row) => [String(row.user_id), row.updated_at ?? null])
+      );
+      for (const state of teamStates) {
+        state.updatedAt = updatedAtByUserId.get(String(state.userId)) ?? null;
+      }
       applyDismissalsBeforeMonth(previousRows);
     }
 

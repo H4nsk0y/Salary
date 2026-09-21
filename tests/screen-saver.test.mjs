@@ -51,6 +51,9 @@ test("idle screen saver preserves the return page and selects the building", asy
   const [nav, script] = await Promise.all([read("js/nav.js"), read("js/screen-saver.js")]);
   assert.match(nav, /if \(profile\?\.user_id\) \{[\s\S]*startIdleScreenSaver\(\)/);
   assert.match(script, /returnUrl\.origin === location\.origin/);
+  const idle = await read("js/idleScreenSaver.js");
+  assert.match(idle, /event\?\.isTrusted === false/);
+  assert.doesNotMatch(idle, /"scroll"/);
 });
 
 test("screen saver music loops and follows the user across application pages", async () => {

@@ -1,7 +1,7 @@
 
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary, computePaymentSplit } from "./calc.js";
-import { requireSession, signOut } from "./auth.js";
-import { getMyProfile, getMyDepartmentMembershipKey, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, saveMyTimesheetActual, saveTimesheet } from "./db.js";
+import { requireSession } from "./auth.js";
+import { findMyShiftReplacementCandidates, getMyProfile, getMyDepartmentMembershipKey, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, reportMyShiftUnavailable, saveMyTimesheetActual, saveTimesheet, sendPushNotifications } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { setUiStatus } from "./uiStatus.js";
 import { isTimesheetAutosaveDisabled } from "./features/autosavePreference.js";
@@ -82,13 +82,15 @@ const REMAINING_PAYMENT_DAY = 10;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 
 let focusDayIndex = null;
+let selectedShiftIndex = null;
 let mobileSelectedIdx = 0;
 let dismissedBeforeMonth = false;
 
-const logoutBtn = document.getElementById("logoutBtn");
 const adminLink = document.getElementById("adminLink");
 const saveBtn = document.getElementById("saveBtn");
 const exportCalendarBtn = document.getElementById("exportCalendarBtn");
+const findReplacementBtn = document.getElementById("findReplacementBtn");
+const shiftUnavailableBtn = document.getElementById("shiftUnavailableBtn");
 const saveStatus = document.getElementById("saveStatus");
 const readOnlyNotice = document.getElementById("readOnlyNotice");
 
@@ -178,7 +180,15 @@ const timesheetDayEditorHoliday = document.getElementById("timesheetDayEditorHol
 const timesheetDayEditorTransferred = document.getElementById("timesheetDayEditorTransferred");
 const timesheetDayEditorShort = document.getElementById("timesheetDayEditorShort");
 const timesheetDayEditorComment = document.getElementById("timesheetDayEditorComment");
+const timesheetDayEditorFindReplacement = document.getElementById("timesheetDayEditorFindReplacement");
+const timesheetDayEditorUnavailable = document.getElementById("timesheetDayEditorUnavailable");
 const timesheetDayEditorHint = document.getElementById("timesheetDayEditorHint");
+
+const shiftReplacementOverlay = document.getElementById("shiftReplacementOverlay");
+const shiftReplacementTitle = document.getElementById("shiftReplacementTitle");
+const shiftReplacementIntro = document.getElementById("shiftReplacementIntro");
+const shiftReplacementList = document.getElementById("shiftReplacementList");
+const shiftReplacementClose = document.getElementById("shiftReplacementClose");
 
 const mPrevDayBtn = document.getElementById("mPrevDay");
 const mNextDayBtn = document.getElementById("mNextDay");
@@ -193,6 +203,8 @@ const helpPanel = document.getElementById("helpPanel");
 
 let profileCompletionGateEl = null;
 let personalTimesheetReadOnly = false;
+let canReportShiftUnavailable = false;
+let canFindShiftReplacement = false;
 const TIMESHEET_VIEW_STORAGE_KEY = "alvisa-timesheet-view-v1";
 const TIMESHEET_WORK_FILTER_STORAGE_KEY = "alvisa-timesheet-work-days-only-v1";
 const TIMESHEET_VIEWS = new Set(["classic", "calendar", "agenda"]);
@@ -205,7 +217,11 @@ function applyPersonalTimesheetEditability() {
 
   if (saveBtn) {
     saveBtn.disabled = personalTimesheetReadOnly;
-    saveBtn.textContent = personalTimesheetReadOnly ? "Только просмотр" : "Сохранить";
+    const label = personalTimesheetReadOnly ? "Только просмотр" : "Сохранить";
+    saveBtn.setAttribute("aria-label", label);
+    saveBtn.dataset.tooltip = label;
+    const hiddenLabel = saveBtn.querySelector(".sr-only");
+    if (hiddenLabel) hiddenLabel.textContent = label;
     saveBtn.classList.toggle("cursor-not-allowed", personalTimesheetReadOnly);
     saveBtn.classList.toggle("opacity-60", personalTimesheetReadOnly);
   }
@@ -227,6 +243,9 @@ function applyPersonalTimesheetEditability() {
   }
 
   syncDayEditor();
+
+  shiftUnavailableBtn?.classList.toggle("hidden", !canReportShiftUnavailable);
+  findReplacementBtn?.classList.toggle("hidden", !canFindShiftReplacement);
 
   if (personalTimesheetReadOnly) {
     setSaveStatus("Только просмотр", "ok");
@@ -2471,6 +2490,14 @@ function syncDayEditor() {
     timesheetDayEditorComment.hidden = !comment;
     timesheetDayEditorComment.textContent = comment;
   }
+  timesheetDayEditorUnavailable?.classList.toggle(
+    "hidden",
+    !canReportShiftUnavailable || !isReportableShift(index)
+  );
+  timesheetDayEditorFindReplacement?.classList.toggle(
+    "hidden",
+    !canFindShiftReplacement || !isReportableShift(index)
+  );
   if (timesheetDayEditorHint) {
     timesheetDayEditorHint.textContent = personalTimesheetReadOnly
       ? "Табель доступен только для просмотра."
@@ -2480,6 +2507,7 @@ function syncDayEditor() {
 
 function openDayEditor(index) {
   if (!timesheetDayEditor || index < 0 || index >= daysInMonth) return;
+  selectShiftDay(index);
   activeDayEditorIndex = index;
   timesheetDayEditor.hidden = false;
   document.body.classList.add("overflow-hidden");
@@ -2528,6 +2556,14 @@ timesheetDayEditor?.addEventListener("click", (event) => {
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && timesheetDayEditor && !timesheetDayEditor.hidden) closeDayEditor();
+  if (event.key === "Escape" && shiftReplacementOverlay && !shiftReplacementOverlay.hidden) {
+    closeShiftReplacementDialog();
+  }
+});
+
+shiftReplacementClose?.addEventListener("click", closeShiftReplacementDialog);
+shiftReplacementOverlay?.addEventListener("click", (event) => {
+  if (event.target === shiftReplacementOverlay) closeShiftReplacementDialog();
 });
 
 function recalcAll() {
@@ -2918,8 +2954,225 @@ function focusDayColumn(dayIdx0) {
   nightInputs[dayIdx0]?.closest("td")?.classList.add("focus-col");
 }
 
+function selectShiftDay(index, { scroll = false } = {}) {
+  if (!Number.isInteger(index) || index < 0 || index >= daysInMonth) return;
+  selectedShiftIndex = index;
+  mobileSelectedIdx = index;
+  focusDayColumn(index);
+  if (scroll) scrollTableToColumn(index);
+  updateMobileToolbar();
+}
+
+function isReportableShift(index) {
+  if (!Number.isInteger(index) || index < 0 || index >= daysInMonth) return false;
+  if (normalizeLeaveTypeLegacy(leaveType[index])) return false;
+  const day = sanitizeHourNumber(Number(dayHours[index]));
+  const night = sanitizeHourNumber(Number(nightHours[index]));
+  return day >= 6 || (night > 0 && !(night === 5 && (day === 1 || day === 2)));
+}
+
+function isSelectedNightShift(index) {
+  if (!Number.isInteger(index) || index < 0 || index >= daysInMonth) return false;
+  const day = sanitizeHourNumber(Number(dayHours[index]));
+  const night = sanitizeHourNumber(Number(nightHours[index]));
+  return night > 0 && !(night === 5 && (day === 1 || day === 2));
+}
+
+function closeShiftReplacementDialog() {
+  if (!shiftReplacementOverlay) return;
+  shiftReplacementOverlay.hidden = true;
+  document.body.classList.remove("overflow-hidden");
+}
+
+function renderShiftReplacementCandidates(candidates) {
+  if (!shiftReplacementList) return;
+  const rows = Array.isArray(candidates) ? candidates : [];
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "shift-replacement-empty";
+    empty.textContent = "По текущему графику свободных коллег не найдено. Возможно, замену придётся согласовать с руководителем вручную.";
+    shiftReplacementList.replaceChildren(empty);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  for (const candidate of rows) {
+    const card = document.createElement("div");
+    card.className = "shift-replacement-person";
+
+    const name = document.createElement("div");
+    name.className = "shift-replacement-name";
+    name.textContent = String(candidate?.display_name || "Сотрудник");
+
+    const badge = document.createElement("span");
+    const recovery = candidate?.availability === "recovery";
+    badge.className = `shift-replacement-badge${recovery ? " is-recovery" : ""}`;
+    badge.textContent = recovery ? "Отсыпной · крайний вариант" : "Выходной";
+
+    card.append(name, badge);
+    fragment.appendChild(card);
+  }
+  shiftReplacementList.replaceChildren(fragment);
+}
+
+function mapShiftReplacementError(error) {
+  const message = String(error?.message || "");
+  if (/SHIFT_NOT_SCHEDULED/i.test(message)) {
+    return "На выбранную дату у вас нет смены.";
+  }
+  if (/DEPARTMENT_NOT_FOUND/i.test(message)) {
+    return "Подбор доступен только сотрудникам, добавленным в отдел.";
+  }
+  if (/TIMESHEET_NOT_FOUND/i.test(message)) {
+    return "Сохранённый табель за этот месяц не найден.";
+  }
+  if (/find_my_shift_replacement_candidates|schema cache|PGRST202/i.test(message)) {
+    return "В базе нужно запустить supabase-sql/054_shift_replacement_candidates.sql.";
+  }
+  return message || "Не удалось подобрать возможную замену.";
+}
+
+async function findSelectedShiftReplacement(index = selectedShiftIndex) {
+  if (!canFindShiftReplacement) {
+    setError("Подбор замены доступен сотрудникам, добавленным в отдел.");
+    return;
+  }
+  if (!Number.isInteger(index)) {
+    setError("Сначала выберите рабочую смену в табеле.");
+    return;
+  }
+  if (!isReportableShift(index)) {
+    setError("На выбранную дату нет смены. Выберите день, когда вам нужно выйти на работу.");
+    return;
+  }
+
+  const nightShift = isSelectedNightShift(index);
+  const dateLabel = `${index + 1} ${monthNames[month].toLowerCase()} ${year}`;
+  closeDayEditor();
+  if (shiftReplacementTitle) shiftReplacementTitle.textContent = `Замена на ${dateLabel}`;
+  if (shiftReplacementIntro) {
+    shiftReplacementIntro.textContent = nightShift
+      ? "Сначала показаны коллеги с полноценным выходным. Люди с отсыпным перечислены ниже только как крайний вариант для ночной смены."
+      : "Показаны коллеги, у которых на эту дату в табеле стоит полноценный выходной.";
+  }
+  if (shiftReplacementList) {
+    const loading = document.createElement("div");
+    loading.className = "shift-replacement-empty";
+    loading.textContent = "Проверяем график отдела…";
+    shiftReplacementList.replaceChildren(loading);
+  }
+  if (shiftReplacementOverlay) shiftReplacementOverlay.hidden = false;
+  document.body.classList.add("overflow-hidden");
+
+  findReplacementBtn.disabled = true;
+  if (timesheetDayEditorFindReplacement) timesheetDayEditorFindReplacement.disabled = true;
+  setError(null);
+  try {
+    const candidates = await findMyShiftReplacementCandidates(year, month, index + 1);
+    renderShiftReplacementCandidates(candidates);
+  } catch (error) {
+    if (shiftReplacementList) {
+      const failure = document.createElement("div");
+      failure.className = "shift-replacement-empty";
+      failure.textContent = mapShiftReplacementError(error);
+      shiftReplacementList.replaceChildren(failure);
+    }
+  } finally {
+    findReplacementBtn.disabled = false;
+    if (timesheetDayEditorFindReplacement) timesheetDayEditorFindReplacement.disabled = false;
+  }
+}
+
+function mapShiftUnavailableError(error) {
+  const message = String(error?.message || "");
+  if (/SHIFT_NOT_SCHEDULED/i.test(message)) {
+    return "На выбранную дату у вас нет смены. Выберите дату с дневной или ночной сменой.";
+  }
+  if (/DEPARTMENT_NOT_FOUND/i.test(message)) {
+    return "Вы пока не состоите в отделе, поэтому сообщение некому отправить.";
+  }
+  if (/TIMESHEET_NOT_FOUND/i.test(message)) {
+    return "Сохранённый табель за этот месяц не найден.";
+  }
+  if (/report_my_shift_unavailable|schema cache|PGRST202/i.test(message)) {
+    return "В базе нужно запустить supabase-sql/053_shift_unavailable_reports.sql.";
+  }
+  return message || "Не удалось сообщить о смене.";
+}
+
+async function reportSelectedShiftUnavailable(index = selectedShiftIndex) {
+  if (!canReportShiftUnavailable) {
+    setError("Сообщение доступно сотрудникам, добавленным в отдел.");
+    return;
+  }
+  if (!Number.isInteger(index)) {
+    setError("Сначала выберите рабочую смену в табеле.");
+    return;
+  }
+  if (!isReportableShift(index)) {
+    setError("На выбранную дату нет смены. Выберите день, когда вам нужно выйти на работу.");
+    return;
+  }
+
+  const dateLabel = `${index + 1} ${monthNames[month].toLowerCase()} ${year}`;
+  const approved = await confirmDialog({
+    title: "Не сможете выйти на смену?",
+    message: `Сообщить руководителю и редакторам отдела о смене ${dateLabel}?`,
+    note: "В табеле появится комментарий от вашего имени. Саму смену система не удалит.",
+    confirmText: "Сообщить",
+    cancelText: "Отмена",
+    tone: "warning",
+  });
+  if (!approved) return;
+
+  shiftUnavailableBtn.disabled = true;
+  if (timesheetDayEditorUnavailable) timesheetDayEditorUnavailable.disabled = true;
+  setSaveStatus("Отправляю сообщение…", "busy");
+  setError(null);
+
+  try {
+    const result = await reportMyShiftUnavailable(year, month, index + 1);
+    const nextComment = String(result?.comment || "Комментарий от сотрудника: Не смогу выйти");
+    shiftComments[index] = nextComment;
+    updateShiftCommentCell(dayInputs[index]?.closest("td"), nextComment);
+    updateShiftCommentCell(nightInputs[index]?.closest("td"), nextComment);
+    renderAlternativeTimesheetViews();
+    syncDayEditor();
+    if (!dirty) lastSavedJSON = JSON.stringify(currentPayload());
+
+    if (result?.already_reported) {
+      setSaveStatus("Вы уже сообщили об этой смене", "ok");
+      return;
+    }
+
+    if (Number(result?.recipients) < 1) {
+      setSaveStatus("Комментарий добавлен", "ok");
+      setError("В отделе пока не назначен руководитель или редактор табеля. Комментарий сохранён, но адресное уведомление отправить некому.");
+      return;
+    }
+
+    try {
+      await sendPushNotifications({
+        departmentKey: result.department_key,
+        type: "shift_unavailable",
+      });
+      setSaveStatus("Руководитель уведомлён", "ok");
+    } catch {
+      setSaveStatus("Сообщение сохранено", "ok");
+      setError("Комментарий и уведомление внутри сайта сохранены, но push мог не отправиться.");
+    }
+  } catch (error) {
+    setSaveStatus("Не удалось сообщить", "err");
+    setError(mapShiftUnavailableError(error));
+  } finally {
+    shiftUnavailableBtn.disabled = false;
+    if (timesheetDayEditorUnavailable) timesheetDayEditorUnavailable.disabled = false;
+  }
+}
+
 function buildTableForMonth() {
   resetTableDom();
+  selectedShiftIndex = null;
 
   daysInMonth = new Date(year, month + 1, 0).getDate();
   isHoliday = new Array(daysInMonth).fill(false);
@@ -2971,8 +3224,9 @@ function buildTableForMonth() {
     let clickTimer = null;
 
     th.addEventListener("click", (e) => {
-      if (personalTimesheetReadOnly) return;
       const idx = Number(e.currentTarget.dataset.dayIndex);
+      selectShiftDay(idx);
+      if (personalTimesheetReadOnly) return;
       clickCount += 1;
 
       if (clickTimer) clearTimeout(clickTimer);
@@ -3044,13 +3298,13 @@ function buildTableForMonth() {
     attachArrowNavigation(dayInput, "day", i);
 
     dayInput.addEventListener("focus", () => {
+      selectShiftDay(i, { scroll: isMobileNow() });
       if (isMobileNow()) {
-        mobileSelectedIdx = i;
         updateMobileToolbar();
-        focusDayColumn(i);
-        scrollTableToColumn(i);
       }
     });
+
+    dayTd.addEventListener("pointerdown", () => selectShiftDay(i));
 
     dayInput.addEventListener("blur", () => {
       const s = String(dayInput.value ?? "").trim();
@@ -3160,13 +3414,13 @@ function buildTableForMonth() {
     attachArrowNavigation(nightInput, "night", i);
 
     nightInput.addEventListener("focus", () => {
+      selectShiftDay(i, { scroll: isMobileNow() });
       if (isMobileNow()) {
-        mobileSelectedIdx = i;
         updateMobileToolbar();
-        focusDayColumn(i);
-        scrollTableToColumn(i);
       }
     });
+
+    nightTd.addEventListener("pointerdown", () => selectShiftDay(i));
 
     nightInput.addEventListener("blur", () => {
       const s = String(nightInput.value ?? "").trim();
@@ -3480,10 +3734,7 @@ function updateMobileToolbar() {
 function setMobileDay(idx) {
   if (idx < 0) idx = 0;
   if (idx >= daysInMonth) idx = daysInMonth - 1;
-  mobileSelectedIdx = idx;
-  focusDayColumn(idx);
-  scrollTableToColumn(idx);
-  updateMobileToolbar();
+  selectShiftDay(idx, { scroll: true });
 }
 
 mPrevDayBtn?.addEventListener("click", () => setMobileDay(mobileSelectedIdx - 1));
@@ -3570,11 +3821,23 @@ function updateDayMarkClasses(index) {
   }
 }
 
-logoutBtn?.addEventListener("click", async () => {
-  try { await signOut(); } finally { location.href = "login.html?next=table.html"; }
+saveBtn?.addEventListener("click", async () => { await doSaveTimesheet(); });
+
+findReplacementBtn?.addEventListener("click", () => {
+  void findSelectedShiftReplacement(selectedShiftIndex);
 });
 
-saveBtn?.addEventListener("click", async () => { await doSaveTimesheet(); });
+timesheetDayEditorFindReplacement?.addEventListener("click", () => {
+  void findSelectedShiftReplacement(activeDayEditorIndex);
+});
+
+shiftUnavailableBtn?.addEventListener("click", () => {
+  void reportSelectedShiftUnavailable(selectedShiftIndex);
+});
+
+timesheetDayEditorUnavailable?.addEventListener("click", () => {
+  void reportSelectedShiftUnavailable(activeDayEditorIndex);
+});
 
 exportCalendarBtn?.addEventListener("click", () => {
   const result = downloadShiftCalendar({
@@ -3738,6 +4001,9 @@ updateUrlForMonth();
     getMyManagedDepartment().catch(() => null),
   ]);
 
+  canReportShiftUnavailable = Boolean(membershipDepartmentKey);
+  canFindShiftReplacement = Boolean(membershipDepartmentKey);
+
   personalTimesheetReadOnly =
     profileRole !== "owner" &&
     membershipDepartmentKey === "egais" &&
@@ -3753,11 +4019,15 @@ updateUrlForMonth();
   adminLink?.classList.remove("hidden");
   if (adminLink) {
     adminLink.href = `admin.html?department=${encodeURIComponent(departmentTableAccess.key)}`;
-    adminLink.textContent = departmentTableAccess.readOnly
+    const departmentLabel = departmentTableAccess.readOnly
       ? "График отдела ЕГАИС"
       : departmentTableAccess.name
         ? `Табель: ${departmentTableAccess.name}`
         : "Табель отдела";
+    adminLink.setAttribute("aria-label", departmentLabel);
+    adminLink.dataset.tooltip = departmentLabel;
+    const hiddenLabel = adminLink.querySelector(".sr-only");
+    if (hiddenLabel) hiddenLabel.textContent = departmentLabel;
   }
 } else {
   adminLink?.classList.add("hidden");
@@ -3786,9 +4056,7 @@ updateUrlForMonth();
   }
 
   if (Number.isInteger(focusDayIndex) && focusDayIndex >= 0 && focusDayIndex < daysInMonth) {
-    focusDayColumn(focusDayIndex);
-    scrollTableToColumn(focusDayIndex);
-    if (isMobileNow()) setMobileDay(focusDayIndex);
+    selectShiftDay(focusDayIndex, { scroll: true });
   }
 
   window.addEventListener("resize", () => {

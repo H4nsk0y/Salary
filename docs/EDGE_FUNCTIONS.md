@@ -24,7 +24,7 @@ VAPID_SUBJECT
 
 ### `send-push-notifications`
 
-Отправляет Web Push по строкам из `user_notifications`. Базовые миграции: `010_push_subscriptions.sql` и `011_push_delivery_state.sql`.
+Отправляет Web Push по строкам из `user_notifications`, включая сообщения руководителю и редакторам о том, что сотрудник не сможет выйти на смену. Базовые миграции: `010_push_subscriptions.sql`, `011_push_delivery_state.sql`; для уведомлений об отказе от смены также нужна `053_shift_unavailable_reports.sql`.
 
 ### `send-egais-file-reminders`
 

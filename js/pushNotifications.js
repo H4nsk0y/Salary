@@ -58,6 +58,37 @@ function getPushUnsupportedReason() {
   return "Браузер не поддерживает push-уведомления.";
 }
 
+export function getPushFailureReason(error) {
+  const message = String(error?.message || error || "").trim();
+
+  if (/denied|заблокирован|permission/i.test(message)) {
+    return "Уведомления запрещены в настройках браузера. Разрешите их для этого сайта и нажмите «Проверить» снова.";
+  }
+  if (/нет активн.*push-подпис|не наш[её]л активн.*подпис|subscription.*not found/i.test(message)) {
+    return "Подписка этого устройства устарела или не дошла до сервера. Отключите уведомления, включите их снова и повторите проверку.";
+  }
+  if (/404|410|expired|unsubscribed/i.test(message)) {
+    return "Браузер отозвал старую подписку. Отключите уведомления и включите их снова.";
+  }
+  if (/vapid|401|403|unauthor|forbidden/i.test(message)) {
+    return "Сервер отклонил отправку уведомления. Владельцу сайта нужно проверить ключи push-сервиса.";
+  }
+  if (/failed to fetch|network|fetch|load failed|timeout|timed out/i.test(message)) {
+    return "Не удалось связаться с сервером уведомлений. Проверьте интернет и VPN, затем повторите попытку.";
+  }
+  if (/service worker/i.test(message)) {
+    return "Не запустился фоновый модуль уведомлений. Обновите страницу и повторите попытку.";
+  }
+  if (/edge function|non-2xx|send_push_failed|function.*error/i.test(message)) {
+    return "Сервер уведомлений сейчас не смог обработать проверку. Проверьте VPN и повторите попытку чуть позже.";
+  }
+  if (/pushmanager|push api|не поддерживает/i.test(message)) {
+    return getPushUnsupportedReason();
+  }
+
+  return message || "Не удалось проверить уведомления. Обновите страницу и повторите попытку.";
+}
+
 export function isPushNotificationSupported() {
   return Boolean(
     !isNativeApp() &&
@@ -197,7 +228,9 @@ export async function sendPushTestNotification() {
 
   const result = await sendPushNotifications({ type: "push_test" });
   if (Number(result?.sent) < 1) {
-    throw new Error(result?.message || "Сервер не нашёл активную push-подписку этого устройства.");
+    throw new Error(getPushFailureReason(
+      result?.message || "Сервер не нашёл активную push-подписку этого устройства."
+    ));
   }
   return result;
 }

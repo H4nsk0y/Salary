@@ -16,8 +16,28 @@ test("department timesheet saves are audited atomically on the server", async ()
   assert.match(sql, /if not public\.can_edit_department\(v_department_key\)/i);
   assert.match(sql, /MEMBER_NOT_FOUND/);
   assert.match(sql, /insert into public\.timesheets[\s\S]*insert into public\.department_timesheet_audit_log/i);
-  assert.match(db, /supabase\.rpc\("managed_save_department_timesheets"/);
+  assert.match(db, /supabase\.rpc\("managed_save_department_timesheets_v2"/);
   assert.match(admin, /managedSaveManyTimesheets\(managedDepartment\?\.key, items\)/);
+});
+
+test("department timesheet saves reject stale editor versions", async () => {
+  const [sql, db, admin] = await Promise.all([
+    read("supabase-sql/052_timesheet_edit_conflicts.sql"),
+    read("js/db.js"),
+    read("js/admin.js"),
+  ]);
+
+  assert.match(sql, /managed_save_department_timesheets_v2/);
+  assert.match(sql, /for update/i);
+  assert.match(sql, /TIMESHEET_CONFLICT/);
+  assert.match(sql, /managed_save_department_timesheets\(v_department_key, p_items\)/);
+  assert.match(sql, /'versions', v_versions/);
+  assert.match(db, /select\("user_id, payload, updated_at"\)/);
+  assert.match(db, /expected_updated_at/);
+  assert.match(db, /supabase\.rpc\("managed_save_department_timesheets_v2"/);
+  assert.match(db, /Array\.isArray\(data\?\.versions\)/);
+  assert.match(admin, /state\.updatedAt/);
+  assert.match(admin, /Этот табель уже изменил другой редактор/);
 });
 
 test("only the owner can read department timesheet history", async () => {

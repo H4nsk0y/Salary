@@ -1,4 +1,5 @@
-import "./pageLoader.js";
+import { beginPageDataRequest, finishPageDataRequest } from "./pageLoader.js";
+import { getSession } from "./auth.js";
 import { getMyProfile } from "./db.js";
 import { confirmDialog } from "./modal.js";
 import {
@@ -16,7 +17,7 @@ import "./footer.js?v=20260802-2";
 installErrorLogger();
 
 const NAV_STYLE_ID = "alvisa-common-nav-style";
-const CURRENT_UPDATES_VERSION = "33.0";
+const CURRENT_UPDATES_VERSION = "34.0";
 const UPDATES_SEEN_STORAGE_KEY = "alvisa.updatesSeenVersion.v1";
 const UPDATES_PROMPT_SESSION_KEY = "alvisa.updatesPromptedVersion.v1";
 
@@ -1126,39 +1127,38 @@ function renderHeader(mount) {
 async function enhanceNavForProfile(header) {
   if (!header) return;
 
-  try {
-    const profile = await getMyProfile();
-    header._siteSearch?.setProfile(profile);
-    installProfileCompletionNavigationGate(header, profile);
-    applyProfileNavPreferences(header, profile);
+  const session = await getSession();
+  if (!session) return;
 
-    const activeKey = header.dataset.activeKey || detectActiveKey();
-    if (profile?.user_id) {
-      void import("./screenWakeLock.js")
-        .then(({ startScreenWakeLock }) => startScreenWakeLock())
-        .catch((error) => console.error("Не удалось включить удержание экрана:", error));
-      scheduleUnreadUpdatesPrompt(activeKey);
-      void loadNotificationsWidget(header);
-      void import("./idleScreenSaver.js?v=20260920-1")
-        .then(({ startIdleScreenSaver }) => startIdleScreenSaver())
-        .catch((error) => console.error("Не удалось запустить антивыгорание:", error));
-    }
-    const desktopNav = header.querySelector('[data-nav-slot="desktop"]');
-    const mobileNav = header.querySelector('[data-nav-slot="mobile"]');
-    if (header.dataset.ownerNavMode === "false") return;
-    if (header.dataset.ownerNavEnhanced === "true") return;
-    if (profile?.role !== "owner") return;
+  const profile = await getMyProfile();
+  header._siteSearch?.setProfile(profile);
+  installProfileCompletionNavigationGate(header, profile);
+  applyProfileNavPreferences(header, profile);
 
-    const desktopProfile = desktopNav?.querySelector('[data-nav-key="profile"]');
-    const mobileProfile = mobileNav?.querySelector('[data-nav-key="profile"]');
-    OWNER_LINKS.forEach((link) => {
-      desktopNav?.insertBefore(renderLink(link, activeKey, "desktop"), desktopProfile ?? null);
-      mobileNav?.insertBefore(renderLink(link, activeKey, "mobile"), mobileProfile ?? null);
-    });
-    header.dataset.ownerNavEnhanced = "true";
-  } catch {
-    // Public or expired sessions keep the regular navigation.
+  const activeKey = header.dataset.activeKey || detectActiveKey();
+  if (profile?.user_id) {
+    void import("./screenWakeLock.js")
+      .then(({ startScreenWakeLock }) => startScreenWakeLock())
+      .catch((error) => console.error("Не удалось включить удержание экрана:", error));
+    scheduleUnreadUpdatesPrompt(activeKey);
+    void loadNotificationsWidget(header);
+    void import("./idleScreenSaver.js?v=20260921-1")
+      .then(({ startIdleScreenSaver }) => startIdleScreenSaver())
+      .catch((error) => console.error("Не удалось запустить антивыгорание:", error));
   }
+  const desktopNav = header.querySelector('[data-nav-slot="desktop"]');
+  const mobileNav = header.querySelector('[data-nav-slot="mobile"]');
+  if (header.dataset.ownerNavMode === "false") return;
+  if (header.dataset.ownerNavEnhanced === "true") return;
+  if (profile?.role !== "owner") return;
+
+  const desktopProfile = desktopNav?.querySelector('[data-nav-key="profile"]');
+  const mobileProfile = mobileNav?.querySelector('[data-nav-key="profile"]');
+  OWNER_LINKS.forEach((link) => {
+    desktopNav?.insertBefore(renderLink(link, activeKey, "desktop"), desktopProfile ?? null);
+    mobileNav?.insertBefore(renderLink(link, activeKey, "mobile"), mobileProfile ?? null);
+  });
+  header.dataset.ownerNavEnhanced = "true";
 }
 
 function initCommonNav() {
@@ -1168,7 +1168,17 @@ function initCommonNav() {
   injectNavStyles();
   if (detectActiveKey() === "updates") markCurrentUpdatesSeen();
   const header = renderHeader(mount);
-  void enhanceNavForProfile(header);
+  const profileLoadToken = beginPageDataRequest({
+    label: "Загружаем профиль…",
+    critical: true,
+    persistedSessionOnly: true,
+  });
+  void enhanceNavForProfile(header)
+    .then(() => finishPageDataRequest(profileLoadToken))
+    .catch((error) => {
+      console.error("Не удалось загрузить профиль для навигации:", error);
+      finishPageDataRequest(profileLoadToken, { failed: true });
+    });
 }
 
 initCommonNav();

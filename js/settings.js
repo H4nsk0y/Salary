@@ -6,6 +6,7 @@ import { getMyDepartmentMembershipKey, getMyProfile, updateMyProfileFields } fro
 import {
   disablePushNotifications,
   enablePushNotifications,
+  getPushFailureReason,
   getPushNotificationState,
   sendPushTestNotification,
 } from "./pushNotifications.js";
@@ -357,8 +358,7 @@ async function refreshPushNotificationState() {
     pushNotificationsBtn.disabled = true;
     pushNotificationsBtn.textContent = "Ошибка";
     if (pushNotificationsHint) {
-      pushNotificationsHint.textContent =
-        e?.message || "Не удалось проверить поддержку уведомлений.";
+      pushNotificationsHint.textContent = getPushFailureReason(e);
     }
   }
 }
@@ -509,7 +509,9 @@ async function handlePushNotificationsClick() {
     void reportHandledClientError("push_settings_error", e, { source: "settings:toggle-push" });
     await refreshPushNotificationState();
     setStatus("Ошибка уведомлений", "err");
-    setError(e?.message || "Не удалось изменить настройки уведомлений.");
+    const reason = getPushFailureReason(e);
+    pushNotificationsHint.textContent = reason;
+    setError(reason);
   }
 }
 
@@ -526,7 +528,9 @@ async function handlePushTestClick() {
   } catch (e) {
     void reportHandledClientError("push_test_error", e, { source: "settings:test-push" });
     setStatus("Тест не прошёл", "err");
-    setError(e?.message || "Не удалось отправить тестовое уведомление.");
+    const reason = getPushFailureReason(e);
+    pushNotificationsHint.textContent = reason;
+    setError(reason);
   } finally {
     pushTestBtn.disabled = false;
     pushTestBtn.textContent = "Проверить";

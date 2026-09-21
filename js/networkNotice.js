@@ -288,7 +288,11 @@ export function createSupabaseFetch(nativeFetch = globalThis.fetch) {
     }
 
     try {
-      return await fetchImpl.call(globalThis, input, init);
+      const response = await fetchImpl.call(globalThis, input, init);
+      if (!response?.ok && Number(response?.status) >= 500) {
+        failed = true;
+      }
+      return response;
     } catch (error) {
       failed = true;
       showConnectionNotice({

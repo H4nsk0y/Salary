@@ -124,6 +124,30 @@ async function verifyShiftHandoverAccess({
   return data === true;
 }
 
+async function verifyShiftUnavailableAccess({
+  supabaseUrl,
+  supabaseAnonKey,
+  authorization,
+  departmentKey,
+}: {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  authorization: string;
+  departmentKey: string;
+}) {
+  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authorization } },
+    auth: { persistSession: false },
+  });
+
+  const { data, error } = await userClient.rpc("can_send_shift_unavailable_push", {
+    p_department_key: departmentKey,
+  });
+
+  if (error) throw error;
+  return data === true;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -151,6 +175,7 @@ serve(async (req) => {
     const type = normalizeText(body.type || "department_timesheet_saved", 120);
     const isPushTest = type === "push_test";
     const isIdeaSubmitted = type === "project_idea_submitted";
+    const isShiftUnavailable = type === "shift_unavailable";
     const allUsers = body.allUsers === true;
     const lookbackMinutes = Math.min(60, Math.max(1, Number(body.lookbackMinutes) || 10));
     const limit = Math.min(200, Math.max(1, Number(body.limit) || 100));
@@ -159,13 +184,20 @@ serve(async (req) => {
       return jsonResponse({ error: "DEPARTMENT_REQUIRED" }, 400);
     }
 
-    const authenticatedUserId = isPushTest || isIdeaSubmitted
+    const authenticatedUserId = isPushTest || isIdeaSubmitted || isShiftUnavailable
       ? await getAuthenticatedUserId({ supabaseUrl, supabaseAnonKey, authorization })
       : null;
     const allowed = isPushTest
       ? Boolean(authenticatedUserId)
       : isIdeaSubmitted
       ? Boolean(authenticatedUserId)
+      : isShiftUnavailable
+      ? await verifyShiftUnavailableAccess({
+          supabaseUrl,
+          supabaseAnonKey,
+          authorization,
+          departmentKey,
+        })
       : allUsers
       ? await verifyOwnerAccess({ supabaseUrl, supabaseAnonKey, authorization })
       : type === "shift_handover_ready"
@@ -236,6 +268,10 @@ serve(async (req) => {
       notificationsQuery = notificationsQuery.eq("user_id", authenticatedUserId);
     } else if (isIdeaSubmitted) {
       notificationsQuery = notificationsQuery.eq("actor_user_id", authenticatedUserId);
+    } else if (isShiftUnavailable) {
+      notificationsQuery = notificationsQuery
+        .eq("department_key", departmentKey)
+        .eq("actor_user_id", authenticatedUserId);
     } else if (!allUsers) {
       notificationsQuery = notificationsQuery.eq("department_key", departmentKey);
     }

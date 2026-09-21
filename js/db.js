@@ -621,6 +621,40 @@ async function getMyEditorDepartmentKey() {
   return myEditorDepartmentKeyPromise;
 }
 
+export async function reportMyShiftUnavailable(year, month, day) {
+  const normalized = assertValidYearMonth(year, month);
+  const normalizedDay = Number(day);
+  if (!Number.isInteger(normalizedDay) || normalizedDay < 1 || normalizedDay > 31) {
+    throw new Error("Некорректная дата смены.");
+  }
+
+  const { data, error } = await supabase.rpc("report_my_shift_unavailable", {
+    p_year: normalized.year,
+    p_month: normalized.month,
+    p_day: normalizedDay,
+  });
+
+  if (error) throw error;
+  return data ?? null;
+}
+
+export async function findMyShiftReplacementCandidates(year, month, day) {
+  const normalized = assertValidYearMonth(year, month);
+  const normalizedDay = Number(day);
+  if (!Number.isInteger(normalizedDay) || normalizedDay < 1 || normalizedDay > 31) {
+    throw new Error("Некорректная дата смены.");
+  }
+
+  const { data, error } = await supabase.rpc("find_my_shift_replacement_candidates", {
+    p_year: normalized.year,
+    p_month: normalized.month,
+    p_day: normalizedDay,
+  });
+
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
 export function getMyManagedDepartment({ fresh = false } = {}) {
   if (fresh) {
     myEditorDepartmentKeyPromise = null;
@@ -855,7 +889,7 @@ export async function managedLoadTimesheets(userIds, year, month) {
   const normalized = assertValidYearMonth(year, month);
   const { data, error } = await supabase
     .from("timesheets")
-    .select("user_id, payload")
+    .select("user_id, payload, updated_at")
     .in("user_id", ids)
     .eq("year", normalized.year)
     .eq("month", normalized.month);
@@ -902,15 +936,17 @@ export async function managedSaveManyTimesheets(departmentKey, items) {
       year: normalized.year,
       month: normalized.month,
       payload: item?.payload ?? null,
+      expected_updated_at: item?.expected_updated_at ?? null,
     };
   });
 
-  const { error } = await supabase.rpc("managed_save_department_timesheets", {
+  const { data, error } = await supabase.rpc("managed_save_department_timesheets_v2", {
     p_department_key: key,
     p_items: normalizedRows,
   });
 
   if (error) throw error;
+  return Array.isArray(data?.versions) ? data.versions : [];
 }
 
 export async function ownerListDepartmentTimesheetAudit({

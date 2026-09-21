@@ -28,15 +28,32 @@ export function startIdleScreenSaver() {
       window.location.assign(buildIdleScreenSaverUrl(window.location.href));
     }, Math.max(0, IDLE_DELAY_MS - (Date.now() - lastActivity)));
   };
-  const recordActivity = () => {
+  let lastPointerX = null;
+  let lastPointerY = null;
+  const recordActivity = (event) => {
     if (document.visibilityState !== "visible") return;
+    if (event?.isTrusted === false) return;
     const now = Date.now();
     if (now - lastActivity < 1000) return;
     lastActivity = now;
     schedule();
   };
 
-  for (const eventName of ["pointermove", "pointerdown", "keydown", "wheel", "scroll", "touchstart"]) {
+  const recordPointerActivity = (event) => {
+    if (event?.isTrusted === false) return;
+    const x = Number(event?.clientX);
+    const y = Number(event?.clientY);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+
+    if (lastPointerX === null || Math.hypot(x - lastPointerX, y - lastPointerY) >= 8) {
+      lastPointerX = x;
+      lastPointerY = y;
+      recordActivity(event);
+    }
+  };
+
+  window.addEventListener("pointermove", recordPointerActivity, { passive: true });
+  for (const eventName of ["pointerdown", "keydown", "wheel", "touchstart"]) {
     window.addEventListener(eventName, recordActivity, { passive: true });
   }
   document.addEventListener("visibilitychange", () => {
