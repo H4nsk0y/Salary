@@ -1,3 +1,4 @@
+import "./pageLoader.js";
 import { getMyProfile } from "./db.js";
 import { confirmDialog } from "./modal.js";
 import {
@@ -8,7 +9,6 @@ import {
 import { installErrorLogger } from "./errorLogger.js";
 import { createSiteSearchWidget } from "./siteSearch.js";
 import "./pwa.js";
-import "./screenWakeLock.js";
 import "./backgroundMusic.js";
 import "./scrollbar.js?v=20260913-2";
 import "./footer.js?v=20260802-2";
@@ -1134,6 +1134,9 @@ async function enhanceNavForProfile(header) {
 
     const activeKey = header.dataset.activeKey || detectActiveKey();
     if (profile?.user_id) {
+      void import("./screenWakeLock.js")
+        .then(({ startScreenWakeLock }) => startScreenWakeLock())
+        .catch((error) => console.error("Не удалось включить удержание экрана:", error));
       scheduleUnreadUpdatesPrompt(activeKey);
       void loadNotificationsWidget(header);
       void import("./idleScreenSaver.js?v=20260920-1")

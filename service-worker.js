@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "alvisa-pwa";
-const CACHE_VERSION = "v6";
+const CACHE_VERSION = "v7";
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = new URL("./offline.html", self.registration.scope).href;

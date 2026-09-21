@@ -15,6 +15,7 @@ import { setUiStatus } from "./uiStatus.js";
 import {
   getScreenWakeState,
   setScreenWakeEnabled,
+  startScreenWakeLock,
 } from "./screenWakeLock.js";
 import {
   activatePwaUpdate,
@@ -596,6 +597,7 @@ saveSettingsBtn?.addEventListener("click", () => void saveSettings());
   const uid = document.getElementById("myUid");
   if (uid) uid.textContent = session.user.id;
 
+  startScreenWakeLock();
   startPresenceHeartbeat("Настройки");
 
   try {

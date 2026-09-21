@@ -46,7 +46,7 @@ import {
 } from "./moneyPrivacy.js";
 import { confirmDialog } from "./modal.js";
 import { bindLogoutConfirmation } from "./features/logoutConfirmation.js";
-import { openIdeaDialog } from "./ideaDialog.js?v=20260822-1";
+import { openIdeaDialog } from "./ideaDialog.js?v=20260921-1";
 import { buildDecemberForecast, estimateYearEndReserve } from "./yearEndReserve.js?v=20260822-1";
 import {
   CHATEAU_ALVISA_BRANCH,

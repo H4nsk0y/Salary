@@ -2,6 +2,7 @@ const STORAGE_KEY = "alvisa.keepScreenAwake.v1";
 
 let wakeLock = null;
 let lastError = "";
+let started = false;
 
 function readPreference() {
   try {
@@ -63,6 +64,7 @@ export function getScreenWakeState() {
 }
 
 export async function setScreenWakeEnabled(enabled) {
+  startScreenWakeLock();
   writePreference(Boolean(enabled));
   lastError = "";
 
@@ -77,14 +79,20 @@ export async function setScreenWakeEnabled(enabled) {
   return requestWakeLock();
 }
 
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && readPreference()) {
-    void requestWakeLock();
-  }
-});
+export function startScreenWakeLock() {
+  if (started) return getScreenWakeState();
+  started = true;
 
-window.addEventListener("pageshow", () => {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && readPreference()) {
+      void requestWakeLock();
+    }
+  });
+
+  window.addEventListener("pageshow", () => {
+    if (readPreference()) void requestWakeLock();
+  });
+
   if (readPreference()) void requestWakeLock();
-});
-
-if (readPreference()) void requestWakeLock();
+  return getScreenWakeState();
+}

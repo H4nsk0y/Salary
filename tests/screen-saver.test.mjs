@@ -31,6 +31,11 @@ test("settings link opens three screen saver modes", async () => {
   assert.doesNotMatch(page, /id="wakeStatus"/);
 });
 
+test("home page exposes the building screen saver to guests", async () => {
+  const home = await read("index.html");
+  assert.match(home, /href="screen-saver\.html\?mode=building&amp;from=index\.html"[\s\S]*Не отключать экран/);
+});
+
 test("shift reminder function is deployed through the source manifest", async () => {
   const source = await read("supabase/functions/send-shift-reminders/index.ts");
   assert.match(source, /const tonightNight = tonight\?\.kind === "night"/);

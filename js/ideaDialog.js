@@ -1,4 +1,4 @@
-import { submitProjectIdea } from "./db.js";
+import { sendPushNotifications, submitProjectIdea } from "./db.js";
 
 const STYLE_ID = "alvisa-idea-dialog-style";
 const TELEGRAM_URL = "https://t.me/Hanskoy";
@@ -71,6 +71,9 @@ function createDialog() {
     message.textContent = "Отправляю…";
     try {
       await submitProjectIdea(value);
+      void sendPushNotifications({ type: "project_idea_submitted" }).catch(() => {
+        // The idea is already saved and remains visible to the owner even if push delivery fails.
+      });
       textarea.value = "";
       counter.textContent = "0 / 2000";
       message.textContent = "Идея отправлена. Спасибо!";

@@ -150,19 +150,22 @@ serve(async (req) => {
     const departmentKey = normalizeText(body.departmentKey, 120);
     const type = normalizeText(body.type || "department_timesheet_saved", 120);
     const isPushTest = type === "push_test";
+    const isIdeaSubmitted = type === "project_idea_submitted";
     const allUsers = body.allUsers === true;
     const lookbackMinutes = Math.min(60, Math.max(1, Number(body.lookbackMinutes) || 10));
     const limit = Math.min(200, Math.max(1, Number(body.limit) || 100));
 
-    if (!departmentKey && !allUsers && !isPushTest) {
+    if (!departmentKey && !allUsers && !isPushTest && !isIdeaSubmitted) {
       return jsonResponse({ error: "DEPARTMENT_REQUIRED" }, 400);
     }
 
-    const pushTestUserId = isPushTest
+    const authenticatedUserId = isPushTest || isIdeaSubmitted
       ? await getAuthenticatedUserId({ supabaseUrl, supabaseAnonKey, authorization })
       : null;
     const allowed = isPushTest
-      ? Boolean(pushTestUserId)
+      ? Boolean(authenticatedUserId)
+      : isIdeaSubmitted
+      ? Boolean(authenticatedUserId)
       : allUsers
       ? await verifyOwnerAccess({ supabaseUrl, supabaseAnonKey, authorization })
       : type === "shift_handover_ready"
@@ -189,12 +192,12 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    if (isPushTest && pushTestUserId) {
+    if (isPushTest && authenticatedUserId) {
       const testSince = new Date(Date.now() - 10 * 60 * 1000).toISOString();
       const { data: existingTests, error: existingTestsError } = await serviceClient
         .from("user_notifications")
         .select("id")
-        .eq("user_id", pushTestUserId)
+        .eq("user_id", authenticatedUserId)
         .eq("type", "push_test")
         .is("push_sent_at", null)
         .gte("created_at", testSince)
@@ -205,8 +208,8 @@ serve(async (req) => {
         const { error: createTestError } = await serviceClient
           .from("user_notifications")
           .insert({
-            user_id: pushTestUserId,
-            actor_user_id: pushTestUserId,
+            user_id: authenticatedUserId,
+            actor_user_id: authenticatedUserId,
             type: "push_test",
             title: "Тестовое уведомление",
             body: "Push-уведомления ALVISA SALARY работают на этом устройстве.",
@@ -223,14 +226,16 @@ serve(async (req) => {
 
     let notificationsQuery = serviceClient
       .from("user_notifications")
-      .select("id, user_id, type, title, body, url, created_at, department_key")
+      .select("id, user_id, actor_user_id, type, title, body, url, created_at, department_key")
       .eq("type", type)
       .is("push_sent_at", null)
       .gt("expires_at", now)
       .gte("created_at", since);
 
     if (isPushTest) {
-      notificationsQuery = notificationsQuery.eq("user_id", pushTestUserId);
+      notificationsQuery = notificationsQuery.eq("user_id", authenticatedUserId);
+    } else if (isIdeaSubmitted) {
+      notificationsQuery = notificationsQuery.eq("actor_user_id", authenticatedUserId);
     } else if (!allUsers) {
       notificationsQuery = notificationsQuery.eq("department_key", departmentKey);
     }

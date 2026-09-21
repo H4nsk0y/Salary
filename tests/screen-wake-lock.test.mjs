@@ -12,10 +12,12 @@ test("screen wake preference is shared by pages through the common navigation", 
     source("settings.html"),
   ]);
 
-  assert.match(nav, /import "\.\/screenWakeLock\.js"/);
+  assert.match(nav, /if \(profile\?\.user_id\) \{[\s\S]*import\("\.\/screenWakeLock\.js"\)[\s\S]*startScreenWakeLock/);
   assert.match(wakeLock, /navigator\.wakeLock\.request\("screen"\)/);
   assert.match(wakeLock, /visibilitychange/);
   assert.match(wakeLock, /alvisa\.keepScreenAwake\.v1/);
+  assert.match(wakeLock, /export function startScreenWakeLock/);
+  assert.match(settings, /startScreenWakeLock\(\)/);
   assert.match(settings, /setScreenWakeEnabled/);
   assert.match(page, /id="screenWakeToggle"/);
 });

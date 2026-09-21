@@ -1,3 +1,5 @@
+import { beginPageDataRequest, finishPageDataRequest } from "./pageLoader.js";
+
 const NOTICE_STYLE_ID = "alvisaConnectionNoticeStyle";
 const NOTICE_ID = "alvisaConnectionNotice";
 const SLOW_SUPABASE_REQUEST_MS = 9000;
@@ -272,7 +274,9 @@ function showConnectionNotice({ title, message, tone = "warning" }, { force = fa
 export function createSupabaseFetch(nativeFetch = globalThis.fetch) {
   return async function supabaseFetchWithNotice(input, init) {
     const fetchImpl = typeof nativeFetch === "function" ? nativeFetch : globalThis.fetch;
+    const pageLoadToken = beginPageDataRequest();
     let slowTimer = null;
+    let failed = false;
 
     if (typeof window !== "undefined") {
       slowTimer = window.setTimeout(() => {
@@ -286,6 +290,7 @@ export function createSupabaseFetch(nativeFetch = globalThis.fetch) {
     try {
       return await fetchImpl.call(globalThis, input, init);
     } catch (error) {
+      failed = true;
       showConnectionNotice({
         title: "Не получается подключиться к базе",
         message: "Проверьте интернет. Если сайт открыт из России, включите VPN и обновите страницу.",
@@ -294,6 +299,7 @@ export function createSupabaseFetch(nativeFetch = globalThis.fetch) {
       throw error;
     } finally {
       if (slowTimer) window.clearTimeout(slowTimer);
+      finishPageDataRequest(pageLoadToken, { failed });
     }
   };
 }

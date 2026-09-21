@@ -53,3 +53,19 @@ test("reviewing an idea creates one personal notification and requests push deli
   assert.match(sql, /v_idea\.user_id/);
   assert.match(page, /sendPushNotifications\(\{ type: "project_idea_reviewed", allUsers: true \}\)/);
 });
+
+test("submitting an idea notifies the owner and securely requests push delivery", async () => {
+  const [sql, dialog, edge] = await Promise.all([
+    source("supabase-sql/051_owner_idea_notifications.sql"),
+    source("js/ideaDialog.js"),
+    source("supabase/functions/send-push-notifications/index.ts"),
+  ]);
+
+  assert.match(sql, /insert into public\.user_notifications/i);
+  assert.match(sql, /owner_profile\.role = 'owner'/i);
+  assert.match(sql, /'project_idea_submitted'/);
+  assert.match(sql, /actor_user_id[\s\S]*v_user_id/i);
+  assert.match(dialog, /sendPushNotifications\(\{ type: "project_idea_submitted" \}\)/);
+  assert.match(edge, /isIdeaSubmitted/);
+  assert.match(edge, /notificationsQuery\.eq\("actor_user_id", authenticatedUserId\)/);
+});

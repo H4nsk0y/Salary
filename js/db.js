@@ -1023,7 +1023,8 @@ export async function sendPushNotifications({
   allUsers = false,
 } = {}) {
   const key = String(departmentKey ?? "").trim();
-  if (!key && !allUsers && type !== "push_test") throw new Error("Не указан отдел.");
+  const typeWithoutDepartment = type === "push_test" || type === "project_idea_submitted";
+  if (!key && !allUsers && !typeWithoutDepartment) throw new Error("Не указан отдел.");
 
   const { data, error } = await supabase.functions.invoke("send-push-notifications", {
     body: {
