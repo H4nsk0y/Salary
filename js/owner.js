@@ -9,6 +9,8 @@ import {
   ownerListDepartmentEditors,
   ownerAddDepartmentEditor,
   ownerRemoveDepartmentEditor,
+  ownerBroadcastProductUpdate,
+  sendPushNotifications,
 } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { confirmDialog } from "./modal.js";
@@ -38,9 +40,37 @@ const departmentEditorsList = document.getElementById("departmentEditorsList");
 const editorUsersSelect = document.getElementById("editorUsersSelect");
 const editorUsersCount = document.getElementById("editorUsersCount");
 const addEditorBtn = document.getElementById("addEditorBtn");
+const broadcastUpdatesBtn = document.getElementById("broadcastUpdatesBtn");
 
 let selectedDepartment = null;
 let isDepartmentBusy = false;
+
+broadcastUpdatesBtn?.addEventListener("click", async () => {
+  const confirmed = await confirmDialog({
+    title: "Сообщить всем об обновлении?",
+    message: "Пользователи с активными push-уведомлениями получат сообщение о новой версии ALVISA SALARY.",
+    note: "Уведомление приведёт на страницу «Новости и обновления».",
+    confirmText: "Отправить",
+    cancelText: "Отмена",
+    tone: "info",
+  });
+  if (!confirmed) return;
+
+  broadcastUpdatesBtn.disabled = true;
+  setError(null);
+  setStatus("Отправляю обновление…", "busy");
+  try {
+    const recipients = await ownerBroadcastProductUpdate();
+    const delivery = await sendPushNotifications({ type: "product_update", allUsers: true });
+    const sent = Number(delivery?.sent) || 0;
+    setStatus(`Получателей: ${recipients}, push отправлено: ${sent}`, "ok");
+  } catch (error) {
+    setStatus("Ошибка рассылки", "err");
+    setError(error?.message || "Не удалось отправить уведомление об обновлении.");
+  } finally {
+    broadcastUpdatesBtn.disabled = false;
+  }
+});
 
 function setStatus(text, tone = "neutral") {
   setUiStatus(statusPill, text, tone, { accent: "ring" });

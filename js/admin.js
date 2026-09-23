@@ -71,6 +71,7 @@ const MAX_HOURS_PER_DAY = 24;
 const MINOR_OVERTIME_LIMIT_HOURS = 10;
 const SHORT_DAY_REDUCTION_HOURS = 1;
 const TABLE_DRAG_THRESHOLD_PX = 5;
+const ODYSSEY_BRANCH = "contract_odyssey";
 
 const monthNames = [
   "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -100,7 +101,12 @@ const teamCountEl = document.getElementById("teamCount");
 
 const headerRow = document.getElementById("headerRow");
 const matrixBody = document.getElementById("matrixBody");
+const headerRowOdyssey = document.getElementById("headerRowOdyssey");
+const matrixBodyOdyssey = document.getElementById("matrixBodyOdyssey");
 const tableScrollable = document.getElementById("tableScrollable");
+const tableScrollableOdyssey = document.getElementById("tableScrollableOdyssey");
+const odysseyEmptyState = document.getElementById("odysseyEmptyState");
+const matrixBodies = [matrixBody, matrixBodyOdyssey].filter(Boolean);
 const topTableScroll = document.getElementById("topTableScroll");
 const topTableScrollSpacer = document.getElementById("topTableScrollSpacer");
 const announcementLink = document.getElementById("announcementLink");
@@ -439,24 +445,27 @@ function requestHorizontalScrollStateSync() {
 }
 
 function scrollTableToColumn(dayIdx0) {
-  if (!tableScrollable) return;
+  const scrollContainer = mobileActiveState?.plantScope === "odyssey"
+    ? tableScrollableOdyssey
+    : tableScrollable;
+  if (!scrollContainer) return;
   const cells = columnCells[dayIdx0];
   if (!cells || cells.length === 0) return;
 
-  const firstCell = cells[0];
-  const containerWidth = tableScrollable.clientWidth;
+  const firstCell = mobileActiveState?.dayInputs?.[dayIdx0]?.closest("td") || cells[0];
+  const containerWidth = scrollContainer.clientWidth;
   const cellLeft = firstCell.offsetLeft;
   const cellWidth = firstCell.offsetWidth;
   const labelWidth = isMobileNow() ? 56 : 190;
   const targetScrollLeft =
     cellLeft - labelWidth - (containerWidth - labelWidth) / 2 + cellWidth / 2;
 
-  tableScrollable.scrollTo({
+  scrollContainer.scrollTo({
     left: Math.max(0, targetScrollLeft),
     behavior: "smooth",
   });
 
-  requestHorizontalScrollStateSync();
+  if (scrollContainer === tableScrollable) requestHorizontalScrollStateSync();
 }
 
 
@@ -689,6 +698,7 @@ function createState(member) {
     name: buildMemberLabel(member),
     gender: member?.gender ?? null,
     branch: member?.branch ?? null,
+    plantScope: member?.branch === ODYSSEY_BRANCH ? "odyssey" : "chateau",
     weeklyHours: member?.weekly_hours ?? null,
     normSnapshot: null,
     employmentDate: member?.employment_date ?? null,
@@ -757,7 +767,9 @@ function resetMonthArrays(members) {
   headerCells = [];
   columnCells = Array.from({ length: daysInMonth }, () => []);
   focusedDayIndex = null;
-  teamStates = (members ?? []).map((member) => createState(member));
+  teamStates = (members ?? [])
+    .map((member) => createState(member))
+    .sort((left, right) => Number(left.plantScope === "odyssey") - Number(right.plantScope === "odyssey"));
 }
 
 function hasSharedMarks(payload) {
@@ -1519,16 +1531,16 @@ function getMatrixSelectionCell(target) {
 }
 
 function clearMatrixSelection() {
-  matrixBody?.querySelectorAll("td.matrix-cell-selected")
+  document.querySelectorAll("#matrixBody td.matrix-cell-selected, #matrixBodyOdyssey td.matrix-cell-selected")
     .forEach((cell) => cell.classList.remove("matrix-cell-selected"));
   matrixSelectionWasDragged = false;
 }
 
 function renderMatrixSelection(anchor, current) {
   const bounds = getMatrixSelectionBounds(anchor, current);
-  if (!bounds || !matrixBody) return;
+  if (!bounds) return;
 
-  for (const input of matrixBody.querySelectorAll("input.input-hour")) {
+  for (const input of document.querySelectorAll("#matrixBody input.input-hour, #matrixBodyOdyssey input.input-hour")) {
     const candidate = getMatrixSelectionCell(input);
     const selected = candidate && !candidate.input.disabled && isMatrixCellInBounds(candidate, bounds);
     candidate?.cell?.classList.toggle("matrix-cell-selected", selected);
@@ -1582,7 +1594,7 @@ function endMatrixSelection(event) {
 }
 
 function selectedMatrixCells() {
-  return [...(matrixBody?.querySelectorAll("td.matrix-cell-selected input.input-hour") || [])]
+  return [...document.querySelectorAll("#matrixBody td.matrix-cell-selected input.input-hour, #matrixBodyOdyssey td.matrix-cell-selected input.input-hour")]
     .map((input) => getMatrixSelectionCell(input))
     .filter((cell) => cell && !cell.input.disabled);
 }
@@ -1684,7 +1696,7 @@ function handleMatrixSelectionKeyDown(event) {
 }
 
 function clearMatrixSelectionOutside(event) {
-  if (!matrixSelectionDrag && event.target instanceof Element && !event.target.closest("#matrixBody")) {
+  if (!matrixSelectionDrag && event.target instanceof Element && !event.target.closest("#matrixBody, #matrixBodyOdyssey")) {
     clearMatrixSelection();
   }
 }
@@ -1907,7 +1919,8 @@ function isTableDragIgnoredTarget(target) {
 }
 
 function startTableDrag(e) {
-  if (!tableScrollable) return;
+  const scrollContainer = e.currentTarget instanceof HTMLElement ? e.currentTarget : null;
+  if (!scrollContainer) return;
   if (e.button !== 0 || e.pointerType === "touch") return;
   if (isTableDragIgnoredTarget(e.target)) return;
 
@@ -1915,15 +1928,17 @@ function startTableDrag(e) {
     pointerId: e.pointerId,
     startX: e.clientX,
     startY: e.clientY,
-    startScrollLeft: tableScrollable.scrollLeft,
+    startScrollLeft: scrollContainer.scrollLeft,
+    scrollContainer,
     hasMoved: false,
   };
 
-  tableScrollable.setPointerCapture?.(e.pointerId);
+  scrollContainer.setPointerCapture?.(e.pointerId);
 }
 
 function moveTableDrag(e) {
-  if (!tableScrollable || !tableDragState || tableDragState.pointerId !== e.pointerId) return;
+  if (!tableDragState || tableDragState.pointerId !== e.pointerId) return;
+  const scrollContainer = tableDragState.scrollContainer;
 
   const dx = e.clientX - tableDragState.startX;
   const dy = e.clientY - tableDragState.startY;
@@ -1931,20 +1946,20 @@ function moveTableDrag(e) {
   if (!tableDragState.hasMoved) {
     if (Math.abs(dx) < TABLE_DRAG_THRESHOLD_PX && Math.abs(dy) < TABLE_DRAG_THRESHOLD_PX) return;
     tableDragState.hasMoved = true;
-    tableScrollable.classList.add("is-dragging");
+    scrollContainer.classList.add("is-dragging");
   }
 
-  tableScrollable.scrollLeft = tableDragState.startScrollLeft - dx;
-  requestHorizontalScrollStateSync();
+  scrollContainer.scrollLeft = tableDragState.startScrollLeft - dx;
+  if (scrollContainer === tableScrollable) requestHorizontalScrollStateSync();
   e.preventDefault();
 }
 
 function endTableDrag(e) {
-  if (!tableScrollable || !tableDragState) return;
+  if (!tableDragState) return;
   if (e?.pointerId !== undefined && tableDragState.pointerId !== e.pointerId) return;
 
-  tableScrollable.releasePointerCapture?.(tableDragState.pointerId);
-  tableScrollable.classList.remove("is-dragging");
+  tableDragState.scrollContainer.releasePointerCapture?.(tableDragState.pointerId);
+  tableDragState.scrollContainer.classList.remove("is-dragging");
   tableDragState = null;
 }
 
@@ -2029,7 +2044,9 @@ function handleMemberDragOver(event) {
   if (!memberDragState) return;
 
   const targetState = getMemberRowFromTarget(event.target);
-  if (!targetState || String(targetState.userId) === String(memberDragState.userId)) {
+  const sourceState = teamStates.find((state) => String(state.userId) === String(memberDragState.userId));
+  if (!targetState || sourceState?.plantScope !== targetState.plantScope ||
+      String(targetState.userId) === String(memberDragState.userId)) {
     clearMemberDropCue();
     return;
   }
@@ -2108,7 +2125,9 @@ function handleMemberDrop(event) {
 
   const targetState = getMemberRowFromTarget(event.target);
   const sourceUserId = memberDragState.userId;
-  if (!targetState || String(targetState.userId) === String(sourceUserId)) {
+  const sourceState = teamStates.find((state) => String(state.userId) === String(sourceUserId));
+  if (!targetState || sourceState?.plantScope !== targetState.plantScope ||
+      String(targetState.userId) === String(sourceUserId)) {
     clearMemberDragState();
     return;
   }
@@ -2173,32 +2192,47 @@ function buildTable() {
   endMatrixSelection();
   headerRow.innerHTML = "";
   matrixBody.innerHTML = "";
+  if (headerRowOdyssey) headerRowOdyssey.innerHTML = "";
+  if (matrixBodyOdyssey) matrixBodyOdyssey.innerHTML = "";
   headerCells = [];
   columnCells = Array.from({ length: daysInMonth }, () => []);
   focusedDayIndex = null;
 
-  const labelTh = document.createElement("th");
-  labelTh.className = "label-cell";
-  labelTh.textContent = "Сотрудник";
-  headerRow.appendChild(labelTh);
+  const buildHeader = (target) => {
+    if (!target) return;
+    const labelTh = document.createElement("th");
+    labelTh.className = "label-cell";
+    labelTh.textContent = "Сотрудник";
+    target.appendChild(labelTh);
+    for (let i = 0; i < daysInMonth; i++) {
+      const th = createHeaderCell(i);
+      if (isWeekendByIndex(year, month, i)) th.classList.add("weekend-col");
+      target.appendChild(th);
+      headerCells.push(th);
+      columnCells[i].push(th);
+    }
+    const summaryTh = document.createElement("th");
+    summaryTh.className = "summary-head";
+    summaryTh.innerHTML = 'Итоги<br><span class="th-dow">1-я пол. / месяц</span>';
+    target.appendChild(summaryTh);
+  };
 
-  for (let i = 0; i < daysInMonth; i++) {
-    const th = createHeaderCell(i);
-    if (isWeekendByIndex(year, month, i)) th.classList.add("weekend-col");
-    headerRow.appendChild(th);
-    headerCells.push(th);
-    columnCells[i].push(th);
-  }
+  buildHeader(headerRow);
+  buildHeader(headerRowOdyssey);
 
-  const summaryTh = document.createElement("th");
-  summaryTh.className = "summary-head";
-  summaryTh.innerHTML = 'Итоги<br><span class="th-dow">1-я пол. / месяц</span>';
-  headerRow.appendChild(summaryTh);
-
-  const fragment = document.createDocumentFragment();
+  const fragments = {
+    chateau: document.createDocumentFragment(),
+    odyssey: document.createDocumentFragment(),
+  };
+  const scopePositions = { chateau: 0, odyssey: 0 };
+  const scopeCounts = teamStates.reduce((counts, state) => {
+    counts[state.plantScope] += 1;
+    return counts;
+  }, { chateau: 0, odyssey: 0 });
 
   for (let idx = 0; idx < teamStates.length; idx++) {
     const state = teamStates[idx];
+    const scope = state.plantScope;
 
     state.dayInputs = [];
     state.nightInputs = [];
@@ -2217,7 +2251,8 @@ function buildTable() {
     dayTr.dataset.memberIndex = String(idx);
     nightTr.dataset.memberIndex = String(idx);
 
-    if (idx < teamStates.length - 1) {
+    scopePositions[scope] += 1;
+    if (scopePositions[scope] < scopeCounts[scope]) {
       nightTr.classList.add("person-divider");
     }
 
@@ -2238,10 +2273,14 @@ function buildTable() {
       nightTr.appendChild(createNightInput(state, i, idx));
     }
 
-    fragment.append(dayTr, nightTr);
+    fragments[scope].append(dayTr, nightTr);
   }
 
-  matrixBody.appendChild(fragment);
+  matrixBody.appendChild(fragments.chateau);
+  matrixBodyOdyssey?.appendChild(fragments.odyssey);
+  const hasOdyssey = scopeCounts.odyssey > 0;
+  odysseyEmptyState?.classList.toggle("hidden", hasOdyssey);
+  tableScrollableOdyssey?.classList.toggle("hidden", !hasOdyssey);
   applyStateToDom();
   if (isMobileNow()) {
     setMobileEmployee(teamStates[0]);
@@ -2911,8 +2950,8 @@ async function setupScheduleTools() {
   initAdminScheduleTools({
     isOwner: currentProfile?.role === "owner",
     leaderId,
-    getContext: () => ({
-      year, month, teamStates,
+    getContext: (scope = "chateau") => ({
+      year, month, teamStates: teamStates.filter((state) => state.plantScope === scope),
       holiday: sharedHoliday,
       transferredOff: sharedTransferredOff,
       shortDay: sharedShortDay,
@@ -3044,7 +3083,8 @@ async function loadCurrentMonth(targetYear = year, targetMonth = month) {
     applyLoadedPayloads(payloadsByUserId);
 
     const knownBranches = teamStates.map((state) => state.branch).filter(Boolean);
-    const calendarBranch = knownBranches.length > 0 && knownBranches.every((branch) => branch === CHATEAU_ALVISA_BRANCH)
+    const calendarBranch = knownBranches.includes(CHATEAU_ALVISA_BRANCH) &&
+      knownBranches.every((branch) => branch === CHATEAU_ALVISA_BRANCH || branch === ODYSSEY_BRANCH)
       ? CHATEAU_ALVISA_BRANCH
       : null;
     const productionCalendar = await getProductionCalendarMonth(targetYear, targetMonth, {
@@ -3064,7 +3104,7 @@ async function loadCurrentMonth(targetYear = year, targetMonth = month) {
     monthDataLoaded = true;
     buildTable();
     if (departmentViewOnly) {
-      matrixBody?.querySelectorAll("input.input-hour").forEach((input) => {
+      document.querySelectorAll("#matrixBody input.input-hour, #matrixBodyOdyssey input.input-hour").forEach((input) => {
         input.readOnly = true;
         input.tabIndex = -1;
         input.classList.add("cursor-default");
@@ -3241,21 +3281,28 @@ tableScrollable?.addEventListener("pointermove", moveTableDrag);
 tableScrollable?.addEventListener("pointerup", endTableDrag);
 tableScrollable?.addEventListener("pointercancel", endTableDrag);
 tableScrollable?.addEventListener("lostpointercapture", endTableDrag);
+tableScrollableOdyssey?.addEventListener("pointerdown", startTableDrag);
+tableScrollableOdyssey?.addEventListener("pointermove", moveTableDrag);
+tableScrollableOdyssey?.addEventListener("pointerup", endTableDrag);
+tableScrollableOdyssey?.addEventListener("pointercancel", endTableDrag);
+tableScrollableOdyssey?.addEventListener("lostpointercapture", endTableDrag);
 
-matrixBody?.addEventListener("focusin", handleMatrixFocusIn);
-matrixBody?.addEventListener("focusout", handleMatrixFocusOut);
-matrixBody?.addEventListener("input", handleMatrixInput);
-matrixBody?.addEventListener("keydown", handleMatrixKeyDown);
-matrixBody?.addEventListener("pointerdown", startMatrixSelection);
-matrixBody?.addEventListener("contextmenu", handleShiftCommentContextMenu);
-matrixBody?.addEventListener("pointerdown", handleShiftCommentPointerDown);
-matrixBody?.addEventListener("pointerup", clearShiftCommentLongPress);
-matrixBody?.addEventListener("pointercancel", clearShiftCommentLongPress);
-matrixBody?.addEventListener("pointermove", handleShiftCommentPointerMove);
-matrixBody?.addEventListener("dragstart", handleMemberDragStart);
-matrixBody?.addEventListener("dragover", handleMemberDragOver);
-matrixBody?.addEventListener("drop", handleMemberDrop);
-matrixBody?.addEventListener("dragend", clearMemberDragState);
+for (const body of matrixBodies) {
+  body.addEventListener("focusin", handleMatrixFocusIn);
+  body.addEventListener("focusout", handleMatrixFocusOut);
+  body.addEventListener("input", handleMatrixInput);
+  body.addEventListener("keydown", handleMatrixKeyDown);
+  body.addEventListener("pointerdown", startMatrixSelection);
+  body.addEventListener("contextmenu", handleShiftCommentContextMenu);
+  body.addEventListener("pointerdown", handleShiftCommentPointerDown);
+  body.addEventListener("pointerup", clearShiftCommentLongPress);
+  body.addEventListener("pointercancel", clearShiftCommentLongPress);
+  body.addEventListener("pointermove", handleShiftCommentPointerMove);
+  body.addEventListener("dragstart", handleMemberDragStart);
+  body.addEventListener("dragover", handleMemberDragOver);
+  body.addEventListener("drop", handleMemberDrop);
+  body.addEventListener("dragend", clearMemberDragState);
+}
 window.addEventListener("pointermove", moveMatrixSelection, { passive: false });
 window.addEventListener("pointerup", endMatrixSelection);
 window.addEventListener("pointercancel", endMatrixSelection);

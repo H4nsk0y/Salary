@@ -1948,3 +1948,16 @@ td.shift-comment-cell.has-shift-comment::after {
       .department-view-only .member-draggable-cell {
         cursor: default;
       }
+
+      .admin-plant-table {
+        margin-top: 24px;
+      }
+
+      .admin-plant-empty {
+        margin: 0;
+        padding: 18px;
+        border: 1px dashed rgba(241, 238, 232, 0.16);
+        border-radius: 7px;
+        color: #92999f;
+        text-align: center;
+      }

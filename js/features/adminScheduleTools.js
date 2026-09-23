@@ -74,7 +74,7 @@ export function formatScheduleChangeReport(state, changes, norm) {
 }
 
 export function initAdminScheduleTools({ getContext, loadPreviousMany, signature, applyChanges, isOwner, leaderId }) {
-  const buttons = document.getElementById("scheduleToolButtons");
+  const buttonGroups = [...document.querySelectorAll("[data-schedule-scope]")];
   const modal = document.getElementById("scheduleToolsModal");
   const people = document.getElementById("scheduleToolsPeople");
   const summary = document.getElementById("scheduleToolsSummary");
@@ -85,15 +85,16 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
   const twoLinesToggle = document.getElementById("scheduleToolsTwoLines");
   const twoLinesDates = document.getElementById("scheduleToolsTwoLinesDates");
   const dateGrid = document.getElementById("scheduleToolsDateGrid");
-  if (!buttons || !modal || !people || !summary || !previewButton || !applyButton) return;
+  if (!buttonGroups.length || !modal || !people || !summary || !previewButton || !applyButton) return;
 
   document.body.appendChild(modal);
 
-  buttons.classList.remove("hidden");
+  buttonGroups.forEach((group) => group.classList.remove("hidden"));
   const labLink = document.getElementById("scheduleLabLink");
   labLink?.classList.toggle("hidden", !isOwner);
 
   let activeTool = null;
+  let activeScope = "chateau";
   let pending = null;
   let operation = 0;
   let returnFocus = null;
@@ -141,13 +142,21 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
   }
 
   function open(tool, trigger) {
-    const context = getContext();
-    if (!context?.teamStates?.length) return;
+    activeScope = trigger.closest("[data-schedule-scope]")?.dataset.scheduleScope || "chateau";
+    const context = getContext(activeScope);
     activeTool = tool;
     pending = null;
     operation++;
     returnFocus = trigger;
     document.getElementById("scheduleToolsTitle").textContent = TITLES[tool];
+    if (!context?.teamStates?.length) {
+      people.replaceChildren();
+      warehouseOptions?.classList.add("hidden");
+      summary.textContent = "В этом табеле пока нет сотрудников.";
+      modal.classList.remove("hidden");
+      applyButton.disabled = true;
+      return;
+    }
     document.getElementById("scheduleToolsNote").textContent = tool === "bottling"
       ? "Выберите не меньше двух сотрудников. Будние день и ночь будут закрыты доступными людьми; праздники пропускаются. Заполненные дни и коды отсутствия не заменяются."
       : "Выберите операторов. При четырёх доступных работает выбранный цикл; при трёх — день/ночь/отсыпной, при двух — постоянные день и ночь. Коды отсутствия и заполненные дни не заменяются.";
@@ -163,6 +172,7 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
     else dateGrid?.replaceChildren();
 
     for (const state of context.teamStates) {
+      const id = String(state.userId);
       const row = document.createElement("label");
       row.className = "schedule-tools-person";
       const checkbox = document.createElement("input");
@@ -196,7 +206,7 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
 
   async function preview() {
     const request = ++operation;
-    const context = getContext();
+    const context = getContext(activeScope);
     const baseline = periodKey(context, signature);
     const rows = Array.from(people.querySelectorAll(".schedule-tools-person"));
     const selected = rows.map((row) => ({
@@ -223,7 +233,7 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
         }
       }
       if (request !== operation || modal.classList.contains("hidden")) return;
-      if (periodKey(getContext(), signature) !== baseline) {
+      if (periodKey(getContext(activeScope), signature) !== baseline) {
         summary.textContent = "Табель изменился. Постройте предпросмотр заново.";
         return;
       }
@@ -359,7 +369,7 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
   }
 
   function apply() {
-    if (!pending || periodKey(getContext(), signature) !== pending.baseline) {
+    if (!pending || periodKey(getContext(activeScope), signature) !== pending.baseline) {
       pending = null;
       applyButton.disabled = true;
       summary.textContent = "Табель изменился. Постройте предпросмотр заново.";
@@ -376,10 +386,12 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
     }
   }
 
-  buttons.addEventListener("click", (event) => {
-    const trigger = event.target.closest("[data-schedule-tool]");
-    if (trigger) open(trigger.dataset.scheduleTool, trigger);
-  });
+  for (const buttons of buttonGroups) {
+    buttons.addEventListener("click", (event) => {
+      const trigger = event.target.closest("[data-schedule-tool]");
+      if (trigger) open(trigger.dataset.scheduleTool, trigger);
+    });
+  }
   document.getElementById("scheduleToolsSelectAll")?.addEventListener("click", () => {
     people.querySelectorAll(".schedule-tools-person").forEach((row) => {
       row.querySelector("input").checked = true;

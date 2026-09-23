@@ -1,7 +1,6 @@
 import { beginPageDataRequest, finishPageDataRequest } from "./pageLoader.js";
 import { getSession } from "./auth.js";
 import { getMyProfile } from "./db.js";
-import { confirmDialog } from "./modal.js";
 import {
   buildProfileCompletionUrl,
   getMissingRequiredProfileFields,
@@ -17,9 +16,6 @@ import "./footer.js?v=20260802-2";
 installErrorLogger();
 
 const NAV_STYLE_ID = "alvisa-common-nav-style";
-const CURRENT_UPDATES_VERSION = "34.0";
-const UPDATES_SEEN_STORAGE_KEY = "alvisa.updatesSeenVersion.v1";
-const UPDATES_PROMPT_SESSION_KEY = "alvisa.updatesPromptedVersion.v1";
 
 const MAIN_LINKS = [
   { key: "calculator", href: "calculator.html", label: "Калькулятор" },
@@ -30,7 +26,7 @@ const MAIN_LINKS = [
 ];
 
 const OWNER_LINKS = [
-  { key: "owner", href: "owner.html", label: "Отделы" },
+  { key: "owner", href: "owner.html", label: "Админка" },
 ];
 
 function injectNavStyles() {
@@ -869,34 +865,6 @@ function detectActiveKey() {
   return fileName;
 }
 
-function markCurrentUpdatesSeen() {
-  try { localStorage.setItem(UPDATES_SEEN_STORAGE_KEY, CURRENT_UPDATES_VERSION); } catch {}
-}
-
-function scheduleUnreadUpdatesPrompt(activeKey) {
-  if (["updates", "login", "register"].includes(activeKey)) return;
-
-  try {
-    if (localStorage.getItem(UPDATES_SEEN_STORAGE_KEY) === CURRENT_UPDATES_VERSION) return;
-    if (sessionStorage.getItem(UPDATES_PROMPT_SESSION_KEY) === CURRENT_UPDATES_VERSION) return;
-    sessionStorage.setItem(UPDATES_PROMPT_SESSION_KEY, CURRENT_UPDATES_VERSION);
-  } catch {
-    return;
-  }
-
-  window.setTimeout(async () => {
-    const openUpdates = await confirmDialog({
-      title: "В ALVISA SALARY появились изменения",
-      message: "Личный табель стал удобнее для просмотра графика, ночных смен и дней выхода на работу.",
-      note: "Откройте короткое описание обновления, чтобы ничего важного не пропустить.",
-      confirmText: "Посмотреть",
-      cancelText: "Позже",
-      tone: "info",
-    });
-    if (openUpdates) window.location.href = "updates.html";
-  }, 1100);
-}
-
 function linkClass(isActive, variant = "desktop") {
   if (variant === "mobile") {
     return isActive ? "mobile-menu-link active" : "mobile-menu-link";
@@ -1140,7 +1108,6 @@ async function enhanceNavForProfile(header) {
     void import("./screenWakeLock.js")
       .then(({ startScreenWakeLock }) => startScreenWakeLock())
       .catch((error) => console.error("Не удалось включить удержание экрана:", error));
-    scheduleUnreadUpdatesPrompt(activeKey);
     void loadNotificationsWidget(header);
     void import("./idleScreenSaver.js?v=20260921-1")
       .then(({ startIdleScreenSaver }) => startIdleScreenSaver())
@@ -1166,7 +1133,6 @@ function initCommonNav() {
   if (!mount) return;
 
   injectNavStyles();
-  if (detectActiveKey() === "updates") markCurrentUpdatesSeen();
   const header = renderHeader(mount);
   const profileLoadToken = beginPageDataRequest({
     label: "Загружаем профиль…",

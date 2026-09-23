@@ -290,6 +290,8 @@
     .owner-icon-link.owner-ideas-link { border-color: rgba(224, 181, 73, .38) !important; background: rgba(224, 181, 73, .11) !important; color: #f2cf72 !important; }
     .owner-icon-link.owner-status-link { border-color: rgba(94, 187, 151, .34) !important; background: rgba(94, 187, 151, .09) !important; color: #a9ddc9 !important; }
     .owner-icon-link.owner-lab-link { border-color: rgba(174, 123, 139, .38) !important; background: rgba(122, 22, 56, .13) !important; color: #e6b8c5 !important; }
+    .owner-icon-link.owner-updates-link { border-color: rgba(110, 168, 232, .38) !important; background: rgba(110, 168, 232, .11) !important; color: #bcd8f6 !important; }
+    .owner-icon-link:disabled { cursor: wait; opacity: .55; }
     .owner-button-primary { border-radius: 6px !important; background: var(--alvisa-wine) !important; color: #fff7f8 !important; box-shadow: none !important; }
     .owner-button-primary:hover { background: #8c1b42 !important; }
     .owner-button-danger { border-radius: 6px !important; }
@@ -372,6 +374,8 @@
           </a>
 
           <a href="schedule-lab.html" class="owner-button owner-icon-link owner-lab-link ring-1 transition" aria-label="Учебный табель" title="Учебный табель" data-tooltip="Учебный табель"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v5l-6 10a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L14 8V3M7 16h10"/></svg><span class="sr-only">Учебный табель</span></a>
+
+          <button id="broadcastUpdatesBtn" type="button" class="owner-button owner-icon-link owner-updates-link ring-1 transition" aria-label="Сообщить об обновлении" title="Сообщить об обновлении" data-tooltip="Сообщить об обновлении"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 8-8M4 12a8 8 0 0 0 8 8M8 12a4 4 0 0 1 4-4M8 12a4 4 0 0 0 4 4"/><circle cx="12" cy="12" r="1"/><path d="M16 8a6 6 0 0 1 0 8M19 5a10 10 0 0 1 0 14"/></svg><span class="sr-only">Сообщить об обновлении</span></button>
         </nav>
       </div>
     </header>

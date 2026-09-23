@@ -21,6 +21,12 @@ test("EGAIS receives its standard operational checklist", () => {
   assert.deepEqual(getDepartmentChecklistTemplates("warehouse"), []);
 });
 
+test("other departments do not receive EGAIS quick checklist items", () => {
+  for (const department of ["warehouse", "bottling", "laboratory", "administration"]) {
+    assert.deepEqual(getDepartmentChecklistTemplates(department), []);
+  }
+});
+
 test("existing handover item remains ordinary and removable", () => {
   const items = normalizeChecklistItems([
     { id: "legacy", text: "Покрутить марку сменщику", done: true, source: "standard" },

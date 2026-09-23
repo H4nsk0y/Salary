@@ -125,15 +125,15 @@ test("department timesheet shows day and night totals for both periods", async (
   assert.doesNotMatch(script, /ОТ \/ Б \/ НТ \/ проч\./);
 });
 
-test("latest user update is announced once until the updates page is opened", async () => {
+test("updates remain user-controlled without automatic modal prompts", async () => {
   const [updates, nav] = await Promise.all([source("updates.html"), source("js/nav.js")]);
-  assert.match(updates, /Обновление 31\.0/);
-  assert.match(updates, /Напоминания о ближайшей смене/);
+  assert.match(updates, /Обновление 35\.0/);
+  assert.match(updates, /Контрактное производство «Одиссей»/);
+  assert.match(updates, /АЛВИСА ШАТО/);
+  assert.match(updates, /АЛВИСА ОДИССЕЙ/);
   assert.doesNotMatch(updates, /Учебный табель|учебном табеле/i);
-  assert.match(nav, /CURRENT_UPDATES_VERSION = "33\.0"/);
-  assert.match(nav, /UPDATES_SEEN_STORAGE_KEY/);
-  assert.match(nav, /scheduleUnreadUpdatesPrompt/);
-  assert.match(nav, /markCurrentUpdatesSeen/);
+  assert.doesNotMatch(nav, /CURRENT_UPDATES_VERSION|UPDATES_SEEN_STORAGE_KEY/);
+  assert.doesNotMatch(nav, /scheduleUnreadUpdatesPrompt|markCurrentUpdatesSeen/);
 });
 
 test("owner analytics links each comparable record to the employee timesheet", async () => {

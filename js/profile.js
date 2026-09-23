@@ -223,6 +223,7 @@ const BRANCH_VALUES = new Set([
   "alvisa_beverage",
   "alvisa_whisky_distillery",
   "kin_wine_cognac_factory",
+  "contract_odyssey",
 ]);
 
 let loadedYear = new Date().getFullYear();

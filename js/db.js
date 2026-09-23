@@ -1074,6 +1074,12 @@ export async function sendPushNotifications({
   return data ?? null;
 }
 
+export async function ownerBroadcastProductUpdate() {
+  const { data, error } = await supabase.rpc("owner_broadcast_product_update");
+  if (error) throw error;
+  return Number(data) || 0;
+}
+
 export async function removeManagedDepartmentMember(departmentKey, userId) {
   const key = String(departmentKey ?? "").trim();
   const uid = String(userId ?? "").trim();

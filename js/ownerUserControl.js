@@ -51,6 +51,7 @@ const BRANCH_OPTIONS = [
   ["alvisa_beverage", "ALVISA BEVERAGE"],
   ["alvisa_whisky_distillery", "ALVISA WHISKY DISTILLERY"],
   ["kin_wine_cognac_factory", "Винно-коньячный завод «КиН»"],
+  ["contract_odyssey", "Контрактное производство «Одиссей»"],
 ];
 
 const POSITION_LABELS = new Map(POSITION_OPTIONS);

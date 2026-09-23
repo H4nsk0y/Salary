@@ -71,7 +71,7 @@ function createDialog() {
     message.textContent = "Отправляю…";
     try {
       await submitProjectIdea(value);
-      void sendPushNotifications({ type: "project_idea_submitted" }).catch(() => {
+      await sendPushNotifications({ type: "project_idea_submitted" }).catch(() => {
         // The idea is already saved and remains visible to the owner even if push delivery fails.
       });
       textarea.value = "";
