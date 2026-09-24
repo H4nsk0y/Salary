@@ -3,6 +3,14 @@ import {
   isBackgroundMusicEnabled,
   toggleBackgroundMusic,
 } from "./backgroundMusic.js";
+import { getSession } from "./auth.js";
+import {
+  getMyShiftChecklistState,
+  listDepartmentActiveChecklists,
+  listDepartmentShiftOverview,
+  listMyNotifications,
+} from "./db.js";
+import { checklistProgress } from "./shiftChecklist.js?v=20260913-2";
 
 const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d", { alpha: false });
@@ -12,6 +20,18 @@ const modeButtons = [...document.querySelectorAll("[data-mode]")];
 const returnToPage = document.getElementById("returnToPage");
 const pageParams = new URLSearchParams(location.search);
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const shiftBoard = document.getElementById("shiftBoard");
+const shiftClock = document.getElementById("shiftClock");
+const shiftDate = document.getElementById("shiftDate");
+const currentShiftTitle = document.getElementById("currentShiftTitle");
+const currentShiftCount = document.getElementById("currentShiftCount");
+const currentShiftPeople = document.getElementById("currentShiftPeople");
+const nextShiftWhen = document.getElementById("nextShiftWhen");
+const nextShiftPeople = document.getElementById("nextShiftPeople");
+const shiftChecklistScore = document.getElementById("shiftChecklistScore");
+const shiftChecklistText = document.getElementById("shiftChecklistText");
+const shiftAnnouncement = document.getElementById("shiftAnnouncement");
+const shiftBoardUpdated = document.getElementById("shiftBoardUpdated");
 
 let width = 0;
 let height = 0;
@@ -25,8 +45,11 @@ const buildingImage = new Image();
 buildingImage.src = "./images/app-icon-512.png";
 const pointer = { x: 0, y: 0, active: false, dragging: false };
 let idleTimer = null;
+let shiftBoardLoaded = false;
+let shiftBoardTimer = null;
 
 modeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.mode === mode)));
+document.body.dataset.mode = mode;
 const requestedReturn = pageParams.get("from");
 if (requestedReturn && returnToPage) {
   try {
@@ -134,6 +157,203 @@ function orbits() {
   ctx.globalAlpha = 1;
 }
 
+function sameHours(value, expected) {
+  return Math.abs((Number(value) || 0) - expected) < .05;
+}
+
+function isNightRest(row) {
+  return (sameHours(row?.day_hours, 1) || sameHours(row?.day_hours, 2)) && sameHours(row?.night_hours, 5);
+}
+
+function isNightStart(row) {
+  return (sameHours(row?.day_hours, 2) && sameHours(row?.night_hours, 2)) ||
+    ((sameHours(row?.day_hours, 3) || sameHours(row?.day_hours, 4)) && sameHours(row?.night_hours, 7));
+}
+
+function initials(value) {
+  return String(value || "С")
+    .trim().split(/\s+/).filter(Boolean).slice(0, 2)
+    .map((part) => part[0]?.toUpperCase()).join("") || "С";
+}
+
+function shiftLabel(row) {
+  const day = Number(row?.day_hours) || 0;
+  const night = Number(row?.night_hours) || 0;
+  if (isNightRest(row)) return "до 08:00";
+  if (isNightStart(row)) return `Ночь ${day}/${night}`;
+  if (night > 0 && day > 0) return `${day}/${night} ч`;
+  return `${day || night} ч`;
+}
+
+function createPerson(row) {
+  const person = document.createElement("div");
+  person.className = "shift-person";
+  const avatar = document.createElement("div");
+  avatar.className = "shift-initials";
+  avatar.textContent = initials(row?.display_name);
+  const info = document.createElement("div");
+  const name = document.createElement("div");
+  name.className = "shift-person-name";
+  name.textContent = row?.display_name || "Сотрудник";
+  const position = document.createElement("div");
+  position.className = "shift-person-position";
+  position.textContent = row?.position_name || "Сотрудник отдела";
+  info.append(name, position);
+  const badge = document.createElement("div");
+  badge.className = "shift-badge";
+  badge.textContent = shiftLabel(row);
+  person.append(avatar, info, badge);
+  return person;
+}
+
+function renderPeople(container, rows, emptyText) {
+  if (!container) return;
+  container.innerHTML = "";
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "shift-empty";
+    empty.textContent = emptyText;
+    container.append(empty);
+    return;
+  }
+  rows.forEach((row) => container.append(createPerson(row)));
+}
+
+function localIsoDate(date = new Date()) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function selectBoardShifts(rows, now = new Date()) {
+  const today = localIsoDate(now);
+  const tomorrowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 12);
+  const tomorrow = localIsoDate(tomorrowDate);
+  const todayRows = rows.filter((row) => row.target_date === today);
+  const tomorrowRows = rows.filter((row) => row.target_date === tomorrow);
+  const hour = now.getHours();
+
+  if (hour < 8) {
+    return {
+      current: todayRows.filter(isNightRest),
+      next: todayRows.filter((row) => Number(row.day_hours) > 0 && !isNightRest(row) && !isNightStart(row)),
+      currentTitle: "Сейчас заканчивают ночь",
+      nextWhen: "Сегодня утром",
+    };
+  }
+  if (hour < 20) {
+    return {
+      current: todayRows.filter((row) => Number(row.day_hours) > 0 && !isNightRest(row) && !isNightStart(row)),
+      next: todayRows.filter(isNightStart),
+      currentTitle: "Сейчас на смене",
+      nextWhen: "Сегодня вечером",
+    };
+  }
+  return {
+    current: todayRows.filter(isNightStart),
+    next: tomorrowRows.filter((row) => Number(row.day_hours) > 0 && !isNightRest(row) && !isNightStart(row)),
+    currentTitle: "Сейчас в ночной смене",
+    nextWhen: "Завтра утром",
+  };
+}
+
+function renderGuestBoard() {
+  if (currentShiftTitle) currentShiftTitle.textContent = "Живая смена доступна после входа";
+  if (currentShiftCount) currentShiftCount.textContent = "Гость";
+  renderPeople(currentShiftPeople, [], "Войдите в ALVISA SALARY, чтобы увидеть сотрудников текущей и следующей смены.");
+  renderPeople(nextShiftPeople, [], "После входа здесь появится следующая смена вашего отдела.");
+  if (shiftChecklistScore) shiftChecklistScore.textContent = "—";
+  if (shiftChecklistText) shiftChecklistText.innerHTML = '<div class="shift-message">Чек-листы смены доступны зарегистрированным пользователям.</div>';
+  if (shiftAnnouncement) shiftAnnouncement.textContent = "Объявления отдела появятся после входа.";
+}
+
+async function loadShiftBoard() {
+  if (!shiftBoard) return;
+  const session = await getSession();
+  if (!session) {
+    renderGuestBoard();
+    shiftBoardLoaded = true;
+    return;
+  }
+
+  const [rows, checklist, activeChecklists, notifications] = await Promise.all([
+    listDepartmentShiftOverview({ startDate: localIsoDate(), days: 2 }),
+    getMyShiftChecklistState(),
+    listDepartmentActiveChecklists().catch(() => []),
+    listMyNotifications(),
+  ]);
+  const selected = selectBoardShifts(rows);
+  if (currentShiftTitle) currentShiftTitle.textContent = selected.currentTitle;
+  if (currentShiftCount) currentShiftCount.textContent = `${selected.current.length} чел.`;
+  if (nextShiftWhen) nextShiftWhen.textContent = selected.nextWhen;
+  renderPeople(currentShiftPeople, selected.current, "По заполненному графику сейчас никто не работает.");
+  renderPeople(nextShiftPeople, selected.next, "Следующая смена в табеле пока не заполнена.");
+
+  const checklistRows = activeChecklists.length
+    ? activeChecklists
+    : checklist?.active
+      ? [{ display_name:"Мой чек-лист", items:checklist.active.items }]
+      : [];
+  if (shiftChecklistText) {
+    shiftChecklistText.innerHTML = "";
+    checklistRows.forEach((row) => {
+      const fallback = checklistProgress(row.items);
+      const total = Number(row.total_count) || fallback.total;
+      const completed = Number(row.completed_count) || fallback.completed;
+      const percent = total > 0 ? Math.round(completed * 100 / total) : 0;
+      const item = document.createElement("div");
+      item.className = "shift-check-row";
+      const line = document.createElement("div");
+      line.className = "shift-check-line";
+      const name = document.createElement("span");
+      name.textContent = row.display_name || "Сотрудник";
+      const score = document.createElement("span");
+      score.textContent = `${completed}/${total}`;
+      line.append(name, score);
+      const bar = document.createElement("div");
+      bar.className = "shift-check-mini";
+      const fill = document.createElement("span");
+      fill.style.width = `${percent}%`;
+      bar.append(fill);
+      item.append(line, bar);
+      shiftChecklistText.append(item);
+    });
+    if (!checklistRows.length) shiftChecklistText.innerHTML = '<div class="shift-message">Активных чек-листов сейчас нет.</div>';
+  }
+  if (shiftChecklistScore) shiftChecklistScore.textContent = `${checklistRows.length} активных`;
+
+  const announcement = notifications.find((item) => item?.type === "department_announcement");
+  if (shiftAnnouncement) {
+    shiftAnnouncement.innerHTML = "";
+    if (announcement) {
+      const title = document.createElement("strong");
+      title.textContent = announcement.title || "Объявление";
+      const body = document.createElement("span");
+      body.textContent = announcement.body || "";
+      shiftAnnouncement.append(title, body);
+    } else {
+      shiftAnnouncement.textContent = "Новых объявлений отдела нет.";
+    }
+  }
+  if (shiftBoardUpdated) shiftBoardUpdated.textContent = `обновлено ${new Date().toLocaleTimeString("ru-RU", { hour:"2-digit", minute:"2-digit" })}`;
+  shiftBoardLoaded = true;
+}
+
+function updateClock() {
+  const now = new Date();
+  if (shiftClock) shiftClock.textContent = now.toLocaleTimeString("ru-RU", { hour:"2-digit", minute:"2-digit" });
+  if (shiftDate) shiftDate.textContent = now.toLocaleDateString("ru-RU", { weekday:"long", day:"numeric", month:"long" });
+}
+
+function ensureShiftBoard() {
+  updateClock();
+  if (!shiftBoardLoaded) void loadShiftBoard().catch(() => renderGuestBoard());
+  clearInterval(shiftBoardTimer);
+  shiftBoardTimer = setInterval(() => {
+    updateClock();
+    void loadShiftBoard().catch(() => undefined);
+  }, 60000);
+}
+
 function frame(timestamp) {
   const delta = Math.min((timestamp - (lastFrame || timestamp)) / 1000, .05);
   lastFrame = timestamp;
@@ -141,7 +361,7 @@ function frame(timestamp) {
   background();
   if (mode === "ribbons") ribbons();
   else if (mode === "building") bouncingBuilding(delta * (reduceMotion ? .25 : 1));
-  else orbits();
+  else if (mode === "orbit") orbits();
   requestAnimationFrame(frame);
 }
 
@@ -160,7 +380,13 @@ async function holdScreen() {
 
 modeButtons.forEach((button) => button.addEventListener("click", () => {
   mode = button.dataset.mode;
+  document.body.dataset.mode = mode;
   modeButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+  if (mode === "shift") ensureShiftBoard();
+  else {
+    clearInterval(shiftBoardTimer);
+    shiftBoardTimer = null;
+  }
 }));
 
 musicButton?.addEventListener("click", async () => {
@@ -222,3 +448,5 @@ syncMusicButton();
 showControls();
 requestAnimationFrame(frame);
 void holdScreen();
+updateClock();
+if (mode === "shift") ensureShiftBoard();

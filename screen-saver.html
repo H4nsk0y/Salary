@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#080a0b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; upgrade-insecure-requests" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; upgrade-insecure-requests" />
   <title>Антивыгорание — ALVISA SALARY</title>
   <link rel="icon" type="image/png" href="./images/favicon-32.png" />
   <style>
@@ -31,8 +31,40 @@
     .music-toggle:not(.is-active) .music-note::after { content: ""; position: absolute; left: 3px; right: 2px; top: 11px; height: 2px; border-radius: 2px; background: currentColor; transform: rotate(-45deg); box-shadow: 0 0 0 1px rgba(8,10,11,.55); }
     .music-toggle.is-active { color: #dfc48d; border-color: rgba(198,161,91,.58); background: rgba(198,161,91,.12); }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .shift-board { position: fixed; z-index: 1; inset: 0; display: none; overflow: auto; padding: max(104px, calc(env(safe-area-inset-top) + 92px)) clamp(18px,4vw,64px) 40px; background: rgba(8,10,11,.76); }
+    body[data-mode="shift"] .shift-board { display: block; }
+    .shift-board-inner { width: min(1180px,100%); margin: 0 auto; }
+    .shift-board-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+    .shift-board-kicker { color: #c6a15b; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .shift-board-title { margin: 6px 0 0; font-family: Anticva,Georgia,serif; font-size: clamp(34px,5vw,68px); font-weight: 400; line-height: 1; }
+    .shift-clock { color: #f1eee8; font-size: clamp(28px,4vw,54px); font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+    .shift-date { margin-top: 4px; color: #8d9499; font-size: 13px; text-align: right; }
+    .shift-board-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; }
+    .shift-board-panel { border: 1px solid rgba(241,238,232,.13); border-radius: 8px; background: rgba(17,21,25,.92); overflow: hidden; }
+    .shift-board-panel.wide { grid-row: span 2; }
+    .shift-panel-head { display: flex; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid rgba(241,238,232,.1); }
+    .shift-panel-head strong { font-size: 14px; }
+    .shift-panel-head span { color: #7e868c; font-size: 12px; }
+    .shift-people { display: grid; }
+    .shift-person { display: grid; grid-template-columns: 44px minmax(0,1fr) auto; gap: 12px; align-items: center; min-height: 66px; padding: 10px 18px; border-bottom: 1px solid rgba(241,238,232,.07); }
+    .shift-person:last-child { border-bottom: 0; }
+    .shift-initials { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid rgba(110,168,232,.28); border-radius: 6px; background: rgba(110,168,232,.08); color: #d9ebff; font-size: 12px; font-weight: 800; }
+    .shift-person-name { overflow: hidden; color: #e3e5e7; font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .shift-person-position { margin-top: 3px; overflow: hidden; color: #7f878d; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .shift-badge { border: 1px solid rgba(198,161,91,.28); border-radius: 4px; padding: 5px 7px; color: #ddc58f; font-size: 11px; white-space: nowrap; }
+    .shift-empty,.shift-message { padding: 19px; color: #858d93; font-size: 13px; line-height: 1.55; }
+    .shift-checklists { display:grid; }
+    .shift-check-row { padding:12px 18px; border-bottom:1px solid rgba(241,238,232,.07); }
+    .shift-check-row:last-child { border-bottom:0; }
+    .shift-check-line { display:flex; justify-content:space-between; gap:12px; color:#cbd0d3; font-size:12px; }
+    .shift-check-line span:last-child { color:#9fc7ef; font-weight:700; }
+    .shift-check-mini { height:3px; margin-top:8px; background:rgba(241,238,232,.08); }
+    .shift-check-mini span { display:block; height:100%; background:#6ea8e8; }
+    .shift-announcement { padding: 18px; color: #cbd0d3; font-size: 13px; line-height: 1.6; }
+    .shift-announcement strong { display: block; margin-bottom: 5px; color: #e8d5aa; }
     button:focus-visible, a:focus-visible { outline: 2px solid #6ea8e8; outline-offset: 3px; }
-    @media (max-width: 640px) { .controls { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; gap: 7px; padding: 8px; } .brand { width: 100%; font-size: 17px; } .modes { order: 3; width: 100%; } .modes button { flex: 1; padding-inline: 4px; font-size: 12px; } .action { min-height: 36px; font-size: 12px; } }
+    @media (max-width: 760px) { .shift-board { padding-top: max(156px,calc(env(safe-area-inset-top) + 148px)); } .shift-board-head { align-items: flex-start; flex-direction: column; } .shift-clock,.shift-date { text-align:left; } .shift-board-grid { grid-template-columns:1fr; } .shift-board-panel.wide { grid-row:auto; } }
+    @media (max-width: 640px) { .controls { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; gap: 7px; padding: 8px; } .brand { width: 100%; font-size: 17px; } .modes { order: 3; width: 100%; overflow-x:auto; } .modes button { flex: 1 0 auto; padding-inline: 8px; font-size: 12px; } .action { min-height: 36px; font-size: 12px; } }
   </style>
 </head>
 <body>
@@ -43,6 +75,7 @@
       <button type="button" data-mode="ribbons" aria-pressed="true">Ленты</button>
       <button type="button" data-mode="building" aria-pressed="false">Корпус</button>
       <button type="button" data-mode="orbit" aria-pressed="false">Орбиты</button>
+      <button type="button" data-mode="shift" aria-pressed="false">Живая смена</button>
     </div>
     <button id="musicToggleBtn" class="action music-toggle" type="button" aria-pressed="false" aria-label="Включить музыку" title="Включить музыку">
       <span class="music-note" aria-hidden="true">♪</span>
@@ -52,6 +85,20 @@
     <a class="action" href="settings.html">В настройки</a>
     <a id="returnToPage" class="action" href="profile.html">В профиль</a>
   </div>
-  <script type="module" src="./js/screen-saver.js?v=20260920-4"></script>
+  <section id="shiftBoard" class="shift-board" aria-live="polite">
+    <div class="shift-board-inner">
+      <header class="shift-board-head">
+        <div><div class="shift-board-kicker">ALVISA SALARY · сейчас</div><h1 class="shift-board-title">Живая смена</h1></div>
+        <div><div id="shiftClock" class="shift-clock">--:--</div><div id="shiftDate" class="shift-date">Загрузка…</div></div>
+      </header>
+      <div class="shift-board-grid">
+        <section class="shift-board-panel wide"><header class="shift-panel-head"><strong id="currentShiftTitle">Сейчас на смене</strong><span id="currentShiftCount">—</span></header><div id="currentShiftPeople" class="shift-people"><div class="shift-empty">Загружаю график…</div></div></section>
+        <section class="shift-board-panel"><header class="shift-panel-head"><strong>Следующая смена</strong><span id="nextShiftWhen">—</span></header><div id="nextShiftPeople" class="shift-people"><div class="shift-empty">Загружаю график…</div></div></section>
+        <section class="shift-board-panel"><header class="shift-panel-head"><strong>Чек-листы смены</strong><span id="shiftChecklistScore">—</span></header><div id="shiftChecklistText" class="shift-checklists"><div class="shift-message">Проверяю состояние…</div></div></section>
+        <section class="shift-board-panel"><header class="shift-panel-head"><strong>Последнее объявление</strong><span id="shiftBoardUpdated">—</span></header><div id="shiftAnnouncement" class="shift-announcement">Загружаю…</div></section>
+      </div>
+    </div>
+  </section>
+  <script type="module" src="./js/screen-saver.js?v=20260924-1"></script>
 </body>
 </html>

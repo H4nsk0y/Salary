@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Мой рабочий год — ALVISA SALARY</title>
+  <meta name="theme-color" content="#0b0d0f" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; upgrade-insecure-requests" />
+  <link rel="icon" type="image/png" href="./images/favicon-32.png?v=4" />
+  <style>
+    @font-face { font-family:Anticva; src:url('./fonts/Anticva-Regular.otf') format('opentype'); font-display:swap; }
+    :root { color-scheme:dark; --ink:#0b0d0f; --paper:#f1eee8; --muted:#969da2; --wine:#7a1638; --gold:#c6a15b; --steel:#6ea8e8; }
+    * { box-sizing:border-box; }
+    html,body { width:100%; min-height:100%; margin:0; background:var(--ink); color:var(--paper); font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:0; }
+    body { overflow:hidden; }
+    .hidden { display:none !important; }
+    .loading { position:fixed; z-index:20; inset:0; display:grid; place-items:center; background:var(--ink); text-align:center; }
+    .loading-mark { width:74px; height:74px; margin:0 auto 18px; object-fit:cover; animation:breathe 1.7s ease-in-out infinite; }
+    .loading p { margin:0; color:var(--muted); font-size:13px; }
+    .error { max-width:520px; padding:24px; }
+    .error h1 { margin:0 0 10px; font-family:Anticva,Georgia,serif; font-size:36px; font-weight:400; }
+    .error a { display:inline-flex; margin-top:18px; border:1px solid rgba(241,238,232,.18); border-radius:6px; padding:11px 14px; color:var(--paper); text-decoration:none; }
+    .story { height:100dvh; overflow-y:auto; scroll-snap-type:y mandatory; scroll-behavior:auto; overscroll-behavior:contain; }
+    .story.is-animating { scroll-snap-type:none; }
+    .scene { position:relative; min-height:100dvh; display:grid; align-items:center; scroll-snap-align:start; overflow:hidden; border-bottom:1px solid rgba(241,238,232,.1); padding:96px clamp(22px,7vw,110px) 74px; }
+    .scene::before { content:""; position:absolute; inset:0; pointer-events:none; background-image:linear-gradient(rgba(241,238,232,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(241,238,232,.035) 1px,transparent 1px); background-size:64px 64px; animation:grid-drift 18s linear infinite; }
+    .scene:nth-child(2n) { background:#111519; }
+    .scene:nth-child(3n) { background:#171114; }
+    .scene-inner { position:relative; width:min(1120px,100%); margin:0 auto; }
+    .kicker { color:var(--gold); font-size:12px; font-weight:800; text-transform:uppercase; }
+    h1,h2 { margin:0; font-family:Anticva,Georgia,serif; font-weight:400; letter-spacing:0; }
+    h1 { max-width:940px; margin-top:16px; font-size:clamp(56px,10vw,150px); line-height:.9; }
+    h2 { max-width:900px; margin-top:14px; font-size:clamp(46px,8vw,110px); line-height:.94; }
+    .lead { max-width:720px; margin:22px 0 0; color:#aeb4b8; font-size:clamp(16px,2vw,23px); line-height:1.55; }
+    .metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; margin-top:42px; background:rgba(241,238,232,.11); }
+    .metric { min-height:180px; padding:25px; background:#111519; }
+    .scene:nth-child(2n) .metric { background:#0d1012; }
+    .metric-value { color:var(--paper); font-family:Anticva,Georgia,serif; font-size:clamp(44px,7vw,86px); line-height:1; font-variant-numeric:tabular-nums; }
+    .metric-value.gold { color:#dfc68e; }
+    .metric-value.steel { color:#b9dcff; }
+    .metric-label { margin-top:12px; color:var(--muted); font-size:13px; line-height:1.45; }
+    .big-number { margin-top:28px; color:#dfc68e; font-family:Anticva,Georgia,serif; font-size:clamp(88px,20vw,260px); line-height:.78; font-variant-numeric:tabular-nums; }
+    .big-caption { margin-top:28px; color:#c3c7ca; font-size:clamp(18px,2.5vw,30px); }
+    .month-line { width:min(720px,100%); height:5px; margin-top:34px; background:rgba(241,238,232,.1); }
+    .month-line span { display:block; height:100%; background:var(--wine); transform-origin:left; animation:line-in 1.1s ease both; }
+    .topbar { position:fixed; z-index:8; top:max(14px,env(safe-area-inset-top)); left:18px; right:18px; display:flex; align-items:center; justify-content:space-between; gap:14px; }
+    .brand { font-family:Anticva,Georgia,serif; font-size:19px; }
+    .topbar a { border:1px solid rgba(241,238,232,.16); border-radius:5px; padding:9px 12px; background:rgba(11,13,15,.76); color:var(--paper); text-decoration:none; font-size:12px; backdrop-filter:blur(12px); }
+    .story-nav { position:fixed; z-index:8; right:18px; bottom:max(18px,env(safe-area-inset-bottom)); display:flex; gap:8px; }
+    .story-nav button { width:44px; height:44px; border:1px solid rgba(241,238,232,.17); border-radius:5px; background:rgba(11,13,15,.82); color:var(--paper); cursor:pointer; font-size:19px; backdrop-filter:blur(12px); }
+    .story-progress { position:fixed; z-index:8; left:0; right:0; bottom:0; height:3px; background:rgba(241,238,232,.08); }
+    .story-progress span { display:block; width:0; height:100%; background:var(--gold); transition:width 220ms ease; }
+    .scene-inner { opacity:0; transform:translateY(18px) scale(.992); transition:opacity .95s cubic-bezier(.22,1,.36,1),transform 1.05s cubic-bezier(.22,1,.36,1); will-change:opacity,transform; }
+    .scene.is-visible .scene-inner { opacity:1; transform:none; }
+    @keyframes breathe { 50% { transform:scale(.9); opacity:.62; } }
+    @keyframes grid-drift { to { background-position:64px 64px; } }
+    @keyframes line-in { from { transform:scaleX(0); } }
+    @media (max-width:640px) { .scene { padding:88px 18px 74px; } .metrics { grid-template-columns:1fr; margin-top:28px; } .metric { min-height:130px; padding:20px; } .brand { font-size:16px; } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; scroll-behavior:auto !important; transition:none !important; } .scene-inner { opacity:1; transform:none; } }
+  </style>
+</head>
+<body>
+  <div id="loading" class="loading"><div><img class="loading-mark" src="./images/app-icon-192.png" alt="" /><p>Собираю ваш рабочий год…</p></div></div>
+  <div id="errorView" class="loading hidden"><div class="error"><h1>Итоги пока не собрались</h1><p id="errorText">Не удалось загрузить сохранённые табели.</p><a href="index.html">На главную</a></div></div>
+  <header class="topbar"><div class="brand">ALVISA SALARY</div><a href="index.html">Закрыть итоги</a></header>
+  <main id="story" class="story hidden">
+    <section class="scene"><div class="scene-inner"><div class="kicker">Ваш рабочий год</div><h1><span id="reviewName">Вы</span>, это был <span data-year></span></h1><p class="lead">Собрали всё, что сохранилось в ваших табелях. Листайте дальше.</p></div></section>
+    <section class="scene"><div class="scene-inner"><div class="kicker">Время в цифрах</div><h2>Сколько работы поместилось в год</h2><div class="metrics"><div class="metric"><div id="totalHours" class="metric-value gold">0</div><div class="metric-label">отработано часов</div></div><div class="metric"><div id="totalShifts" class="metric-value">0</div><div class="metric-label">выходов на смену</div></div></div></div></section>
+    <section class="scene"><div class="scene-inner"><div class="kicker">Когда город спал</div><div id="nightShifts" class="big-number">0</div><div class="big-caption">ночных смен · <span id="nightHours">0</span> ночных часов</div></div></section>
+    <section class="scene"><div class="scene-inner"><div class="kicker">Особые дни</div><h2>Праздники, отпуск и больничные</h2><div class="metrics"><div class="metric"><div id="holidayHours" class="metric-value gold">0</div><div class="metric-label">часов в официальные праздники</div></div><div class="metric"><div id="vacationDays" class="metric-value steel">0</div><div class="metric-label">дней оплачиваемого отпуска</div></div><div class="metric"><div id="sickDays" class="metric-value">0</div><div class="metric-label">дней больничного</div></div><div class="metric"><div id="longestStreak" class="metric-value">0</div><div class="metric-label">смен подряд — самая длинная серия</div></div></div></div></section>
+    <section class="scene"><div class="scene-inner"><div class="kicker">Самый насыщенный месяц</div><h2 id="busiestMonth">Нет данных</h2><div class="big-caption"><span id="busiestMonthHours">0</span> часов и <span id="busiestMonthShifts">0</span> смен</div><div class="month-line"><span id="busiestMonthLine" style="width:0%"></span></div></div></section>
+    <section class="scene"><div class="scene-inner"><div class="kicker">По сохранённым расчётам</div><h2 id="paymentsValue">—</h2><p id="paymentsCaption" class="lead">Сумма появится, когда в табелях будут сохранены расчёты выплат.</p></div></section>
+    <section class="scene"><div class="scene-inner"><div class="kicker">ALVISA SALARY</div><h1>До встречи в новом рабочем году</h1><p class="lead">Пусть смены будут спокойнее, расчёты точнее, а выходных станет немного больше.</p></div></section>
+  </main>
+  <nav class="story-nav" aria-label="Переключение итогов"><button id="prevScene" type="button" aria-label="Предыдущий экран">↑</button><button id="nextScene" type="button" aria-label="Следующий экран">↓</button></nav>
+  <div class="story-progress"><span id="storyProgress"></span></div>
+  <script type="module" src="./js/yearReview.js?v=20260924-1"></script>
+</body>
+</html>

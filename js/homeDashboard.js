@@ -1,6 +1,7 @@
 import { getSession } from "./auth.js";
 import { loadTimesheet } from "./db.js";
 import { findNextShift } from "./nextShift.js";
+import { getYearReviewAvailability } from "./yearReviewAvailability.js";
 
 function initializeRevealAnimations() {
   const elements = document.querySelectorAll(".reveal");
@@ -66,8 +67,20 @@ async function showNextShift() {
   root.hidden = false;
 }
 
+async function showYearReview() {
+  const link = document.getElementById("yearReviewLink");
+  if (!link) return;
+  const session = await getSession();
+  if (!session) return;
+  const availability = getYearReviewAvailability(new Date());
+  if (!availability.visible) return;
+  link.href = `year-review.html?year=${availability.year}`;
+  link.hidden = false;
+}
+
 showNextShift().catch(() => {
   // The public home page stays unchanged when schedule data is unavailable.
 });
+showYearReview().catch(() => undefined);
 
 initializeRevealAnimations();

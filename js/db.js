@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { getSession } from "./auth.js";
+import { isProfileCompleteForTimesheet } from "./profileCompletion.js";
 
 const PROFILE_SELECT =
   "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours, egais_file_reminders_enabled, hide_calculator_nav";
@@ -818,7 +819,7 @@ export async function listManagedDepartmentMembers(departmentKey) {
       created_at: profile?.created_at ?? null,
       sort_order: memberRows?.find((row) => row.user_id === userId)?.sort_order ?? null,
     };
-  });
+  }).filter((member) => isProfileCompleteForTimesheet(member));
 }
 
 export async function listEgaisDepartmentTimesheetView(year, month) {
@@ -1257,6 +1258,21 @@ export async function getMyShiftChecklistState() {
   const { data, error } = await supabase.rpc("get_my_shift_checklist_state");
   if (error) throw error;
   return data ?? { active: null, latest_completed: null };
+}
+
+export async function getMyShiftChecklistHistory() {
+  await requireUserId();
+
+  const { data, error } = await supabase.rpc("get_my_shift_checklist_history");
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+export async function listDepartmentActiveChecklists() {
+  await requireUserId();
+  const { data, error } = await supabase.rpc("list_department_active_checklists");
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function startMyShiftChecklist({ items, remindersEnabled = true } = {}) {

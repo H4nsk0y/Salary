@@ -11,7 +11,7 @@ test("settings link opens three screen saver modes", async () => {
     read("js/features/fullscreenShortcuts.js"),
   ]);
   assert.match(settings, /href="screen-saver\.html"/);
-  for (const mode of ["ribbons", "building", "orbit"]) {
+  for (const mode of ["ribbons", "building", "orbit", "shift"]) {
     assert.match(page, new RegExp(`data-mode="${mode}"`));
   }
   assert.match(page, /href="profile\.html">В профиль<\/a>/);
@@ -28,6 +28,10 @@ test("settings link opens three screen saver modes", async () => {
   assert.doesNotMatch(page, /body\.is-idle \.controls:not\(:focus-within\)/);
   assert.match(script, /app-icon-512\.png/);
   assert.match(script, /setPointerCapture/);
+  assert.match(script, /listDepartmentShiftOverview/);
+  assert.match(script, /getMyShiftChecklistState/);
+  assert.match(script, /listDepartmentActiveChecklists/);
+  assert.match(page, /id="shiftBoard"/);
   assert.doesNotMatch(page, /id="wakeStatus"/);
 });
 
@@ -77,4 +81,16 @@ test("screen saver music loops and follows the user across application pages", a
   assert.match(controller, /localStorage\.setItem\(MUSIC_ENABLED_KEY/);
   assert.match(nav, /import "\.\/backgroundMusic\.js"/);
   assert.match(worker, /"audio"/);
+});
+
+test("live shift checklist summary is scoped by an authenticated department RPC", async () => {
+  const [sql, db] = await Promise.all([
+    read("supabase-sql/058_live_shift_checklists.sql"),
+    read("js/db.js"),
+  ]);
+  assert.match(sql, /auth\.uid\(\)/);
+  assert.match(sql, /member\.department_key = v_department_key/);
+  assert.match(sql, /checklist\.started_at >= now\(\) - interval '36 hours'/);
+  assert.match(sql, /revoke all on function public\.list_department_active_checklists\(\) from public, anon/i);
+  assert.match(db, /supabase\.rpc\("list_department_active_checklists"\)/);
 });

@@ -233,6 +233,22 @@
       transform: translateY(-2px);
     }
 
+    .year-review-button {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(236,199,104,.72);
+      background: #8e2144;
+      color: #fff8e9;
+      box-shadow: 0 0 0 0 rgba(198,161,91,.42), 0 16px 36px rgba(72,12,34,.38);
+      animation: year-review-pulse 2.4s ease-in-out infinite;
+    }
+    .year-review-button[hidden] { display: none !important; }
+    .year-review-button::before { content:""; position:absolute; top:-80%; bottom:-80%; left:-35%; width:24%; background:rgba(255,255,255,.34); transform:rotate(18deg); animation:year-review-shine 3.1s ease-in-out infinite; }
+    .year-review-button:hover { transform:translateY(-2px) scale(1.015); }
+    .year-review-star { margin-right:8px; color:#ffe7a8; font-size:1rem; }
+    @keyframes year-review-pulse { 0%,100% { box-shadow:0 0 0 0 rgba(198,161,91,.36),0 16px 36px rgba(72,12,34,.38); } 50% { box-shadow:0 0 0 7px rgba(198,161,91,0),0 18px 42px rgba(122,22,56,.5); } }
+    @keyframes year-review-shine { 0%,58% { transform:translateX(-180%) rotate(18deg); } 82%,100% { transform:translateX(650%) rotate(18deg); } }
+
     .button-arrow {
       font-size: 1rem;
       transition: transform 180ms ease;
@@ -572,6 +588,10 @@
             <a href="screen-saver.html?mode=building&amp;from=index.html" class="button-secondary">
               Не отключать экран <span class="button-arrow" aria-hidden="true">→</span>
             </a>
+            <a id="yearReviewLink" href="year-review.html" class="button-primary year-review-button" hidden>
+              <span class="year-review-star" aria-hidden="true">✦</span>
+              Мой рабочий год <span class="button-arrow" aria-hidden="true">→</span>
+            </a>
           </div>
 
           <a id="homeNextShift" class="hero-next-shift" href="table.html" hidden>
@@ -691,6 +711,6 @@
   <div data-app-footer></div>
 
 <script type="module" src="./js/nav.js?v=20260921-3"></script>
-  <script type="module" src="./js/homeDashboard.js?v=20260920-1"></script>
+  <script type="module" src="./js/homeDashboard.js?v=20260924-1"></script>
 </body>
 </html>

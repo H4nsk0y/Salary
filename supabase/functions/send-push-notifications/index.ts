@@ -5,7 +5,7 @@ import webpush from "npm:web-push@3.6.7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -27,6 +27,18 @@ function requiredEnv(name: string) {
 
 function normalizeText(value: unknown, maxLength = 2000) {
   return String(value ?? "").trim().slice(0, maxLength);
+}
+
+function constantTimeEqual(left: string, right: string) {
+  const encoder = new TextEncoder();
+  const leftBytes = encoder.encode(left);
+  const rightBytes = encoder.encode(right);
+  const length = Math.max(leftBytes.length, rightBytes.length);
+  let mismatch = leftBytes.length ^ rightBytes.length;
+  for (let index = 0; index < length; index += 1) {
+    mismatch |= (leftBytes[index] ?? 0) ^ (rightBytes[index] ?? 0);
+  }
+  return mismatch === 0;
 }
 
 function subscriptionFromRow(row: any) {
@@ -176,18 +188,26 @@ serve(async (req) => {
     const isPushTest = type === "push_test";
     const isIdeaSubmitted = type === "project_idea_submitted";
     const isShiftUnavailable = type === "shift_unavailable";
+    const isInactiveUsersReport = type === "owner_inactive_users_report";
+    const cronSecret = Deno.env.get("CRON_SECRET") || "";
+    const trustedCron = isInactiveUsersReport && Boolean(cronSecret) && constantTimeEqual(
+      req.headers.get("x-cron-secret") || "",
+      cronSecret,
+    );
     const allUsers = body.allUsers === true;
     const lookbackMinutes = Math.min(60, Math.max(1, Number(body.lookbackMinutes) || 10));
     const limit = Math.min(200, Math.max(1, Number(body.limit) || 100));
 
-    if (!departmentKey && !allUsers && !isPushTest && !isIdeaSubmitted) {
+    if (!departmentKey && !allUsers && !isPushTest && !isIdeaSubmitted && !isInactiveUsersReport) {
       return jsonResponse({ error: "DEPARTMENT_REQUIRED" }, 400);
     }
 
     const authenticatedUserId = isPushTest || isIdeaSubmitted || isShiftUnavailable
       ? await getAuthenticatedUserId({ supabaseUrl, supabaseAnonKey, authorization })
       : null;
-    const allowed = isPushTest
+    const allowed = trustedCron
+      ? true
+      : isPushTest
       ? Boolean(authenticatedUserId)
       : isIdeaSubmitted
       ? Boolean(authenticatedUserId)
