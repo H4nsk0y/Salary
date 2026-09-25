@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@capacitor/android": "8.4.3",
-    "@capacitor/core": "8.4.3"
+    "@capacitor/core": "8.4.3",
+    "three": "^0.180.0"
   }
 }

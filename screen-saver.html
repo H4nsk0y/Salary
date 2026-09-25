@@ -62,8 +62,44 @@
     .shift-check-mini span { display:block; height:100%; background:#6ea8e8; }
     .shift-announcement { padding: 18px; color: #cbd0d3; font-size: 13px; line-height: 1.6; }
     .shift-announcement strong { display: block; margin-bottom: 5px; color: #e8d5aa; }
+    .enterprise-map { position:fixed; z-index:1; inset:0; display:none; overflow:hidden; background:#080a0b; }
+    body[data-mode="map"] .enterprise-map { display:block; }
+    .enterprise-map-canvas { position:absolute; inset:0; width:100%; height:100%; }
+    .enterprise-map-shade { position:absolute; inset:0; pointer-events:none; background:linear-gradient(to bottom,rgba(8,10,11,.72),transparent 28%,transparent 72%,rgba(8,10,11,.8)),radial-gradient(circle at center,transparent 36%,rgba(8,10,11,.54)); }
+    .enterprise-map-head { position:absolute; z-index:2; top:max(104px,calc(env(safe-area-inset-top) + 92px)); left:clamp(20px,4vw,64px); pointer-events:none; }
+    .enterprise-map-title { margin:6px 0 0; font-family:Anticva,Georgia,serif; font-size:clamp(34px,4.8vw,66px); font-weight:400; line-height:1; }
+    .enterprise-map-summary { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:13px; color:#969da2; font-size:12px; }
+    .enterprise-map-summary strong { color:#f1eee8; font-size:14px; }
+    .enterprise-map-dot { width:6px; height:6px; border-radius:50%; background:#5fc995; box-shadow:0 0 14px rgba(95,201,149,.7); }
+    .enterprise-map-clock { position:absolute; z-index:2; right:clamp(20px,4vw,64px); bottom:max(28px,env(safe-area-inset-bottom)); color:#949ca1; font-size:12px; text-align:right; pointer-events:none; }
+    .enterprise-map-clock strong { display:block; color:#f1eee8; font-size:24px; font-variant-numeric:tabular-nums; }
+    .map-label-layer { position:absolute; z-index:3; inset:0; pointer-events:none; }
+    .map-building-label { position:absolute; min-width:132px; transform:translate(-50%,-50%); padding:8px 10px; border:1px solid rgba(241,238,232,.2); border-radius:5px; background:rgba(8,10,11,.82); color:#f1eee8; text-align:left; backdrop-filter:blur(10px); pointer-events:auto; transition:opacity .25s ease,transform .25s ease,border-color .25s ease,background .25s ease; }
+    .map-building-label::after { content:""; position:absolute; left:50%; top:100%; width:1px; height:18px; background:linear-gradient(rgba(241,238,232,.34),transparent); }
+    .map-building-label strong,.map-building-label span { display:block; }
+    .map-building-label strong { font-size:11px; }
+    .map-building-label span { margin-top:2px; color:#899197; font-size:9px; }
+    .map-building-label:hover,.map-building-label.is-hovered { transform:translate(-50%,-54%) scale(1.04); border-color:rgba(198,161,91,.72); background:rgba(45,36,22,.9); }
+    .map-building-label.is-behind { opacity:0; pointer-events:none; }
+    .map-transition { position:absolute; z-index:6; inset:0; background:#080a0b; opacity:0; pointer-events:none; transition:opacity .42s ease; }
+    .enterprise-map.is-transitioning .map-transition,.enterprise-map.is-inside .map-transition { opacity:1; }
+    .map-inside { position:absolute; z-index:7; inset:0; display:grid; align-items:center; overflow:auto; padding:max(88px,calc(env(safe-area-inset-top) + 72px)) clamp(18px,7vw,110px) max(36px,env(safe-area-inset-bottom)); background:#0b0d0f; opacity:0; visibility:hidden; pointer-events:none; transition:opacity .55s ease; }
+    .enterprise-map.is-inside .map-inside { opacity:1; visibility:visible; pointer-events:auto; }
+    .map-inside-content { width:min(1080px,100%); margin:auto; }
+    .map-inside-back { display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 12px; border:1px solid rgba(241,238,232,.17); border-radius:5px; background:rgba(241,238,232,.05); color:#d5d8da; font-size:12px; }
+    .map-inside-kicker { margin-top:30px; color:#c6a15b; font-size:11px; font-weight:800; text-transform:uppercase; }
+    .map-inside-title { margin:8px 0 0; font-family:Anticva,Georgia,serif; font-size:clamp(42px,7vw,92px); font-weight:400; line-height:.95; }
+    .map-inside-subtitle { margin-top:13px; color:#8d959a; font-size:13px; }
+    .map-workers { display:grid; grid-template-columns:repeat(auto-fit,minmax(245px,1fr)); gap:10px; margin-top:34px; }
+    .map-worker { display:grid; grid-template-columns:38px minmax(0,1fr) auto; align-items:center; gap:11px; min-height:67px; padding:11px 13px; border:1px solid rgba(241,238,232,.11); border-radius:6px; background:#111519; }
+    .map-worker-initials { display:grid; width:36px; height:36px; place-items:center; border:1px solid rgba(110,168,232,.28); border-radius:5px; color:#cfe5fb; font-size:11px; font-weight:800; }
+    .map-worker-name { overflow:hidden; color:#e1e4e6; font-size:12px; font-weight:750; text-overflow:ellipsis; white-space:nowrap; }
+    .map-worker-department { margin-top:3px; overflow:hidden; color:#7f878d; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+    .map-worker-shift { color:#dcc58f; font-size:10px; white-space:nowrap; }
+    .map-workers-empty { grid-column:1/-1; padding:28px; border:1px solid rgba(241,238,232,.11); border-radius:6px; color:#8d959a; text-align:center; line-height:1.55; }
+    body.is-map-inside .controls,body.map-transitioning .controls { opacity:0; transform:translateY(-10px); pointer-events:none; }
     button:focus-visible, a:focus-visible { outline: 2px solid #6ea8e8; outline-offset: 3px; }
-    @media (max-width: 760px) { .shift-board { padding-top: max(156px,calc(env(safe-area-inset-top) + 148px)); } .shift-board-head { align-items: flex-start; flex-direction: column; } .shift-clock,.shift-date { text-align:left; } .shift-board-grid { grid-template-columns:1fr; } .shift-board-panel.wide { grid-row:auto; } }
+    @media (max-width:760px) { .shift-board { padding-top:max(156px,calc(env(safe-area-inset-top) + 148px)); } .shift-board-head { align-items:flex-start; flex-direction:column; } .shift-clock,.shift-date { text-align:left; } .shift-board-grid { grid-template-columns:1fr; } .shift-board-panel.wide { grid-row:auto; } .enterprise-map-head { top:max(154px,calc(env(safe-area-inset-top) + 146px)); } .enterprise-map-clock { display:none; } .map-building-label { min-width:104px; padding:7px 8px; } .map-building-label strong { font-size:9px; } .map-building-label span { font-size:8px; } }
     @media (max-width: 640px) { .controls { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; gap: 7px; padding: 8px; } .brand { width: 100%; font-size: 17px; } .modes { order: 3; width: 100%; overflow-x:auto; } .modes button { flex: 1 0 auto; padding-inline: 8px; font-size: 12px; } .action { min-height: 36px; font-size: 12px; } }
   </style>
 </head>
@@ -76,6 +112,7 @@
       <button type="button" data-mode="building" aria-pressed="false">Корпус</button>
       <button type="button" data-mode="orbit" aria-pressed="false">Орбиты</button>
       <button type="button" data-mode="shift" aria-pressed="false">Живая смена</button>
+      <button type="button" data-mode="map" aria-pressed="false">Карта</button>
     </div>
     <button id="musicToggleBtn" class="action music-toggle" type="button" aria-pressed="false" aria-label="Включить музыку" title="Включить музыку">
       <span class="music-note" aria-hidden="true">♪</span>
@@ -99,6 +136,27 @@
       </div>
     </div>
   </section>
-  <script type="module" src="./js/screen-saver.js?v=20260924-1"></script>
+  <section id="enterpriseMap" class="enterprise-map" aria-live="polite">
+    <canvas id="enterpriseMapCanvas" class="enterprise-map-canvas" aria-label="Интерактивная трёхмерная карта предприятия"></canvas>
+    <div class="enterprise-map-shade" aria-hidden="true"></div>
+    <header class="enterprise-map-head">
+      <div class="shift-board-kicker">ALVISA SALARY · предприятие</div>
+      <h1 class="enterprise-map-title">Карта смены</h1>
+      <div class="enterprise-map-summary"><span class="enterprise-map-dot" aria-hidden="true"></span><strong id="enterpriseMapTotal">—</strong><span id="enterpriseMapCaption">выберите корпус</span></div>
+    </header>
+    <div class="enterprise-map-clock"><strong id="enterpriseMapClock">--:--</strong><span id="enterpriseMapDate">Загрузка…</span></div>
+    <div id="enterpriseMapLabels" class="map-label-layer" aria-label="Корпуса предприятия"></div>
+    <div class="map-transition" aria-hidden="true"></div>
+    <section id="enterpriseMapInside" class="map-inside" aria-live="polite">
+      <div class="map-inside-content">
+        <button id="enterpriseMapBack" class="map-inside-back" type="button">← Вернуться к карте</button>
+        <div class="map-inside-kicker">Сейчас внутри</div>
+        <h2 id="enterpriseBuildingTitle" class="map-inside-title">Корпус</h2>
+        <div id="enterpriseBuildingSubtitle" class="map-inside-subtitle">Проверяю текущую смену…</div>
+        <div id="enterpriseBuildingWorkers" class="map-workers"><div class="map-workers-empty">Загрузка…</div></div>
+      </div>
+    </section>
+  </section>
+  <script type="module" src="./js/screen-saver.js?v=20260925-1"></script>
 </body>
 </html>

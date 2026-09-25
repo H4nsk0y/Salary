@@ -5,13 +5,13 @@ import { buildIdleScreenSaverUrl } from "../js/idleScreenSaver.js";
 
 const read = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8");
 
-test("settings link opens three screen saver modes", async () => {
+test("settings link opens screen saver modes", async () => {
   const [settings, page, script, shortcuts] = await Promise.all([
     read("settings.html"), read("screen-saver.html"), read("js/screen-saver.js"),
     read("js/features/fullscreenShortcuts.js"),
   ]);
   assert.match(settings, /href="screen-saver\.html"/);
-  for (const mode of ["ribbons", "building", "orbit", "shift"]) {
+  for (const mode of ["ribbons", "building", "orbit", "shift", "map"]) {
     assert.match(page, new RegExp(`data-mode="${mode}"`));
   }
   assert.match(page, /href="profile\.html">В профиль<\/a>/);
@@ -32,6 +32,7 @@ test("settings link opens three screen saver modes", async () => {
   assert.match(script, /getMyShiftChecklistState/);
   assert.match(script, /listDepartmentActiveChecklists/);
   assert.match(page, /id="shiftBoard"/);
+  assert.match(page, /id="enterpriseMap"/);
   assert.doesNotMatch(page, /id="wakeStatus"/);
 });
 
@@ -93,4 +94,30 @@ test("live shift checklist summary is scoped by an authenticated department RPC"
   assert.match(sql, /checklist\.started_at >= now\(\) - interval '36 hours'/);
   assert.match(sql, /revoke all on function public\.list_department_active_checklists\(\) from public, anon/i);
   assert.match(db, /supabase\.rpc\("list_department_active_checklists"\)/);
+});
+
+test("enterprise map exposes live totals and building workers to authenticated users", async () => {
+  const [sql, db, page, script, scene] = await Promise.all([
+    read("supabase-sql/059_enterprise_live_map.sql"),
+    read("js/db.js"),
+    read("screen-saver.html"),
+    read("js/screen-saver.js"),
+    read("js/enterpriseMap3d.js"),
+  ]);
+  assert.match(sql, /auth\.uid\(\) is null/);
+  assert.match(sql, /count\(\*\) filter \(where source\.on_shift\)/);
+  assert.match(sql, /revoke all on function public\.list_enterprise_live_map\(\) from public, anon/i);
+  assert.match(sql, /revoke all on function public\.list_enterprise_live_workers\(text\) from public, anon/i);
+  assert.match(sql, /p\.branch = 'contract_odyssey'/);
+  assert.match(db, /supabase\.rpc\("list_enterprise_live_map"\)/);
+  assert.match(db, /supabase\.rpc\("list_enterprise_live_workers"/);
+  assert.match(page, /data-mode="map"/);
+  assert.match(page, /id="enterpriseMapCanvas"/);
+  assert.match(page, /id="enterpriseMapInside"/);
+  assert.match(script, /setInterval\([\s\S]*loadEnterpriseMap[\s\S]*60000/);
+  assert.match(script, /focusBuilding\(buildingId\)/);
+  assert.match(scene, /from "\.\.\/vendor\/three\/three\.module\.min\.js"/);
+  assert.match(scene, /Raycaster/);
+  assert.match(scene, /is-hovered/);
+  assert.match(scene, /duration:1450|1450/);
 });

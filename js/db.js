@@ -1378,6 +1378,22 @@ export async function listDepartmentShiftOverview({
   return data ?? [];
 }
 
+export async function listEnterpriseLiveMap() {
+  const { data, error } = await supabase.rpc("list_enterprise_live_map");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listEnterpriseLiveWorkers(building) {
+  const key = String(building ?? "").trim();
+  if (!key) return [];
+  const { data, error } = await supabase.rpc("list_enterprise_live_workers", {
+    p_building: key,
+  });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function upsertMyPresence(pageName = "") {
   const userId = await requireUserId();
   const now = new Date().toISOString();

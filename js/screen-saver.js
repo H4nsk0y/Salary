@@ -8,6 +8,8 @@ import {
   getMyShiftChecklistState,
   listDepartmentActiveChecklists,
   listDepartmentShiftOverview,
+  listEnterpriseLiveMap,
+  listEnterpriseLiveWorkers,
   listMyNotifications,
 } from "./db.js";
 import { checklistProgress } from "./shiftChecklist.js?v=20260913-2";
@@ -32,6 +34,17 @@ const shiftChecklistScore = document.getElementById("shiftChecklistScore");
 const shiftChecklistText = document.getElementById("shiftChecklistText");
 const shiftAnnouncement = document.getElementById("shiftAnnouncement");
 const shiftBoardUpdated = document.getElementById("shiftBoardUpdated");
+const enterpriseMap = document.getElementById("enterpriseMap");
+const enterpriseMapClock = document.getElementById("enterpriseMapClock");
+const enterpriseMapDate = document.getElementById("enterpriseMapDate");
+const enterpriseMapTotal = document.getElementById("enterpriseMapTotal");
+const enterpriseMapCaption = document.getElementById("enterpriseMapCaption");
+const enterpriseMapCanvas = document.getElementById("enterpriseMapCanvas");
+const enterpriseMapLabels = document.getElementById("enterpriseMapLabels");
+const enterpriseMapBack = document.getElementById("enterpriseMapBack");
+const enterpriseBuildingTitle = document.getElementById("enterpriseBuildingTitle");
+const enterpriseBuildingSubtitle = document.getElementById("enterpriseBuildingSubtitle");
+const enterpriseBuildingWorkers = document.getElementById("enterpriseBuildingWorkers");
 
 let width = 0;
 let height = 0;
@@ -47,6 +60,26 @@ const pointer = { x: 0, y: 0, active: false, dragging: false };
 let idleTimer = null;
 let shiftBoardLoaded = false;
 let shiftBoardTimer = null;
+let enterpriseMapLoaded = false;
+let enterpriseMapTimer = null;
+let enterpriseMap3d = null;
+let enterpriseMap3dPromise = null;
+let enterpriseMapTransition = false;
+
+const BUILDING_INFO = Object.freeze({
+  production: {
+    title:"Производственный цех",
+    subtitle:"ЕГАИС · Цех розлива · Купажный цех · Лаборатория · Склад ГП",
+  },
+  office: {
+    title:"Офис CHATEAU ALVISA",
+    subtitle:"Администрация · Бухгалтерия · Отдел эксплуатации · Служба персонала",
+  },
+  odyssey: {
+    title:"Контрактное производство «Одиссей»",
+    subtitle:"Все подразделения контрактного производства",
+  },
+});
 
 modeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.mode === mode)));
 document.body.dataset.mode = mode;
@@ -340,8 +373,12 @@ async function loadShiftBoard() {
 
 function updateClock() {
   const now = new Date();
-  if (shiftClock) shiftClock.textContent = now.toLocaleTimeString("ru-RU", { hour:"2-digit", minute:"2-digit" });
-  if (shiftDate) shiftDate.textContent = now.toLocaleDateString("ru-RU", { weekday:"long", day:"numeric", month:"long" });
+  const timeText = now.toLocaleTimeString("ru-RU", { hour:"2-digit", minute:"2-digit" });
+  const dateText = now.toLocaleDateString("ru-RU", { weekday:"long", day:"numeric", month:"long" });
+  if (shiftClock) shiftClock.textContent = timeText;
+  if (shiftDate) shiftDate.textContent = dateText;
+  if (enterpriseMapClock) enterpriseMapClock.textContent = timeText;
+  if (enterpriseMapDate) enterpriseMapDate.textContent = dateText;
 }
 
 function ensureShiftBoard() {
@@ -351,6 +388,141 @@ function ensureShiftBoard() {
   shiftBoardTimer = setInterval(() => {
     updateClock();
     void loadShiftBoard().catch(() => undefined);
+  }, 60000);
+}
+
+async function loadEnterpriseMap() {
+  if (!enterpriseMap) return;
+  const session = await getSession();
+  if (!session) {
+    if (enterpriseMapTotal) enterpriseMapTotal.textContent = "Гостевой режим";
+    if (enterpriseMapCaption) enterpriseMapCaption.textContent = "войдите, чтобы увидеть сотрудников";
+    enterpriseMapLoaded = true;
+    return;
+  }
+  try {
+    const rows = await listEnterpriseLiveMap();
+    const total = rows.reduce((sum, row) => sum + (Number(row?.on_shift_count) || 0), 0);
+    const activeDepartments = rows.filter((row) => Number(row?.on_shift_count) > 0).length;
+    if (enterpriseMapTotal) enterpriseMapTotal.textContent = `${total} чел.`;
+    if (enterpriseMapCaption) enterpriseMapCaption.textContent = `на смене сейчас · работают ${activeDepartments} отделов`;
+  } catch (error) {
+    const missingRpc = /list_enterprise_live_map|schema cache|PGRST202/i.test(String(error?.message || error));
+    if (enterpriseMapTotal) enterpriseMapTotal.textContent = missingRpc ? "Нужен SQL 059" : "Нет связи";
+    if (enterpriseMapCaption) enterpriseMapCaption.textContent = missingRpc
+      ? "запустите миграцию карты"
+      : "карта обновится автоматически";
+  }
+  enterpriseMapLoaded = true;
+}
+
+function renderBuildingWorkers(rows, message = "Сотрудников на смене сейчас нет.") {
+  if (!enterpriseBuildingWorkers) return;
+  enterpriseBuildingWorkers.innerHTML = "";
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "map-workers-empty";
+    empty.textContent = message;
+    enterpriseBuildingWorkers.append(empty);
+    return;
+  }
+  rows.forEach((row) => {
+    const card = document.createElement("article");
+    card.className = "map-worker";
+    const avatar = document.createElement("div");
+    avatar.className = "map-worker-initials";
+    avatar.textContent = initials(row?.display_name);
+    const info = document.createElement("div");
+    const name = document.createElement("div");
+    name.className = "map-worker-name";
+    name.textContent = row?.display_name || "Сотрудник";
+    const department = document.createElement("div");
+    department.className = "map-worker-department";
+    department.textContent = row?.department_name || row?.position_name || "Подразделение";
+    info.append(name, department);
+    const shift = document.createElement("div");
+    shift.className = "map-worker-shift";
+    shift.textContent = row?.shift_label || "На смене";
+    card.append(avatar, info, shift);
+    enterpriseBuildingWorkers.append(card);
+  });
+}
+
+async function loadBuildingWorkers(buildingId) {
+  renderBuildingWorkers([], "Проверяю текущую смену…");
+  try {
+    const session = await getSession();
+    if (!session) {
+      renderBuildingWorkers([], "Войдите в ALVISA SALARY, чтобы увидеть сотрудников внутри корпуса.");
+      return;
+    }
+    const rows = await listEnterpriseLiveWorkers(buildingId);
+    renderBuildingWorkers(rows);
+    if (enterpriseBuildingSubtitle) {
+      const base = BUILDING_INFO[buildingId]?.subtitle || "";
+      enterpriseBuildingSubtitle.textContent = `${base} · ${rows.length} на смене`;
+    }
+  } catch (error) {
+    const missingRpc = /list_enterprise_live_workers|schema cache|PGRST202/i.test(String(error?.message || error));
+    renderBuildingWorkers([], missingRpc
+      ? "Запустите supabase-sql/059_enterprise_live_map.sql, чтобы загрузить сотрудников."
+      : "Не удалось загрузить сотрудников. Проверьте соединение.");
+  }
+}
+
+async function enterEnterpriseBuilding(buildingId) {
+  if (enterpriseMapTransition || !BUILDING_INFO[buildingId]) return;
+  enterpriseMapTransition = true;
+  const info = BUILDING_INFO[buildingId];
+  if (enterpriseBuildingTitle) enterpriseBuildingTitle.textContent = info.title;
+  if (enterpriseBuildingSubtitle) enterpriseBuildingSubtitle.textContent = info.subtitle;
+  void loadBuildingWorkers(buildingId);
+  document.body.classList.add("map-transitioning");
+  const flight = enterpriseMap3d?.focusBuilding(buildingId) || Promise.resolve();
+  setTimeout(() => enterpriseMap?.classList.add("is-transitioning"), 920);
+  await flight;
+  enterpriseMap?.classList.add("is-inside");
+  enterpriseMap?.classList.remove("is-transitioning");
+  document.body.classList.remove("map-transitioning");
+  document.body.classList.add("is-map-inside");
+  enterpriseMapTransition = false;
+}
+
+async function leaveEnterpriseBuilding() {
+  if (enterpriseMapTransition || !enterpriseMap?.classList.contains("is-inside")) return;
+  enterpriseMapTransition = true;
+  enterpriseMap.classList.add("is-transitioning");
+  enterpriseMap.classList.remove("is-inside");
+  document.body.classList.remove("is-map-inside");
+  await enterpriseMap3d?.resetView();
+  enterpriseMap.classList.remove("is-transitioning");
+  enterpriseMapTransition = false;
+}
+
+async function ensureEnterpriseMapScene() {
+  if (enterpriseMap3d || !enterpriseMapCanvas || !enterpriseMapLabels) return;
+  if (!enterpriseMap3dPromise) {
+    enterpriseMap3dPromise = import("./enterpriseMap3d.js?v=20260925-1").then(({ createEnterpriseMap3d }) => {
+      enterpriseMap3d = createEnterpriseMap3d({
+        canvas:enterpriseMapCanvas,
+        labelLayer:enterpriseMapLabels,
+        onBuildingSelect:enterEnterpriseBuilding,
+      });
+      return enterpriseMap3d;
+    });
+  }
+  await enterpriseMap3dPromise;
+  enterpriseMap3d.setActive(mode === "map");
+}
+
+function ensureEnterpriseMap() {
+  updateClock();
+  void ensureEnterpriseMapScene();
+  if (!enterpriseMapLoaded) void loadEnterpriseMap();
+  clearInterval(enterpriseMapTimer);
+  enterpriseMapTimer = setInterval(() => {
+    updateClock();
+    void loadEnterpriseMap();
   }, 60000);
 }
 
@@ -387,7 +559,15 @@ modeButtons.forEach((button) => button.addEventListener("click", () => {
     clearInterval(shiftBoardTimer);
     shiftBoardTimer = null;
   }
+  if (mode === "map") ensureEnterpriseMap();
+  else {
+    clearInterval(enterpriseMapTimer);
+    enterpriseMapTimer = null;
+  }
+  enterpriseMap3d?.setActive(mode === "map");
 }));
+
+enterpriseMapBack?.addEventListener("click", () => { void leaveEnterpriseBuilding(); });
 
 musicButton?.addEventListener("click", async () => {
   await toggleBackgroundMusic();
@@ -441,6 +621,12 @@ window.addEventListener("pointerdown", (event) => {
 window.addEventListener("pointerup", () => { pointer.dragging = false; });
 window.addEventListener("pointerleave", () => { pointer.active = false; });
 window.addEventListener("keydown", showControls);
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && enterpriseMap?.classList.contains("is-inside")) {
+    event.preventDefault();
+    void leaveEnterpriseBuilding();
+  }
+});
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void holdScreen(); });
 window.addEventListener("resize", resize);
 resize();
@@ -450,3 +636,4 @@ requestAnimationFrame(frame);
 void holdScreen();
 updateClock();
 if (mode === "shift") ensureShiftBoard();
+if (mode === "map") ensureEnterpriseMap();
