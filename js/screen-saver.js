@@ -39,9 +39,11 @@ const enterpriseMapClock = document.getElementById("enterpriseMapClock");
 const enterpriseMapDate = document.getElementById("enterpriseMapDate");
 const enterpriseMapTotal = document.getElementById("enterpriseMapTotal");
 const enterpriseMapCaption = document.getElementById("enterpriseMapCaption");
+const enterpriseMapTitle = document.getElementById("enterpriseMapTitle");
 const enterpriseMapCanvas = document.getElementById("enterpriseMapCanvas");
 const enterpriseMapLabels = document.getElementById("enterpriseMapLabels");
 const enterpriseMapBack = document.getElementById("enterpriseMapBack");
+const enterpriseMapLevelBack = document.getElementById("enterpriseMapLevelBack");
 const enterpriseBuildingTitle = document.getElementById("enterpriseBuildingTitle");
 const enterpriseBuildingSubtitle = document.getElementById("enterpriseBuildingSubtitle");
 const enterpriseBuildingWorkers = document.getElementById("enterpriseBuildingWorkers");
@@ -65,6 +67,9 @@ let enterpriseMapTimer = null;
 let enterpriseMap3d = null;
 let enterpriseMap3dPromise = null;
 let enterpriseMapTransition = false;
+let enterpriseMapLevel = "exterior";
+let productionFloor = 1;
+let activeProductionArea = null;
 
 const BUILDING_INFO = Object.freeze({
   production: {
@@ -79,6 +84,14 @@ const BUILDING_INFO = Object.freeze({
     title:"Контрактное производство «Одиссей»",
     subtitle:"Все подразделения контрактного производства",
   },
+});
+
+const PRODUCTION_AREA_INFO = Object.freeze({
+  bottling: { title:"Цех розлива", subtitle:"Первый этаж", departmentKey:"bottling" },
+  components: { title:"Склад комплектующих", subtitle:"Первый этаж · подразделение СГП", departmentKey:"warehouse" },
+  blending: { title:"Купажный цех", subtitle:"Первый этаж · производственный цех", departmentKey:"blending" },
+  warehouse: { title:"Склад готовой продукции", subtitle:"Первый этаж · СГП", departmentKey:"warehouse" },
+  egais: { title:"Кабинет ЕГАИС", subtitle:"Второй этаж · производственный цех", departmentKey:"egais" },
 });
 
 modeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.mode === mode)));
@@ -448,7 +461,7 @@ function renderBuildingWorkers(rows, message = "Сотрудников на см
   });
 }
 
-async function loadBuildingWorkers(buildingId) {
+async function loadBuildingWorkers(buildingId, departmentKey = null, areaInfo = null) {
   renderBuildingWorkers([], "Проверяю текущую смену…");
   try {
     const session = await getSession();
@@ -456,10 +469,13 @@ async function loadBuildingWorkers(buildingId) {
       renderBuildingWorkers([], "Войдите в ALVISA SALARY, чтобы увидеть сотрудников внутри корпуса.");
       return;
     }
-    const rows = await listEnterpriseLiveWorkers(buildingId);
+    const buildingRows = await listEnterpriseLiveWorkers(buildingId);
+    const rows = departmentKey
+      ? buildingRows.filter((row) => String(row?.department_key || "") === departmentKey)
+      : buildingRows;
     renderBuildingWorkers(rows);
     if (enterpriseBuildingSubtitle) {
-      const base = BUILDING_INFO[buildingId]?.subtitle || "";
+      const base = areaInfo?.subtitle || BUILDING_INFO[buildingId]?.subtitle || "";
       enterpriseBuildingSubtitle.textContent = `${base} · ${rows.length} на смене`;
     }
   } catch (error) {
@@ -474,17 +490,109 @@ async function enterEnterpriseBuilding(buildingId) {
   if (enterpriseMapTransition || !BUILDING_INFO[buildingId]) return;
   enterpriseMapTransition = true;
   const info = BUILDING_INFO[buildingId];
-  if (enterpriseBuildingTitle) enterpriseBuildingTitle.textContent = info.title;
-  if (enterpriseBuildingSubtitle) enterpriseBuildingSubtitle.textContent = info.subtitle;
-  void loadBuildingWorkers(buildingId);
   document.body.classList.add("map-transitioning");
   const flight = enterpriseMap3d?.focusBuilding(buildingId) || Promise.resolve();
   setTimeout(() => enterpriseMap?.classList.add("is-transitioning"), 920);
+  await flight;
+  if (buildingId === "production") {
+    await enterpriseMap3d?.enterProductionInterior();
+    enterpriseMapLevel = "production";
+    productionFloor = 1;
+    activeProductionArea = null;
+    enterpriseMap?.classList.add("is-floor-plan");
+    enterpriseMap?.classList.remove("is-transitioning");
+    document.body.classList.remove("map-transitioning");
+    document.body.classList.add("is-map-floor");
+    if (enterpriseMapTitle) enterpriseMapTitle.textContent = "Производственный цех · 1 этаж";
+    if (enterpriseMapLevelBack) enterpriseMapLevelBack.textContent = "← Территория";
+    if (enterpriseMapTotal) enterpriseMapTotal.textContent = "Первый этаж";
+    if (enterpriseMapCaption) enterpriseMapCaption.textContent = "выберите подразделение на плане";
+    enterpriseMapTransition = false;
+    return;
+  }
+  if (enterpriseBuildingTitle) enterpriseBuildingTitle.textContent = info.title;
+  if (enterpriseBuildingSubtitle) enterpriseBuildingSubtitle.textContent = info.subtitle;
+  if (enterpriseMapBack) enterpriseMapBack.textContent = "← Вернуться к карте";
+  void loadBuildingWorkers(buildingId);
+  enterpriseMap?.classList.add("is-inside");
+  enterpriseMap?.classList.remove("is-transitioning");
+  document.body.classList.remove("map-transitioning");
+  document.body.classList.add("is-map-inside");
+  enterpriseMapTransition = false;
+}
+
+async function enterProductionDepartment(areaId, departmentKey) {
+  const info = PRODUCTION_AREA_INFO[areaId];
+  if (enterpriseMapTransition || enterpriseMapLevel !== "production" || !info) return;
+  enterpriseMapTransition = true;
+  activeProductionArea = areaId;
+  if (enterpriseBuildingTitle) enterpriseBuildingTitle.textContent = info.title;
+  if (enterpriseBuildingSubtitle) enterpriseBuildingSubtitle.textContent = info.subtitle;
+  if (enterpriseMapBack) enterpriseMapBack.textContent = "← Вернуться к плану";
+  void loadBuildingWorkers("production", departmentKey || info.departmentKey, info);
+  document.body.classList.add("map-transitioning");
+  const flight = enterpriseMap3d?.focusDepartment(areaId) || Promise.resolve();
+  setTimeout(() => enterpriseMap?.classList.add("is-transitioning"), 500);
   await flight;
   enterpriseMap?.classList.add("is-inside");
   enterpriseMap?.classList.remove("is-transitioning");
   document.body.classList.remove("map-transitioning");
   document.body.classList.add("is-map-inside");
+  enterpriseMapTransition = false;
+}
+
+async function enterProductionLevel(levelId) {
+  if (enterpriseMapTransition || enterpriseMapLevel !== "production" || levelId !== "production-second") return;
+  enterpriseMapTransition = true;
+  enterpriseMap?.classList.add("is-transitioning");
+  document.body.classList.add("map-transitioning");
+  await new Promise((resolve) => setTimeout(resolve,430));
+  await enterpriseMap3d?.enterProductionSecondFloor();
+  productionFloor = 2;
+  if (enterpriseMapTitle) enterpriseMapTitle.textContent = "Производственный цех · 2 этаж";
+  if (enterpriseMapTotal) enterpriseMapTotal.textContent = "Второй этаж";
+  if (enterpriseMapCaption) enterpriseMapCaption.textContent = "кабинет ЕГАИС находится справа от лестницы";
+  if (enterpriseMapLevelBack) enterpriseMapLevelBack.textContent = "← Первый этаж";
+  enterpriseMap?.classList.remove("is-transitioning");
+  document.body.classList.remove("map-transitioning");
+  enterpriseMapTransition = false;
+}
+
+async function returnToProductionFirstFloor() {
+  if (enterpriseMapTransition || enterpriseMapLevel !== "production" || productionFloor !== 2) return;
+  enterpriseMapTransition = true;
+  enterpriseMap?.classList.add("is-transitioning");
+  document.body.classList.add("map-transitioning");
+  await new Promise((resolve) => setTimeout(resolve,430));
+  await enterpriseMap3d?.enterProductionInterior();
+  productionFloor = 1;
+  if (enterpriseMapTitle) enterpriseMapTitle.textContent = "Производственный цех · 1 этаж";
+  if (enterpriseMapTotal) enterpriseMapTotal.textContent = "Первый этаж";
+  if (enterpriseMapCaption) enterpriseMapCaption.textContent = "выберите подразделение на плане";
+  if (enterpriseMapLevelBack) enterpriseMapLevelBack.textContent = "← Территория";
+  enterpriseMap?.classList.remove("is-transitioning");
+  document.body.classList.remove("map-transitioning");
+  enterpriseMapTransition = false;
+}
+
+function handleProductionLevelBack() {
+  if (productionFloor === 2) void returnToProductionFirstFloor();
+  else void leaveProductionFloor();
+}
+
+async function leaveProductionFloor() {
+  if (enterpriseMapTransition || enterpriseMapLevel !== "production") return;
+  enterpriseMapTransition = true;
+  enterpriseMap?.classList.add("is-transitioning");
+  enterpriseMap?.classList.remove("is-floor-plan");
+  document.body.classList.remove("is-map-floor");
+  await enterpriseMap3d?.resetView();
+  enterpriseMapLevel = "exterior";
+  productionFloor = 1;
+  activeProductionArea = null;
+  if (enterpriseMapTitle) enterpriseMapTitle.textContent = "Карта смены";
+  await loadEnterpriseMap();
+  enterpriseMap?.classList.remove("is-transitioning");
   enterpriseMapTransition = false;
 }
 
@@ -494,6 +602,15 @@ async function leaveEnterpriseBuilding() {
   enterpriseMap.classList.add("is-transitioning");
   enterpriseMap.classList.remove("is-inside");
   document.body.classList.remove("is-map-inside");
+  if (enterpriseMapLevel === "production") {
+    activeProductionArea = null;
+    await enterpriseMap3d?.resetProductionInterior();
+    enterpriseMap.classList.remove("is-transitioning");
+    document.body.classList.add("is-map-floor");
+    if (enterpriseMapTitle) enterpriseMapTitle.textContent = `Производственный цех · ${productionFloor} этаж`;
+    enterpriseMapTransition = false;
+    return;
+  }
   await enterpriseMap3d?.resetView();
   enterpriseMap.classList.remove("is-transitioning");
   enterpriseMapTransition = false;
@@ -502,11 +619,13 @@ async function leaveEnterpriseBuilding() {
 async function ensureEnterpriseMapScene() {
   if (enterpriseMap3d || !enterpriseMapCanvas || !enterpriseMapLabels) return;
   if (!enterpriseMap3dPromise) {
-    enterpriseMap3dPromise = import("./enterpriseMap3d.js?v=20260925-1").then(({ createEnterpriseMap3d }) => {
+    enterpriseMap3dPromise = import("./enterpriseMap3d.js?v=20260925-2").then(({ createEnterpriseMap3d }) => {
       enterpriseMap3d = createEnterpriseMap3d({
         canvas:enterpriseMapCanvas,
         labelLayer:enterpriseMapLabels,
         onBuildingSelect:enterEnterpriseBuilding,
+        onDepartmentSelect:enterProductionDepartment,
+        onLevelSelect:enterProductionLevel,
       });
       return enterpriseMap3d;
     });
@@ -568,6 +687,7 @@ modeButtons.forEach((button) => button.addEventListener("click", () => {
 }));
 
 enterpriseMapBack?.addEventListener("click", () => { void leaveEnterpriseBuilding(); });
+enterpriseMapLevelBack?.addEventListener("click", handleProductionLevelBack);
 
 musicButton?.addEventListener("click", async () => {
   await toggleBackgroundMusic();
@@ -625,6 +745,9 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && enterpriseMap?.classList.contains("is-inside")) {
     event.preventDefault();
     void leaveEnterpriseBuilding();
+  } else if (event.key === "Escape" && enterpriseMapLevel === "production") {
+    event.preventDefault();
+    handleProductionLevelBack();
   }
 });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void holdScreen(); });

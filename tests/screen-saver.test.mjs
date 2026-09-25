@@ -116,8 +116,18 @@ test("enterprise map exposes live totals and building workers to authenticated u
   assert.match(page, /id="enterpriseMapInside"/);
   assert.match(script, /setInterval\([\s\S]*loadEnterpriseMap[\s\S]*60000/);
   assert.match(script, /focusBuilding\(buildingId\)/);
+  assert.match(script, /enterProductionInterior\(\)/);
+  assert.match(script, /enterProductionSecondFloor\(\)/);
+  assert.match(script, /focusDepartment\(areaId\)/);
+  assert.match(script, /buildingRows\.filter/);
   assert.match(scene, /from "\.\.\/vendor\/three\/three\.module\.min\.js"/);
   assert.match(scene, /Raycaster/);
   assert.match(scene, /is-hovered/);
+  assert.match(scene, /PRODUCTION_AREAS/);
+  assert.match(scene, /SECOND_FLOOR_AREAS/);
+  assert.match(scene, /Склад готовой продукции/);
+  assert.match(scene, /Кабинет ЕГАИС/);
+  assert.match(scene, /createSwitchbackStairs/);
+  assert.match(scene, /enterProductionInterior/);
   assert.match(scene, /duration:1450|1450/);
 });
