@@ -103,7 +103,7 @@ test("profile reads are shared and admin saves only changed employees", () => {
   assert.match(db, /timesheetPayloadPromises\.has\(cacheKey\)/);
   assert.match(db, /timesheetPayloadPromises\.delete\(cacheKey\)/);
   assert.match(db, /export async function managedLoadTimesheets/);
-  assert.match(db, /\.select\("user_id, payload"\)[\s\S]*?\.in\("user_id", ids\)/);
+  assert.match(db, /\.select\("user_id, payload, updated_at"\)[\s\S]*?\.in\("user_id", ids\)/);
   assert.match(admin, /managedLoadTimesheets\(userIds, targetYear, targetMonth\)/);
   assert.doesNotMatch(admin, /Promise\.all\(userIds\.map\([^\n]*managedLoadTimesheet/);
   assert.match(admin, /currentSaveItems\(\{ changedOnly: true \}\)/);
