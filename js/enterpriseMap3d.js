@@ -27,6 +27,12 @@ const easeInOutCubic = (value) => value < .5
   ? 4 * value ** 3
   : 1 - ((-2 * value + 2) ** 3) / 2;
 
+const STAFFING_EMISSIVE = Object.freeze({
+  staffed:0x17633f,
+  minimum:0x795616,
+  empty:0x7a1832,
+});
+
 function box(width, height, depth, material) {
   return new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
 }
@@ -497,7 +503,7 @@ export function createEnterpriseMap3d({ canvas, labelLayer, onBuildingSelect, on
     label.type = "button";
     label.className = "map-building-label";
     label.dataset.building = definition.id;
-    label.innerHTML = `<strong>${definition.label}</strong><span>${definition.short}</span>`;
+    label.innerHTML = `<strong>${definition.label}</strong><span>${definition.short}</span><em data-staffing-label>Нет данных</em>`;
     label.addEventListener("click", () => onBuildingSelect?.(definition.id));
     labelLayer.append(label);
     labels.set(definition.id, label);
@@ -508,7 +514,7 @@ export function createEnterpriseMap3d({ canvas, labelLayer, onBuildingSelect, on
     label.type = "button";
     label.className = "map-building-label map-department-label is-behind";
     label.dataset.department = definition.id;
-    label.innerHTML = `<strong>${definition.label}</strong><span>${definition.short}</span>`;
+    label.innerHTML = `<strong>${definition.label}</strong><span>${definition.short}</span><em data-staffing-label>Нет данных</em>`;
     label.addEventListener("click", () => onDepartmentSelect?.(definition.id, definition.departmentKey));
     labelLayer.append(label);
     areaLabels.set(definition.id,label);
@@ -532,7 +538,7 @@ export function createEnterpriseMap3d({ canvas, labelLayer, onBuildingSelect, on
     label.type = "button";
     label.className = "map-building-label map-department-label is-behind";
     label.dataset.department = definition.id;
-    label.innerHTML = `<strong>${definition.label}</strong><span>${definition.short}</span>`;
+    label.innerHTML = `<strong>${definition.label}</strong><span>${definition.short}</span><em data-staffing-label>Нет данных</em>`;
     label.addEventListener("click", () => onDepartmentSelect?.(definition.id,definition.departmentKey));
     labelLayer.append(label);
     secondFloorLabels.set(definition.id,label);
@@ -594,7 +600,7 @@ export function createEnterpriseMap3d({ canvas, labelLayer, onBuildingSelect, on
     if (hovered) {
       hovered.scale.setScalar(1);
       hovered.traverse((child) => {
-        if (child.isMesh && child.material?.emissive) child.material.emissive.setHex(child.userData.baseEmissive ?? 0x000000);
+        if (child.isMesh && child.material?.emissive) child.material.emissive.setHex(child.userData.staffingEmissive ?? child.userData.baseEmissive ?? 0x000000);
       });
       labelFor(hovered)?.classList.remove("is-hovered");
     }
@@ -826,8 +832,48 @@ export function createEnterpriseMap3d({ canvas, labelLayer, onBuildingSelect, on
     }
   }
 
+  function applyGroupStaffing(group, state, enabled) {
+    const staffingColor = enabled ? STAFFING_EMISSIVE[state?.status] : null;
+    group?.traverse((child) => {
+      if (!child.isMesh || !child.material?.emissive) return;
+      if (child.userData.baseEmissiveIntensity == null) {
+        child.userData.baseEmissiveIntensity = child.material.emissiveIntensity;
+      }
+      child.userData.staffingEmissive = staffingColor ?? child.userData.baseEmissive ?? 0x000000;
+      child.material.emissive.setHex(child.userData.staffingEmissive);
+      child.material.emissiveIntensity = staffingColor ? .72 : child.userData.baseEmissiveIntensity;
+    });
+  }
+
+  function applyLabelStaffing(label, state) {
+    if (!label) return;
+    label.dataset.staffing = state?.status || "unknown";
+    const detail = label.querySelector("[data-staffing-label]");
+    if (detail) detail.textContent = !state || state.status === "unknown"
+      ? "Нет данных"
+      : `${state.count} на смене · ${state.label}`;
+  }
+
+  function setStaffingState(state = {}, enabled = false) {
+    BUILDINGS.forEach((definition) => {
+      const item = state?.buildings?.[definition.id];
+      applyGroupStaffing(buildings.get(definition.id), item, enabled);
+      applyLabelStaffing(labels.get(definition.id), item);
+    });
+    PRODUCTION_AREAS.forEach((definition) => {
+      const item = state?.departments?.[definition.departmentKey];
+      applyGroupStaffing(productionInterior.areas.get(definition.id), item, enabled);
+      applyLabelStaffing(areaLabels.get(definition.id), item);
+    });
+    SECOND_FLOOR_AREAS.forEach((definition) => {
+      const item = state?.departments?.[definition.departmentKey];
+      applyGroupStaffing(productionSecondFloor.areas.get(definition.id), item, enabled);
+      applyLabelStaffing(secondFloorLabels.get(definition.id), item);
+    });
+  }
+
   window.addEventListener("resize", resize);
   resize();
   renderer.render(scene, camera);
-  return { setActive, focusBuilding, focusDepartment, enterProductionInterior, enterProductionSecondFloor, resetProductionInterior, resetView, resize };
+  return { setActive, setStaffingState, focusBuilding, focusDepartment, enterProductionInterior, enterProductionSecondFloor, resetProductionInterior, resetView, resize };
 }

@@ -245,22 +245,6 @@ test("notification baseline remembers sent hours, not edits made during delivery
   assert.equal(context.notificationBaselineByUserId.get("mock").dayHours[0], 8);
 });
 
-test("profile calendar discards an obsolete production-calendar response", async () => {
-  const gate = deferred();
-  const context = vm.createContext({
-    requireDom: () => true, calGrid: {}, calMonthLabel: {}, initCalendarDow() {},
-    calYear: 2026, calMonth: 7, calendarRenderRevision: 0,
-    mondayIndex: (day) => (day + 6) % 7, monthNamesFull: Array(12).fill("month"),
-    getProductionMonth: () => gate.promise,
-    getTimesheetForCalendarMonth() { assert.fail("Stale calendar must not render"); },
-  });
-  vm.runInContext(await pageFunction("js/profile.js", "renderCalendar"), context);
-  const pending = context.renderCalendar();
-  context.calendarRenderRevision++;
-  gate.resolve([]);
-  await pending;
-});
-
 test("Chateau Alvisa uses the 2026 Dagestan production calendar", async () => {
   let annual40 = 0;
   let annualFemale = 0;

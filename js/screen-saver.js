@@ -13,6 +13,7 @@ import {
   listMyNotifications,
 } from "./db.js";
 import { checklistProgress } from "./shiftChecklist.js?v=20260913-2";
+import { buildEnterpriseStaffing } from "./enterpriseStaffing.js";
 
 const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d", { alpha: false });
@@ -42,6 +43,7 @@ const enterpriseMapCaption = document.getElementById("enterpriseMapCaption");
 const enterpriseMapTitle = document.getElementById("enterpriseMapTitle");
 const enterpriseMapCanvas = document.getElementById("enterpriseMapCanvas");
 const enterpriseMapLabels = document.getElementById("enterpriseMapLabels");
+const enterpriseMapCoverageToggle = document.getElementById("enterpriseMapCoverageToggle");
 const enterpriseMapBack = document.getElementById("enterpriseMapBack");
 const enterpriseMapLevelBack = document.getElementById("enterpriseMapLevelBack");
 const enterpriseBuildingTitle = document.getElementById("enterpriseBuildingTitle");
@@ -70,6 +72,8 @@ let enterpriseMapTransition = false;
 let enterpriseMapLevel = "exterior";
 let productionFloor = 1;
 let activeProductionArea = null;
+let enterpriseMapRows = [];
+let enterpriseCoverageEnabled = false;
 
 const BUILDING_INFO = Object.freeze({
   production: {
@@ -415,11 +419,15 @@ async function loadEnterpriseMap() {
   }
   try {
     const rows = await listEnterpriseLiveMap();
+    enterpriseMapRows = rows;
+    enterpriseMap3d?.setStaffingState(buildEnterpriseStaffing(rows), enterpriseCoverageEnabled);
     const total = rows.reduce((sum, row) => sum + (Number(row?.on_shift_count) || 0), 0);
     const activeDepartments = rows.filter((row) => Number(row?.on_shift_count) > 0).length;
     if (enterpriseMapTotal) enterpriseMapTotal.textContent = `${total} чел.`;
     if (enterpriseMapCaption) enterpriseMapCaption.textContent = `на смене сейчас · работают ${activeDepartments} отделов`;
   } catch (error) {
+    enterpriseMapRows = [];
+    enterpriseMap3d?.setStaffingState(buildEnterpriseStaffing([]), enterpriseCoverageEnabled);
     const missingRpc = /list_enterprise_live_map|schema cache|PGRST202/i.test(String(error?.message || error));
     if (enterpriseMapTotal) enterpriseMapTotal.textContent = missingRpc ? "Нужен SQL 059" : "Нет связи";
     if (enterpriseMapCaption) enterpriseMapCaption.textContent = missingRpc
@@ -619,7 +627,7 @@ async function leaveEnterpriseBuilding() {
 async function ensureEnterpriseMapScene() {
   if (enterpriseMap3d || !enterpriseMapCanvas || !enterpriseMapLabels) return;
   if (!enterpriseMap3dPromise) {
-    enterpriseMap3dPromise = import("./enterpriseMap3d.js?v=20260925-2").then(({ createEnterpriseMap3d }) => {
+    enterpriseMap3dPromise = import("./enterpriseMap3d.js?v=20260926-1").then(({ createEnterpriseMap3d }) => {
       enterpriseMap3d = createEnterpriseMap3d({
         canvas:enterpriseMapCanvas,
         labelLayer:enterpriseMapLabels,
@@ -627,6 +635,7 @@ async function ensureEnterpriseMapScene() {
         onDepartmentSelect:enterProductionDepartment,
         onLevelSelect:enterProductionLevel,
       });
+      enterpriseMap3d.setStaffingState(buildEnterpriseStaffing(enterpriseMapRows), enterpriseCoverageEnabled);
       return enterpriseMap3d;
     });
   }
@@ -688,6 +697,12 @@ modeButtons.forEach((button) => button.addEventListener("click", () => {
 
 enterpriseMapBack?.addEventListener("click", () => { void leaveEnterpriseBuilding(); });
 enterpriseMapLevelBack?.addEventListener("click", handleProductionLevelBack);
+enterpriseMapCoverageToggle?.addEventListener("click", () => {
+  enterpriseCoverageEnabled = !enterpriseCoverageEnabled;
+  enterpriseMapCoverageToggle.setAttribute("aria-pressed", String(enterpriseCoverageEnabled));
+  enterpriseMap?.classList.toggle("is-coverage-mode", enterpriseCoverageEnabled);
+  enterpriseMap3d?.setStaffingState(buildEnterpriseStaffing(enterpriseMapRows), enterpriseCoverageEnabled);
+});
 
 musicButton?.addEventListener("click", async () => {
   await toggleBackgroundMusic();

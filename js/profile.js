@@ -6,9 +6,13 @@ import {
   getMyProfile,
   updateMyProfile,
   listMyTimesheetsByYear,
+  listMyTimesheetsBefore,
   listReservedLeaderPositions,
+  getMyVacationBalance,
+  saveMyVacationBalance,
+  listDepartmentVacationOverlaps,
   deleteMyTimesheet,
-} from "./db.js";
+} from "./db.js?v=20260926-1";
 import { startPresenceHeartbeat } from "./presence.js";
 import {
   getProductionCalendarMonth,
@@ -57,11 +61,8 @@ import {
   FEMALE_DAY_HOURS,
   getBaseDayHoursByProfile,
   getWeeklyHoursByProfile,
-  leaveTypeToCode,
-  leaveTypeToLabel,
   normalizeLeaveTypeLegacy,
   normalizeWeeklyHours,
-  NOT_EMPLOYED_LEAVE_TYPE,
   REDUCED_WEEKLY_HOURS,
 } from "./features/timesheetValues.js";
 import {
@@ -69,6 +70,12 @@ import {
   formatEmploymentDuration,
   parseProfileDate,
 } from "./features/employmentDuration.js";
+import { calculateVacationPayFromHistory } from "./vacationPay.js";
+import {
+  buildVacationPlan,
+  formatLocalDate,
+  projectVacationBalance,
+} from "./vacationPlanner.js";
 
 document.body.classList.add("is-loaded");
 
@@ -123,13 +130,20 @@ const overtimeBarText = document.getElementById("overtimeBarText");
 const overtimeLimitLabel = document.getElementById("overtimeLimitLabel");
 const overtimeLimitNote = document.getElementById("overtimeLimitNote");
 
-/* Calendar DOM */
-const calMonthLabel = document.getElementById("calMonthLabel");
-const calDowRow = document.getElementById("calDowRow");
-const calGrid = document.getElementById("calGrid");
-const calPrevBtn = document.getElementById("calPrevBtn");
-const calNextBtn = document.getElementById("calNextBtn");
-const calTodayBtn = document.getElementById("calTodayBtn");
+const vacationBalanceInput = document.getElementById("vacationBalanceInput");
+const vacationAnnualDaysInput = document.getElementById("vacationAnnualDaysInput");
+const vacationBalanceSaveBtn = document.getElementById("vacationBalanceSaveBtn");
+const vacationBalanceStatus = document.getElementById("vacationBalanceStatus");
+const vacationStartInput = document.getElementById("vacationStartInput");
+const vacationDaysInput = document.getElementById("vacationDaysInput");
+const vacationCalculateBtn = document.getElementById("vacationCalculateBtn");
+const vacationResult = document.getElementById("vacationResult");
+const vacationPeriodResult = document.getElementById("vacationPeriodResult");
+const vacationReturnResult = document.getElementById("vacationReturnResult");
+const vacationHolidaysResult = document.getElementById("vacationHolidaysResult");
+const vacationRemainingResult = document.getElementById("vacationRemainingResult");
+const vacationPayResult = document.getElementById("vacationPayResult");
+const vacationOverlapsList = document.getElementById("vacationOverlapsList");
 
 /* Avatar DOM */
 const avatarFileInput = document.getElementById("avatarFileInput");
@@ -169,8 +183,6 @@ const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const AVATAR_ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const monthNamesShort = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
-const monthNamesFull = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-const WEEK_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
 const POSITION_VALUES = new Set([
   "",
@@ -229,8 +241,7 @@ const BRANCH_VALUES = new Set([
 let loadedYear = new Date().getFullYear();
 let payloadByMonth = new Map();
 
-let calYear = new Date().getFullYear();
-let calMonth = new Date().getMonth();
+let vacationBalanceSnapshot = null;
 
 let ensureProfileMoneyAccess = async () => true;
 let okladVisible = true;
@@ -1531,7 +1542,6 @@ function createTimesheetCard(row, yearEndForecast = null) {
       await deleteMyTimesheet(y, m);
       setStatus("Удалено", "ok");
       await refreshTimesheets();
-      await renderCalendar();
     } catch (e) {
       setStatus("Ошибка удаления", "err");
       setError(e?.message || "Не удалось удалить табель.");
@@ -1847,184 +1857,230 @@ async function refreshProfile() {
   setStatus("Профиль загружен", "ok");
 }
 
-/* ========= Production calendar + rendering ========= */
+/* ========= Vacation planner ========= */
 
-async function getProductionMonth(y, m) {
-  const calendar = await getProductionCalendarMonth(y, m, { branch: branchSelect?.value });
-  return calendar.codes;
+function isVacationPlannerSchemaMissing(error) {
+  return /vacation_balance_snapshots|get_my_vacation_balance|save_my_vacation_balance|list_department_vacation_overlaps|schema cache|PGRST202|42P01/i
+    .test(String(error?.message || error || ""));
 }
 
-function initCalendarDow() {
-  if (!calDowRow) return;
-  if (calDowRow.childElementCount) return;
-  for (const label of WEEK_LABELS) {
-    const el = document.createElement("div");
-    el.className = "cal-dow";
-    el.textContent = label;
-    calDowRow.appendChild(el);
+function normalizeVacationSnapshot(value) {
+  const row = Array.isArray(value) ? value[0] : value;
+  if (!row) return null;
+  const balance = Number(row.balance_days);
+  const annualDays = Number(row.annual_days);
+  if (!Number.isFinite(balance) || !Number.isFinite(annualDays)) return null;
+  return {
+    balance_days:balance,
+    annual_days:annualDays,
+    as_of_date:String(row.as_of_date || ""),
+    updated_at:row.updated_at || null,
+  };
+}
+
+function parseLocalDate(value) {
+  const [year, month, day] = String(value || "").split("-").map(Number);
+  const date = new Date(year, month - 1, day, 12);
+  return Number.isInteger(year) && Number.isInteger(month) && Number.isInteger(day) &&
+    date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+    ? date : null;
+}
+
+function formatVacationDate(value) {
+  const date = parseLocalDate(value);
+  return date ? date.toLocaleDateString("ru-RU", { day:"numeric", month:"long", year:"numeric" }) : "—";
+}
+
+function renderVacationBalance() {
+  if (!vacationBalanceStatus) return;
+  vacationBalanceStatus.classList.remove("is-error");
+  if (!vacationBalanceSnapshot) {
+    vacationBalanceStatus.textContent = "Остаток ещё не указан.";
+    return;
+  }
+  if (vacationBalanceInput) vacationBalanceInput.value = String(vacationBalanceSnapshot.balance_days);
+  if (vacationAnnualDaysInput) vacationAnnualDaysInput.value = String(vacationBalanceSnapshot.annual_days);
+  const today = formatLocalDate(new Date());
+  const projected = projectVacationBalance({
+    balance:vacationBalanceSnapshot.balance_days,
+    annualDays:vacationBalanceSnapshot.annual_days,
+    asOfDate:vacationBalanceSnapshot.as_of_date,
+    targetDate:today,
+  });
+  vacationBalanceStatus.textContent = `Сверено ${formatVacationDate(vacationBalanceSnapshot.as_of_date)} · сейчас ориентировочно ${projected?.balance.toFixed(2) ?? "—"} дн. · +${(vacationBalanceSnapshot.annual_days / 12).toFixed(2)} дн. в месяц.`;
+}
+
+async function refreshVacationBalance() {
+  try {
+    vacationBalanceSnapshot = normalizeVacationSnapshot(await getMyVacationBalance());
+    renderVacationBalance();
+  } catch (error) {
+    vacationBalanceSnapshot = null;
+    if (vacationBalanceStatus) {
+      vacationBalanceStatus.classList.add("is-error");
+      vacationBalanceStatus.textContent = isVacationPlannerSchemaMissing(error)
+        ? "Для планировщика запустите SQL 060, затем SQL 061."
+        : "Не удалось загрузить остаток отпуска.";
+    }
   }
 }
 
-function mondayIndex(jsDay) {
-  return (jsDay + 6) % 7;
-}
-
-function clamp01(x) {
-  const n = Number(x);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(1, n));
-}
-
-function computeHeat(totalHours) {
-  const HEAT_MAX = 12;
-  return clamp01((Number(totalHours) || 0) / HEAT_MAX);
-}
-
-function getTimesheetForCalendarMonth() {
-  if (calYear !== loadedYear) return null;
-  return payloadByMonth.get(calMonth) ?? null;
-}
-
-let calendarRenderRevision = 0;
-
-async function renderCalendar() {
-  if (!requireDom(calGrid, "calGrid")) return;
-  if (!requireDom(calMonthLabel, "calMonthLabel")) return;
-
-  initCalendarDow();
-  const revision = ++calendarRenderRevision;
-
-  const first = new Date(calYear, calMonth, 1);
-  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-  const lead = mondayIndex(first.getDay());
-  const totalCells = Math.ceil((lead + daysInMonth) / 7) * 7;
-
-  calMonthLabel.textContent = `${monthNamesFull[calMonth]} ${calYear}`;
-
-  const prod = await getProductionMonth(calYear, calMonth);
-  if (revision !== calendarRenderRevision) return;
-  const payload = getTimesheetForCalendarMonth();
-
-  const tsHoliday = Array.isArray(payload?.isHoliday) ? payload.isHoliday : null;
-  const tsTransferredOff = Array.isArray(payload?.isTransferredOff) ? payload.isTransferredOff : null;
-  const tsShort = Array.isArray(payload?.isShortDay) ? payload.isShortDay : null;
-  const tsDay = Array.isArray(payload?.dayHours) ? payload.dayHours : null;
-  const tsNight = Array.isArray(payload?.nightHours) ? payload.nightHours : null;
-  const tsLeave = Array.isArray(payload?.leaveType) ? payload.leaveType : null;
-
-  const today = new Date();
-  const isThisMonth = today.getFullYear() === calYear && today.getMonth() === calMonth;
-  const todayDay = isThisMonth ? today.getDate() : -1;
-
-  calGrid.innerHTML = "";
-  const frag = document.createDocumentFragment();
-
-  for (let cell = 0; cell < totalCells; cell++) {
-    const dayNum = cell - lead + 1;
-
-    if (dayNum < 1 || dayNum > daysInMonth) {
-      const empty = document.createElement("div");
-      empty.className = "cal-cell cal-empty";
-      frag.appendChild(empty);
-      continue;
-    }
-
-    const idx = dayNum - 1;
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "cal-cell";
-
-    const code = Number(prod?.[idx] ?? 0);
-    const offHoliday = code === 8;
-    const offShort = code === 2;
-    const offWeekend = code === 1;
-
-    if (offHoliday) btn.classList.add("cal-off-holiday");
-    else if (offShort) btn.classList.add("cal-off-short");
-    else if (offWeekend) btn.classList.add("cal-off-weekend");
-
-    if (dayNum === todayDay) btn.classList.add("cal-today");
-
-    const dh = Number(tsDay?.[idx] ?? 0);
-    const nh = Number(tsNight?.[idx] ?? 0);
-    const total = dh + nh;
-    btn.style.setProperty("--heat", String(computeHeat(total)));
-
-    const num = document.createElement("div");
-    num.className = "cal-daynum";
-    num.textContent = String(dayNum);
-    btn.appendChild(num);
-
-    const markHoliday = Boolean(tsHoliday?.[idx]);
-    const markTransferred = Boolean(tsTransferredOff?.[idx]);
-    const markShort = Boolean(tsShort?.[idx]);
-
-    btn.classList.remove("cal-ts-holiday", "cal-ts-transferred", "cal-ts-short");
-
-    if (markHoliday) btn.classList.add("cal-ts-holiday");
-    else if (markTransferred) btn.classList.add("cal-ts-transferred");
-    else if (markShort) btn.classList.add("cal-ts-short");
-
-    const tags = document.createElement("div");
-    tags.className = "cal-tags";
-
-    const ltRaw = tsLeave?.[idx];
-    const ltNorm = normalizeLeaveTypeLegacy(ltRaw);
-    const ltCode = leaveTypeToCode(ltRaw);
-    if (ltCode) {
-      const t = document.createElement("span");
-      t.className =
-        ltNorm === "sick"
-          ? "cal-tag sick"
-          : ltNorm === NOT_EMPLOYED_LEAVE_TYPE
-            ? "cal-tag not-employed"
-            : "cal-tag leave";
-      t.textContent = ltCode;
-      tags.appendChild(t);
-    }
-
-    if ((Number(nh) || 0) > 0.0001) {
-      const t = document.createElement("span");
-      t.className = "cal-tag night";
-      t.textContent = "Н";
-      tags.appendChild(t);
-    }
-
-    if (tags.childElementCount) btn.appendChild(tags);
-
-    const parts = [];
-    if (total > 0) parts.push(`Часы: ${total.toFixed(1)} (день ${dh.toFixed(1)}, ночь ${nh.toFixed(1)})`);
-    if (ltNorm) parts.push(leaveTypeToLabel(ltRaw));
-    if (offHoliday) parts.push("Официальный праздник");
-    if (offShort) parts.push("Официальный сокращённый");
-    if (offWeekend) parts.push("Официальный выходной");
-    if (markHoliday) parts.push("Отметка табеля: праздник");
-    if (markTransferred) parts.push("Отметка табеля: перенесённый выходной");
-    if (markShort) parts.push("Отметка табеля: сокращённый");
-    btn.title = parts.length ? parts.join(" • ") : "Открыть табель";
-
-    btn.addEventListener("click", () => {
-      location.href = `table.html?year=${calYear}&month=${calMonth}&day=${dayNum}`;
+async function holidayDatesForVacation(startDate, vacationDays) {
+  const start = parseLocalDate(startDate);
+  if (!start) return [];
+  const horizon = new Date(start);
+  horizon.setDate(horizon.getDate() + Number(vacationDays) + 24);
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1, 12);
+  const result = [];
+  while (cursor <= horizon) {
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth();
+    const calendar = await getProductionCalendarMonth(year, month, { branch:currentProfile?.branch });
+    (calendar.isHoliday || []).forEach((isHoliday, index) => {
+      if (isHoliday) result.push(formatLocalDate(new Date(year, month, index + 1, 12)));
     });
-
-    frag.appendChild(btn);
+    cursor.setMonth(cursor.getMonth() + 1);
   }
-
-  calGrid.appendChild(frag);
+  return result;
 }
 
-async function shiftCalendarMonth(delta) {
-  const next = new Date(calYear, calMonth + delta, 1);
-  calYear = next.getFullYear();
-  calMonth = next.getMonth();
+function renderVacationOverlaps(rows) {
+  if (!vacationOverlapsList) return;
+  vacationOverlapsList.innerHTML = "";
+  if (!rows.length) {
+    const clear = document.createElement("div");
+    clear.className = "vacation-overlap-clear";
+    clear.textContent = "По сохранённым табелям пересечений с коллегами нет.";
+    vacationOverlapsList.append(clear);
+    return;
+  }
+  rows.forEach((row) => {
+    const dates = Array.isArray(row?.overlap_dates) ? row.overlap_dates : [];
+    const item = document.createElement("div");
+    item.className = "vacation-overlap-row";
+    item.textContent = `${row?.display_name || "Сотрудник"}: ${dates.map(formatVacationDate).join(", ")}`;
+    vacationOverlapsList.append(item);
+  });
+}
 
-  ensureYearOption(calYear);
-  if (yearSelect && Number(yearSelect.value) !== calYear) {
-    yearSelect.value = String(calYear);
-    await refreshTimesheets();
-  } else {
-    await renderCalendar();
+async function saveVacationBalanceSnapshot() {
+  const balance = Number(String(vacationBalanceInput?.value || "").replace(",", "."));
+  const annualDays = Number(String(vacationAnnualDaysInput?.value || "").replace(",", "."));
+  if (!Number.isFinite(balance) || balance < 0 || balance > 999) {
+    if (vacationBalanceStatus) {
+      vacationBalanceStatus.classList.add("is-error");
+      vacationBalanceStatus.textContent = "Укажите остаток от 0 до 999 дней.";
+    }
+    return;
+  }
+  if (!Number.isFinite(annualDays) || annualDays < 1 || annualDays > 365) {
+    if (vacationBalanceStatus) {
+      vacationBalanceStatus.classList.add("is-error");
+      vacationBalanceStatus.textContent = "Укажите количество дней отпуска за рабочий год.";
+    }
+    return;
+  }
+  if (vacationBalanceSaveBtn) vacationBalanceSaveBtn.disabled = true;
+  if (vacationBalanceStatus) vacationBalanceStatus.textContent = "Сохраняю…";
+  try {
+    vacationBalanceSnapshot = normalizeVacationSnapshot(await saveMyVacationBalance(balance, annualDays));
+    renderVacationBalance();
+  } catch (error) {
+    if (vacationBalanceStatus) {
+      vacationBalanceStatus.classList.add("is-error");
+      vacationBalanceStatus.textContent = isVacationPlannerSchemaMissing(error)
+        ? "Сначала запустите SQL 060, затем SQL 061."
+        : "Не удалось сохранить остаток отпуска.";
+    }
+  } finally {
+    if (vacationBalanceSaveBtn) vacationBalanceSaveBtn.disabled = false;
+  }
+}
+
+async function calculateVacationPlan() {
+  const startDate = String(vacationStartInput?.value || "");
+  const vacationDays = Number(vacationDaysInput?.value);
+  if (!parseLocalDate(startDate) || !Number.isInteger(vacationDays) || vacationDays < 1 || vacationDays > 60) {
+    if (vacationBalanceStatus) {
+      vacationBalanceStatus.classList.add("is-error");
+      vacationBalanceStatus.textContent = "Выберите первый день и укажите от 1 до 60 дней отпуска.";
+    }
+    return;
+  }
+
+  if (vacationCalculateBtn) {
+    vacationCalculateBtn.disabled = true;
+    vacationCalculateBtn.textContent = "Считаю…";
+  }
+  try {
+    const holidayDates = await holidayDatesForVacation(startDate, vacationDays);
+    const plan = buildVacationPlan({ startDate, vacationDays, holidayDates });
+    if (!plan) throw new Error("Не удалось построить период отпуска.");
+
+    const start = parseLocalDate(plan.startDate);
+    const [overlapsResult, historyResult] = await Promise.allSettled([
+      listDepartmentVacationOverlaps(plan.startDate, plan.endDate),
+      listMyTimesheetsBefore(start.getFullYear(), start.getMonth(), { withPayload:true }),
+    ]);
+
+    if (vacationPeriodResult) {
+      vacationPeriodResult.textContent = `${formatVacationDate(plan.startDate)} — ${formatVacationDate(plan.endDate)} · ${plan.vacationDays} дней`;
+    }
+    if (vacationReturnResult) {
+      vacationReturnResult.textContent = `${formatVacationDate(plan.nextCalendarDate)} · фактический выход по графику`;
+    }
+    if (vacationHolidaysResult) {
+      vacationHolidaysResult.textContent = plan.excludedHolidays.length
+        ? plan.excludedHolidays.map(formatVacationDate).join(", ")
+        : "Нет";
+    }
+
+    const projected = vacationBalanceSnapshot ? projectVacationBalance({
+      balance:vacationBalanceSnapshot.balance_days,
+      annualDays:vacationBalanceSnapshot.annual_days,
+      asOfDate:vacationBalanceSnapshot.as_of_date,
+      targetDate:plan.startDate,
+    }) : null;
+    if (vacationRemainingResult) {
+      vacationRemainingResult.textContent = projected
+        ? `${(projected.balance - plan.vacationDays).toFixed(2)} дн. (до отпуска ~${projected.balance.toFixed(2)})`
+        : "Сначала сохраните остаток";
+    }
+
+    if (historyResult.status === "fulfilled" && yearMoneyVisible) {
+      const estimate = calculateVacationPayFromHistory({
+        baseYear:start.getFullYear(),
+        baseMonth:start.getMonth(),
+        vacationDays:plan.vacationDays,
+        rows:historyResult.value,
+      });
+      if (vacationPayResult) {
+        vacationPayResult.textContent = estimate.ok
+          ? `${formatMoney(estimate.amount)}${estimate.fallback ? " · неполный расчётный период" : ""}`
+          : `Недостаточно подтверждённых месяцев (${estimate.confirmedMonths}/12)`;
+      }
+    } else if (vacationPayResult) {
+      vacationPayResult.textContent = yearMoneyVisible ? "Не удалось загрузить историю" : "Скрыто настройкой выплат";
+    }
+
+    if (overlapsResult.status === "fulfilled") renderVacationOverlaps(overlapsResult.value);
+    else if (vacationOverlapsList) {
+      vacationOverlapsList.textContent = isVacationPlannerSchemaMissing(overlapsResult.reason)
+        ? "Проверка станет доступна после запуска SQL 060."
+        : "Не удалось проверить графики коллег.";
+    }
+    vacationResult?.classList.remove("hidden");
+    if (vacationBalanceStatus) vacationBalanceStatus.classList.remove("is-error");
+  } catch (error) {
+    if (vacationBalanceStatus) {
+      vacationBalanceStatus.classList.add("is-error");
+      vacationBalanceStatus.textContent = error?.message || "Не удалось рассчитать отпуск.";
+    }
+  } finally {
+    if (vacationCalculateBtn) {
+      vacationCalculateBtn.disabled = false;
+      vacationCalculateBtn.textContent = "Рассчитать отпуск";
+    }
   }
 }
 
@@ -2116,7 +2172,6 @@ async function refreshTimesheets() {
       : "Пока нет сохранённых табелей за этот год.";
     timesheetsList.appendChild(empty);
     setStatus(rows.length ? "Будущие табели пока не учитываются" : "Нечего показывать", "neutral");
-    await renderCalendar();
     return true;
   }
 
@@ -2126,11 +2181,6 @@ async function refreshTimesheets() {
 
   setStatus("Готово", "ok");
 
-  if (calYear !== loadedYear) {
-    calYear = loadedYear;
-    calMonth = new Date().getMonth();
-  }
-  await renderCalendar();
   return true;
 }
 
@@ -2263,7 +2313,7 @@ saveProfileBtn?.addEventListener("click", async (e) => {
 refreshBtn?.addEventListener("click", async () => {
   try {
     await refreshProfile();
-    await refreshTimesheets();
+    await Promise.all([refreshTimesheets(), refreshVacationBalance()]);
   } catch (e) {
     setStatus("Ошибка", "err");
     setError(e?.message || "Не удалось обновить данные.");
@@ -2271,24 +2321,11 @@ refreshBtn?.addEventListener("click", async () => {
 });
 
 yearSelect?.addEventListener("change", async () => {
-  calYear = Number(yearSelect.value);
   await refreshTimesheets();
 });
 
-calPrevBtn?.addEventListener("click", () => void shiftCalendarMonth(-1));
-calNextBtn?.addEventListener("click", () => void shiftCalendarMonth(+1));
-calTodayBtn?.addEventListener("click", async () => {
-  const now = new Date();
-  calYear = now.getFullYear();
-  calMonth = now.getMonth();
-  ensureYearOption(calYear);
-  if (yearSelect && Number(yearSelect.value) !== calYear) {
-    yearSelect.value = String(calYear);
-    await refreshTimesheets();
-  } else {
-    await renderCalendar();
-  }
-});
+vacationBalanceSaveBtn?.addEventListener("click", () => void saveVacationBalanceSnapshot());
+vacationCalculateBtn?.addEventListener("click", () => void calculateVacationPlan());
 
 /* ===== Avatar events ===== */
 
@@ -2430,14 +2467,21 @@ const profilePageLoadToken = beginPageDataRequest({
   startPresenceHeartbeat("Профиль");
 
   const now = new Date();
-  calYear = now.getFullYear();
-  calMonth = now.getMonth();
+  if (vacationStartInput) {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    vacationStartInput.min = formatLocalDate(now);
+    vacationStartInput.value = formatLocalDate(tomorrow);
+  }
 
   fillYearOptions(now.getFullYear());
 
   try {
     await refreshProfile();
-    const timesheetsReady = await refreshTimesheets();
+    const [timesheetsReady] = await Promise.all([
+      refreshTimesheets(),
+      refreshVacationBalance(),
+    ]);
     if (!timesheetsReady) {
       throw new Error("Не удалось загрузить данные личного кабинета.");
     }

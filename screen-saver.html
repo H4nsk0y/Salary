@@ -71,6 +71,19 @@
     .enterprise-map-summary { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:13px; color:#969da2; font-size:12px; }
     .enterprise-map-summary strong { color:#f1eee8; font-size:14px; }
     .enterprise-map-dot { width:6px; height:6px; border-radius:50%; background:#5fc995; box-shadow:0 0 14px rgba(95,201,149,.7); }
+    .map-coverage-toggle { display:inline-flex; align-items:center; gap:8px; min-height:36px; margin-top:14px; padding:0 10px; border:1px solid rgba(241,238,232,.18); border-radius:5px; background:rgba(8,10,11,.76); color:#d9dcde; font-size:11px; pointer-events:auto; backdrop-filter:blur(10px); }
+    .map-coverage-toggle:hover { border-color:rgba(198,161,91,.54); background:rgba(45,36,22,.86); }
+    .map-coverage-toggle[aria-pressed="true"] { border-color:rgba(95,201,149,.48); background:rgba(30,77,57,.78); color:#e4f7ed; }
+    .map-coverage-icon { display:grid; grid-template-columns:repeat(3,4px); align-items:end; gap:2px; width:16px; height:14px; }
+    .map-coverage-icon i { display:block; border-radius:1px 1px 0 0; background:currentColor; }
+    .map-coverage-icon i:nth-child(1) { height:5px; } .map-coverage-icon i:nth-child(2) { height:10px; } .map-coverage-icon i:nth-child(3) { height:14px; }
+    .map-coverage-legend { position:absolute; z-index:4; left:clamp(20px,4vw,64px); bottom:max(28px,env(safe-area-inset-bottom)); display:none; align-items:center; flex-wrap:wrap; gap:12px; padding:9px 11px; border:1px solid rgba(241,238,232,.13); border-radius:5px; background:rgba(8,10,11,.78); color:#a5abaf; font-size:10px; backdrop-filter:blur(10px); pointer-events:none; }
+    .enterprise-map.is-coverage-mode .map-coverage-legend { display:flex; }
+    .map-coverage-legend span { display:inline-flex; align-items:center; gap:6px; }
+    .map-coverage-legend i { width:7px; height:7px; border-radius:50%; }
+    .map-coverage-legend .is-staffed { background:#5fc995; box-shadow:0 0 10px rgba(95,201,149,.56); }
+    .map-coverage-legend .is-minimum { background:#d5ad5d; box-shadow:0 0 10px rgba(213,173,93,.56); }
+    .map-coverage-legend .is-empty { background:#d65370; box-shadow:0 0 10px rgba(214,83,112,.56); }
     .enterprise-map-clock { position:absolute; z-index:2; right:clamp(20px,4vw,64px); bottom:max(28px,env(safe-area-inset-bottom)); color:#949ca1; font-size:12px; text-align:right; pointer-events:none; }
     .enterprise-map-clock strong { display:block; color:#f1eee8; font-size:24px; font-variant-numeric:tabular-nums; }
     .map-label-layer { position:absolute; z-index:3; inset:0; pointer-events:none; }
@@ -79,6 +92,11 @@
     .map-building-label strong,.map-building-label span { display:block; }
     .map-building-label strong { font-size:11px; }
     .map-building-label span { margin-top:2px; color:#899197; font-size:9px; }
+    .map-building-label em { display:none; margin-top:5px; color:#aeb4b7; font-size:9px; font-style:normal; }
+    .enterprise-map.is-coverage-mode .map-building-label em { display:block; }
+    .enterprise-map.is-coverage-mode .map-building-label[data-staffing="staffed"] { border-color:rgba(95,201,149,.58); background:rgba(21,59,43,.88); }
+    .enterprise-map.is-coverage-mode .map-building-label[data-staffing="minimum"] { border-color:rgba(213,173,93,.62); background:rgba(70,53,23,.9); }
+    .enterprise-map.is-coverage-mode .map-building-label[data-staffing="empty"] { border-color:rgba(214,83,112,.65); background:rgba(75,22,38,.9); }
     .map-building-label:hover,.map-building-label.is-hovered { transform:translate(-50%,-54%) scale(1.04); border-color:rgba(198,161,91,.72); background:rgba(45,36,22,.9); }
     .map-building-label.is-behind { opacity:0; pointer-events:none; }
     .map-department-label { border-color:rgba(198,161,91,.34); background:rgba(8,10,11,.88); }
@@ -151,9 +169,11 @@
       <div class="shift-board-kicker">ALVISA SALARY · предприятие</div>
       <h1 id="enterpriseMapTitle" class="enterprise-map-title">Карта смены</h1>
       <div class="enterprise-map-summary"><span class="enterprise-map-dot" aria-hidden="true"></span><strong id="enterpriseMapTotal">—</strong><span id="enterpriseMapCaption">выберите корпус</span></div>
+      <button id="enterpriseMapCoverageToggle" class="map-coverage-toggle" type="button" aria-pressed="false"><span class="map-coverage-icon" aria-hidden="true"><i></i><i></i><i></i></span><span>Загруженность</span></button>
     </header>
     <div class="enterprise-map-clock"><strong id="enterpriseMapClock">--:--</strong><span id="enterpriseMapDate">Загрузка…</span></div>
     <div id="enterpriseMapLabels" class="map-label-layer" aria-label="Корпуса предприятия"></div>
+    <div id="enterpriseMapCoverageLegend" class="map-coverage-legend" aria-label="Обозначения загруженности"><span><i class="is-staffed"></i>2+ на смене</span><span><i class="is-minimum"></i>1 человек</span><span><i class="is-empty"></i>Никого нет</span></div>
     <button id="enterpriseMapLevelBack" class="map-level-back" type="button">← Территория</button>
     <div class="map-transition" aria-hidden="true"></div>
     <section id="enterpriseMapInside" class="map-inside" aria-live="polite">
@@ -166,6 +186,6 @@
       </div>
     </section>
   </section>
-  <script type="module" src="./js/screen-saver.js?v=20260925-2"></script>
+  <script type="module" src="./js/screen-saver.js?v=20260926-1"></script>
 </body>
 </html>

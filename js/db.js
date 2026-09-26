@@ -1394,6 +1394,31 @@ export async function listEnterpriseLiveWorkers(building) {
   return data ?? [];
 }
 
+export async function getMyVacationBalance() {
+  await requireUserId();
+  const { data, error } = await supabase.rpc("get_my_vacation_balance");
+  if (error) throw error;
+  return data ?? null;
+}
+
+export async function saveMyVacationBalance(balanceDays, annualDays = 28) {
+  const { data, error } = await supabase.rpc("save_my_vacation_balance", {
+    p_balance_days:Number(balanceDays),
+    p_annual_days:Number(annualDays),
+  });
+  if (error) throw error;
+  return data ?? null;
+}
+
+export async function listDepartmentVacationOverlaps(startDate, endDate) {
+  const { data, error } = await supabase.rpc("list_department_vacation_overlaps", {
+    p_start:String(startDate || ""),
+    p_end:String(endDate || ""),
+  });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function upsertMyPresence(pageName = "") {
   const userId = await requireUserId();
   const now = new Date().toISOString();

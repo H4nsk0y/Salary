@@ -262,117 +262,6 @@ html, body {
 
     #overtimeBarFill { transition: width 0.5s, background-color 0.3s ease; }
 
-    .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
-    .cal-dow { font-size: 11px; color: rgba(148,163,184,0.9); text-align: center; padding: 2px 0; user-select: none; }
-
-    .cal-cell {
-      --heat: 0;
-      position: relative;
-      height: 44px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(2, 6, 23, 0.35);
-      overflow: hidden;
-      cursor: pointer;
-      user-select: none;
-      transition: transform 120ms ease, border-color 120ms ease, background-color 120ms ease;
-    }
-    .cal-cell:hover { transform: translateY(-1px); border-color: rgba(99,102,241,0.35); background: rgba(2, 6, 23, 0.5); }
-    .cal-cell:active { transform: translateY(0); }
-    .cal-cell::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: 14px;
-      background: rgba(99, 102, 241, calc(var(--heat) * 0.40));
-      pointer-events: none;
-    }
-
-    .cal-empty {
-      cursor: default;
-      background: rgba(2, 6, 23, 0.08);
-      border: 1px dashed rgba(255,255,255,0.07);
-      opacity: 0.35;
-    }
-    .cal-empty:hover { transform: none; border-color: rgba(255,255,255,0.07); background: rgba(2, 6, 23, 0.08); }
-
-    .cal-off-weekend { border-color: rgba(244,63,94,0.20); background: rgba(244,63,94,0.06); }
-    .cal-off-holiday { border-color: rgba(245,158,11,0.22); background: rgba(245,158,11,0.06); }
-    .cal-off-short { border-color: rgba(16,185,129,0.18); background: rgba(16,185,129,0.05); }
-    .cal-today { box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.55); }
-
-    .cal-daynum {
-      position: absolute;
-      top: 6px;
-      left: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      color: rgba(226,232,240,0.95);
-      pointer-events: none;
-    }
-
-    .cal-tags {
-      position: absolute;
-      left: 8px;
-      bottom: 6px;
-      display: inline-flex;
-      gap: 6px;
-      align-items: center;
-      pointer-events: none;
-    }
-    .cal-tag {
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.10);
-      background: rgba(2,6,23,0.35);
-      color: rgba(226,232,240,0.9);
-      line-height: 1;
-      backdrop-filter: blur(6px);
-    }
-    .cal-tag.leave { border-color: rgba(245, 158, 11, 0.25); }
-    .cal-tag.sick { border-color: rgba(244, 63, 94, 0.25); }
-    .cal-tag.not-employed { border-color: rgba(148, 163, 184, 0.32); color: rgba(203,213,225,0.95); }
-    .cal-tag.night { border-color: rgba(244, 63, 94, 0.25); color: rgba(254,202,202,0.95); }
-
-    .cal-legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 10px;
-      font-size: 11px;
-      color: rgba(148,163,184,0.9);
-      margin-top: 10px;
-    }
-    .cal-legend .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      display: inline-block;
-      margin-right: 6px;
-      transform: translateY(1px);
-    }
-
-    .cal-ts-holiday {
-      background: rgba(245, 158, 11, 0.22) !important;
-      box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.35) inset;
-      color: rgba(253, 230, 138, 0.95);
-    }
-    .cal-ts-transferred {
-      background: rgba(59, 130, 246, 0.18) !important;
-      box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.30) inset;
-      color: rgba(191, 219, 254, 0.95);
-    }
-    .cal-ts-short {
-      background: rgba(16, 185, 129, 0.18) !important;
-      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.30) inset;
-      color: rgba(167, 243, 208, 0.95);
-    }
-    .cal-ts-holiday.cal-ts-short {
-      background: rgba(245, 158, 11, 0.22) !important;
-      box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.35) inset;
-      color: rgba(253, 230, 138, 0.95);
-    }
-
     @media (prefers-reduced-motion: reduce) {
       * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
@@ -1088,13 +977,55 @@ html, body {
       gap: 18px !important;
     }
 
-    .profile-months-grid h3,
-    .profile-calendar .text-sm.font-semibold {
+    .profile-months-grid h3 {
       color: var(--profile-porcelain) !important;
       font-family: Anticva, Georgia, serif;
       font-size: 1.15rem !important;
       font-weight: 400 !important;
     }
+
+    .vacation-planner {
+      align-self: start;
+      padding: 18px;
+      border: 1px solid var(--profile-border);
+      border-radius: 8px;
+      background: var(--profile-panel-soft);
+      box-shadow: none;
+    }
+
+    .vacation-planner-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .vacation-planner-head h3 { margin: 5px 0 0; font-size: 1.35rem !important; }
+    .vacation-planner-mark { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border: 1px solid rgba(198,161,91,.38); border-radius: 6px; background: rgba(198,161,91,.09); color: #dec58f; font-size: 11px; font-weight: 800; }
+    .vacation-planner-copy { margin: 15px 0 0; color: var(--profile-muted); font-size: 12px; line-height: 1.55; }
+    .vacation-balance-fields,.vacation-plan-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+    .vacation-field { display: grid; gap: 7px; min-width: 0; color: #aeb4b8; font-size: 11px; }
+    .vacation-field > input,.vacation-input-wrap { width: 100%; min-width: 0; min-height: 42px; border: 1px solid var(--profile-border); border-radius: 5px; background: #111519; color: var(--profile-porcelain); }
+    .vacation-field > input { padding: 0 10px; color-scheme: dark; }
+    .vacation-input-wrap { display: flex; align-items: center; }
+    .vacation-input-wrap input { width: 100%; min-width: 0; height: 40px; padding: 0 4px 0 10px; border: 0; outline: 0; background: transparent; color: var(--profile-porcelain); }
+    .vacation-input-wrap small { padding-right: 9px; color: #747d82; font-size: 10px; }
+    .vacation-field input:focus { border-color: rgba(110,168,232,.6); outline: 2px solid rgba(110,168,232,.18); outline-offset: 1px; }
+    .vacation-input-wrap:focus-within { border-color: rgba(110,168,232,.6); outline: 2px solid rgba(110,168,232,.18); outline-offset: 1px; }
+    .vacation-primary-action,.vacation-secondary-action { width: 100%; min-height: 42px; margin-top: 11px; border-radius: 5px; font-size: 12px; font-weight: 750; }
+    .vacation-primary-action { border: 1px solid rgba(198,161,91,.55); background: #8a6c34; color: #fff8e8; }
+    .vacation-primary-action:hover { background: #9a793b; }
+    .vacation-secondary-action { border: 1px solid var(--profile-border); background: rgba(241,238,232,.05); color: #d7dadd; }
+    .vacation-secondary-action:hover { background: rgba(241,238,232,.1); }
+    .vacation-primary-action:disabled,.vacation-secondary-action:disabled { cursor: wait; opacity: .6; }
+    .vacation-balance-status { margin-top: 9px; color: #858e93; font-size: 10px; line-height: 1.45; }
+    .vacation-balance-status.is-error { color: #efa4b4; }
+    .vacation-planner-divider { height: 1px; margin: 18px 0 0; background: var(--profile-border); }
+    .vacation-result { margin-top: 17px; border-top: 1px solid var(--profile-border); }
+    .vacation-result-list { margin: 0; }
+    .vacation-result-list > div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid rgba(241,238,232,.07); }
+    .vacation-result-list dt { color: #858e93; font-size: 10px; }
+    .vacation-result-list dd { margin: 0; color: #e3e5e6; font-size: 11px; font-weight: 700; text-align: right; }
+    .vacation-overlaps { padding-top: 15px; }
+    .vacation-overlaps h4 { margin: 0 0 9px; color: #d9dcde; font-size: 11px; }
+    #vacationOverlapsList { display: grid; gap: 7px; color: #858e93; font-size: 10px; line-height: 1.5; }
+    .vacation-overlap-row { padding-left: 9px; border-left: 2px solid #c6a15b; color: #c8ccce; }
+    .vacation-overlap-clear { color: #80c9a6; }
+    .vacation-planner-note { margin: 16px 0 0; padding-top: 13px; border-top: 1px solid rgba(241,238,232,.07); color: #6f787d; font-size: 9px; line-height: 1.55; }
 
     #timesheetsList {
       gap: 10px !important;
@@ -1113,74 +1044,6 @@ html, body {
       background: rgba(241, 238, 232, 0.04) !important;
       color: rgba(241, 238, 232, 0.75) !important;
       box-shadow: none !important;
-    }
-
-    .profile-calendar {
-      padding: 18px !important;
-      border-radius: 8px !important;
-      background: var(--profile-panel-soft) !important;
-      box-shadow: none !important;
-    }
-
-    .profile-calendar > div:first-child {
-      align-items: flex-start !important;
-      flex-direction: column !important;
-      gap: 12px !important;
-    }
-
-    #calPrevBtn,
-    #calNextBtn,
-    #calTodayBtn {
-      min-height: 32px;
-      border: 1px solid var(--profile-border) !important;
-      border-radius: 5px !important;
-      background: rgba(241, 238, 232, 0.04) !important;
-      color: rgba(241, 238, 232, 0.72) !important;
-      box-shadow: none !important;
-    }
-
-    .cal-grid {
-      gap: 5px !important;
-    }
-
-    .cal-dow { color: var(--profile-muted) !important; font-weight: 700; }
-
-    .cal-cell {
-      height: 40px;
-      border-color: var(--profile-border) !important;
-      border-radius: 6px !important;
-      background: #15191d !important;
-      transform: none !important;
-    }
-
-    .cal-cell:hover { border-color: rgba(198, 161, 91, 0.58) !important; background: #20252a !important; }
-    .cal-cell:focus-visible { outline: 2px solid var(--profile-steel); outline-offset: 2px; }
-    .cal-daynum { color: var(--profile-porcelain) !important; }
-    .cal-off-weekend { background: #171417 !important; }
-    .cal-off-holiday, .cal-ts-holiday { background: #30261d !important; border-color: rgba(198, 161, 91, 0.46) !important; }
-    .cal-off-short, .cal-ts-short { background: #1d2926 !important; border-color: rgba(109, 153, 137, 0.5) !important; }
-    .cal-ts-transferred { background: #1a252d !important; border-color: rgba(110, 168, 232, 0.5) !important; }
-    .cal-ts-holiday.cal-ts-short { background: #30261d !important; }
-    .cal-today { box-shadow: inset 0 0 0 2px var(--profile-steel) !important; }
-
-    .cal-cell::after {
-      border-radius: 6px !important;
-      background: rgba(198, 161, 91, calc(var(--heat) * 0.22)) !important;
-    }
-
-    .cal-empty {
-      background: transparent !important;
-      border-color: transparent !important;
-    }
-
-    .cal-tag {
-      border-radius: 3px !important;
-      background: rgba(11, 13, 15, 0.8) !important;
-      color: var(--profile-porcelain) !important;
-    }
-
-    .cal-legend {
-      color: var(--profile-muted) !important;
     }
 
     @media (min-width: 1024px) {
@@ -1240,29 +1103,11 @@ html, body {
         min-height: 0;
       }
 
-      .profile-calendar {
+      .vacation-planner {
         padding: 14px !important;
       }
 
-      .profile-calendar > div:first-child {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-
-      .cal-grid {
-        gap: 4px !important;
-      }
-
-      .cal-cell {
-        height: 38px;
-      }
-
-      .cal-daynum {
-        left: 6px;
-      }
-
-      .cal-tags {
-        left: 5px;
-        gap: 3px;
-      }
+      .vacation-balance-fields,.vacation-plan-fields { grid-template-columns: 1fr; }
+      .vacation-result-list > div { align-items: flex-start; flex-direction: column; gap: 4px; }
+      .vacation-result-list dd { text-align: left; }
     }

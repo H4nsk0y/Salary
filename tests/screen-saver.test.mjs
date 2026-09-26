@@ -120,6 +120,10 @@ test("enterprise map exposes live totals and building workers to authenticated u
   assert.match(script, /enterProductionSecondFloor\(\)/);
   assert.match(script, /focusDepartment\(areaId\)/);
   assert.match(script, /buildingRows\.filter/);
+  assert.match(page, /id="enterpriseMapCoverageToggle"/);
+  assert.match(page, /id="enterpriseMapCoverageLegend"/);
+  assert.match(script, /buildEnterpriseStaffing/);
+  assert.match(scene, /setStaffingState/);
   assert.match(scene, /from "\.\.\/vendor\/three\/three\.module\.min\.js"/);
   assert.match(scene, /Raycaster/);
   assert.match(scene, /is-hovered/);
