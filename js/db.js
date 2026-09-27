@@ -1419,6 +1419,14 @@ export async function listDepartmentVacationOverlaps(startDate, endDate) {
   return data ?? [];
 }
 
+export async function listDepartmentVacationCalendar(year) {
+  const { data, error } = await supabase.rpc("list_department_vacation_calendar", {
+    p_year:Number(year),
+  });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function upsertMyPresence(pageName = "") {
   const userId = await requireUserId();
   const now = new Date().toISOString();

@@ -11,8 +11,9 @@ import {
   getMyVacationBalance,
   saveMyVacationBalance,
   listDepartmentVacationOverlaps,
+  listDepartmentVacationCalendar,
   deleteMyTimesheet,
-} from "./db.js?v=20260926-1";
+} from "./db.js?v=20260927-1";
 import { startPresenceHeartbeat } from "./presence.js";
 import {
   getProductionCalendarMonth,
@@ -76,6 +77,10 @@ import {
   formatLocalDate,
   projectVacationBalance,
 } from "./vacationPlanner.js";
+import {
+  buildDepartmentVacationCalendar,
+  vacationDensityLevel,
+} from "./vacationCalendar.js";
 
 document.body.classList.add("is-loaded");
 
@@ -144,6 +149,15 @@ const vacationHolidaysResult = document.getElementById("vacationHolidaysResult")
 const vacationRemainingResult = document.getElementById("vacationRemainingResult");
 const vacationPayResult = document.getElementById("vacationPayResult");
 const vacationOverlapsList = document.getElementById("vacationOverlapsList");
+const vacationCalendarBtn = document.getElementById("vacationCalendarBtn");
+const vacationCalendarOverlay = document.getElementById("vacationCalendarOverlay");
+const vacationCalendarCloseBtn = document.getElementById("vacationCalendarCloseBtn");
+const vacationCalendarPrevBtn = document.getElementById("vacationCalendarPrevBtn");
+const vacationCalendarNextBtn = document.getElementById("vacationCalendarNextBtn");
+const vacationCalendarYear = document.getElementById("vacationCalendarYear");
+const vacationCalendarStatus = document.getElementById("vacationCalendarStatus");
+const vacationCalendarGrid = document.getElementById("vacationCalendarGrid");
+const vacationCalendarDetail = document.getElementById("vacationCalendarDetail");
 
 /* Avatar DOM */
 const avatarFileInput = document.getElementById("avatarFileInput");
@@ -242,6 +256,8 @@ let loadedYear = new Date().getFullYear();
 let payloadByMonth = new Map();
 
 let vacationBalanceSnapshot = null;
+let vacationCalendarActiveYear = new Date().getFullYear();
+let vacationCalendarRequestId = 0;
 
 let ensureProfileMoneyAccess = async () => true;
 let okladVisible = true;
@@ -1860,7 +1876,7 @@ async function refreshProfile() {
 /* ========= Vacation planner ========= */
 
 function isVacationPlannerSchemaMissing(error) {
-  return /vacation_balance_snapshots|get_my_vacation_balance|save_my_vacation_balance|list_department_vacation_overlaps|schema cache|PGRST202|42P01/i
+  return /vacation_balance_snapshots|get_my_vacation_balance|save_my_vacation_balance|list_department_vacation_overlaps|list_department_vacation_calendar|schema cache|PGRST202|42P01/i
     .test(String(error?.message || error || ""));
 }
 
@@ -1961,6 +1977,111 @@ function renderVacationOverlaps(rows) {
     item.textContent = `${row?.display_name || "Сотрудник"}: ${dates.map(formatVacationDate).join(", ")}`;
     vacationOverlapsList.append(item);
   });
+}
+
+function setVacationCalendarStatus(message, isError = false) {
+  if (!vacationCalendarStatus) return;
+  vacationCalendarStatus.textContent = message;
+  vacationCalendarStatus.classList.toggle("is-error", isError);
+}
+
+function renderVacationCalendarDetail(day) {
+  if (!vacationCalendarDetail) return;
+  vacationCalendarDetail.replaceChildren();
+  const title = document.createElement("strong");
+  title.textContent = formatVacationDate(day.iso);
+  vacationCalendarDetail.append(title, document.createElement("br"));
+  vacationCalendarDetail.append(document.createTextNode(day.people.join(", ")));
+}
+
+function renderVacationCalendar(model) {
+  if (!vacationCalendarGrid) return;
+  vacationCalendarGrid.replaceChildren();
+  const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+  for (const month of model.months) {
+    const section = document.createElement("section");
+    section.className = "vacation-calendar-month";
+    const heading = document.createElement("h3");
+    heading.textContent = month.name;
+    const weekdayRow = document.createElement("div");
+    weekdayRow.className = "vacation-calendar-weekdays";
+    weekdays.forEach((label) => {
+      const item = document.createElement("span");
+      item.textContent = label;
+      weekdayRow.append(item);
+    });
+    const days = document.createElement("div");
+    days.className = "vacation-calendar-days";
+    for (let index = 0; index < month.firstWeekday; index += 1) {
+      const blank = document.createElement("span");
+      blank.setAttribute("aria-hidden", "true");
+      days.append(blank);
+    }
+    month.days.forEach((day) => {
+      const button = document.createElement("button");
+      const weekday = (month.firstWeekday + day.day - 1) % 7;
+      const level = vacationDensityLevel(day.count);
+      button.type = "button";
+      button.className = `vacation-calendar-day level-${level}${weekday >= 5 ? " is-weekend" : ""}`;
+      button.textContent = String(day.day);
+      button.disabled = day.count === 0;
+      if (day.count) {
+        button.title = `${formatVacationDate(day.iso)}: ${day.people.join(", ")}`;
+        button.setAttribute("aria-label", `${formatVacationDate(day.iso)}, в отпуске: ${day.people.join(", ")}`);
+        button.addEventListener("click", () => {
+          vacationCalendarGrid.querySelector(".is-selected")?.classList.remove("is-selected");
+          button.classList.add("is-selected");
+          renderVacationCalendarDetail(day);
+        });
+      }
+      days.append(button);
+    });
+    section.append(heading, weekdayRow, days);
+    vacationCalendarGrid.append(section);
+  }
+}
+
+async function loadVacationCalendar(year) {
+  const normalizedYear = Math.min(2100, Math.max(2020, Number(year) || new Date().getFullYear()));
+  const requestId = ++vacationCalendarRequestId;
+  vacationCalendarActiveYear = normalizedYear;
+  if (vacationCalendarYear) vacationCalendarYear.textContent = String(normalizedYear);
+  if (vacationCalendarGrid) vacationCalendarGrid.replaceChildren();
+  if (vacationCalendarDetail) vacationCalendarDetail.textContent = "Нажмите на отмеченный день, чтобы увидеть сотрудников.";
+  setVacationCalendarStatus("Загружаю отпуска отдела…");
+  try {
+    const rows = await listDepartmentVacationCalendar(normalizedYear);
+    if (requestId !== vacationCalendarRequestId) return;
+    renderVacationCalendar(buildDepartmentVacationCalendar(rows, normalizedYear));
+    const employees = rows.length;
+    setVacationCalendarStatus(employees
+      ? `Отпуска найдены у ${employees} ${employees === 1 ? "сотрудника" : "сотрудников"}. Нажмите на цветной день для подробностей.`
+      : "В сохранённых табелях отдела за этот год отпусков пока нет.");
+  } catch (error) {
+    if (requestId !== vacationCalendarRequestId) return;
+    setVacationCalendarStatus(isVacationPlannerSchemaMissing(error)
+      ? "Для карты отпусков запустите SQL 062 в Supabase."
+      : "Не удалось загрузить карту отпусков отдела.", true);
+  }
+}
+
+function openVacationCalendar() {
+  if (!vacationCalendarOverlay) return;
+  if (vacationCalendarOverlay.parentElement !== document.body) {
+    document.body.append(vacationCalendarOverlay);
+  }
+  vacationCalendarOverlay.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  vacationCalendarCloseBtn?.focus();
+  void loadVacationCalendar(new Date().getFullYear());
+}
+
+function closeVacationCalendar() {
+  if (!vacationCalendarOverlay) return;
+  vacationCalendarOverlay.classList.add("hidden");
+  document.body.style.overflow = "";
+  vacationCalendarBtn?.focus();
 }
 
 async function saveVacationBalanceSnapshot() {
@@ -2326,6 +2447,13 @@ yearSelect?.addEventListener("change", async () => {
 
 vacationBalanceSaveBtn?.addEventListener("click", () => void saveVacationBalanceSnapshot());
 vacationCalculateBtn?.addEventListener("click", () => void calculateVacationPlan());
+vacationCalendarBtn?.addEventListener("click", openVacationCalendar);
+vacationCalendarCloseBtn?.addEventListener("click", closeVacationCalendar);
+vacationCalendarPrevBtn?.addEventListener("click", () => void loadVacationCalendar(vacationCalendarActiveYear - 1));
+vacationCalendarNextBtn?.addEventListener("click", () => void loadVacationCalendar(vacationCalendarActiveYear + 1));
+vacationCalendarOverlay?.addEventListener("click", (event) => {
+  if (event.target === vacationCalendarOverlay) closeVacationCalendar();
+});
 
 /* ===== Avatar events ===== */
 
@@ -2421,6 +2549,10 @@ missingDepartmentBtn?.addEventListener("click", () => {
   });
 });
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !vacationCalendarOverlay?.classList.contains("hidden")) {
+    closeVacationCalendar();
+    return;
+  }
   if (event.key === "Escape" && !customPositionOverlay?.classList.contains("hidden")) {
     closeCustomPositionModal();
   }
