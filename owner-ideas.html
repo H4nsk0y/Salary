@@ -23,8 +23,11 @@
     .idea-delete-button{border-color:rgba(190,74,105,.32);color:#e4a4b7}.idea-delete-button:hover{background:rgba(122,22,56,.18)}
     @media(max-width:700px){.ideas-shell{width:calc(100% - 24px);padding-top:96px}.ideas-header{align-items:flex-start;flex-direction:column}.ideas-title{font-size:2.55rem}.ideas-controls{width:100%}.ideas-select{min-width:0;flex:1}.idea-card{padding:16px}.idea-card-foot{align-items:flex-start;flex-direction:column}.idea-actions{justify-content:flex-start}}
   </style>
+  <link rel="stylesheet" href="./styles/page-loader.css?v=20261002-1" />
 </head>
 <body>
+  <div id="alvisaPageLoader" class="alvisa-page-loader" role="status" aria-live="polite" aria-label="Загрузка данных"></div>
+  <script src="./js/pageLoaderBoot.js?v=20261002-1"></script>
   <div data-app-header data-active="owner" data-owner-nav="true"></div>
   <main class="ideas-shell">
     <header class="ideas-header"><div><div class="ideas-kicker">Обратная связь</div><h1 class="ideas-title">Идеи пользователей</h1><p class="ideas-copy">Предложения, отправленные непосредственно через ALVISA SALARY. Статус помогает не потерять то, что уже рассмотрено.</p></div><div class="ideas-controls"><select id="statusFilter" class="ideas-select" aria-label="Фильтр идей"><option value="">Все идеи</option><option value="new">Новые</option><option value="reviewed">Рассмотренные</option><option value="archived">Архив</option></select><button id="refreshBtn" class="ideas-button" type="button">Обновить</button></div></header>

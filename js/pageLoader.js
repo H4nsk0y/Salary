@@ -1,5 +1,4 @@
 const LOADER_ID = "alvisaPageLoader";
-const STYLE_ID = "alvisaPageLoaderStyles";
 const SLOW_REQUEST_MS = 8000;
 const SETTLE_DELAY_MS = 120;
 const INITIAL_PROGRESS = 8;
@@ -27,38 +26,8 @@ function hasPersistedSupabaseSession() {
   }
 }
 
-function injectStyles() {
-  if (!canUseDom() || document.getElementById(STYLE_ID)) return;
-  const style = document.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = `
-    .alvisa-page-loader{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:24px;background:#0b0d0f;color:#f1eee8;opacity:1;visibility:visible;transition:opacity .32s ease,visibility .32s ease}
-    .alvisa-page-loader.is-leaving{opacity:0;visibility:hidden;pointer-events:none}
-    .alvisa-page-loader-inner{width:min(320px,82vw);display:grid;justify-items:center;text-align:center}
-    .alvisa-page-loader-icon{width:112px;height:112px;object-fit:cover;border-radius:18px;filter:drop-shadow(0 18px 36px rgba(0,0,0,.48));animation:alvisa-loader-breathe 1.75s ease-in-out infinite}
-    .alvisa-page-loader-title{margin-top:22px;font-family:Anticva,Georgia,serif;font-size:1.55rem;font-weight:400}
-    .alvisa-page-loader-status{min-height:1.4em;margin-top:8px;color:#9ea3a7;font:500 .76rem/1.5 Inter,system-ui,sans-serif}
-    .alvisa-page-loader-progress{display:flex;width:100%;align-items:center;gap:12px;margin-top:20px}
-    .alvisa-page-loader-track{position:relative;min-width:0;flex:1;height:3px;overflow:hidden;border-radius:3px;background:rgba(241,238,232,.1)}
-    .alvisa-page-loader-bar{position:absolute;inset-block:0;left:0;width:8%;border-radius:inherit;background:linear-gradient(90deg,#7a1638,#c6a15b,#6ea8e8);box-shadow:0 0 16px rgba(198,161,91,.2);transition:width .28s ease}
-    .alvisa-page-loader-percent{min-width:3.2em;color:#c8c3bc;font:700 .72rem/1 Inter,system-ui,sans-serif;text-align:right;font-variant-numeric:tabular-nums}
-    .alvisa-page-loader-retry{display:none;min-height:40px;margin-top:18px;padding:0 16px;border:1px solid rgba(198,161,91,.42);border-radius:6px;background:rgba(198,161,91,.1);color:#ead3a5;font:700 .76rem Inter,system-ui,sans-serif;cursor:pointer}
-    .alvisa-page-loader.is-slow .alvisa-page-loader-retry{display:inline-flex;align-items:center;justify-content:center}
-    .alvisa-page-loader-retry:hover{background:rgba(198,161,91,.18)}
-    @keyframes alvisa-loader-breathe{0%,100%{transform:scale(.92);opacity:.72}50%{transform:scale(1.06);opacity:1}}
-    @media(prefers-reduced-motion:reduce){.alvisa-page-loader-icon{animation:alvisa-loader-fade 1.8s ease-in-out infinite}.alvisa-page-loader-bar{transition:none}@keyframes alvisa-loader-fade{0%,100%{opacity:.45}50%{opacity:1}}}
-  `;
-  document.head.appendChild(style);
-}
-
-function createLoader() {
-  injectStyles();
-  const loader = document.createElement("div");
-  loader.id = LOADER_ID;
-  loader.className = "alvisa-page-loader";
-  loader.setAttribute("role", "status");
-  loader.setAttribute("aria-live", "polite");
-  loader.setAttribute("aria-label", "Загрузка данных");
+function hydrateLoader(loader) {
+  if (loader.querySelector(".alvisa-page-loader-inner")) return loader;
   loader.innerHTML = `
     <div class="alvisa-page-loader-inner">
       <img class="alvisa-page-loader-icon" src="./images/app-icon-512.png" alt="" />
@@ -74,13 +43,31 @@ function createLoader() {
     </div>
   `;
   loader.querySelector(".alvisa-page-loader-retry")?.addEventListener("click", () => location.reload());
+  return loader;
+}
+
+function createLoader() {
+  const loader = document.createElement("div");
+  loader.id = LOADER_ID;
+  loader.className = "alvisa-page-loader";
+  loader.setAttribute("role", "status");
+  loader.setAttribute("aria-live", "polite");
+  loader.setAttribute("aria-label", "Загрузка данных");
+  hydrateLoader(loader);
   (document.body || document.documentElement).appendChild(loader);
   return loader;
 }
 
 function ensureLoader() {
   if (!canUseDom() || loaderFinished) return null;
-  return document.getElementById(LOADER_ID) || createLoader();
+  const loader = hydrateLoader(document.getElementById(LOADER_ID) || createLoader());
+  loader.classList.add("is-active");
+  return loader;
+}
+
+function clearBootSafetyTimer() {
+  clearTimeout(window.__alvisaLoaderSafetyTimer);
+  window.__alvisaLoaderSafetyTimer = null;
 }
 
 function setStatus(text) {
@@ -134,6 +121,7 @@ function finishLoader() {
     const loader = document.getElementById(LOADER_ID);
     if (!loader) return;
     if (criticalLoadFailed || initialLoadFailed) {
+      clearBootSafetyTimer();
       setStatus("Не удалось загрузить данные страницы. Проверьте VPN и повторите попытку.");
       loader.classList.add("is-slow");
       return;
@@ -143,8 +131,12 @@ function finishLoader() {
     setTimeout(() => {
       if (pendingRequests > 0 || loaderFinished) return;
       loaderFinished = true;
+      clearBootSafetyTimer();
       loader.classList.add("is-leaving");
-      setTimeout(() => loader.remove(), 360);
+      setTimeout(() => {
+        document.documentElement.classList.remove("alvisa-loader-primed");
+        loader.remove();
+      }, 360);
     }, 80);
   }, SETTLE_DELAY_MS);
 }

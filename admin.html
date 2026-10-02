@@ -24,9 +24,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles/pages/admin.css?v=20260920-1" />
 
+  <link rel="stylesheet" href="./styles/page-loader.css?v=20261002-1" />
   </head>
 
   <body class="admin-page min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white">
+    <div id="alvisaPageLoader" class="alvisa-page-loader" role="status" aria-live="polite" aria-label="Загрузка данных"></div>
+    <script src="./js/pageLoaderBoot.js?v=20261002-1"></script>
     <div data-app-header data-active="table"></div>
 
     <div class="admin-shell app-header-offset relative z-10 mx-auto max-w-[1600px] px-4 pb-8 md:pb-10">

@@ -1,0 +1,128 @@
+.alvisa-page-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  place-items: center;
+  padding: 24px;
+  background: #0b0d0f;
+  color: #f1eee8;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.32s ease, visibility 0.32s ease;
+}
+
+.alvisa-loader-primed .alvisa-page-loader,
+.alvisa-page-loader.is-active {
+  display: grid;
+}
+
+.alvisa-page-loader.is-leaving {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.alvisa-page-loader-inner {
+  width: min(320px, 82vw);
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.alvisa-page-loader-icon {
+  width: 112px;
+  height: 112px;
+  object-fit: cover;
+  border-radius: 18px;
+  filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.48));
+  animation: alvisa-loader-breathe 1.75s ease-in-out infinite;
+}
+
+.alvisa-page-loader-title {
+  margin-top: 22px;
+  font-family: Anticva, Georgia, serif;
+  font-size: 1.55rem;
+  font-weight: 400;
+}
+
+.alvisa-page-loader-status {
+  min-height: 1.4em;
+  margin-top: 8px;
+  color: #9ea3a7;
+  font: 500 0.76rem/1.5 Inter, system-ui, sans-serif;
+}
+
+.alvisa-page-loader-progress {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.alvisa-page-loader-track {
+  position: relative;
+  min-width: 0;
+  flex: 1;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(241, 238, 232, 0.1);
+}
+
+.alvisa-page-loader-bar {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 8%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7a1638, #c6a15b, #6ea8e8);
+  box-shadow: 0 0 16px rgba(198, 161, 91, 0.2);
+  transition: width 0.28s ease;
+}
+
+.alvisa-page-loader-percent {
+  min-width: 3.2em;
+  color: #c8c3bc;
+  font: 700 0.72rem/1 Inter, system-ui, sans-serif;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.alvisa-page-loader-retry {
+  display: none;
+  min-height: 40px;
+  margin-top: 18px;
+  padding: 0 16px;
+  border: 1px solid rgba(198, 161, 91, 0.42);
+  border-radius: 6px;
+  background: rgba(198, 161, 91, 0.1);
+  color: #ead3a5;
+  font: 700 0.76rem Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.alvisa-page-loader.is-slow .alvisa-page-loader-retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alvisa-page-loader-retry:hover {
+  background: rgba(198, 161, 91, 0.18);
+}
+
+@keyframes alvisa-loader-breathe {
+  0%, 100% { transform: scale(0.92); opacity: 0.72; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alvisa-page-loader-icon { animation: alvisa-loader-fade 1.8s ease-in-out infinite; }
+  .alvisa-page-loader-bar { transition: none; }
+  @keyframes alvisa-loader-fade {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 1; }
+  }
+}

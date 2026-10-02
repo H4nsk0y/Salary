@@ -51,8 +51,11 @@
     .lab-error { color: #ecb0bf !important; }
     @media (max-width: 640px) { .lab-shell { padding: 94px 12px 40px; } .lab-head { flex-direction: column; } .lab-table th:first-child { width: 150px; min-width: 150px; } .lab-person div { flex-direction: column; } }
   </style>
+  <link rel="stylesheet" href="./styles/page-loader.css?v=20261002-1" />
 </head>
 <body>
+  <div id="alvisaPageLoader" class="alvisa-page-loader" role="status" aria-live="polite" aria-label="Загрузка данных"></div>
+  <script src="./js/pageLoaderBoot.js?v=20261002-1"></script>
   <div data-app-header data-active="owner" data-owner-nav="true"></div>
   <main class="lab-shell" id="labShell" hidden>
     <header class="lab-head"><h1>Учебный табель</h1><a href="owner.html">Все отделы</a></header>

@@ -23,9 +23,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles/pages/profile.css?v=20260927-1" />
+  <link rel="stylesheet" href="./styles/page-loader.css?v=20261002-1" />
 </head>
 
 <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/40 selection:text-white" data-tour-page="profile" data-tour-ready="#vacationPlanner">
+  <div id="alvisaPageLoader" class="alvisa-page-loader" role="status" aria-live="polite" aria-label="Загрузка данных"></div>
+  <script src="./js/pageLoaderBoot.js?v=20261002-1"></script>
 
 <div data-app-header data-active="profile"></div>
 
@@ -263,6 +266,7 @@
                 </optgroup>
               </select>
             </span>
+            <p id="positionLockHint" class="mt-2 hidden text-xs font-medium text-amber-200" role="status">Должность закреплена овнером. Изменить её можно только после снятия запрета.</p>
           </div>
 
           <div>

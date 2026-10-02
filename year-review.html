@@ -61,8 +61,11 @@
     @media (max-width:640px) { .scene { padding:88px 18px 74px; } .metrics { grid-template-columns:1fr; margin-top:28px; } .metric { min-height:130px; padding:20px; } .brand { font-size:16px; } }
     @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; scroll-behavior:auto !important; transition:none !important; } .scene-inner { opacity:1; transform:none; } }
   </style>
+  <link rel="stylesheet" href="./styles/page-loader.css?v=20261002-1" />
 </head>
 <body>
+  <div id="alvisaPageLoader" class="alvisa-page-loader" role="status" aria-live="polite" aria-label="Загрузка данных"></div>
+  <script src="./js/pageLoaderBoot.js?v=20261002-1"></script>
   <div id="loading" class="loading"><div><img class="loading-mark" src="./images/app-icon-192.png" alt="" /><p>Собираю ваш рабочий год…</p></div></div>
   <div id="errorView" class="loading hidden"><div class="error"><h1>Итоги пока не собрались</h1><p id="errorText">Не удалось загрузить сохранённые табели.</p><a href="index.html">На главную</a></div></div>
   <header class="topbar"><div class="brand">ALVISA SALARY</div><a href="index.html">Закрыть итоги</a></header>

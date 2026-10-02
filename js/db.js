@@ -1726,6 +1726,20 @@ export async function ownerListUserNightShiftRestrictions() {
   return data ?? [];
 }
 
+export async function ownerSetUserPositionLock(userId, locked) {
+  const { error } = await supabase.rpc("owner_set_user_position_lock", {
+    p_user_id: String(userId ?? "").trim(),
+    p_locked: Boolean(locked),
+  });
+  if (error) throw error;
+}
+
+export async function ownerListUserPositionLocks() {
+  const { data, error } = await supabase.rpc("owner_list_user_position_locks");
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function listManagedDepartmentNightShiftRestrictions(departmentKey) {
   const { data, error } = await supabase.rpc("list_managed_department_night_shift_restrictions", {
     p_department_key: String(departmentKey ?? "").trim(),

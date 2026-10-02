@@ -128,8 +128,11 @@
     @media (max-width:760px) { .shift-board { padding-top:max(156px,calc(env(safe-area-inset-top) + 148px)); } .shift-board-head { align-items:flex-start; flex-direction:column; } .shift-clock,.shift-date { text-align:left; } .shift-board-grid { grid-template-columns:1fr; } .shift-board-panel.wide { grid-row:auto; } .enterprise-map-head { top:max(154px,calc(env(safe-area-inset-top) + 146px)); } .enterprise-map-clock { display:none; } .map-building-label { min-width:104px; padding:7px 8px; } .map-building-label strong { font-size:9px; } .map-building-label span { font-size:8px; } .map-level-back { top:auto; right:14px; bottom:max(20px,env(safe-area-inset-bottom)); } .enterprise-map.is-floor-plan .enterprise-map-title { font-size:30px; } }
     @media (max-width: 640px) { .controls { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; gap: 7px; padding: 8px; } .brand { width: 100%; font-size: 17px; } .modes { order: 3; width: 100%; overflow-x:auto; } .modes button { flex: 1 0 auto; padding-inline: 8px; font-size: 12px; } .action { min-height: 36px; font-size: 12px; } }
   </style>
+  <link rel="stylesheet" href="./styles/page-loader.css?v=20261002-1" />
 </head>
 <body>
+  <div id="alvisaPageLoader" class="alvisa-page-loader" role="status" aria-live="polite" aria-label="Загрузка данных"></div>
+  <script src="./js/pageLoaderBoot.js?v=20261002-1"></script>
   <canvas id="scene" aria-label="Движущаяся анимация для экрана"></canvas>
   <div class="controls">
     <span class="brand">Антивыгорание</span>

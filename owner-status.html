@@ -33,8 +33,11 @@
     .status-button:hover { background: #8c1b42; }
     @media (max-width: 640px) { .status-check { grid-template-columns: 12px minmax(0, 1fr); } .status-check-time { grid-column: 2; } }
   </style>
+  <link rel="stylesheet" href="./styles/page-loader.css?v=20261002-1" />
 </head>
 <body class="owner-console min-h-screen antialiased">
+  <div id="alvisaPageLoader" class="alvisa-page-loader" role="status" aria-live="polite" aria-label="Загрузка данных"></div>
+  <script src="./js/pageLoaderBoot.js?v=20261002-1"></script>
   <div data-app-header data-active="owner" data-owner-nav="true"></div>
   <main class="status-shell relative z-10 mx-auto px-4 pt-safe pb-12 sm:px-6 md:pb-16">
     <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

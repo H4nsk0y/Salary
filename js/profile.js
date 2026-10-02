@@ -100,6 +100,7 @@ const displayNamePatronymicEl = document.getElementById("displayNamePatronymic")
 
 const displayNameInput = document.getElementById("displayNameInput");
 const positionSelect = document.getElementById("positionSelect");
+const positionLockHint = document.getElementById("positionLockHint");
 const okladInput = document.getElementById("okladInput");
 const genderSelect = document.getElementById("genderSelect");
 const branchSelect = document.getElementById("branchSelect");
@@ -1789,6 +1790,7 @@ async function refreshProfile() {
     role: "user",
     avatar_url: null,
     hide_money: false,
+    position_locked: false,
   };
 
   if (effectiveProfile.role === "owner") {
@@ -1808,6 +1810,11 @@ async function refreshProfile() {
   if (!requireDom(employmentDateInput, "employmentDateInput")) return;
   if (!requireDom(okladInput, "okladInput")) return;
   if (!requireDom(positionSelect, "positionSelect")) return;
+
+  const positionLocked = effectiveProfile.position_locked === true;
+  positionSelect.disabled = positionLocked;
+  positionSelect.setAttribute("aria-disabled", String(positionLocked));
+  positionLockHint?.classList.toggle("hidden", !positionLocked);
 
   const hideMoney = isMoneyProtectionEnabled(effectiveProfile);
 
@@ -2416,9 +2423,12 @@ async function saveProfile() {
     setStatus("Сохранено", "ok");
   } catch (e) {
     setStatus("Ошибка сохранения", "err");
-    setError(String(e?.message || "").includes("DEPARTMENT_LEADER_POSITION_RESERVED")
+    const message = String(e?.message || "");
+    setError(message.includes("DEPARTMENT_LEADER_POSITION_RESERVED")
       ? "Эта должность закреплена за подтвержденным руководителем отдела. Выберите другую должность."
-      : e?.message || "Не удалось сохранить профиль.");
+      : message.includes("POSITION_CHANGE_LOCKED")
+        ? "Овнер запретил изменение должности для этого профиля."
+        : message || "Не удалось сохранить профиль.");
   }
 }
 
