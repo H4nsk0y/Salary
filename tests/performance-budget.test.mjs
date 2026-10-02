@@ -38,6 +38,16 @@ test("rare features stay outside the initial page load", () => {
   assert.doesNotMatch(read("js/table.js"), /^import .*payslipImport/m);
   assert.match(read("js/table.js"), /await import\("\.\/payslipImport\.js/);
 
+  const adminScript = read("js/admin.js");
+  assert.doesNotMatch(adminScript, /^import .*adminScheduleTools/m);
+  assert.match(adminScript, /import\("\.\/features\/adminScheduleTools\.js/);
+
+  const profileScript = read("js/profile.js");
+  assert.doesNotMatch(profileScript, /^import .*vacationCalendar/m);
+  assert.match(profileScript, /import\("\.\/vacationCalendar\.js/);
+  assert.doesNotMatch(profileScript, /^import .*vacationPay/m);
+  assert.match(profileScript, /import\("\.\/vacationPay\.js/);
+
   const nav = read("js/nav.js");
   assert.match(nav, /^import \{ createSiteSearchWidget \} from "\.\/siteSearch\.js";/m);
   assert.match(nav, /await import\("\.\/features\/navigationNotifications\.js/);
@@ -94,14 +104,14 @@ test("profile reads are shared and admin saves only changed employees", () => {
 
   assert.match(auth, /let sessionPromise = null/);
   assert.match(auth, /if \(!sessionPromise\)/);
-  assert.match(db, /let myProfilePromise = null/);
-  assert.match(db, /myProfilePromise = loadMyProfile\(\)/);
+  assert.match(db, /let myAppContextPromise = null/);
+  assert.match(db, /supabase\.rpc\("get_my_app_context"\)/);
   assert.match(db, /let allDepartmentsPromise = null/);
-  assert.match(db, /let myDepartmentMembershipPromise = null/);
-  assert.match(db, /let myEditorDepartmentKeyPromise = null/);
+  assert.match(db, /return getMyAppContext\(\{ fresh \}\)\.then\(\(context\) => context\.profile\)/);
+  assert.match(db, /return getMyAppContext\(\{ fresh \}\)\.then\(\(context\) => context\.membershipDepartmentKey\)/);
   assert.match(db, /const timesheetPayloadPromises = new Map\(\)/);
-  assert.match(db, /timesheetPayloadPromises\.has\(cacheKey\)/);
-  assert.match(db, /timesheetPayloadPromises\.delete\(cacheKey\)/);
+  assert.match(db, /memoizeRead\(timesheetPayloadPromises, cacheKey/);
+  assert.match(db, /timesheetPayloadPromises\.delete\(/);
   assert.match(db, /export async function managedLoadTimesheets/);
   assert.match(db, /\.select\("user_id, payload, updated_at"\)[\s\S]*?\.in\("user_id", ids\)/);
   assert.match(admin, /managedLoadTimesheets\(userIds, targetYear, targetMonth\)/);

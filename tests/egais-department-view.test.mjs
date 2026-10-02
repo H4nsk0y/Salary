@@ -16,20 +16,22 @@ test("EGAIS department view is server-authorized and excludes payroll data", asy
   assert.match(sql, /'productionCalendarVersion'/);
 });
 
-test("ordinary EGAIS members no longer receive a team schedule entry point", async () => {
-  const [admin, table, schedule, restriction] = await Promise.all([
+test("ordinary EGAIS members receive a read-only team schedule entry point", async () => {
+  const [admin, table, schedule, restore] = await Promise.all([
     read("js/admin.js"),
     read("js/table.js"),
     read("js/schedule.js"),
-    read("supabase-sql/048_restrict_egais_department_view.sql"),
+    read("supabase-sql/063_restore_egais_department_view.sql"),
   ]);
 
   assert.match(table, /membershipDepartmentKey === "egais"/);
-  assert.match(table, /const departmentTableAccess = managedDepartment \?\? null/);
-  assert.doesNotMatch(admin, /requestedDepartmentKey === "egais"/);
-  assert.doesNotMatch(schedule, /membershipDepartmentKey === "egais"/);
-  assert.doesNotMatch(restriction, /department_members/);
-  assert.match(restriction, /department_editors/);
+  assert.match(table, /readOnly: true/);
+  assert.match(admin, /requestedDepartmentKey === "egais" && membershipDepartmentKey === "egais"/);
+  assert.match(admin, /departmentViewOnly = true/);
+  assert.match(schedule, /myDepartmentKey === "egais"/);
+  assert.match(restore, /department_members[\s\S]*department_key = 'egais'/);
+  assert.match(restore, /department_editors[\s\S]*department_key = 'egais'/);
+  assert.match(restore, /revoke all[\s\S]*from public, anon/i);
 });
 
 test("department editors can remove ordinary members through a protected RPC", async () => {

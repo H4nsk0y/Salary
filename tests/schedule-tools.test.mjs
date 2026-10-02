@@ -139,21 +139,29 @@ test("selection labels show shortage or overtime against the personal norm", () 
   assert.equal(selectedHoursLabel("reduceOvertime", state, 19), "Без переработки");
 });
 
-test("overtime reduction needs another worker and uses only full or 11-to-8 day shifts", () => {
+test("overtime reduction keeps at least one full eleven-hour day worker", () => {
   const existingDays = days(28);
   existingDays[0] = { dayHours: 11, nightHours: 0 };
   existingDays[1] = { dayHours: 11, nightHours: 0 };
   existingDays[2] = { dayHours: 11, nightHours: 0 };
-  const otherWorker = days(28);
-  otherWorker[0] = { dayHours: 8, nightHours: 0 };
-  otherWorker[1] = { dayHours: 8, nightHours: 0 };
-  const plan = planReduceOvertime({ existingDays, personalNorm: 20, coworkers: [otherWorker] });
-  assert.deepEqual(plan.changes.map(({ index }) => index), [0]);
-  assert.equal(plan.after, 22);
-  assert.deepEqual(planReduceOvertime({ existingDays, personalNorm: 20, coworkers: [] }).changes, []);
+  const eightHourWorker = days(28);
+  eightHourWorker[0] = { dayHours: 8, nightHours: 0 };
+  eightHourWorker[1] = { dayHours: 8, nightHours: 0 };
+  const fullDayWorker = days(28);
+  fullDayWorker[0] = { dayHours: 11, nightHours: 0 };
+  const uncovered = planReduceOvertime({ existingDays, personalNorm: 30, coworkers: [eightHourWorker] });
+  assert.deepEqual(uncovered.changes, []);
+
+  const covered = planReduceOvertime({ existingDays, personalNorm: 30,
+    coworkers: [eightHourWorker, fullDayWorker] });
+  assert.deepEqual(covered.changes.map(({ index, to }) => ({ index, to })), [
+    { index: 0, to: { dayHours: 8, nightHours: 0 } },
+  ]);
+  assert.equal(covered.after, 30);
+  assert.deepEqual(planReduceOvertime({ existingDays, personalNorm: 30, coworkers: [] }).changes, []);
   const restDay = days(28);
   restDay[0] = { dayHours: 2, nightHours: 5 };
-  assert.deepEqual(planReduceOvertime({ existingDays, personalNorm: 20, coworkers: [restDay] }).changes, []);
+  assert.deepEqual(planReduceOvertime({ existingDays, personalNorm: 30, coworkers: [restDay] }).changes, []);
 });
 
 test("four and twenty employees receive extra shifts across different dates", () => {

@@ -5,6 +5,7 @@ import { findMyShiftReplacementCandidates, getMyProfile, getMyDepartmentMembersh
 import { startPresenceHeartbeat } from "./presence.js";
 import { setUiStatus } from "./uiStatus.js";
 import { isTimesheetAutosaveDisabled } from "./features/autosavePreference.js";
+import { scheduleAdjacentMonthPrefetch } from "./features/monthPrefetch.js";
 import { createSerialTaskQueue } from "./asyncTasks.js";
 import {
   normalizeShiftComments,
@@ -658,6 +659,7 @@ let profileOklad = null;
 let profilePosition = "";
 let profileGender = null;
 let profileBranch = null;
+let cancelAdjacentMonthPrefetch = null;
 let profileWeeklyHours = null;
 let profileEmploymentDate = null;
 let ensureTableMoneyAccess = async () => true;
@@ -3658,6 +3660,19 @@ function syncOkladActionState() {
   useProfileOkladBtn.classList.toggle("cursor-not-allowed", !canUse);
 }
 
+function queueAdjacentMonthPrefetch(targetYear, targetMonth) {
+  cancelAdjacentMonthPrefetch?.();
+  cancelAdjacentMonthPrefetch = scheduleAdjacentMonthPrefetch(
+    targetYear,
+    targetMonth,
+    ({ year: adjacentYear, month: adjacentMonth }) => Promise.all([
+      loadTimesheet(adjacentYear, adjacentMonth),
+      listMyTimesheetsBefore(adjacentYear, adjacentMonth, { withPayload: true }),
+      getProductionCalendarMonth(adjacentYear, adjacentMonth, { branch: profileBranch }),
+    ])
+  );
+}
+
 async function loadCurrentMonthFromDb(targetYear = year, targetMonth = month) {
   setSaveStatus("Загружаю…", "busy");
   try {
@@ -3692,6 +3707,7 @@ async function loadCurrentMonthFromDb(targetYear = year, targetMonth = month) {
       setSaveStatus("Новый табель", "neutral");
     }
     setError(null);
+    queueAdjacentMonthPrefetch(targetYear, targetMonth);
     return true;
   } catch (e) {
     setSaveStatus("Ошибка загрузки", "err");
@@ -4013,7 +4029,11 @@ updateUrlForMonth();
   applyPersonalTimesheetEditability();
   applyAutoCollapsedPanels(profile);
 
-  const departmentTableAccess = managedDepartment ?? null;
+  const departmentTableAccess = managedDepartment ?? (
+    membershipDepartmentKey === "egais"
+      ? { key: "egais", name: "Отдел ЕГАИС", readOnly: true }
+      : null
+  );
 
   if (departmentTableAccess) {
   adminLink?.classList.remove("hidden");

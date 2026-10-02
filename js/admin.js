@@ -3,9 +3,12 @@
 // =========================
 import { requireSession, signOut } from "./auth.js";
 import {
+  clearDepartmentTimesheetMonthCache,
   getMyManagedDepartment,
+  getMyDepartmentMembershipKey,
   getMyProfile,
   getDepartmentByKey,
+  listEgaisDepartmentTimesheetView,
   listManagedDepartmentMembers,
   listDepartmentLeader,
   listManagedDepartmentNightShiftRestrictions,
@@ -41,8 +44,8 @@ import {
   getMatrixSelectionBounds,
   isMatrixCellInBounds,
 } from "./features/matrixSelection.js";
-import { initAdminScheduleTools } from "./features/adminScheduleTools.js";
 import { isTimesheetAutosaveDisabled } from "./features/autosavePreference.js";
+import { scheduleAdjacentMonthPrefetch } from "./features/monthPrefetch.js";
 import { filterAuditEntries } from "./features/auditSearch.js";
 import {
   CHATEAU_ALVISA_BRANCH,
@@ -179,6 +182,8 @@ let saveTimer = null;
 const runTimesheetTask = createSerialTaskQueue();
 let monthTransitionPending = false;
 let monthDataLoaded = false;
+let cancelAdjacentMonthPrefetch = null;
+let scheduleToolsInitializationPromise = null;
 let auditLogEntries = [];
 let auditLogSearchTimer = null;
 let auditLogRequest = 0;
@@ -2884,7 +2889,10 @@ async function resolveManagedDepartment() {
     return ownerDepartment;
   }
 
-  const managedDepartment = await getMyManagedDepartment();
+  const [managedDepartment, membershipDepartmentKey] = await Promise.all([
+    getMyManagedDepartment(),
+    getMyDepartmentMembershipKey(),
+  ]);
 
   if (backToTableLink) {
     backToTableLink.href = "table.html";
@@ -2892,6 +2900,13 @@ async function resolveManagedDepartment() {
   }
 
   if (managedDepartment) return managedDepartment;
+
+  if (requestedDepartmentKey === "egais" && membershipDepartmentKey === "egais") {
+    const egaisDepartment = await getDepartmentByKey("egais");
+    if (!egaisDepartment) throw new Error("Отдел ЕГАИС не найден.");
+    departmentViewOnly = true;
+    return egaisDepartment;
+  }
 
   return null;
 }
@@ -2918,82 +2933,117 @@ function applyDepartmentViewOnlyUi() {
   setSaveStatus("Только просмотр", "busy");
 }
 
-async function setupScheduleTools() {
-  if (departmentViewOnly) return;
-  let leaderId;
-  let noNightShiftUserIds = new Set();
-  try {
-    const [loadedLeaderId, restrictions] = await Promise.all([
+function initializeScheduleTools() {
+  if (scheduleToolsInitializationPromise) return scheduleToolsInitializationPromise;
+
+  scheduleToolsInitializationPromise = (async () => {
+    const [{ initAdminScheduleTools }, loadedLeaderId, restrictions] = await Promise.all([
+      import("./features/adminScheduleTools.js?v=20261002-2"),
       listDepartmentLeader(managedDepartment.key),
       listManagedDepartmentNightShiftRestrictions(managedDepartment.key).catch((error) => {
         if (/night_shift_restriction|PGRST202|schema cache/i.test(String(error?.message || ""))) return null;
         throw error;
       }),
     ]);
-    leaderId = loadedLeaderId;
-    noNightShiftUserIds = new Set((restrictions ?? [])
+    const noNightShiftUserIds = new Set((restrictions ?? [])
       .filter((row) => row.no_night_shifts !== false)
       .map((row) => String(row.user_id)));
     if (restrictions === null) {
       setError("Для ограничений ночных смен нужно запустить supabase-sql/049_night_shift_restrictions.sql.");
     }
-  } catch (error) {
-    setError(/list_department_leader|PGRST202|schema cache/i.test(String(error?.message || ""))
-      ? "Для инструментов графика нужно запустить supabase-sql/047_department_leaders.sql."
-      : error?.message || "Не удалось проверить руководителя отдела.");
-    return;
-  }
+
+    initAdminScheduleTools({
+      isOwner: currentProfile?.role === "owner",
+      leaderId: loadedLeaderId,
+      getContext: (scope = "chateau") => ({
+        year, month, teamStates: teamStates.filter((state) => state.plantScope === scope),
+        holiday: sharedHoliday,
+        transferredOff: sharedTransferredOff,
+        shortDay: sharedShortDay,
+        departmentKey: managedDepartment?.key ?? "",
+        noNightShiftUserIds,
+        personalNorm: (state) => personalNormHours(state).personalNorm,
+      }),
+      signature: currentSignature,
+      loadPreviousMany: async (userIds, currentYear, currentMonth) => {
+        const previous = new Date(currentYear, currentMonth, 0);
+        const rows = await managedLoadTimesheets(
+          userIds,
+          previous.getFullYear(),
+          previous.getMonth()
+        );
+        return new Map(rows.map((row) => [String(row.user_id), row.payload ?? null]));
+      },
+      applyChanges: (plans, tool) => {
+        const highlightChanges = tool === "fillNorm" || tool === "reduceOvertime" || tool === "bottling";
+        for (const { state, changes } of plans) {
+          if (!changes.length) continue;
+          for (const { index, from, to } of changes) {
+            state.dayHours[index] = to.dayHours;
+            state.nightHours[index] = to.nightHours;
+            const dayInput = state.dayInputs[index];
+            const nightInput = state.nightInputs[index];
+            if (dayInput) dayInput.value = dayInput.dataset.prev = formatHourForInput(to.dayHours);
+            if (nightInput) nightInput.value = nightInput.dataset.prev = formatHourForInput(to.nightHours);
+            if (highlightChanges) {
+              if (Number(from.dayHours) !== Number(to.dayHours)) {
+                dayInput?.closest("td")?.classList.add("schedule-tool-changed");
+              }
+              if (Number(from.nightHours) !== Number(to.nightHours)) {
+                nightInput?.closest("td")?.classList.add("schedule-tool-changed");
+              }
+            }
+          }
+          recalcPerson(state);
+          scheduleSave({ state });
+        }
+      },
+    });
+  })().catch((error) => {
+    scheduleToolsInitializationPromise = null;
+    throw error;
+  });
+
+  return scheduleToolsInitializationPromise;
+}
+
+function setupScheduleTools() {
+  if (departmentViewOnly) return;
+
+  const buttonGroups = [...document.querySelectorAll("[data-schedule-scope]")];
+  buttonGroups.forEach((group) => group.classList.remove("hidden"));
+
   const labLink = document.getElementById("scheduleLabLink");
   if (labLink && managedDepartment?.key) {
     labLink.href = `schedule-lab.html?department=${encodeURIComponent(managedDepartment.key)}`;
+    labLink.classList.toggle("hidden", currentProfile?.role !== "owner");
   }
-  initAdminScheduleTools({
-    isOwner: currentProfile?.role === "owner",
-    leaderId,
-    getContext: (scope = "chateau") => ({
-      year, month, teamStates: teamStates.filter((state) => state.plantScope === scope),
-      holiday: sharedHoliday,
-      transferredOff: sharedTransferredOff,
-      shortDay: sharedShortDay,
-      departmentKey: managedDepartment?.key ?? "",
-      noNightShiftUserIds,
-      personalNorm: (state) => personalNormHours(state).personalNorm,
-    }),
-    signature: currentSignature,
-    loadPreviousMany: async (userIds, currentYear, currentMonth) => {
-      const previous = new Date(currentYear, currentMonth, 0);
-      const rows = await managedLoadTimesheets(
-        userIds,
-        previous.getFullYear(),
-        previous.getMonth()
-      );
-      return new Map(rows.map((row) => [String(row.user_id), row.payload ?? null]));
-    },
-    applyChanges: (plans, tool) => {
-      const highlightChanges = tool === "fillNorm" || tool === "reduceOvertime" || tool === "bottling";
-      for (const { state, changes } of plans) {
-        if (!changes.length) continue;
-        for (const { index, from, to } of changes) {
-          state.dayHours[index] = to.dayHours;
-          state.nightHours[index] = to.nightHours;
-          const dayInput = state.dayInputs[index];
-          const nightInput = state.nightInputs[index];
-          if (dayInput) dayInput.value = dayInput.dataset.prev = formatHourForInput(to.dayHours);
-          if (nightInput) nightInput.value = nightInput.dataset.prev = formatHourForInput(to.nightHours);
-          if (highlightChanges) {
-            if (Number(from.dayHours) !== Number(to.dayHours)) {
-              dayInput?.closest("td")?.classList.add("schedule-tool-changed");
-            }
-            if (Number(from.nightHours) !== Number(to.nightHours)) {
-              nightInput?.closest("td")?.classList.add("schedule-tool-changed");
-            }
-          }
-        }
-        recalcPerson(state);
-        scheduleSave({ state });
-      }
-    },
-  });
+
+  let pendingTrigger = null;
+  const bootstrap = async (event) => {
+    const trigger = event.target.closest("[data-schedule-tool]");
+    if (!trigger || pendingTrigger) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    pendingTrigger = trigger;
+    trigger.setAttribute("aria-busy", "true");
+
+    try {
+      await initializeScheduleTools();
+      buttonGroups.forEach((group) => group.removeEventListener("click", bootstrap, true));
+      trigger.removeAttribute("aria-busy");
+      pendingTrigger = null;
+      trigger.click();
+    } catch (error) {
+      trigger.removeAttribute("aria-busy");
+      pendingTrigger = null;
+      setError(/list_department_leader|PGRST202|schema cache/i.test(String(error?.message || ""))
+        ? "Для инструментов графика нужно запустить supabase-sql/047_department_leaders.sql."
+        : error?.message || "Не удалось загрузить инструменты графика.");
+    }
+  };
+
+  buttonGroups.forEach((group) => group.addEventListener("click", bootstrap, true));
 }
 
 
@@ -3024,6 +3074,27 @@ async function guardManagedDepartment() {
   }
 
   return true;
+}
+
+function queueAdjacentMonthPrefetch(targetYear, targetMonth, calendarBranch) {
+  const userIds = teamStates.map((state) => state.userId);
+  cancelAdjacentMonthPrefetch?.();
+  cancelAdjacentMonthPrefetch = scheduleAdjacentMonthPrefetch(
+    targetYear,
+    targetMonth,
+    ({ year: adjacentYear, month: adjacentMonth }) => {
+      const timesheetRequests = departmentViewOnly
+        ? [listEgaisDepartmentTimesheetView(adjacentYear, adjacentMonth)]
+        : [
+            managedLoadTimesheets(userIds, adjacentYear, adjacentMonth),
+            managedListTimesheetsBefore(userIds, adjacentYear, adjacentMonth),
+          ];
+      return Promise.all([
+        ...timesheetRequests,
+        getProductionCalendarMonth(adjacentYear, adjacentMonth, { branch: calendarBranch }),
+      ]);
+    }
+  );
 }
 
 async function loadCurrentMonth(targetYear = year, targetMonth = month) {
@@ -3127,6 +3198,7 @@ async function loadCurrentMonth(targetYear = year, targetMonth = month) {
     initCurrentDaySelection();
     focusRequestedEmployee();
     setError(null);
+    queueAdjacentMonthPrefetch(targetYear, targetMonth, calendarBranch);
     return true;
   } catch (e) {
     setSaveStatus("Ошибка загрузки", "err");
@@ -3265,6 +3337,7 @@ copyInviteBtn?.addEventListener("click", async () => {
 });
 
 reloadBtn?.addEventListener("click", async () => {
+  clearDepartmentTimesheetMonthCache(year, month);
   await changeDepartmentMonth();
 });
 

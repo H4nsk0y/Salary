@@ -151,7 +151,7 @@ export function planReduceOvertime({ existingDays, personalNorm, coworkers = [] 
     const value = currentHours(day);
     return !isProtected(day) && value.nightHours === 0 && (value.dayHours === 8 || value.dayHours === 11) &&
       coworkers.some((coworker) => !coworker?.[index]?.leaveType && !coworker?.[index]?.locked &&
-        Number(coworker?.[index]?.nightHours ?? 0) === 0 && Number(coworker?.[index]?.dayHours ?? 0) >= 8);
+        Number(coworker?.[index]?.nightHours ?? 0) === 0 && Number(coworker?.[index]?.dayHours ?? 0) >= 11);
   });
 
   for (const { day, index } of candidates) {

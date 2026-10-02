@@ -13,7 +13,7 @@ import {
   listDepartmentVacationOverlaps,
   listDepartmentVacationCalendar,
   deleteMyTimesheet,
-} from "./db.js?v=20260927-1";
+} from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import {
   getProductionCalendarMonth,
@@ -71,16 +71,11 @@ import {
   formatEmploymentDuration,
   parseProfileDate,
 } from "./features/employmentDuration.js";
-import { calculateVacationPayFromHistory } from "./vacationPay.js";
 import {
   buildVacationPlan,
   formatLocalDate,
   projectVacationBalance,
 } from "./vacationPlanner.js";
-import {
-  buildDepartmentVacationCalendar,
-  vacationDensityLevel,
-} from "./vacationCalendar.js";
 
 document.body.classList.add("is-loaded");
 
@@ -258,6 +253,7 @@ let payloadByMonth = new Map();
 let vacationBalanceSnapshot = null;
 let vacationCalendarActiveYear = new Date().getFullYear();
 let vacationCalendarRequestId = 0;
+let vacationCalendarModulePromise = null;
 
 let ensureProfileMoneyAccess = async () => true;
 let okladVisible = true;
@@ -1994,7 +1990,7 @@ function renderVacationCalendarDetail(day) {
   vacationCalendarDetail.append(document.createTextNode(day.people.join(", ")));
 }
 
-function renderVacationCalendar(model) {
+function renderVacationCalendar(model, densityLevel) {
   if (!vacationCalendarGrid) return;
   vacationCalendarGrid.replaceChildren();
   const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
@@ -2021,7 +2017,7 @@ function renderVacationCalendar(model) {
     month.days.forEach((day) => {
       const button = document.createElement("button");
       const weekday = (month.firstWeekday + day.day - 1) % 7;
-      const level = vacationDensityLevel(day.count);
+      const level = densityLevel(day.count);
       button.type = "button";
       button.className = `vacation-calendar-day level-${level}${weekday >= 5 ? " is-weekend" : ""}`;
       button.textContent = String(day.day);
@@ -2051,9 +2047,19 @@ async function loadVacationCalendar(year) {
   if (vacationCalendarDetail) vacationCalendarDetail.textContent = "Нажмите на отмеченный день, чтобы увидеть сотрудников.";
   setVacationCalendarStatus("Загружаю отпуска отдела…");
   try {
-    const rows = await listDepartmentVacationCalendar(normalizedYear);
+    vacationCalendarModulePromise ??= import("./vacationCalendar.js?v=20261002-1").catch((error) => {
+      vacationCalendarModulePromise = null;
+      throw error;
+    });
+    const [rows, { buildDepartmentVacationCalendar, vacationDensityLevel }] = await Promise.all([
+      listDepartmentVacationCalendar(normalizedYear),
+      vacationCalendarModulePromise,
+    ]);
     if (requestId !== vacationCalendarRequestId) return;
-    renderVacationCalendar(buildDepartmentVacationCalendar(rows, normalizedYear));
+    renderVacationCalendar(
+      buildDepartmentVacationCalendar(rows, normalizedYear),
+      vacationDensityLevel
+    );
     const employees = rows.length;
     setVacationCalendarStatus(employees
       ? `Отпуска найдены у ${employees} ${employees === 1 ? "сотрудника" : "сотрудников"}. Нажмите на цветной день для подробностей.`
@@ -2169,6 +2175,7 @@ async function calculateVacationPlan() {
     }
 
     if (historyResult.status === "fulfilled" && yearMoneyVisible) {
+      const { calculateVacationPayFromHistory } = await import("./vacationPay.js?v=20261002-1");
       const estimate = calculateVacationPayFromHistory({
         baseYear:start.getFullYear(),
         baseMonth:start.getMonth(),

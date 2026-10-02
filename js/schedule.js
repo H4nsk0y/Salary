@@ -593,7 +593,9 @@ refreshBtn?.addEventListener("click", () => void loadSchedule());
       ? { owner: true }
       : managedDepartment?.key
         ? { key: managedDepartment.key }
-        : null;
+        : myDepartmentKey === "egais"
+          ? { key: "egais", readOnly: true }
+          : null;
 
     const requestedKey = new URL(window.location.href).searchParams.get("department") || "";
     selectedDepartmentKey = departments.some((item) => item.key === requestedKey)

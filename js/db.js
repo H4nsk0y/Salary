@@ -20,6 +20,27 @@ const PROFILE_SELECT_WITH_BRANCH =
 const PROFILE_SELECT_LEGACY =
   "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number";
 
+const PROFILE_SELECT_CANDIDATES = [
+  [PROFILE_SELECT, {}],
+  [PROFILE_SELECT_WITHOUT_HIDE_CALCULATOR_NAV, { hide_calculator_nav: false }],
+  [PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS, { egais_file_reminders_enabled: false }],
+  [PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS_AND_HIDE_CALCULATOR_NAV, {
+    egais_file_reminders_enabled: false,
+    hide_calculator_nav: false,
+  }],
+  [PROFILE_SELECT_WITH_BRANCH, {
+    employment_date: null,
+    egais_file_reminders_enabled: false,
+    hide_calculator_nav: false,
+  }],
+  [PROFILE_SELECT_LEGACY, {
+    branch: null,
+    employment_date: null,
+    egais_file_reminders_enabled: false,
+    hide_calculator_nav: false,
+  }],
+];
+
 const ADMIN_PROFILE_SELECT =
   "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, created_at, tab_number, branch, employment_date, weekly_hours";
 
@@ -45,18 +66,56 @@ const MY_PROFILE_MUTABLE_FIELDS = new Set([
 ]);
 
 let currentUserIdPromise = null;
-let myProfilePromise = null;
+let myAppContextPromise = null;
 let allDepartmentsPromise = null;
-let myDepartmentMembershipPromise = null;
-let myEditorDepartmentKeyPromise = null;
-let myManagedDepartmentPromise = null;
 const departmentByKeyPromises = new Map();
 const timesheetPayloadPromises = new Map();
+const myTimesheetsBeforePromises = new Map();
+const managedTimesheetPromises = new Map();
+const managedTimesheetsBeforePromises = new Map();
+const egaisTimesheetViewPromises = new Map();
+const READ_CACHE_TTL_MS = 60_000;
+
+function memoizeRead(cache, key, loader) {
+  if (cache.has(key)) return cache.get(key);
+
+  const request = Promise.resolve()
+    .then(loader)
+    .catch((error) => {
+      if (cache.get(key) === request) cache.delete(key);
+      throw error;
+    });
+
+  cache.set(key, request);
+  setTimeout(() => {
+    if (cache.get(key) === request) cache.delete(key);
+  }, READ_CACHE_TTL_MS);
+  return request;
+}
+
+function clearManagedMonthReadCache(year, month) {
+  const prefix = `${year}:${month}:`;
+  for (const key of managedTimesheetPromises.keys()) {
+    if (key.startsWith(prefix)) managedTimesheetPromises.delete(key);
+  }
+  for (const key of managedTimesheetsBeforePromises.keys()) {
+    if (key.startsWith(prefix)) managedTimesheetsBeforePromises.delete(key);
+  }
+  egaisTimesheetViewPromises.delete(`${year}:${month}`);
+}
+
+export function clearDepartmentTimesheetMonthCache(year, month) {
+  const normalized = assertValidYearMonth(year, month);
+  clearManagedMonthReadCache(normalized.year, normalized.month);
+}
+
+function clearTimesheetHistoryReadCaches() {
+  myTimesheetsBeforePromises.clear();
+  managedTimesheetsBeforePromises.clear();
+}
 
 function invalidateMyDepartmentAccessCache() {
-  myDepartmentMembershipPromise = null;
-  myEditorDepartmentKeyPromise = null;
-  myManagedDepartmentPromise = null;
+  myAppContextPromise = null;
 }
 
 async function invalidateMyDepartmentAccessCacheFor(userId) {
@@ -65,7 +124,7 @@ async function invalidateMyDepartmentAccessCacheFor(userId) {
 }
 
 function invalidateMyProfileCache() {
-  myProfilePromise = null;
+  myAppContextPromise = null;
 }
 
 function isNotFoundError(error) {
@@ -180,126 +239,88 @@ async function requireUserId() {
 
 async function loadMyProfile() {
   const userId = await requireUserId();
+  let lastError = null;
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(PROFILE_SELECT)
-    .eq("user_id", userId)
-    .maybeSingle();
+  for (const [select, defaults] of PROFILE_SELECT_CANDIDATES) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(select)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!error) return data ? attachWeeklyHours({ ...defaults, ...data }, userId) : null;
+    if (isNotFoundError(error)) return null;
+    const schemaMismatch = isMissingBranchColumnError(error) ||
+      isMissingEmploymentDateColumnError(error) ||
+      isMissingEgaisFileRemindersColumnError(error) ||
+      isMissingHideCalculatorNavColumnError(error) ||
+      isMissingWeeklyHoursColumnError(error);
+    if (!schemaMismatch) throw error;
+    lastError = error;
+  }
+
+  throw lastError;
+}
+
+async function loadMyAppContextFallback() {
+  const [profile, membershipDepartmentKey, editorDepartmentKey] = await Promise.all([
+    loadMyProfile(),
+    loadMyDepartmentMembershipKey(),
+    loadMyEditorDepartmentKey(),
+  ]);
+  const managedDepartment = editorDepartmentKey
+    ? await getDepartmentByKey(editorDepartmentKey)
+    : null;
+
+  return {
+    profile,
+    membershipDepartmentKey,
+    editorDepartmentKey,
+    managedDepartment: managedDepartment ?? (editorDepartmentKey
+      ? { key: editorDepartmentKey, name: editorDepartmentKey }
+      : null),
+  };
+}
+
+async function loadMyAppContext() {
+  const userId = await requireUserId();
+  const { data, error } = await supabase.rpc("get_my_app_context");
 
   if (error) {
-    if (isNotFoundError(error)) return null;
-
-    if (isMissingHideCalculatorNavColumnError(error)) {
-      let { data: fallbackData, error: fallbackError } = await supabase
-        .from("profiles")
-        .select(PROFILE_SELECT_WITHOUT_HIDE_CALCULATOR_NAV)
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (fallbackError && isMissingEgaisFileRemindersColumnError(fallbackError)) {
-        const fallback = await supabase
-          .from("profiles")
-          .select(PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS_AND_HIDE_CALCULATOR_NAV)
-          .eq("user_id", userId)
-          .maybeSingle();
-        fallbackData = fallback.data;
-        fallbackError = fallback.error;
-      }
-
-      if (!fallbackError) {
-        return fallbackData
-          ? attachWeeklyHours({
-              ...fallbackData,
-              egais_file_reminders_enabled:
-                fallbackData.egais_file_reminders_enabled === true,
-              hide_calculator_nav: false,
-            }, userId)
-          : null;
-      }
-
-      if (isNotFoundError(fallbackError)) return null;
-      throw fallbackError;
+    const details = [error.message, error.details, error.hint, error.code].filter(Boolean).join(" ");
+    if (/get_my_app_context|PGRST202|schema cache|could not find/i.test(details)) {
+      return loadMyAppContextFallback();
     }
-
-    if (isMissingEgaisFileRemindersColumnError(error)) {
-      let { data: fallbackData, error: fallbackError } = await supabase
-        .from("profiles")
-        .select(PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS)
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (fallbackError && isMissingHideCalculatorNavColumnError(fallbackError)) {
-        const fallback = await supabase
-          .from("profiles")
-          .select(PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS_AND_HIDE_CALCULATOR_NAV)
-          .eq("user_id", userId)
-          .maybeSingle();
-        fallbackData = fallback.data;
-        fallbackError = fallback.error;
-      }
-
-      if (!fallbackError) {
-        return fallbackData
-          ? attachWeeklyHours({
-              ...fallbackData,
-              egais_file_reminders_enabled: false,
-              hide_calculator_nav: fallbackData.hide_calculator_nav === true,
-            }, userId)
-          : null;
-      }
-
-      if (isNotFoundError(fallbackError)) return null;
-      throw fallbackError;
-    }
-
-    if (isMissingEmploymentDateColumnError(error)) {
-      const { data: withBranchData, error: withBranchError } = await supabase
-        .from("profiles")
-        .select(PROFILE_SELECT_WITH_BRANCH)
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (!withBranchError) {
-        return withBranchData ? attachWeeklyHours({ ...withBranchData, employment_date: null }, userId) : null;
-      }
-
-      if (!isMissingBranchColumnError(withBranchError)) {
-        if (isNotFoundError(withBranchError)) return null;
-        throw withBranchError;
-      }
-    }
-
-    if (isMissingBranchColumnError(error) || isMissingEmploymentDateColumnError(error)) {
-      const { data: legacyData, error: legacyError } = await supabase
-        .from("profiles")
-        .select(PROFILE_SELECT_LEGACY)
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (legacyError) {
-        if (isNotFoundError(legacyError)) return null;
-        throw legacyError;
-      }
-
-      return legacyData ? attachWeeklyHours({ ...legacyData, branch: null, employment_date: null }, userId) : null;
-    }
-
     throw error;
   }
 
-  return data ? attachWeeklyHours(data, userId) : null;
+  const source = data ?? {};
+  const editorDepartmentKey = source.editor_department_key ?? null;
+
+  return {
+    profile: source.profile ? await attachWeeklyHours(source.profile, userId) : null,
+    membershipDepartmentKey: source.membership_department_key ?? null,
+    editorDepartmentKey,
+    managedDepartment: source.managed_department ?? (editorDepartmentKey
+      ? { key: editorDepartmentKey, name: editorDepartmentKey }
+      : null),
+  };
 }
 
-export function getMyProfile({ fresh = false } = {}) {
-  if (fresh) invalidateMyProfileCache();
-  if (!myProfilePromise) {
-    myProfilePromise = loadMyProfile().catch((error) => {
-      myProfilePromise = null;
+function getMyAppContext({ fresh = false } = {}) {
+  if (fresh) myAppContextPromise = null;
+
+  if (!myAppContextPromise) {
+    myAppContextPromise = loadMyAppContext().catch((error) => {
+      myAppContextPromise = null;
       throw error;
     });
   }
-  return myProfilePromise;
+  return myAppContextPromise;
+}
+
+export function getMyProfile({ fresh = false } = {}) {
+  return getMyAppContext({ fresh }).then((context) => context.profile);
 }
 
 export async function updateMyOklad(oklad) {
@@ -451,11 +472,7 @@ export async function updateMyMoneyPin({
 
 async function loadTimesheetPayload(userId, normalized) {
   const cacheKey = `${userId}:${normalized.year}:${normalized.month}`;
-  if (timesheetPayloadPromises.has(cacheKey)) {
-    return timesheetPayloadPromises.get(cacheKey);
-  }
-
-  const request = (async () => {
+  return memoizeRead(timesheetPayloadPromises, cacheKey, async () => {
     const { data, error } = await supabase
       .from("timesheets")
       .select("payload")
@@ -470,12 +487,7 @@ async function loadTimesheetPayload(userId, normalized) {
     }
 
     return data?.payload ?? null;
-  })().finally(() => {
-    timesheetPayloadPromises.delete(cacheKey);
   });
-
-  timesheetPayloadPromises.set(cacheKey, request);
-  return request;
 }
 
 export async function loadTimesheet(year, month) {
@@ -500,6 +512,9 @@ export async function saveTimesheet(year, month, payload) {
     .upsert(row, { onConflict: "user_id,year,month" });
 
   if (error) throw error;
+  timesheetPayloadPromises.delete(`${userId}:${normalized.year}:${normalized.month}`);
+  clearManagedMonthReadCache(normalized.year, normalized.month);
+  clearTimesheetHistoryReadCaches();
 }
 
 export async function listMyTimesheets(limit = 24) {
@@ -548,18 +563,21 @@ export async function listMyTimesheetsBefore(year, month, options = {}) {
   const select = withPayload
     ? "year, month, payload, updated_at"
     : "year, month, updated_at";
+  const cacheKey = `${userId}:${normalized.year}:${normalized.month}:${withPayload ? "payload" : "meta"}`;
 
-  const { data, error } = await supabase
-    .from("timesheets")
-    .select(select)
-    .eq("user_id", userId)
-    .or(`year.lt.${normalized.year},and(year.eq.${normalized.year},month.lt.${normalized.month})`)
-    .order("year", { ascending: false })
-    .order("month", { ascending: false })
-    .limit(240);
+  return memoizeRead(myTimesheetsBeforePromises, cacheKey, async () => {
+    const { data, error } = await supabase
+      .from("timesheets")
+      .select(select)
+      .eq("user_id", userId)
+      .or(`year.lt.${normalized.year},and(year.eq.${normalized.year},month.lt.${normalized.month})`)
+      .order("year", { ascending: false })
+      .order("month", { ascending: false })
+      .limit(240);
 
-  if (error) throw error;
-  return data ?? [];
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 
 export async function deleteMyTimesheet(year, month) {
@@ -574,6 +592,9 @@ export async function deleteMyTimesheet(year, month) {
     .eq("month", normalized.month);
 
   if (error) throw error;
+  timesheetPayloadPromises.delete(`${userId}:${normalized.year}:${normalized.month}`);
+  clearManagedMonthReadCache(normalized.year, normalized.month);
+  clearTimesheetHistoryReadCaches();
 }
 
 export async function getTimesheetMeta(year, month) {
@@ -596,30 +617,25 @@ export async function getTimesheetMeta(year, month) {
   return data ?? null;
 }
 
-async function getMyEditorDepartmentKey() {
+async function loadMyEditorDepartmentKey() {
   const userId = await requireUserId();
-  if (!myEditorDepartmentKeyPromise) {
-    myEditorDepartmentKeyPromise = (async () => {
-      const { data: editorRow, error: editorError } = await supabase
-        .from("department_editors")
-        .select("department_key")
-        .eq("user_id", userId)
-        .limit(1)
-        .maybeSingle();
+  const { data: editorRow, error: editorError } = await supabase
+    .from("department_editors")
+    .select("department_key")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
 
-      if (editorError) {
-        if (isNotFoundError(editorError)) return null;
-        throw editorError;
-      }
-
-      return editorRow?.department_key ?? null;
-    })().catch((error) => {
-      myEditorDepartmentKeyPromise = null;
-      throw error;
-    });
+  if (editorError) {
+    if (isNotFoundError(editorError)) return null;
+    throw editorError;
   }
 
-  return myEditorDepartmentKeyPromise;
+  return editorRow?.department_key ?? null;
+}
+
+function getMyEditorDepartmentKey() {
+  return getMyAppContext().then((context) => context.editorDepartmentKey);
 }
 
 export async function reportMyShiftUnavailable(year, month, day) {
@@ -657,25 +673,7 @@ export async function findMyShiftReplacementCandidates(year, month, day) {
 }
 
 export function getMyManagedDepartment({ fresh = false } = {}) {
-  if (fresh) {
-    myEditorDepartmentKeyPromise = null;
-    myManagedDepartmentPromise = null;
-  }
-
-  if (!myManagedDepartmentPromise) {
-    myManagedDepartmentPromise = (async () => {
-      const departmentKey = await getMyEditorDepartmentKey();
-      if (!departmentKey) return null;
-
-      const department = await getDepartmentByKey(departmentKey);
-      return department ?? { key: departmentKey, name: departmentKey };
-    })().catch((error) => {
-      myManagedDepartmentPromise = null;
-      throw error;
-    });
-  }
-
-  return myManagedDepartmentPromise;
+  return getMyAppContext({ fresh }).then((context) => context.managedDepartment);
 }
 
 export async function getDepartmentByKey(departmentKey) {
@@ -824,14 +822,17 @@ export async function listManagedDepartmentMembers(departmentKey) {
 
 export async function listEgaisDepartmentTimesheetView(year, month) {
   const normalized = assertValidYearMonth(year, month);
+  const cacheKey = `${normalized.year}:${normalized.month}`;
 
-  const { data, error } = await supabase.rpc("list_egais_department_timesheet_view", {
-    p_year: normalized.year,
-    p_month: normalized.month,
+  return memoizeRead(egaisTimesheetViewPromises, cacheKey, async () => {
+    const { data, error } = await supabase.rpc("list_egais_department_timesheet_view", {
+      p_year: normalized.year,
+      p_month: normalized.month,
+    });
+
+    if (error) throw error;
+    return data ?? [];
   });
-
-  if (error) throw error;
-  return data ?? [];
 }
 
 function isMissingDepartmentMemberOrderColumnError(error) {
@@ -867,7 +868,7 @@ export async function setDepartmentMemberOrder(departmentKey, userIds) {
 
 export async function saveMyTimesheetActual(year, month, actual, status = "draft") {
   const normalized = assertValidYearMonth(year, month);
-  await requireUserId();
+  const userId = await requireUserId();
 
   const { error } = await supabase.rpc("save_my_timesheet_actual", {
     p_year: normalized.year,
@@ -877,6 +878,9 @@ export async function saveMyTimesheetActual(year, month, actual, status = "draft
   });
 
   if (error) throw error;
+  timesheetPayloadPromises.delete(`${userId}:${normalized.year}:${normalized.month}`);
+  clearManagedMonthReadCache(normalized.year, normalized.month);
+  clearTimesheetHistoryReadCaches();
 }
 
 export async function managedLoadTimesheets(userIds, year, month) {
@@ -888,15 +892,20 @@ export async function managedLoadTimesheets(userIds, year, month) {
   if (!ids.length) return [];
 
   const normalized = assertValidYearMonth(year, month);
-  const { data, error } = await supabase
-    .from("timesheets")
-    .select("user_id, payload, updated_at")
-    .in("user_id", ids)
-    .eq("year", normalized.year)
-    .eq("month", normalized.month);
+  ids.sort();
+  const cacheKey = `${normalized.year}:${normalized.month}:${ids.join(",")}`;
 
-  if (error) throw error;
-  return data ?? [];
+  return memoizeRead(managedTimesheetPromises, cacheKey, async () => {
+    const { data, error } = await supabase
+      .from("timesheets")
+      .select("user_id, payload, updated_at")
+      .in("user_id", ids)
+      .eq("year", normalized.year)
+      .eq("month", normalized.month);
+
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 
 export async function managedListTimesheetsBefore(userIds, year, month) {
@@ -909,18 +918,22 @@ export async function managedListTimesheetsBefore(userIds, year, month) {
   if (!ids.length) return [];
 
   const normalized = assertValidYearMonth(year, month);
+  ids.sort();
+  const cacheKey = `${normalized.year}:${normalized.month}:${ids.join(",")}`;
 
-  const { data, error } = await supabase
-    .from("timesheets")
-    .select("user_id, year, month, payload")
-    .in("user_id", ids)
-    .or(`year.lt.${normalized.year},and(year.eq.${normalized.year},month.lt.${normalized.month})`)
-    .order("year", { ascending: false })
-    .order("month", { ascending: false })
-    .limit(5000);
+  return memoizeRead(managedTimesheetsBeforePromises, cacheKey, async () => {
+    const { data, error } = await supabase
+      .from("timesheets")
+      .select("user_id, year, month, payload")
+      .in("user_id", ids)
+      .or(`year.lt.${normalized.year},and(year.eq.${normalized.year},month.lt.${normalized.month})`)
+      .order("year", { ascending: false })
+      .order("month", { ascending: false })
+      .limit(5000);
 
-  if (error) throw error;
-  return data ?? [];
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 
 export async function managedSaveManyTimesheets(departmentKey, items) {
@@ -947,6 +960,11 @@ export async function managedSaveManyTimesheets(departmentKey, items) {
   });
 
   if (error) throw error;
+  for (const row of normalizedRows) {
+    clearManagedMonthReadCache(row.year, row.month);
+    timesheetPayloadPromises.delete(`${row.user_id}:${row.year}:${row.month}`);
+  }
+  clearTimesheetHistoryReadCaches();
   return Array.isArray(data?.versions) ? data.versions : [];
 }
 
@@ -1220,16 +1238,7 @@ export async function disableMyPushSubscription(endpoint) {
 }
 
 export function getMyDepartmentMembershipKey({ fresh = false } = {}) {
-  if (fresh) myDepartmentMembershipPromise = null;
-
-  if (!myDepartmentMembershipPromise) {
-    myDepartmentMembershipPromise = loadMyDepartmentMembershipKey().catch((error) => {
-      myDepartmentMembershipPromise = null;
-      throw error;
-    });
-  }
-
-  return myDepartmentMembershipPromise;
+  return getMyAppContext({ fresh }).then((context) => context.membershipDepartmentKey);
 }
 
 async function loadMyDepartmentMembershipKey() {

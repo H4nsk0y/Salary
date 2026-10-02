@@ -2,7 +2,7 @@ import { requireSession } from "../auth.js";
 import { getMyProfile } from "../db.js";
 import { getProductionCalendarMonth } from "../productionCalendar.js";
 import { SHIFT_CYCLES, planCoveredShiftCycle } from "./shiftCycles.js";
-import { planEightHourTemplate, planTeamNormFills, planTeamOvertimeReductions } from "./scheduleTools.js";
+import { planEightHourTemplate, planTeamNormFills, planTeamOvertimeReductions } from "./scheduleTools.js?v=20261002-2";
 import { planBottlingSchedule } from "./bottlingSchedule.js";
 
 const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
