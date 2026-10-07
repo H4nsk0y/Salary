@@ -738,6 +738,16 @@ export async function listManagedDepartmentMembers(departmentKey) {
   const key = String(departmentKey ?? "").trim();
   if (!key) throw new Error("Не указан отдел.");
 
+  const secured = await supabase.rpc("list_managed_department_members", { p_department_key: key });
+  if (!secured.error) {
+    return (secured.data ?? [])
+      .map((row) => ({ ...row, weekly_hours: normalizeWeeklyHours(row.weekly_hours) }))
+      .filter((member) => isProfileCompleteForTimesheet(member));
+  }
+  const securedError = [secured.error.code, secured.error.message, secured.error.details].filter(Boolean).join(" ");
+  // Compatibility before 066 is deployed; never fall back after an access denial.
+  if (!/PGRST202|42883/.test(securedError)) throw secured.error;
+
   let { data: memberRows, error: membersError } = await supabase
     .from("department_members")
     .select("user_id, sort_order, created_at")

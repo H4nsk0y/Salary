@@ -20,6 +20,7 @@ import { startPresenceHeartbeat } from "./presence.js";
 import { confirmDialog } from "./modal.js";
 import { setupOwnerUserControl } from "./ownerUserControl.js";
 import { setUiStatus } from "./uiStatus.js";
+import { safeAvatarUrl } from "./features/safeAvatarUrl.js";
 
 document.body.classList.add("is-loaded");
 
@@ -191,7 +192,7 @@ function createAvatar(row, displayName) {
   wrap.className =
     "grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl bg-indigo-500/15 text-base font-bold text-indigo-100 ring-1 ring-indigo-400/25";
 
-  const avatarUrl = String(row?.avatar_url ?? "").trim();
+  const avatarUrl = safeAvatarUrl(row?.avatar_url, row?.user_id);
   if (!avatarUrl) {
     wrap.textContent = getInitials(displayName);
     return wrap;
@@ -199,6 +200,7 @@ function createAvatar(row, displayName) {
 
   const img = document.createElement("img");
   img.src = avatarUrl;
+  img.referrerPolicy = "no-referrer";
   img.alt = "";
   img.className = "h-full w-full object-cover";
   img.addEventListener("error", () => {

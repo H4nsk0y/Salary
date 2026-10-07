@@ -189,8 +189,9 @@ serve(async (req) => {
     const isIdeaSubmitted = type === "project_idea_submitted";
     const isShiftUnavailable = type === "shift_unavailable";
     const isInactiveUsersReport = type === "owner_inactive_users_report";
+    const isOwnerLogin = type === "owner_login";
     const cronSecret = Deno.env.get("CRON_SECRET") || "";
-    const trustedCron = isInactiveUsersReport && Boolean(cronSecret) && constantTimeEqual(
+    const trustedCron = (isInactiveUsersReport || isOwnerLogin) && Boolean(cronSecret) && constantTimeEqual(
       req.headers.get("x-cron-secret") || "",
       cronSecret,
     );
@@ -198,7 +199,7 @@ serve(async (req) => {
     const lookbackMinutes = Math.min(60, Math.max(1, Number(body.lookbackMinutes) || 10));
     const limit = Math.min(200, Math.max(1, Number(body.limit) || 100));
 
-    if (!departmentKey && !allUsers && !isPushTest && !isIdeaSubmitted && !isInactiveUsersReport) {
+    if (!departmentKey && !allUsers && !isPushTest && !isIdeaSubmitted && !isInactiveUsersReport && !isOwnerLogin) {
       return jsonResponse({ error: "DEPARTMENT_REQUIRED" }, 400);
     }
 
@@ -207,6 +208,8 @@ serve(async (req) => {
       : null;
     const allowed = trustedCron
       ? true
+      : isOwnerLogin
+      ? await verifyOwnerAccess({ supabaseUrl, supabaseAnonKey, authorization })
       : isPushTest
       ? Boolean(authenticatedUserId)
       : isIdeaSubmitted
@@ -292,7 +295,7 @@ serve(async (req) => {
       notificationsQuery = notificationsQuery
         .eq("department_key", departmentKey)
         .eq("actor_user_id", authenticatedUserId);
-    } else if (!allUsers) {
+    } else if (!allUsers && !isOwnerLogin) {
       notificationsQuery = notificationsQuery.eq("department_key", departmentKey);
     }
 

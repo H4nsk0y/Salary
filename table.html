@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles/pages/table.css?v=20260921-1" />
+  <link rel="stylesheet" href="./styles/pages/table.css?v=20261007-1" />
   <link rel="stylesheet" href="./styles/page-loader.css?v=20261002-1" />
 </head>
 
@@ -64,6 +64,14 @@
             <span class="sr-only">Табель отдела</span>
           </a>
 
+          <button id="draftBtn" type="button" class="timesheet-icon-action hidden" aria-label="Черновик" data-tooltip="Черновик">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h10M4 4v16h16v-9M13 15l-4 1 1-4L19 3l3 3z"></path></svg>
+            <span class="sr-only">Черновик</span>
+          </button>
+          <a id="realTimesheetLink" class="timesheet-icon-action hidden" href="table.html" aria-label="Рабочий табель" data-tooltip="Рабочий табель">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+            <span class="sr-only">Рабочий табель</span>
+          </a>
           <button id="saveBtn" type="button" class="timesheet-icon-action timesheet-icon-action-save"
             aria-label="Сохранить" data-tooltip="Сохранить">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l2 2v16H5z"></path><path d="M8 3v6h8V3M8 21v-8h8v8"></path></svg>
@@ -132,6 +140,7 @@
 
     <div id="errorBox" class="hidden mb-6 rounded-2xl bg-rose-500/15 p-4 text-sm text-rose-200 ring-1 ring-rose-500/25 backdrop-blur-sm"></div>
 
+    <div id="draftNotice" class="hidden mb-6 rounded-lg border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm leading-6 text-amber-200">Черновик: расчёт по вашим пробным сменам. Изменения не сохраняются и исчезнут после закрытия или обновления вкладки.</div>
     <div id="readOnlyNotice" class="hidden mb-6 rounded-lg border border-sky-300/20 bg-sky-400/10 px-4 py-3 text-sm leading-6 text-sky-100">
       Табель ЕГАИС доступен только для просмотра. Если не сможете выйти на назначенную смену, выберите её и нажмите соответствующий значок сверху.
     </div>

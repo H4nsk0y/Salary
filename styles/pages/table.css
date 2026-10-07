@@ -1355,3 +1355,14 @@
       .timesheet-day-editor-backdrop { align-items: end; padding: 0; }
       .timesheet-day-editor-dialog { width: 100%; border-radius: 12px 12px 0 0; padding-bottom: env(safe-area-inset-bottom); }
     }
+.payment-explained { position: relative; padding-right: 48px !important; }
+.payment-help { position: absolute; right: 9px; top: 9px; width: 30px; height: 30px; border: 1px solid rgba(241,238,232,.18); border-radius: 50%; background: transparent; color: #f1eee8; opacity: .5; font: 600 15px/1 Inter,system-ui,sans-serif; cursor: pointer; }
+.payment-help:hover, .payment-help:focus-visible { opacity: 1; border-color: #c6a15b; }
+.payment-explanation-dialog { box-sizing: border-box; width: min(560px, calc(100% - 32px)); max-height: calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); margin: auto; padding: 0; overflow: hidden; border: 1px solid rgba(241,238,232,.18); border-radius: 8px; color: #f1eee8; background: #15191d; box-shadow: 0 24px 80px #0008; }
+.payment-explanation-dialog::backdrop { background: #050607cc; backdrop-filter: blur(5px); }
+.payment-explanation-dialog[open] { display: flex; flex-direction: column; }
+.payment-explanation-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; border-bottom: 1px solid #ffffff18; flex-shrink: 0; }
+.payment-explanation-dialog h2 { font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+.payment-explanation-dialog header button { flex-shrink: 0; width: 40px; height: 40px; border-radius: 6px; background: #ffffff0a; color: #f1eee8; font-size: 25px; cursor: pointer; }
+.payment-explanation-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px; font-size: 14px; line-height: 1.7; }
+.payment-explanation-body p + p { margin-top: 16px; color: #dfc48d; }

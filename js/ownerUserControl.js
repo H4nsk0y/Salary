@@ -5,6 +5,7 @@ import {
   ownerUpdateUserProfile,
 } from "./db.js";
 import { alertDialog, confirmDialog } from "./modal.js";
+import { safeAvatarUrl } from "./features/safeAvatarUrl.js";
 
 const MONTH_NAMES = [
   "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -264,7 +265,7 @@ export function setupOwnerUserControl({
       return;
     }
 
-    const avatarUrl = String(row?.avatar_url || "").trim();
+    const avatarUrl = safeAvatarUrl(row?.avatar_url, row?.user_id);
     if (!avatarUrl) {
       avatar.textContent = initials(displayName(row));
       return;
@@ -272,6 +273,7 @@ export function setupOwnerUserControl({
 
     const image = document.createElement("img");
     image.src = avatarUrl;
+    image.referrerPolicy = "no-referrer";
     image.alt = "";
     image.className = "h-full w-full object-cover";
     image.addEventListener("error", () => {
@@ -543,6 +545,7 @@ export function setupOwnerUserControl({
       editor_revoked: "Сняты права редактора",
       password_recovery_sent: "Отправлено восстановление пароля",
       sessions_revoked: "Завершены активные сессии",
+      owner_login: "Вход в аккаунт владельца",
       user_blocked: "Вход заблокирован",
       user_unblocked: "Вход разблокирован",
       user_deleted: "Аккаунт удалён",
@@ -551,6 +554,9 @@ export function setupOwnerUserControl({
 
   function auditDescription(entry) {
     const details = entry?.details || {};
+    if (entry.action === "owner_login") {
+      return `${details.device || "Устройство не определено"}, ${details.browser || "Браузер не определён"}. IP: ${details.ip || "не определён"}`;
+    }
     if (entry.action === "department_changed") {
       const before = details.before ? getDepartments?.().find((item) => item.key === details.before)?.name || details.before : "Без отдела";
       const after = details.after ? getDepartments?.().find((item) => item.key === details.after)?.name || details.after : "Без отдела";

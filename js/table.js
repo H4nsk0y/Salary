@@ -43,6 +43,8 @@ import {
   restoreUnfocusedNumericInput,
 } from "./timesheetInput.js?v=20260906-2";
 import { confirmDialog } from "./modal.js";
+import { setupPaymentExplanations } from "./features/paymentExplanations.js";
+
 import {
   CHATEAU_ALVISA_BRANCH,
   DEFAULT_DAY_HOURS,
@@ -64,6 +66,26 @@ import {
   sanitizeLeaveDisplayValue,
   sanitizeNumericValue,
 } from "./features/timesheetValues.js";
+
+const isDraftMode = new URL(location.href).searchParams.get("draft") === "1";
+let draftSeed = null;
+const draftSeedReady = isDraftMode && window.opener ? new Promise((resolve) => {
+  const source = window.opener;
+  const receive = (event) => {
+    if (event.origin !== location.origin || event.source !== source || event.data?.type !== "alvisa-draft-seed") return;
+    draftSeed = event.data.seed;
+    finish();
+  };
+  const finish = () => {
+    window.removeEventListener("message", receive);
+    clearTimeout(timeout);
+    window.opener = null;
+    resolve();
+  };
+  const timeout = setTimeout(finish, 5000);
+  window.addEventListener("message", receive);
+  source.postMessage({ type: "alvisa-draft-ready" }, location.origin);
+}) : Promise.resolve();
 
 document.body.classList.add("is-loaded");
 
@@ -215,6 +237,16 @@ let showWorkDepartureDaysOnly = false;
 
 function applyPersonalTimesheetEditability() {
   readOnlyNotice?.classList.toggle("hidden", !personalTimesheetReadOnly);
+  document.getElementById("draftNotice")?.classList.toggle("hidden", !isDraftMode);
+  document.getElementById("draftBtn")?.classList.toggle("hidden", isDraftMode || profileRole === "owner");
+  document.getElementById("realTimesheetLink")?.classList.toggle("hidden", !isDraftMode);
+  if (isDraftMode) {
+    const heading = document.querySelector(".timesheet-heading span");
+    if (heading) heading.textContent = "Черновик табеля";
+    document.title = "Черновик табеля — ALVISA SALARY";
+  }
+  document.querySelector(".actual-payments-panel")?.classList.toggle("hidden", isDraftMode);
+  if (saveBtn) saveBtn.classList.toggle("hidden", isDraftMode);
 
   if (saveBtn) {
     saveBtn.disabled = personalTimesheetReadOnly;
@@ -2752,6 +2784,11 @@ function doSaveTimesheet() {
 }
 
 async function saveTimesheetNow() {
+  if (isDraftMode) {
+    dirty = false;
+    setSaveStatus("Черновик — без сохранения", "neutral");
+    return true;
+  }
   if (!monthDataLoaded) {
     setError("Табель еще не загружен. Выберите месяц повторно.");
     return false;
@@ -2809,6 +2846,10 @@ async function saveTimesheetNow() {
 }
 
 function scheduleSave() {
+  if (isDraftMode) {
+    setSaveStatus("Черновик — без сохранения", "neutral");
+    return;
+  }
   if (!monthDataLoaded) return;
   markDirty();
   if (timesheetSaveTimer) clearTimeout(timesheetSaveTimer);
@@ -3676,8 +3717,11 @@ function queueAdjacentMonthPrefetch(targetYear, targetMonth) {
 async function loadCurrentMonthFromDb(targetYear = year, targetMonth = month) {
   setSaveStatus("Загружаю…", "busy");
   try {
+    await draftSeedReady;
     const [payload, previousRows, productionCalendar] = await Promise.all([
-      loadTimesheet(targetYear, targetMonth),
+      isDraftMode && draftSeed?.year === targetYear && draftSeed?.month === targetMonth
+        ? Promise.resolve(structuredClone(draftSeed.payload))
+        : loadTimesheet(targetYear, targetMonth),
       listMyTimesheetsBefore(targetYear, targetMonth, { withPayload: true }),
       getProductionCalendarMonth(targetYear, targetMonth, { branch: profileBranch }),
     ]);
@@ -3686,6 +3730,11 @@ async function loadCurrentMonthFromDb(targetYear = year, targetMonth = month) {
     buildTableForMonth();
     dismissedBeforeMonth = previousRows.some((row) => payloadHasDismissal(row?.payload));
     applyPayload(payload);
+    if (isDraftMode) {
+      currentPaySummary.actual = createEmptyPaySummary().actual;
+      fillActualInputsFromState();
+      draftSeed = null;
+    }
     productionCalendarVersion = productionCalendar?.version ?? null;
     if (shouldApplyProductionCalendar(payload, productionCalendar)) {
       isHoliday = productionCalendar.isHoliday.map(Boolean);
@@ -3707,6 +3756,11 @@ async function loadCurrentMonthFromDb(targetYear = year, targetMonth = month) {
       setSaveStatus("Новый табель", "neutral");
     }
     setError(null);
+    if (isDraftMode) {
+      setSaveStatus("Черновик — без сохранения", "neutral");
+      const backLink = document.getElementById("realTimesheetLink");
+      if (backLink) backLink.href = `table.html?year=${year}&month=${month}`;
+    }
     queueAdjacentMonthPrefetch(targetYear, targetMonth);
     return true;
   } catch (e) {
@@ -3838,6 +3892,32 @@ function updateDayMarkClasses(index) {
 }
 
 saveBtn?.addEventListener("click", async () => { await doSaveTimesheet(); });
+
+document.getElementById("draftBtn")?.addEventListener("click", () => {
+  if (!monthDataLoaded || isDraftMode) return;
+  const draftWindow = window.open(`table.html?year=${year}&month=${month}&draft=1`, "_blank");
+  if (!draftWindow) {
+    setError("Разрешите открытие новой вкладки, чтобы открыть черновик.");
+    return;
+  }
+  const seed = { year, month, payload: structuredClone(currentPayload()) };
+  const receive = (event) => {
+    if (event.origin !== location.origin || event.source !== draftWindow || event.data?.type !== "alvisa-draft-ready") return;
+    draftWindow.postMessage({ type: "alvisa-draft-seed", seed }, location.origin);
+    window.removeEventListener("message", receive);
+    clearTimeout(timeout);
+  };
+  const timeout = setTimeout(() => window.removeEventListener("message", receive), 30000);
+  window.addEventListener("message", receive);
+});
+
+setupPaymentExplanations({
+  getContext: () => ({ calculated: currentPaySummary.calculated, actual: currentPaySummary.actual,
+    firstHalfDay: sumRange(dayHours, 0, Math.min(14, daysInMonth - 1)),
+    firstHalfNight: sumRange(nightHours, 0, Math.min(14, daysInMonth - 1)),
+    holiday: holidayWorkedTotals(), draft: isDraftMode }),
+  ensureAccess: () => ensureTableMoneyAccess(),
+});
 
 findReplacementBtn?.addEventListener("click", () => {
   void findSelectedShiftReplacement(selectedShiftIndex);
@@ -3976,7 +4056,7 @@ tableScrollable?.addEventListener("pointermove", handleMyShiftCommentPointerMove
     return;
   }
 
-  startPresenceHeartbeat("Личный табель");
+  if (!isDraftMode) startPresenceHeartbeat("Личный табель");
 
   let profile = null;
 
@@ -4017,10 +4097,11 @@ updateUrlForMonth();
     getMyManagedDepartment().catch(() => null),
   ]);
 
-  canReportShiftUnavailable = Boolean(membershipDepartmentKey);
-  canFindShiftReplacement = Boolean(membershipDepartmentKey);
+  canReportShiftUnavailable = !isDraftMode && Boolean(membershipDepartmentKey);
+  canFindShiftReplacement = !isDraftMode && Boolean(membershipDepartmentKey);
 
   personalTimesheetReadOnly =
+    !isDraftMode &&
     profileRole !== "owner" &&
     membershipDepartmentKey === "egais" &&
     managedDepartment?.key !== "egais";
