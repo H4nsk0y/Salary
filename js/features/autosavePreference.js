@@ -1,4 +1,21 @@
 const AUTOSAVE_DISABLED_KEY = "alvisa:timesheet-autosave-disabled";
+const LEAVE_WARNING_KEY = "alvisa:timesheet-leave-warning";
+
+export function isManualSaveWarningEnabled() {
+  try {
+    return isTimesheetAutosaveDisabled() && localStorage.getItem(LEAVE_WARNING_KEY) !== "0";
+  } catch {
+    return isTimesheetAutosaveDisabled();
+  }
+}
+
+export function setManualSaveWarningEnabled(enabled) {
+  try {
+    localStorage.setItem(LEAVE_WARNING_KEY, enabled ? "1" : "0");
+  } catch {
+    // Managed browsers may deny local storage access.
+  }
+}
 
 export function isTimesheetAutosaveDisabled() {
   try {

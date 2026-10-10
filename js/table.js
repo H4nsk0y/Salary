@@ -4,7 +4,7 @@ import { requireSession } from "./auth.js";
 import { findMyShiftReplacementCandidates, getMyProfile, getMyDepartmentMembershipKey, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, reportMyShiftUnavailable, saveMyTimesheetActual, saveTimesheet, sendPushNotifications } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { setUiStatus } from "./uiStatus.js";
-import { isTimesheetAutosaveDisabled } from "./features/autosavePreference.js";
+import { isTimesheetAutosaveDisabled, isManualSaveWarningEnabled } from "./features/autosavePreference.js";
 import { scheduleAdjacentMonthPrefetch } from "./features/monthPrefetch.js";
 import { createSerialTaskQueue } from "./asyncTasks.js";
 import {
@@ -3996,6 +3996,19 @@ useProfileOkladBtn?.addEventListener("click", () => {
 
 async function changeTimesheetMonth() {
   if (monthTransitionPending) return;
+  if (dirty && !isDraftMode && isManualSaveWarningEnabled()) {
+    const approved = await confirmDialog({
+      title: "Есть несохранённые изменения",
+      message: "Перед сменой месяца текущий табель будет сохранён.",
+      confirmText: "Сохранить и перейти",
+      cancelText: "Остаться",
+    });
+    if (!approved) {
+      yearSelect.value = String(year);
+      monthSelect.value = String(month);
+      return;
+    }
+  }
   const nextYear = Number(yearSelect.value);
   const nextMonth = Number(monthSelect.value);
   const previousYear = year;
@@ -4024,6 +4037,12 @@ async function changeTimesheetMonth() {
     if (shell) shell.inert = false;
   }
 }
+
+window.addEventListener("beforeunload", (event) => {
+  if (!dirty || isDraftMode || !isManualSaveWarningEnabled()) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
 
 monthSelect?.addEventListener("change", changeTimesheetMonth);
 yearSelect?.addEventListener("change", changeTimesheetMonth);

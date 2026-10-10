@@ -119,9 +119,13 @@ serve(async (req) => {
 
     const now = new Date();
     const today = dateParts(now);
-    if (today.hour !== 17 || today.minute > 20) {
+    const startKind = today.minute >= 5 && today.minute <= 20
+      ? today.hour === 8 ? "day" : today.hour === 20 ? "night" : null
+      : null;
+    if (!startKind && (today.hour !== 17 || today.minute > 20)) {
       return response({ ok: true, skipped: "OUTSIDE_REMINDER_TIME" });
     }
+    const reminderType = startKind ? `shift_start_checklist_${startKind}` : REMINDER_TYPE;
     const tomorrow = dateParts(new Date(now.getTime() + 24 * 60 * 60 * 1000));
     const dayAfterTomorrow = dateParts(new Date(now.getTime() + 48 * 60 * 60 * 1000));
 
@@ -141,6 +145,16 @@ serve(async (req) => {
 
     const userIds = [...new Set((subscriptions ?? []).map((row: any) => String(row.user_id)).filter(Boolean))];
     if (!userIds.length) return response({ ok: true, users: 0, sent: 0 });
+    const leaders = new Set<string>();
+    if (startKind) {
+      const { data: leaderRows, error: leadersError } = await client
+        .from("department_editors")
+        .select("user_id")
+        .eq("is_leader", true)
+        .in("user_id", userIds);
+      if (leadersError) throw leadersError;
+      for (const row of leaderRows ?? []) leaders.add(String(row.user_id));
+    }
 
     const monthPairs = [...new Set([today, tomorrow, dayAfterTomorrow].map((part) => `${part.year}:${part.month - 1}`))]
       .map((pair) => pair.split(":").map(Number));
@@ -165,7 +179,7 @@ serve(async (req) => {
     const { data: existing, error: existingError } = await client
       .from("user_notifications")
       .select("user_id")
-      .eq("type", REMINDER_TYPE)
+      .eq("type", reminderType)
       .gte("created_at", moscowDayStartUtc)
       .in("user_id", userIds);
     if (existingError) throw existingError;
@@ -174,6 +188,7 @@ serve(async (req) => {
     const pending: any[] = [];
     for (const userId of userIds) {
       if (alreadyNotified.has(userId)) continue;
+      if (startKind && leaders.has(userId)) continue;
       const todayPayload = payloadFor(userId, today);
       const tomorrowPayload = payloadFor(userId, tomorrow);
       const afterPayload = payloadFor(userId, dayAfterTomorrow);
@@ -181,16 +196,19 @@ serve(async (req) => {
       const tonightNight = tonight?.kind === "night" ? tonight : null;
       const nextDay = shiftDescription(tomorrowPayload, tomorrow.day - 1, afterPayload, dayAfterTomorrow.day - 1);
       const tomorrowNonNight = nextDay?.kind === "night" ? null : nextDay;
-      const shift = tonightNight ?? tomorrowNonNight;
+      const shift = startKind
+        ? tonight && (startKind === "night" ? tonight.kind === "night" : tonight.kind === "day") ? tonight : null
+        : tonightNight ?? tomorrowNonNight;
       if (!shift) continue;
 
       pending.push({
         user_id: userId,
         actor_user_id: null,
-        type: REMINDER_TYPE,
-        title: "Ближайшая смена",
-        body: `${tonightNight ? "Сегодня" : "Завтра"} у вас ${shift.text}. Проверьте график и не забудьте заполнить чек-лист.`,
-        url: "table.html",
+        type: reminderType,
+        title: startKind ? "Чек-лист на смену" : "Ближайшая смена",
+        body: startKind ? "Заполните чек-лист на смену, чтобы ничего не забыть!"
+          : `${tonightNight ? "Сегодня" : "Завтра"} у вас ${shift.text}. Проверьте график и не забудьте заполнить чек-лист.`,
+        url: startKind ? "checklist.html" : "table.html",
         expires_at: new Date(now.getTime() + 36 * 60 * 60 * 1000).toISOString(),
       });
     }
@@ -219,7 +237,7 @@ serve(async (req) => {
             title: notification.title,
             body: notification.body,
             url: notification.url,
-            tag: `alvisa-upcoming-shift-${notification.id}`,
+            tag: `alvisa-${reminderType}-${notification.id}`,
           }));
           sent += 1;
           userSent += 1;

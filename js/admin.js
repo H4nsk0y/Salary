@@ -44,7 +44,7 @@ import {
   getMatrixSelectionBounds,
   isMatrixCellInBounds,
 } from "./features/matrixSelection.js";
-import { isTimesheetAutosaveDisabled } from "./features/autosavePreference.js";
+import { isTimesheetAutosaveDisabled, isManualSaveWarningEnabled } from "./features/autosavePreference.js";
 import { scheduleAdjacentMonthPrefetch } from "./features/monthPrefetch.js";
 import { filterAuditEntries } from "./features/auditSearch.js";
 import {
@@ -3384,6 +3384,19 @@ document.addEventListener("keydown", handleMatrixSelectionKeyDown);
 
 async function changeDepartmentMonth() {
   if (monthTransitionPending) return;
+  if (dirty && isManualSaveWarningEnabled()) {
+    const approved = await confirmDialog({
+      title: "Есть несохранённые изменения",
+      message: "Перед сменой месяца текущий табель будет сохранён.",
+      confirmText: "Сохранить и перейти",
+      cancelText: "Остаться",
+    });
+    if (!approved) {
+      yearSelect.value = String(year);
+      monthSelect.value = String(month);
+      return;
+    }
+  }
   const nextYear = Number(yearSelect.value);
   const nextMonth = Number(monthSelect.value);
   const previousYear = year;
@@ -3433,7 +3446,7 @@ window.addEventListener("resize", () => {
 });
 
 window.addEventListener("beforeunload", (e) => {
-  if (!dirty) return;
+  if (!dirty || !isManualSaveWarningEnabled()) return;
   e.preventDefault();
   e.returnValue = "";
 });

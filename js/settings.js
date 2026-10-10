@@ -13,6 +13,7 @@ import {
 import { reportHandledClientError } from "./errorLogger.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { setUiStatus } from "./uiStatus.js";
+import { confirmDialog } from "./modal.js";
 import {
   getScreenWakeState,
   setScreenWakeEnabled,
@@ -34,6 +35,8 @@ import {
 import {
   isTimesheetAutosaveDisabled,
   setTimesheetAutosaveDisabled,
+  isManualSaveWarningEnabled,
+  setManualSaveWarningEnabled,
 } from "./features/autosavePreference.js";
 
 const statusPill = document.getElementById("statusPill");
@@ -53,6 +56,15 @@ const pwaInstallBtn = document.getElementById("pwaInstallBtn");
 const pwaInstallHint = document.getElementById("pwaInstallHint");
 const pwaStatusBadge = document.getElementById("pwaStatusBadge");
 const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+const resetSettingsBtn = document.getElementById("resetSettingsBtn");
+const manualSaveWarningToggle = document.getElementById("manualSaveWarningToggle");
+const manualSaveWarningRow = document.getElementById("manualSaveWarningRow");
+const pushStatusBadge = document.getElementById("pushStatusBadge");
+
+function syncManualSaveWarning() {
+  manualSaveWarningRow.hidden = !isTimesheetAutosaveDisabled();
+  manualSaveWarningToggle.checked = isManualSaveWarningEnabled();
+}
 
 let canUseEgaisFileReminders = false;
 
@@ -102,6 +114,7 @@ function syncToggle() {
   if (disableTimesheetAutosaveToggle) {
     disableTimesheetAutosaveToggle.checked = isTimesheetAutosaveDisabled();
   }
+  syncManualSaveWarning();
 
   egaisFileRemindersRow?.classList.toggle("hidden", !canUseEgaisFileReminders);
   if (egaisFileRemindersToggle) {
@@ -207,6 +220,8 @@ async function loadSettings() {
 
   pendingSettings = cloneSettings(currentSettings);
   syncToggle();
+  saveSettingsBtn.disabled = false;
+  resetSettingsBtn.disabled = false;
 
   if (profile?.hide_money === true && !hasMoneyPin(profile)) {
     setStatus("Нужно задать PIN", "err");
@@ -310,6 +325,10 @@ function applyPushButtonState(state) {
   if (!pushNotificationsBtn || !pushNotificationsHint) return;
 
   pushNotificationsBtn.disabled = false;
+  pushStatusBadge.textContent = !state?.supported ? "Не поддерживается"
+    : !state?.configured ? "Не настроено"
+    : state.permission === "denied" ? "Запрещены браузером"
+    : state.subscribed ? "Браузер подключён" : "Устройство не подключено";
   pushTestBtn?.classList.toggle("hidden", !state?.subscribed);
   pushNotificationsBtn.classList.remove("text-emerald-200", "ring-emerald-400/20", "text-rose-200", "ring-rose-400/20");
 
@@ -332,7 +351,7 @@ function applyPushButtonState(state) {
     pushNotificationsBtn.textContent = "Проверить снова";
     pushNotificationsBtn.classList.add("text-rose-200", "ring-rose-400/20");
     pushNotificationsHint.textContent =
-      "Браузер не выдаёт разрешение. Если окно было случайно закрыто, попробуйте ещё раз или разрешите уведомления в настройках сайта.";
+      "Разрешите уведомления в настройках этого сайта в браузере, затем нажмите «Проверить снова». Повторный запрос не снимает запрет браузера.";
     return;
   }
 
@@ -355,6 +374,7 @@ async function refreshPushNotificationState() {
   try {
     applyPushButtonState(await getPushNotificationState());
   } catch (e) {
+    pushStatusBadge.textContent = "Не удалось проверить";
     pushNotificationsBtn.disabled = true;
     pushNotificationsBtn.textContent = "Ошибка";
     if (pushNotificationsHint) {
@@ -461,6 +481,8 @@ async function saveSettings() {
   }
 
   setStatus("Сохраняю…", "busy");
+  saveSettingsBtn.disabled = true;
+  resetSettingsBtn.disabled = true;
   setError(null);
 
   try {
@@ -487,6 +509,40 @@ async function saveSettings() {
     syncToggle();
     setStatus("Ошибка сохранения", "err");
     setError(e?.message || "Не удалось сохранить настройки.");
+  } finally {
+    saveSettingsBtn.disabled = false;
+    resetSettingsBtn.disabled = false;
+  }
+}
+
+async function resetSettings() {
+  const approved = await confirmDialog({
+    title: "Сбросить настройки?",
+    message: "Настройки интерфейса и суточных напоминаний вернутся к исходным. Автосохранение включится, удержание экрана отключится на этом устройстве. Профиль, табели, защита выплат с PIN и подключённые push-уведомления сохранятся.",
+    confirmText: "Сбросить",
+    cancelText: "Отмена",
+  });
+  if (!approved) return;
+  resetSettingsBtn.disabled = true;
+  saveSettingsBtn.disabled = true;
+  setError(null);
+  try {
+    const patch = { auto_collapse_table_panels: false, hide_calculator_nav: false };
+    if (canUseEgaisFileReminders) patch.egais_file_reminders_enabled = false;
+    await updateMyProfileFields(patch);
+    currentSettings = { ...currentSettings, ...patch };
+    pendingSettings = cloneSettings(currentSettings);
+    setTimesheetAutosaveDisabled(false);
+    setManualSaveWarningEnabled(true);
+    syncToggle();
+    applyScreenWakeState(await setScreenWakeEnabled(false));
+    setStatus("Настройки сброшены", "ok");
+  } catch (error) {
+    setStatus("Сброс не завершён", "err");
+    setError(error?.message || "Не удалось сбросить настройки. Попробуйте снова.");
+  } finally {
+    resetSettingsBtn.disabled = false;
+    saveSettingsBtn.disabled = false;
   }
 }
 
@@ -551,6 +607,7 @@ hideCalculatorNavToggle?.addEventListener("change", () => {
 
 disableTimesheetAutosaveToggle?.addEventListener("change", () => {
   setTimesheetAutosaveDisabled(disableTimesheetAutosaveToggle.checked);
+  syncManualSaveWarning();
   setStatus(
     disableTimesheetAutosaveToggle.checked
       ? "Автосохранение отключено на этом устройстве"
@@ -558,6 +615,11 @@ disableTimesheetAutosaveToggle?.addEventListener("change", () => {
     "ok"
   );
 });
+manualSaveWarningToggle?.addEventListener("change", () => {
+  setManualSaveWarningEnabled(manualSaveWarningToggle.checked);
+  setStatus("Настройка устройства изменена", "ok");
+});
+resetSettingsBtn?.addEventListener("click", () => void resetSettings());
 
 screenWakeToggle?.addEventListener("change", () => {
   void handleScreenWakeToggleChange();
