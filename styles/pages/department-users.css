@@ -1,0 +1,53 @@
+@font-face { font-family: Anticva; src: url('../../fonts/Anticva-Regular.otf') format('opentype'); font-display: swap; }
+body { margin: 0; background: #0b0d0f; color: #f1eee8; font-family: Inter, system-ui, sans-serif; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+.department-users-shell { max-width: 1120px; margin: auto; padding: 110px 24px 48px; }
+.department-users-header, .department-users-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid #ffffff20; }
+h1 { font: 36px Anticva, Georgia, serif; margin: 0 0 10px; }
+h2 { font-size: 18px; margin: 0; }
+p, #employeeCount { color: #9ca3ab; }
+.department-users-toolbar { margin-top: 20px; }
+.department-button, button { border: 1px solid #ffffff25; background: #20262b; color: #f1eee8; border-radius: 6px; padding: 10px 14px; cursor: pointer; text-decoration: none; font: inherit; }
+button:hover, .department-button:hover { background: #30373e; }
+button:disabled { opacity: .5; cursor: wait; }
+input, select { color: #f1eee8; background: #15191d; border: 1px solid #ffffff30; border-radius: 5px; padding: 10px; font: inherit; min-width: 0; width: 100%; }
+#employeeSearch { max-width: 360px; }
+:focus-visible { outline: 2px solid #c6a15b; outline-offset: 3px; }
+.department-user-row { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(160px, 1fr) auto; align-items: center; gap: 20px; padding: 18px 0; border-bottom: 1px solid #ffffff18; }
+.department-user-name { font-weight: 600; overflow-wrap: anywhere; }
+.department-user-meta { color: #9ca3ab; font-size: 13px; margin-top: 5px; }
+.department-user-actions { display: flex; gap: 8px; }
+.department-user-actions button { width: 44px; height: 44px; padding: 10px; position: relative; }
+svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.department-user-actions button::after { content: attr(aria-label); position: absolute; right: 0; top: calc(100% + 6px); background: #30373e; padding: 7px 10px; border-radius: 4px; white-space: nowrap; opacity: 0; pointer-events: none; z-index: 5; font-size: 12px; }
+.department-user-actions button:hover::after, .department-user-actions button:focus-visible::after { opacity: 1; }
+#departmentUsersError, .employee-error { color: #f0a4b8; }
+dialog { width: min(620px, calc(100% - 24px)); max-height: calc(100dvh - 32px); padding: 0; border: 1px solid #ffffff25; border-radius: 8px; background: #15191d; color: #f1eee8; overflow: auto; }
+dialog::backdrop { background: #000b; }
+dialog > header { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 20px; background: #15191d; border-bottom: 1px solid #ffffff20; z-index: 1; }
+dialog > header h2 { min-width: 0; overflow-wrap: anywhere; }
+dialog > header button { flex-shrink: 0; min-width: 44px; }
+#employeeDialogBody { padding: 20px; }
+.employee-confirm { padding: 20px; }
+.employee-confirm button { margin: 12px 8px 0 0; }
+.employee-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.employee-fields label { font-size: 13px; color: #b5bbc1; }
+.employee-fields input, .employee-fields select { display: block; margin-top: 7px; }
+.employee-save { margin-top: 20px; background: #7a1638; }
+.employee-flags { display: grid; gap: 16px; margin-top: 22px; }
+.employee-flags label { display: flex; gap: 12px; align-items: center; min-height: 44px; }
+.employee-flags input { width: 24px; height: 24px; accent-color: #7a1638; }
+.employee-period { display: flex; gap: 10px; margin-bottom: 18px; }
+.employee-period input { width: auto; flex: 1; }
+.employee-timesheet { width: 100%; border-collapse: collapse; }
+.employee-timesheet th, .employee-timesheet td { padding: 9px; text-align: left; border-bottom: 1px solid #ffffff15; }
+@media (max-width: 640px) {
+  .department-users-shell { padding: 105px 16px 32px; }
+  h1 { font-size: 28px; }
+  .department-users-header { align-items: flex-start; flex-direction: column; }
+  .department-user-row { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+  .department-user-details { grid-column: 1; }
+  .department-user-actions { grid-column: 2; grid-row: 1 / 3; }
+  .employee-fields { grid-template-columns: 1fr; }
+}

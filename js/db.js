@@ -2,6 +2,25 @@ import { supabase } from "./supabaseClient.js";
 import { getSession } from "./auth.js";
 import { isProfileCompleteForTimesheet } from "./profileCompletion.js";
 
+export async function leaderListDepartmentUsers() {
+  const { data, error } = await supabase.rpc("leader_list_department_users");
+  if (error) throw error;
+  return data;
+}
+export async function leaderUpdateDepartmentUser(userId, patch) {
+  const { error } = await supabase.rpc("leader_update_department_user", { p_user_id: userId, p_patch: patch });
+  if (error) throw error;
+}
+export async function leaderSetDepartmentUserFlag(userId, flag, enabled) {
+  const { error } = await supabase.rpc("leader_set_department_user_flag", { p_user_id: userId, p_flag: flag, p_enabled: enabled });
+  if (error) throw error;
+}
+export async function leaderGetUserTimesheet(userId, year, month) {
+  const { data, error } = await supabase.rpc("leader_get_user_timesheet", { p_user_id: userId, p_year: year, p_month: month });
+  if (error) throw error;
+  return data;
+}
+
 const PROFILE_SELECT =
   "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number, branch, employment_date, weekly_hours, egais_file_reminders_enabled, hide_calculator_nav";
 

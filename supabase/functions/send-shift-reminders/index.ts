@@ -146,7 +146,7 @@ serve(async (req) => {
     const userIds = [...new Set((subscriptions ?? []).map((row: any) => String(row.user_id)).filter(Boolean))];
     if (!userIds.length) return response({ ok: true, users: 0, sent: 0 });
     const leaders = new Set<string>();
-    if (startKind) {
+    {
       const { data: leaderRows, error: leadersError } = await client
         .from("department_editors")
         .select("user_id")
@@ -188,7 +188,7 @@ serve(async (req) => {
     const pending: any[] = [];
     for (const userId of userIds) {
       if (alreadyNotified.has(userId)) continue;
-      if (startKind && leaders.has(userId)) continue;
+      if (leaders.has(userId)) continue;
       const todayPayload = payloadFor(userId, today);
       const tomorrowPayload = payloadFor(userId, tomorrow);
       const afterPayload = payloadFor(userId, dayAfterTomorrow);

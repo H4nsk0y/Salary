@@ -3067,6 +3067,16 @@ async function guardManagedDepartment() {
 
   applyDepartmentViewOnlyUi();
 
+  if (!departmentViewOnly) {
+    try {
+      const leaderId = await listDepartmentLeader(managedDepartment.key);
+      const link = document.getElementById("departmentUsersLink");
+      if (link) link.hidden = String(leaderId) !== String(currentUserId);
+    } catch {
+      // A missing leader migration must not break the existing timesheet.
+    }
+  }
+
   await setupScheduleTools();
 
   if (announcementLink) {

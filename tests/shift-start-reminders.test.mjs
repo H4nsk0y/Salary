@@ -86,6 +86,19 @@ test("20:05 Moscow handles both night codes and month end, not rest days", async
   assert.deepEqual(fixture.tables.user_notifications.map((row) => row.user_id), ["night", "second-night"]);
 });
 
+test("17:00 upcoming reminders exclude confirmed leaders, not ordinary editors", async () => {
+  const fixture = setup("2026-10-10T14:00:00Z");
+  for (const row of fixture.tables.timesheets) {
+    row.payload.dayHours[10] = 8;
+    row.payload.nightHours[10] = 0;
+  }
+  await fixture.invoke();
+  const recipients = fixture.tables.user_notifications.map((row) => row.user_id);
+  assert.ok(!recipients.includes("leader"));
+  assert.ok(recipients.includes("editor"));
+  assert.ok(fixture.tables.user_notifications.every((row) => row.type === "upcoming_shift_reminder"));
+});
+
 test("reminder only runs in the scheduled time window with the cron secret", async () => {
   for (const iso of ["2026-10-10T05:04:00Z", "2026-10-10T17:21:00Z"]) {
     const fixture = setup(iso);
