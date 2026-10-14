@@ -77,15 +77,16 @@ function open(user, suffix) {
 }
 function confirmFlag(title, text) {
   return new Promise((resolve) => {
-    const confirmation = element("dialog");
+    const confirmation = element("dialog", "", "employee-dialog");
     confirmation.setAttribute("aria-label", title);
     const header = element("header"); header.append(element("h2", title));
     const content = element("div", "", "employee-confirm");
-    const yes = element("button", "Подтвердить"); const no = element("button", "Отмена");
+    const yes = element("button", "Подтвердить", "employee-save"); const no = element("button", "Отмена");
     const finish = (approved) => { confirmation.close(); confirmation.remove(); resolve(approved); };
     yes.addEventListener("click", () => finish(true)); no.addEventListener("click", () => finish(false));
     confirmation.addEventListener("cancel", (event) => { event.preventDefault(); finish(false); });
-    content.append(element("p", text), no, yes); confirmation.append(header, content);
+    const actions = element("div", "", "employee-confirm-actions"); actions.append(no, yes);
+    content.append(element("p", text), actions); confirmation.append(header, content);
     document.body.append(confirmation); confirmation.showModal(); no.focus();
   });
 }
@@ -156,32 +157,56 @@ function edit(user) {
 function viewTimesheet(user) {
   open(user, "Табель");
   const period = element("div", "", "employee-period");
-  const month = element("input"); month.type = "month"; month.min = "2000-01"; month.max = "2100-12";
+  const month = element("select");
+  const yearSelect = element("select");
   month.setAttribute("aria-label", "Месяц табеля");
-  const now = new Date(); month.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  yearSelect.setAttribute("aria-label", "Год табеля");
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const caption = new Date(2026, i, 1).toLocaleDateString("ru-RU", { month: "long" });
+    const option = element("option", caption[0].toUpperCase() + caption.slice(1));
+    option.value = String(i); month.append(option);
+  }
+  for (let year = 2000; year <= 2100; year++) {
+    const option = element("option", String(year)); option.value = String(year); yearSelect.append(option);
+  }
+  month.value = String(now.getMonth()); yearSelect.value = String(now.getFullYear());
   const output = element("div");
-  period.append(month); body.append(period, output);
+  output.setAttribute("aria-live", "polite");
+  const monthLabel = element("label", "Месяц"); monthLabel.append(month);
+  const yearLabel = element("label", "Год"); yearLabel.append(yearSelect);
+  period.append(monthLabel, yearLabel); body.append(period, output);
   const refresh = async () => {
     const version = ++requestVersion;
     output.textContent = "Загрузка…";
-    if (!month.value) { output.textContent = "Выберите месяц."; return; }
-    const [year, numericMonth] = month.value.split("-").map(Number);
+    const year = Number(yearSelect.value);
+    const monthIndex = Number(month.value);
     try {
-      const data = await leaderGetUserTimesheet(user.user_id, year, numericMonth-1);
+      const data = await leaderGetUserTimesheet(user.user_id, year, monthIndex);
       if (version !== requestVersion || !dialog.open) return;
       output.replaceChildren();
       if (!data) { output.textContent = "Табель за этот месяц не сохранён."; return; }
       const table = element("table", "", "employee-timesheet");
-      const head = element("tr"); ["Дата", "День", "Ночь", "Код"].forEach((label) => head.append(element("th", label))); table.append(head);
-      for (let i=0; i<new Date(year,numericMonth,0).getDate(); i++) {
+      const thead = element("thead"); const tbody = element("tbody");
+      const head = element("tr"); ["Дата", "День", "Ночь", "Код"].forEach((label) => {
+        const cell = element("th", label); cell.scope = "col"; head.append(cell);
+      }); thead.append(head); table.append(thead, tbody);
+      for (let i=0; i<new Date(year,monthIndex+1,0).getDate(); i++) {
         const row = element("tr");
-        [i+1, data.dayHours?.[i] || "—", data.nightHours?.[i] || "—", LEAVE_LABELS[data.leaveType?.[i]] || data.leaveType?.[i] || "—"].forEach((value) => row.append(element("td", String(value))));
-        table.append(row);
+        const date = new Date(year, monthIndex, i+1);
+        if ([0,6].includes(date.getDay())) row.className = "employee-weekend";
+        const dateText = `${i+1} · ${date.toLocaleDateString("ru-RU", { weekday: "short" })}`;
+        [dateText, data.dayHours?.[i] || "—", data.nightHours?.[i] || "—", LEAVE_LABELS[data.leaveType?.[i]] || data.leaveType?.[i] || "—"].forEach((value, cellIndex) => {
+          const cell = element("td", String(value));
+          if (cellIndex === 3 && data.leaveType?.[i]) cell.className = "employee-leave";
+          row.append(cell);
+        });
+        tbody.append(row);
       }
       output.append(table);
     } catch (failure) { if (version === requestVersion) output.textContent = message(failure); }
   };
-  month.addEventListener("change", refresh); void refresh();
+  month.addEventListener("change", refresh); yearSelect.addEventListener("change", refresh); void refresh();
 }
 dialog.querySelector("[data-close]").addEventListener("click", () => dialog.close());
 dialog.addEventListener("close", () => { requestVersion += 1; });

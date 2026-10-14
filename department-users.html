@@ -7,11 +7,14 @@
   <link rel="icon" href="./images/favicon-32.png" />
   <link rel="stylesheet" href="./styles/tailwind.css" />
   <link rel="stylesheet" href="./styles/page-loader.css" />
-  <link rel="stylesheet" href="./styles/pages/department-users.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles/pages/department-users.css?v=20261014-1" />
   <meta name="theme-color" content="#0b0d0f" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'" />
 </head>
-<body>
+<body class="department-users-page">
   <div id="alvisaPageLoader" class="alvisa-page-loader" role="status" aria-live="polite"></div>
   <script src="./js/pageLoaderBoot.js"></script>
   <div data-app-header data-active="profile"></div>
@@ -27,12 +30,12 @@
     </div>
     <div id="departmentUsersList"></div>
   </main>
-  <dialog id="employeeDialog" aria-labelledby="employeeDialogTitle">
+  <dialog id="employeeDialog" class="employee-dialog" aria-labelledby="employeeDialogTitle">
     <header><h2 id="employeeDialogTitle"></h2><button type="button" data-close aria-label="Закрыть">×</button></header>
     <div id="employeeDialogBody"></div>
   </dialog>
   <div data-app-footer></div>
   <script type="module" src="./js/nav.js"></script>
-  <script type="module" src="./js/department-users.js"></script>
+  <script type="module" src="./js/department-users.js?v=20261014-1"></script>
 </body>
 </html>
