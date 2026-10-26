@@ -72,6 +72,11 @@
 
       <form id="salaryForm" class="mt-6 space-y-5" novalidate>
         <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-200" for="taxPercent">Налог для расчёта (%)</label>
+          <input id="taxPercent" name="taxPercent" type="text" inputmode="decimal" value="13" autocomplete="off" maxlength="7"
+            class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 focus:outline-none" />
+        </div>
+        <div>
           <label class="mb-1.5 block text-sm font-medium text-slate-200" for="oklad">Оклад (за норму часов)</label>
           <div class="relative">
             <input
@@ -361,7 +366,7 @@
 <!-- ✅ результаты: toggle по клику -->
 
 <script type="module" src="./js/nav.js?v=20260921-3"></script>
-<script type="module" src="./js/app.js?v=20260920-1"></script>
+<script type="module" src="./js/app.js?v=20261026-1"></script>
 
 
 <script type="module" src="./js/features/tourBootstrap.js?v=20260920-1"></script>

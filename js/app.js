@@ -1,4 +1,4 @@
-import { computeSalary, parseNumber, TAX_RATE, NIGHT_EXTRA_RATE, BONUS_RATE } from "./calc.js";
+import { computeSalary, parseNumber, TAX_RATE, NIGHT_EXTRA_RATE, BONUS_RATE, normalizeTaxRate } from "./calc.js";
 import { getSession, signOut } from "./auth.js";
 import { getMyProfile } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
@@ -16,6 +16,7 @@ const calculatorSignupPrompt = document.getElementById("calculatorSignupPrompt")
 
 const els = {
   oklad: document.getElementById("oklad"),
+  taxPercent: document.getElementById("taxPercent"),
   normHours: document.getElementById("normHours"),
   workedHours: document.getElementById("workedHours"),
   nightHours: document.getElementById("nightHours"),
@@ -49,6 +50,8 @@ const HOLIDAY_MULTIPLIER = 2;
 
 let profileRole = "user";
 let profileOklad = null;
+let profileTaxRate = TAX_RATE;
+let taxRateTouched = false;
 const rubFormatters = new Map();
 const numberAnimationFrames = new WeakMap();
 
@@ -150,6 +153,9 @@ function isIntegerLike(n) {
 }
 
 function readInput() {
+  const taxPercentRaw = String(els.taxPercent?.value ?? "13").trim();
+  const taxRate = taxPercentRaw ? parseNumber(taxPercentRaw) / 100 : TAX_RATE;
+  if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 1) return { ok: false, error: "Налог должен быть от 0 до 100%." };
   const oklad = parseNumber(els.oklad.value);
   const normHours = parseNumber(els.normHours.value);
   const workedHours = parseNumber(els.workedHours.value);
@@ -201,6 +207,7 @@ function readInput() {
   return {
     ok: true,
     input: {
+      taxRate,
       oklad,
       normHours,
       workedHours,
@@ -250,9 +257,9 @@ function computeHolidayExtraGross(oklad, normHours, holidayShifts, holidayNightS
   return baseGross * (HOLIDAY_MULTIPLIER - 1);
 }
 
-function computeAdvanceApproxNet(oklad, normHours, firstHalfHours, firstHalfNightHours) {
-  const baseNetHourly = (oklad * (1 - TAX_RATE)) / normHours;
-  const nightExtraNetHourly = (oklad / normHours) * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
+function computeAdvanceApproxNet(oklad, normHours, firstHalfHours, firstHalfNightHours, taxRate = TAX_RATE) {
+  const baseNetHourly = (oklad * (1 - taxRate)) / normHours;
+  const nightExtraNetHourly = (oklad / normHours) * NIGHT_EXTRA_RATE * (1 - taxRate);
   return baseNetHourly * firstHalfHours + nightExtraNetHourly * firstHalfNightHours;
 }
 
@@ -267,6 +274,7 @@ function render() {
   setHolidayUI(Boolean(parsed.input.holidayEnabled));
 
   const calc = computeSalary({
+    taxRate: parsed.input.taxRate,
     oklad: parsed.input.oklad,
     normHours: parsed.input.normHours,
     workedHours: parsed.input.workedHours,
@@ -293,7 +301,7 @@ function render() {
         )
       : 0;
 
-  const holidayTax = holidayExtraGross * TAX_RATE;
+  const holidayTax = holidayExtraGross * parsed.input.taxRate;
   const holidayNet = holidayExtraGross - holidayTax;
 
   const netTotal = r.net + holidayNet;
@@ -305,7 +313,8 @@ function render() {
         parsed.input.oklad,
         parsed.input.normHours,
         parsed.input.firstHalfHours,
-        parsed.input.firstHalfNightHours
+        parsed.input.firstHalfNightHours,
+        parsed.input.taxRate
       )
     : Number.NaN;
 
@@ -328,6 +337,8 @@ function render() {
 }
 
 function reset() {
+  if (els.taxPercent) els.taxPercent.value = String(Number((profileTaxRate * 100).toFixed(4)));
+  taxRateTouched = false;
   els.oklad.value = "";
   els.normHours.value = "";
   els.workedHours.value = "";
@@ -363,6 +374,8 @@ async function initAuthUI() {
     const profile = await getMyProfile();
     profileRole = profile?.role ?? "user";
     profileOklad = profile?.oklad ?? null;
+    profileTaxRate = normalizeTaxRate(profile?.tax_rate);
+    if (els.taxPercent && !taxRateTouched) els.taxPercent.value = String(Number((profileTaxRate * 100).toFixed(4)));
 
     if (profileRole === "admin") adminLink?.classList.remove("hidden");
     else adminLink?.classList.add("hidden");
@@ -385,6 +398,7 @@ logoutBtn?.addEventListener("click", async () => {
 });
 
 form.addEventListener("input", render);
+els.taxPercent?.addEventListener("input", () => { taxRateTouched = true; });
 resetBtn.addEventListener("click", reset);
 
 if (els.holidayToggle) {

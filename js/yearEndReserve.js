@@ -19,7 +19,7 @@ export function estimateYearEndReserve(months, {
   defaultHolidayReserveShare = DEFAULT_HOLIDAY_RESERVE_SHARE,
 } = {}) {
   const source = Array.isArray(months) ? months : [];
-  const safeTaxRate = clamp(finite(taxRate, DEFAULT_TAX_RATE), 0, 0.99);
+  const safeTaxRate = clamp(finite(taxRate, DEFAULT_TAX_RATE), 0, 1);
   const defaultShare = clamp(finite(defaultHolidayReserveShare, DEFAULT_HOLIDAY_RESERVE_SHARE), 0, 1);
 
   let yearBalanceHours = 0;

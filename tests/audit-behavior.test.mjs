@@ -110,6 +110,7 @@ for (const page of ["personal", "department"]) {
       const shell = { inert: false };
       const context = vm.createContext({
         year: 2026, month: 7, dirty: true, monthTransitionPending: false,
+        isDraftMode: false, isManualSaveWarningEnabled: () => false,
         yearSelect: { value: "2026" }, monthSelect: { value: "8" },
         document: { querySelector: () => shell },
         clearTimeout() {}, timesheetSaveTimer: null, saveTimer: null,
@@ -146,7 +147,7 @@ test("editing during a save stays dirty and does not mutate the submitted payloa
   const data = { dayHours: [8] };
   let submitted;
   const context = vm.createContext({
-    clearTimeout() {}, timesheetSaveTimer: null, personalTimesheetReadOnly: false,
+    clearTimeout() {}, timesheetSaveTimer: null, personalTimesheetReadOnly: false, isDraftMode: false,
     monthDataLoaded: true,
     year: 2026, month: 8, dirty: true, lastSavedJSON: "", setSaveStatus() {}, setError() {},
     syncActualStateFromInputs() {}, currentPayload: () => data,

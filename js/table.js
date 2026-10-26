@@ -1,5 +1,5 @@
 
-import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary, computePaymentSplit } from "./calc.js";
+import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary, computePaymentSplit, normalizeTaxRate } from "./calc.js";
 import { requireSession } from "./auth.js";
 import { findMyShiftReplacementCandidates, getMyProfile, getMyDepartmentMembershipKey, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, reportMyShiftUnavailable, saveMyTimesheetActual, saveTimesheet, sendPushNotifications } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
@@ -757,6 +757,7 @@ function cloneActualSummary(actual) {
 function cloneCalculatedSummary(calculated) {
   if (!calculated || typeof calculated !== "object") return null;
   return {
+    taxRate: normalizeTaxRate(calculated.taxRate),
     net: normalizeMoneyNumber(calculated.net),
     tax: normalizeMoneyNumber(calculated.tax),
     gross: normalizeMoneyNumber(calculated.gross),
@@ -920,6 +921,7 @@ function buildCurrentMonthSignature() {
   const snapshot = normalizeMoneySnapshot(currentMoneySnapshot);
   const normSnapshot = createNormSnapshot(currentNormProfile(), BASE_DAY_HOURS);
   return JSON.stringify({
+    ...(normalizeTaxRate(moneyProfile?.tax_rate) !== TAX_RATE ? { taxRate: normalizeTaxRate(moneyProfile?.tax_rate) } : {}),
     year,
     month,
     isHoliday: isHoliday.map((x) => Boolean(x)),
@@ -1973,10 +1975,10 @@ function setTextValue(el, value) {
   el.textContent = value;
 }
 
-function grossToNet(value) {
+function grossToNet(value, taxRate = normalizeTaxRate(moneyProfile?.tax_rate)) {
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
-  return n * (1 - TAX_RATE);
+  return n * (1 - normalizeTaxRate(taxRate));
 }
 
 function clearCalculatedMoneyUi() {
@@ -1994,6 +1996,9 @@ function clearCalculatedMoneyUi() {
 }
 
 function renderMoneyUi(calculated) {
+  const taxRate = normalizeTaxRate(calculated?.taxRate ?? moneyProfile?.tax_rate);
+  const taxLabel = document.querySelector("[data-tax-label]");
+  if (taxLabel) taxLabel.textContent = "Налог";
   const actual = currentPaySummary.actual;
   const confirmed = hasConfirmedActual(actual);
 
@@ -2078,10 +2083,11 @@ const displayTax =
     setTextValue(nightHourNetEl, "—");
   }
 
-  const baseFactNet = grossToNet(calculated?.baseFactGross);
-  const bonusNet = grossToNet(calculated?.bonusGross);
-  const nightExtraNet = grossToNet(calculated?.nightExtraGross);
-  const holidayExtraNet = grossToNet(calculated?.holidayExtraGross);
+  if (taxLabel && confirmedTaxOverride === null) taxLabel.textContent = `Налог ${Number((taxRate * 100).toFixed(4))}%`;
+  const baseFactNet = grossToNet(calculated?.baseFactGross, taxRate);
+  const bonusNet = grossToNet(calculated?.bonusGross, taxRate);
+  const nightExtraNet = grossToNet(calculated?.nightExtraGross, taxRate);
+  const holidayExtraNet = grossToNet(calculated?.holidayExtraGross, taxRate);
 
   if (Number.isFinite(baseFactNet)) {
     animateNumber(baseFactGrossEl, baseFactNet, (v) => formatRub(v, 0), 360);
@@ -2672,6 +2678,7 @@ function recalcAll() {
   }
 
   const calc = computeSalary({
+    taxRate: normalizeTaxRate(moneyProfile?.tax_rate),
     oklad: effectiveOklad,
     normHours: monthNorm,
     workedHours,
@@ -2699,7 +2706,8 @@ function recalcAll() {
     (baseHourRateGross + bonusPerHourGross) * holidayTotal +
     baseHourRateGross * NIGHT_EXTRA_RATE * hNight;
 
-  const holidayTax = holidayExtraGross * TAX_RATE;
+  const taxRate = normalizeTaxRate(moneyProfile?.tax_rate);
+  const holidayTax = holidayExtraGross * taxRate;
   const holidayNet = holidayExtraGross - holidayTax;
   const grossTotal = r.gross + holidayExtraGross;
   const taxTotal = r.tax + holidayTax;
@@ -2708,6 +2716,7 @@ function recalcAll() {
   const fhDay = sumRange(dayHours, 0, Math.min(14, daysInMonth - 1));
   const fhNight = sumRange(nightHours, 0, Math.min(14, daysInMonth - 1));
   const paymentSplit = computePaymentSplit({
+    taxRate,
     netTotal,
     effectiveOklad,
     monthNorm,
@@ -2716,6 +2725,7 @@ function recalcAll() {
   });
 
   calculated = cloneCalculatedSummary({
+    taxRate,
     net: netTotal,
     tax: taxTotal,
     gross: grossTotal,
@@ -2730,7 +2740,7 @@ function recalcAll() {
     workedDayHours: totalDay,
     workedNightHours: totalNight,
     hourRateNet: r.hourRate,
-    nightHourNet: r.hourRate + baseHourRateGross * NIGHT_EXTRA_RATE * (1 - TAX_RATE),
+    nightHourNet: r.hourRate + baseHourRateGross * NIGHT_EXTRA_RATE * (1 - taxRate),
     baseFactGross: r.baseFact,
     bonusGross: r.bonus,
     nightExtraGross: r.nightExtra,

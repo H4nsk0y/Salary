@@ -40,6 +40,7 @@ const PROFILE_SELECT_LEGACY =
   "user_id, role, oklad, gender, position, display_name, avatar_url, hide_money, money_pin_hash, money_pin_salt, auto_collapse_table_panels, tab_number";
 
 const PROFILE_SELECT_CANDIDATES = [
+  [PROFILE_SELECT + ", tax_rate", {}],
   [PROFILE_SELECT, {}],
   [PROFILE_SELECT_WITHOUT_HIDE_CALCULATOR_NAV, { hide_calculator_nav: false }],
   [PROFILE_SELECT_WITHOUT_EGAIS_REMINDERS, { egais_file_reminders_enabled: false }],
@@ -273,7 +274,7 @@ async function loadMyProfile() {
       isMissingEmploymentDateColumnError(error) ||
       isMissingEgaisFileRemindersColumnError(error) ||
       isMissingHideCalculatorNavColumnError(error) ||
-      isMissingWeeklyHoursColumnError(error);
+      isMissingWeeklyHoursColumnError(error) || /tax_rate/i.test([error.message, error.details].join(" "));
     if (!schemaMismatch) throw error;
     lastError = error;
   }
@@ -364,6 +365,7 @@ export async function updateMyProfile({
   branch,
   employmentDate,
   weeklyHours,
+  taxRate,
 }) {
   const userId = await requireUserId();
 
@@ -378,12 +380,19 @@ export async function updateMyProfile({
   if (branch !== undefined) patch.branch = branch;
   if (employmentDate !== undefined) patch.employment_date = employmentDate;
   if (weeklyHours !== undefined) patch.weekly_hours = normalizeWeeklyHours(weeklyHours);
+  if (taxRate !== undefined) {
+    if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 1) throw new Error("Налог должен быть от 0 до 100%.");
+    patch.tax_rate = taxRate;
+  }
 
   const { error } = await supabase
     .from("profiles")
     .upsert(patch, { onConflict: "user_id" });
 
   if (error) {
+    if (taxRate !== undefined && /tax_rate/i.test([error.message, error.details].join(" "))) {
+      throw new Error("Для сохранения налога примените SQL 073_profile_tax_rate.sql в Supabase SQL Editor.");
+    }
     if (employmentDate !== undefined && isMissingEmploymentDateColumnError(error)) {
       throw new Error("В базе пока нет поля даты трудоустройства. Запусти supabase-sql/007_profile_employment_date.sql в Supabase SQL Editor.");
     }

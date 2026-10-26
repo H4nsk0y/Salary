@@ -29,7 +29,7 @@ import { setUiStatus } from "./uiStatus.js";
 import {
   parseNumber,
   BONUS_RATE,
-  TAX_RATE,
+  normalizeTaxRate,
   NIGHT_EXTRA_RATE,
   computeSalary,
 } from "./calc.js";
@@ -102,6 +102,7 @@ const displayNameInput = document.getElementById("displayNameInput");
 const positionSelect = document.getElementById("positionSelect");
 const positionLockHint = document.getElementById("positionLockHint");
 const okladInput = document.getElementById("okladInput");
+const taxRateInput = document.getElementById("taxRateInput");
 const genderSelect = document.getElementById("genderSelect");
 const branchSelect = document.getElementById("branchSelect");
 const weeklyHoursSelect = document.getElementById("weeklyHoursSelect");
@@ -274,6 +275,7 @@ function getProfileAutofillFields() {
     weeklyHoursSelect,
     employmentDateInput,
     okladInput,
+    taxRateInput,
   ].filter(Boolean);
 }
 
@@ -298,6 +300,7 @@ function getExpectedProfileFieldValues(profile) {
     weeklyHours: String(normalizeWeeklyHours(profile?.weekly_hours) ?? DEFAULT_WEEKLY_HOURS),
     employmentDate: profile?.employment_date ?? "",
     oklad: profile?.oklad != null ? String(profile.oklad) : "",
+    taxRate: String(Number((normalizeTaxRate(profile?.tax_rate) * 100).toFixed(4))),
   };
 }
 
@@ -316,6 +319,7 @@ function applyExpectedProfileFieldValues(values) {
     updateEmploymentDateHint();
   }
   if (okladInput) okladInput.value = values.oklad;
+  if (taxRateInput) taxRateInput.value = values.taxRate;
 }
 
 function ensureCustomPositionOption(position) {
@@ -696,6 +700,7 @@ function resolveMoneySnapshotFromPayload(payload, profile) {
 function cloneCalculatedSummary(calculated) {
   if (!calculated || typeof calculated !== "object") return null;
   return {
+    taxRate: normalizeTaxRate(calculated.taxRate),
     net: normalizeMoneyNumber(calculated.net),
     tax: normalizeMoneyNumber(calculated.tax),
     gross: normalizeMoneyNumber(calculated.gross),
@@ -1120,6 +1125,7 @@ function resolveMoneySummaryFromPayload(payload, profile) {
   const totalNight = sum(nightHours);
 
   const calc = computeSalary({
+    taxRate: normalizeTaxRate(payload?.paySummary?.calculated?.taxRate),
     oklad: effectiveOklad,
     normHours: monthNorm,
     workedHours,
@@ -1141,7 +1147,7 @@ function resolveMoneySummaryFromPayload(payload, profile) {
     (baseHourRateGross + bonusPerHourGross) * holidayTotal +
     baseHourRateGross * NIGHT_EXTRA_RATE * hNight;
 
-  const holidayTax = holidayExtraGross * TAX_RATE;
+  const holidayTax = holidayExtraGross * normalizeTaxRate(payload?.paySummary?.calculated?.taxRate);
   const holidayNet = holidayExtraGross - holidayTax;
 
   return {
@@ -1282,7 +1288,7 @@ function buildReserveMonthInput(row) {
     const holidayExtraGross = Number.isFinite(storedHolidayExtraGross)
       ? storedHolidayExtraGross
       : standardHourlyGross * holidayHours + baseHourlyGross * NIGHT_EXTRA_RATE * hNight;
-    holidayExtraNet = Math.max(0, holidayExtraGross * (1 - TAX_RATE));
+    holidayExtraNet = Math.max(0, holidayExtraGross * (1 - normalizeTaxRate(calculatedRaw?.taxRate)));
   }
 
   const moneyState = getTimesheetMoneyState(payload);
@@ -1303,7 +1309,7 @@ function buildYearEndForecast(rows) {
   const months = (Array.isArray(rows) ? rows : [])
     .map(buildReserveMonthInput)
     .filter(Boolean);
-  const reserve = estimateYearEndReserve(months, { taxRate: TAX_RATE });
+  const reserve = estimateYearEndReserve(months, { taxRate: normalizeTaxRate(currentProfile?.tax_rate) });
   const decemberRow = rows.find((row) => Number(row?.month) === 11);
   const decemberPayload = decemberRow?.payload;
   const decemberRaw = decemberPayload?.paySummary?.calculated ?? decemberPayload?.paySummary ?? {};
@@ -2330,6 +2336,13 @@ async function saveProfile() {
   const weeklyHours = normalizeWeeklyHours(weeklyHoursSelect?.value);
   const employmentDate = String(employmentDateInput?.value || "").trim();
   const oklad = parseNumber(okladInput.value);
+  const taxPercentText = String(taxRateInput?.value ?? "13").trim();
+  const taxPercent = taxPercentText ? parseNumber(taxPercentText) : 13;
+  if (!Number.isFinite(taxPercent) || taxPercent < 0 || taxPercent > 100) {
+    setError("Налог должен быть числом от 0 до 100%.");
+    taxRateInput?.focus();
+    return;
+  }
   const position = positionSelect ? String(positionSelect.value || "") : "";
   const gender = genderSelect ? String(genderSelect.value || "") : "";
 
@@ -2393,6 +2406,7 @@ async function saveProfile() {
       displayName: displayName || null,
       branch: branch || null,
       weeklyHours,
+      taxRate: taxPercent / 100,
       employmentDate: employmentDate || null,
       oklad: okladInput.value.trim() ? oklad : null,
       position: position || null,
@@ -2576,7 +2590,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 hardenProfileAutofill();
-for (const field of [displayNameInput, okladInput].filter(Boolean)) {
+for (const field of [displayNameInput, okladInput, taxRateInput].filter(Boolean)) {
   field.addEventListener("beforeinput", markProfileTextInputTouched);
   field.addEventListener("keydown", markProfileFieldsTouched);
   field.addEventListener("paste", markProfileFieldsTouched);

@@ -5,12 +5,19 @@ export const BONUS_RATE = 0.35;
 export const TAX_RATE = 0.13;
 export const NIGHT_EXTRA_RATE = 0.4;
 
+export function normalizeTaxRate(value) {
+  if (value == null || value === "") return TAX_RATE;
+  const rate = Number(value);
+  return Number.isFinite(rate) && rate >= 0 && rate <= 1 ? rate : TAX_RATE;
+}
+
 export function computePaymentSplit({
   netTotal,
   effectiveOklad,
   monthNorm,
   firstHalfDayHours,
   firstHalfNightHours,
+  taxRate = TAX_RATE,
 } = {}) {
   const values = [netTotal, effectiveOklad, monthNorm, firstHalfDayHours, firstHalfNightHours];
   if (!values.every(Number.isFinite) || monthNorm <= 0) {
@@ -18,8 +25,9 @@ export function computePaymentSplit({
   }
 
   const firstHalfTotal = firstHalfDayHours + firstHalfNightHours;
-  const baseNetHourlyNoBonus = (effectiveOklad * (1 - TAX_RATE)) / monthNorm;
-  const nightExtraNetHourly = (effectiveOklad / monthNorm) * NIGHT_EXTRA_RATE * (1 - TAX_RATE);
+  const rate = normalizeTaxRate(taxRate);
+  const baseNetHourlyNoBonus = (effectiveOklad * (1 - rate)) / monthNorm;
+  const nightExtraNetHourly = (effectiveOklad / monthNorm) * NIGHT_EXTRA_RATE * (1 - rate);
   const advance = baseNetHourlyNoBonus * firstHalfTotal + nightExtraNetHourly * firstHalfNightHours;
 
   // Bonuses and the additional x2 part for holidays are settled with the final payment.
@@ -45,6 +53,10 @@ export function parseNumber(input) {
 export function computeSalary(input) {
   if (!input || typeof input !== "object") return { ok: false, error: "Не заданы данные расчета." };
   const { oklad, normHours, workedHours, nightHours } = input;
+  const taxRate = input.taxRate == null ? TAX_RATE : input.taxRate;
+  if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 1) {
+    return { ok: false, error: "Налог должен быть числом от 0 до 100%." };
+  }
 
   if (![oklad, normHours, workedHours, nightHours].every(Number.isFinite)) {
     return { ok: false, error: "Оклад и часы должны быть конечными числами." };
@@ -66,10 +78,10 @@ export function computeSalary(input) {
   const nightExtra = baseHourRateGross * nightHours * NIGHT_EXTRA_RATE;
 
   const gross = baseFact + bonus + nightExtra;
-  const tax = gross * TAX_RATE;
+  const tax = gross * taxRate;
   const net = gross - tax;
 
-  const hourRate = (oklad * (1 + BONUS_RATE) * (1 - TAX_RATE)) / normHours; 
+  const hourRate = (oklad * (1 + BONUS_RATE) * (1 - taxRate)) / normHours;
 
   return {
     ok: true,
