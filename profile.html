@@ -307,6 +307,13 @@
           </div>
 
           <div>
+            <label class="mb-1.5 block text-sm font-medium text-slate-200" for="taxRateInput">Налог для расчёта (%)</label>
+            <input id="taxRateInput" type="text" inputmode="decimal" autocomplete="off" value="13" maxlength="7"
+              class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 focus:outline-none" aria-describedby="taxRateHint" />
+            <p id="taxRateHint" class="mt-1.5 text-xs text-slate-400/80">По умолчанию 13%. Можно указать 0. Вычеты на детей автоматически не рассчитываются.</p>
+          </div>
+
+          <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="employmentDateInput">Дата трудоустройства</label>
             <input
               id="employmentDateInput"
@@ -343,12 +350,6 @@
             <p class="mt-1.5 text-xs text-slate-400/80">Его можно узнать из расчетного листа справа сверху.</p>
           </div>
 
-          <div>
-            <label class="mb-1.5 block text-sm font-medium text-slate-200" for="taxRateInput">Налог для расчёта (%)</label>
-            <input id="taxRateInput" type="text" inputmode="decimal" autocomplete="off" value="13" maxlength="7"
-              class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 focus:outline-none" aria-describedby="taxRateHint" />
-            <p id="taxRateHint" class="mt-1.5 text-xs text-slate-400/80">По умолчанию 13%. Можно указать 0. Вычеты на детей автоматически не рассчитываются.</p>
-          </div>
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <button id="saveProfileBtn" class="rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 px-4 py-3.5 text-sm font-semibold text-slate-100 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] active:scale-[0.98]">Сохранить</button>
             <button id="refreshBtn" class="rounded-2xl bg-white/5 px-4 py-3.5 text-sm font-semibold text-slate-200 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:bg-white/10 hover:ring-indigo-400/30 active:scale-[0.98]">Обновить</button>
