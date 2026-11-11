@@ -241,6 +241,13 @@ serve(async (req) => {
       return jsonResponse({ error: "ACCESS_DENIED" }, 403);
     }
 
+    const ownerRecipient = isOwnerLogin && !trustedCron
+      ? await getAuthenticatedUserId({ supabaseUrl, supabaseAnonKey, authorization })
+      : null;
+    if (isOwnerLogin && !trustedCron && !ownerRecipient) {
+      return jsonResponse({ error: "ACCESS_DENIED" }, 403);
+    }
+
     webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
     const serviceClient = createClient(supabaseUrl, serviceRoleKey, {
@@ -299,9 +306,13 @@ serve(async (req) => {
       notificationsQuery = notificationsQuery.eq("department_key", departmentKey);
     }
 
-    const { data: notifications, error: notificationsError } = await notificationsQuery
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    const { data: notifications, error: notificationsError } = isOwnerLogin
+      ? await serviceClient.rpc("claim_owner_login_push", {
+          p_user_id: ownerRecipient,
+          p_lookback_minutes: Math.trunc(lookbackMinutes),
+          p_limit: Math.trunc(limit),
+        })
+      : await notificationsQuery.order("created_at", { ascending: false }).limit(limit);
 
     if (notificationsError) throw notificationsError;
 
@@ -378,10 +389,11 @@ serve(async (req) => {
       const update: Record<string, unknown> = { push_error: pushError };
       if (notificationSent > 0) update.push_sent_at = new Date().toISOString();
 
-      await serviceClient
+      const { error: deliveryStateError } = await serviceClient
         .from("user_notifications")
         .update(update)
         .eq("id", notification.id);
+      if (isOwnerLogin && deliveryStateError) throw deliveryStateError;
     }
 
     return jsonResponse({

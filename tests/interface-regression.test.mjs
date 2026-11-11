@@ -5,9 +5,10 @@ import { test } from "node:test";
 const root = new URL("../", import.meta.url);
 const source = (path) => readFile(new URL(path, root), "utf8");
 
-test("home workspace contains the checklist and current product name", async () => {
+test("home workspace links to the checklist and screen saver in order", async () => {
   const html = await source("index.html");
-  assert.match(html, /href="checklist\.html"[\s\S]*workspace-index">06[\s\S]*Чек-лист/);
+  assert.match(html, /href="checklist\.html"[^>]*>\s*<span class="workspace-index">05<\/span>[\s\S]*?class="workspace-title">Чек-лист/);
+  assert.match(html, /href="screen-saver\.html\?mode=building&amp;from=index\.html"[^>]*>\s*<span class="workspace-index">06<\/span>[\s\S]*?class="workspace-title">Негаснущий экран/);
   assert.match(html, /ALVISA SALARY/);
 });
 
@@ -56,12 +57,12 @@ test("help page no longer renders the old product badge", async () => {
   assert.doesNotMatch(await source("help.html"), />\s*Помощь по Alvisa\s*</i);
 });
 
-test("profile supports validated custom positions without changing membership", async () => {
+test("profile offers position proposals separately from the department's approved positions", async () => {
   const [html, script] = await Promise.all([source("profile.html"), source("js/profile.js")]);
-  assert.match(html, /option value="__custom__">Свой вариант/);
-  assert.match(html, /Это не меняет ваш доступ и не добавляет вас в состав отдела/);
-  assert.match(script, /isValidCustomPosition/);
-  assert.match(script, /position === CUSTOM_POSITION_VALUE/);
+  assert.match(html, /id="suggestPositionBtn"[^>]*>Предложить должность/);
+  assert.match(html, /в профиле она автоматически не изменится/);
+  assert.match(script, /validateCustomPositionSelection/);
+  assert.match(script, /submitDepartmentPositionProposal\(result\.department, result\.position\)/);
   assert.match(script, /openIdeaDialog\(\{[\s\S]*Предлагаю добавить новый отдел/);
 });
 
@@ -143,8 +144,8 @@ test("owner analytics links each comparable record to the employee timesheet", a
   assert.match(script, /link\.textContent = "Табель"/);
 });
 
-test("EGAIS reminder setting uses the concise audience label", async () => {
+test("EGAIS reminder setting names the audience and account-wide scope", async () => {
   const html = await source("settings.html");
   assert.match(html, />\s*Уведомлять о проверках суточных файлов\s*</);
-  assert.match(html, />\s*Для сотрудников ЕГАИС\s*</);
+  assert.match(html, />\s*Для сотрудников ЕГАИС · на всех устройствах аккаунта\s*</);
 });

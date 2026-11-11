@@ -655,6 +655,37 @@ html, body {
     .position-modal-missing { border: 0; padding: 0; background: transparent; color: #c7a665; font-size: .72rem; font-weight: 700; }
     .position-modal-save { min-height: 42px; border: 1px solid rgba(110,168,232,.36); border-radius: 6px; padding: 0 15px; background: rgba(110,168,232,.11); color: #d4e9fd; font-size: .75rem; font-weight: 800; }
     .position-modal-error { min-height: 18px; color: #e4a4b7; font-size: .7rem; }
+    .position-modal-missing:disabled, .position-modal-save:disabled { opacity: .55; cursor: not-allowed; }
+    .employment-date-field { position: relative; min-width: 0; }
+    .employment-date-field input { padding-right: 3.4rem !important; }
+    .employment-date-field button {
+      position: absolute; inset: 4px 4px 4px auto; width: 44px; display: grid; place-items: center;
+      border-radius: 6px; color: #e1c28c;
+    }
+    .employment-date-field button:hover { background: rgba(241,238,232,.08); }
+    .employment-calendar {
+      box-sizing: border-box; width: min(366px, calc(100% - 24px)); margin: auto; padding: 0;
+      max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      color: #f1eee8; background: #15191d; border: 1px solid var(--profile-border-strong);
+      border-radius: 8px; overflow: hidden; box-shadow: 0 22px 60px #0008; color-scheme: dark;
+    }
+    .employment-calendar[open] { display: flex; flex-direction: column; }
+    .employment-calendar::backdrop { background: #050607cc; }
+    .employment-calendar .position-modal-head { padding: 12px 14px; flex: none; align-items: center; }
+    .employment-calendar .position-modal-title { font: 600 1rem/1.25 Inter, system-ui, sans-serif; }
+    .employment-calendar .position-modal-close { flex-shrink: 0; }
+    .employment-calendar-body { padding: 12px 14px 14px; overflow: auto; }
+    .employment-calendar-period { display: grid; grid-template-columns: 36px minmax(0, 1fr) minmax(62px, .66fr) 36px; gap: 5px; }
+    .employment-calendar-period > * { min-width: 0; min-height: 40px; border: 1px solid var(--profile-border); border-radius: 5px; background: #111417; }
+    .employment-calendar-period select { padding-inline: 5px; }
+    .employment-calendar-week, .employment-calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; text-align: center; }
+    .employment-calendar-week { margin: 12px 0 5px; font-size: .74rem; color: #aab1b8; }
+    .employment-calendar-days button { min-height: 38px; border-radius: 5px; font-size: .88rem; font-variant-numeric: tabular-nums; }
+    .employment-calendar button:enabled:hover { background: #24292e; }
+    .employment-calendar button:disabled { opacity: .33; }
+    .employment-calendar-days button[aria-current="date"] { box-shadow: inset 0 0 0 1px #c6a15b; }
+    .employment-calendar-days button[aria-pressed="true"] { background: #7a1638; color: #fff; }
+    .employment-date-field button:focus-visible, .employment-calendar :is(button,select):focus-visible { outline: 2px solid #c6a15b; outline-offset: 1px; }
 
     .profile-year-end-button { border: 1px solid rgba(198,161,91,.34); background: rgba(198,161,91,.10); color: #ead3a5; }
     .profile-year-end-button:hover { border-color: rgba(198,161,91,.55); background: rgba(198,161,91,.17); }
@@ -902,10 +933,12 @@ html, body {
       color: var(--profile-muted) !important;
     }
 
-    .profile-overtime-head a,
+    .profile-overtime-head .overtime-help-link,
     #overtimeLimitLabel {
-      color: var(--profile-steel) !important;
+      color: #c7a665;
     }
+    .profile-overtime-head .overtime-help-link:hover,
+    .profile-overtime-head .overtime-help-link:focus-visible { color: #ead3a5; }
 
     .profile-overtime-head > div:last-child {
       border: 1px solid var(--profile-border) !important;

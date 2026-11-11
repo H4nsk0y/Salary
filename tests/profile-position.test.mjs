@@ -47,9 +47,10 @@ test("custom position rejects markup, control characters and invalid length", ()
   }
 });
 
-test("profile inserts custom options through optgroup querySelectorAll", async () => {
+test("profile gets the allowed catalog and submits proposals separately from profile updates", async () => {
   const source = await readFile(new URL("../js/profile.js", import.meta.url), "utf8");
-  assert.match(source, /customPositionGroup\.querySelectorAll\("option"\)/);
-  assert.doesNotMatch(source, /customPositionGroup\.options/);
-  assert.match(source, /position: position \|\| null/);
+  assert.match(source, /getProfilePositionOptions\(\)/);
+  assert.match(source, /positionCatalog\.department_key \? positionSelect : document\.createElement\("optgroup"\)/);
+  assert.match(source, /await submitDepartmentPositionProposal\(result\.department, result\.position\)/);
+  assert.match(source, /position: positionChanged \? position \|\| null : undefined/);
 });

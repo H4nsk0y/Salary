@@ -26,7 +26,7 @@ test("profile disables a locked position and explains why", async () => {
 
   assert.match(html, /id="positionLockHint"/);
   assert.match(profile, /effectiveProfile\.position_locked === true/);
-  assert.match(profile, /positionSelect\.disabled = positionLocked/);
+  assert.match(profile, /positionSelect\.disabled = positionLocked \|\| !positionCatalog/);
   assert.match(profile, /POSITION_CHANGE_LOCKED/);
 });
 

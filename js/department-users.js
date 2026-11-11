@@ -1,5 +1,5 @@
 import { requireSession } from "./auth.js";
-import { leaderListDepartmentUsers, leaderUpdateDepartmentUser, leaderSetDepartmentUserFlag, leaderGetUserTimesheet } from "./db.js";
+import { getProfilePositionOptions, leaderListDepartmentUsers, leaderUpdateDepartmentUser, leaderSetDepartmentUserFlag, leaderGetUserTimesheet } from "./db.js";
 import { POSITION_OPTIONS, BRANCH_OPTIONS } from "./features/employeeProfileOptions.js";
 import { beginPageDataRequest, finishPageDataRequest } from "./pageLoader.js";
 import { startPresenceHeartbeat } from "./presence.js";
@@ -22,8 +22,10 @@ function element(tag, value = "", className = "") {
 function message(error) {
   const text = String(error?.message || error);
   if (/POSITION_CHANGE_LOCKED/.test(text)) return "Изменение должности запрещено овнером.";
+  if (/POSITION_NOT_ALLOWED/.test(text)) return "Эта должность недоступна в отделе сотрудника.";
   if (/DEPARTMENT_LEADER_POSITION_RESERVED/.test(text)) return "Эта должность закреплена за подтверждённым руководителем.";
   if (/ACCESS_DENIED|USER_NOT_IN_DEPARTMENT/.test(text)) return "Доступ закрыт. Нужна роль руководителя этого отдела.";
+  if (/get_profile_position_options/i.test(text)) return "Список должностей ещё не подключён: нужно применить SQL 074.";
   if (/PGRST202|schema cache|could not find/i.test(text)) return "Серверная часть ещё не подключена: нужно применить SQL 071.";
   return text;
 }
@@ -90,13 +92,23 @@ function confirmFlag(title, text) {
     document.body.append(confirmation); confirmation.showModal(); no.focus();
   });
 }
-function edit(user) {
+async function edit(user) {
   open(user, "Профиль");
+  const request = requestVersion;
+  body.append(element("p", "Загружаю доступные должности…"));
+  let catalog = null;
+  let catalogError = "";
+  try { catalog = await getProfilePositionOptions(user.user_id); }
+  catch (error) { catalogError = message(error); }
+  if (!dialog.open || request !== requestVersion) return;
+  body.replaceChildren();
+  const positionOptions = (catalog?.positions ?? []).map(({ value, label }) => [value, label]);
+  const positionLocked = user.position_locked || catalog?.locked;
   const form = element("form");
   const fields = element("div", "", "employee-fields");
   const inputs = new Map();
   for (const [key, title, options, type] of [
-    ["position", user.position_locked ? "Должность · заблокирована овнером" : "Должность", POSITION_OPTIONS],
+    ["position", positionLocked ? "Должность · заблокирована овнером" : "Должность", [["", "Не выбрана"], ...positionOptions]],
     ["tab_number", "Табельный номер", null, "text"],
     ["branch", "Филиал", BRANCH_OPTIONS],
     ["employment_date", "Дата трудоустройства", null, "date"],
@@ -108,18 +120,25 @@ function edit(user) {
     if (options) {
       for (const [value, caption] of options) { const option = element("option", caption); option.value = value; input.append(option); }
       if (user[key] != null && !options.some(([value]) => String(value) === String(user[key]))) {
-        const option = element("option", String(user[key])); option.value = user[key]; input.append(option);
+        const option = element("option", key === "position" ? new Map(POSITION_OPTIONS).get(user[key]) || user[key] : String(user[key]));
+        option.value = user[key];
+        if (key === "position") option.disabled = true;
+        input.append(option);
       }
     } else {
       input.type = type;
       if (type === "number") { input.min = "0"; input.step = "0.01"; }
     }
     input.value = user[key] ?? "";
-    if (key === "position" && user.position_locked) input.disabled = true;
+    if (key === "position") {
+      input.disabled = Boolean(positionLocked || !catalog);
+      if (catalog?.department_key && user.position) input.options[0].disabled = true;
+    }
     inputs.set(key, input);
     label.append(input); fields.append(label);
   }
   const error = element("p", "", "employee-error"); error.setAttribute("role", "status");
+  if (catalogError) error.textContent = catalogError;
   const save = element("button", "Сохранить", "employee-save"); save.type = "submit";
   form.append(fields, error, save);
   form.addEventListener("submit", async (event) => {

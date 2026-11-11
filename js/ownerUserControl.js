@@ -498,6 +498,9 @@ export function setupOwnerUserControl({
   function auditActionLabel(action) {
     return ({
       profile_updated: "Изменены данные профиля",
+      position_changed: "Изменена должность",
+      position_locked: "Смена должности запрещена",
+      position_unlocked: "Смена должности разрешена",
       department_changed: "Изменён отдел",
       editor_granted: "Выданы права редактора",
       editor_revoked: "Сняты права редактора",
@@ -512,6 +515,10 @@ export function setupOwnerUserControl({
 
   function auditDescription(entry) {
     const details = entry?.details || {};
+    if (entry.action === "position_changed") {
+      const title = (value) => POSITION_LABELS.get(value) || value || "Не выбрана";
+      return `${title(details.before)} → ${title(details.after)}`;
+    }
     if (entry.action === "owner_login") {
       return `${details.device || "Устройство не определено"}, ${details.browser || "Браузер не определён"}. IP: ${details.ip || "не определён"}`;
     }

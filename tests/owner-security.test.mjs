@@ -25,6 +25,7 @@ test("owner avatars accept only the employee's project storage folder", () => {
 
 test("login alerts use a server Auth insert, not a bypassable client callback", async () => {
   const sql = await read("supabase-sql/067_owner_login_notifications.sql");
+  const delivery = await read("supabase-sql/075_owner_login_push_delivery.sql");
   const push = await read("supabase/functions/send-push-notifications/index.ts");
   assert.match(sql, /after insert on auth\.sessions/i);
   assert.doesNotMatch(sql, /after update on auth\.sessions/i);
@@ -33,6 +34,9 @@ test("login alerts use a server Auth insert, not a bypassable client callback", 
   assert.match(push, /isInactiveUsersReport \|\| isOwnerLogin/);
   assert.match(push, /: isOwnerLogin\s*\? await verifyOwnerAccess/);
   assert.doesNotMatch(sql, /access_token|refresh_token|session_id/);
+  assert.match(delivery, /after insert on public\.user_notifications/i);
+  assert.match(delivery, /when \(new\.type = 'owner_login'\)/);
+  assert.match(delivery, /OWNER_LOGIN_PUSH_QUEUE_FAILED/);
 });
 
 test("owner access migrations reject escalation and preserve profile upserts", async () => {
@@ -49,9 +53,11 @@ test("push handler rejects non-owners and forged cron secrets, accepting owner o
   const source = (await read("supabase/functions/send-push-notifications/index.ts"))
     .replace(/^import .*;\r?\n/gm, "");
   let handler;
-  const filters = [];
+  const claims = [];
+  const delivered = [];
+  const updates = [];
   const query = {
-    select() { return this; }, eq(...args) { filters.push(args); return this; },
+    select() { return this; }, eq() { return this; },
     is() { return this; }, gt() { return this; }, gte() { return this; }, order() { return this; },
     limit() { return Promise.resolve({ data: [], error: null }); },
   };
@@ -59,10 +65,31 @@ test("push handler rejects non-owners and forged cron secrets, accepting owner o
     Response, TextEncoder, console,
     serve: (callback) => { handler = callback; },
     Deno: { env: { get: (key) => key === "CRON_SECRET" ? "test-cron-value" : "test-env-value" } },
-    webpush: { setVapidDetails() {} },
+    webpush: {
+      setVapidDetails() {},
+      sendNotification: async (_subscription, payload) => { delivered.push(JSON.parse(payload)); },
+    },
     createClient: (_url, _key, options) => ({
-      rpc: async () => ({ data: options?.global?.headers?.Authorization === "Bearer owner", error: null }),
-      from: () => query,
+      rpc: async (name, args) => {
+        if (name === "claim_owner_login_push") {
+          claims.push(args.p_user_id);
+          return { data: args.p_user_id === null
+            ? [{ id: 7, user_id: other, title: "Owner login", body: "New session", url: "owner.html" }]
+            : [], error: null };
+        }
+        return { data: options?.global?.headers?.Authorization === "Bearer owner", error: null };
+      },
+      auth: { getUser: async () => ({ data: { user: { id: other } }, error: null }) },
+      from: (table) => table === "push_subscriptions" ? {
+        select() { return this; }, in() { return this; },
+        eq() { return Promise.resolve({ data: [{ id: 9, user_id: other }], error: null }); },
+      } : {
+        ...query,
+        update(patch) {
+          updates.push(patch);
+          return { eq: async () => ({ error: null }) };
+        },
+      },
     }),
   });
   vm.runInContext(stripTypeScriptTypes(source), context);
@@ -74,8 +101,10 @@ test("push handler rejects non-owners and forged cron secrets, accepting owner o
   assert.equal((await handler(request("Bearer user", "wrong-secret"))).status, 403);
   assert.equal((await handler(request("Bearer owner"))).status, 200);
   assert.equal((await handler(request("Bearer anon", "test-cron-value"))).status, 200);
-  assert.ok(filters.some(([key, value]) => key === "type" && value === "owner_login"));
-  assert.ok(!filters.some(([key]) => key === "department_key"));
+  assert.deepEqual(claims, [other, null]);
+  assert.deepEqual(delivered, [{ title: "Owner login", body: "New session", url: "owner.html", tag: "alvisa-7" }]);
+  assert.ok(updates[0].push_sent_at);
+  assert.equal(updates[0].push_error, null);
 });
 
 // Set PGLITE_MODULE to a locally installed PGlite module for real Postgres checks.
@@ -122,8 +151,9 @@ test("database denies cross-user access and role spoofing; Auth alerts cannot bl
       create policy legacy_wide_access on profiles for all to authenticated using (true) with check (true);
       create table auth.sessions (id uuid primary key, user_id uuid, user_agent text, ip inet);
       create table public.owner_audit_log (actor_user_id uuid, target_user_id uuid, action text, details jsonb);
-      create table public.user_notifications (user_id uuid, actor_user_id uuid, type text, title text,
-        body text, url text, expires_at timestamptz);
+      create table public.user_notifications (id bigint generated always as identity primary key,
+        user_id uuid, actor_user_id uuid, type text, title text, body text, url text, expires_at timestamptz,
+        created_at timestamptz default now(), push_sent_at timestamptz);
       insert into profiles (user_id, role) values ('${uid}', 'user'), ('${other}', 'owner');
     `);
     // Exercise the real legacy definitions, not only simplified owner fixtures.
@@ -150,6 +180,9 @@ test("database denies cross-user access and role spoofing; Auth alerts cannot bl
     await db.exec(harden);
     await db.exec(alerts);
     await db.exec(alerts);
+    const delivery = await read("supabase-sql/075_owner_login_push_delivery.sql");
+    await db.exec(delivery);
+    await db.exec(delivery);
     const reports = await db.exec(await read("supabase-sql/068_owner_security_report.sql"));
     const verdict = reports.at(-1).rows[0];
     for (const [key, value] of Object.entries(verdict)) {
@@ -211,6 +244,23 @@ test("database denies cross-user access and role spoofing; Auth alerts cannot bl
     assert.match(notification.body, /Windows, Chrome/);
     await db.exec(`update auth.sessions set user_agent = 'Safari' where id = '${other}'`);
     assert.equal((await db.query("select * from user_notifications")).rows.length, 1);
+    for (const role of ["authenticated", "anon"]) {
+      await db.exec(`set role ${role}`);
+      await assert.rejects(db.query("select * from claim_owner_login_push(null,60,10)"), /permission denied/);
+      await assert.rejects(db.query("select _queue_owner_login_push()"), /permission denied/);
+      await db.exec("reset role");
+    }
+    await db.exec("set role service_role");
+    assert.equal((await db.query("select * from claim_owner_login_push($1,60,10)", [uid])).rows.length, 0);
+    assert.equal((await db.query("select * from claim_owner_login_push($1,60,10)", [other])).rows.length, 1);
+    assert.equal((await db.query("select * from claim_owner_login_push(null,60,10)")).rows.length, 0);
+    await db.exec("reset role; update user_notifications set owner_login_push_claimed_at=now()-interval '4 minutes'");
+    await db.exec("set role service_role");
+    assert.equal((await db.query("select * from claim_owner_login_push(null,60,10)")).rows.length, 1);
+    await db.exec("reset role; update user_notifications set owner_login_push_claimed_at=null,push_sent_at=now()");
+    await db.exec("set role service_role");
+    assert.equal((await db.query("select * from claim_owner_login_push(null,60,10)")).rows.length, 0);
+    await db.exec("reset role");
     await db.exec("drop table user_notifications;");
     await db.exec(`insert into auth.sessions values ('00000000-0000-0000-0000-000000000003', '${other}', '', null);`);
     assert.equal((await db.query("select * from auth.sessions")).rows.length, 3);

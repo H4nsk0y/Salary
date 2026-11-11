@@ -1375,11 +1375,35 @@ export async function submitProjectIdea(ideaText) {
 export async function ownerListProjectIdeas(status = null) {
   await requireUserId();
   const normalizedStatus = ["new", "reviewed", "archived"].includes(status) ? status : null;
-  const { data, error } = await supabase.rpc("owner_list_project_ideas", {
-    p_status: normalizedStatus,
-  });
+  const args = { p_status: normalizedStatus };
+  let { data, error } = await supabase.rpc("owner_list_project_ideas_with_positions", args);
+  if (error?.code === "PGRST202") {
+    ({ data, error } = await supabase.rpc("owner_list_project_ideas", args));
+  }
   if (error) throw error;
   return Array.isArray(data) ? data : [];
+}
+
+export async function getProfilePositionOptions(userId = null) {
+  await requireUserId();
+  const { data, error } = await supabase.rpc("get_profile_position_options", { p_user_id: userId });
+  if (error) throw error;
+  return data;
+}
+
+export async function submitDepartmentPositionProposal(departmentKey, positionName) {
+  await requireUserId();
+  const { error } = await supabase.rpc("submit_department_position_proposal", {
+    p_department_key: departmentKey,
+    p_position_name: positionName,
+  });
+  if (error) throw error;
+}
+
+export async function ownerApproveDepartmentPosition(ideaId) {
+  await requireUserId();
+  const { error } = await supabase.rpc("owner_approve_department_position", { p_idea_id: ideaId });
+  if (error) throw error;
 }
 
 export async function ownerSetProjectIdeaStatus(ideaId, status) {

@@ -1,6 +1,7 @@
 import { requireSession } from "./auth.js";
 import {
   getMyProfile,
+  ownerApproveDepartmentPosition,
   ownerDeleteProjectIdea,
   ownerListProjectIdeas,
   ownerSetProjectIdeaStatus,
@@ -89,6 +90,38 @@ function deleteButton(row) {
   return button;
 }
 
+function approvePositionButton(row) {
+  const proposal = row.position_proposal;
+  const button = element("button", "idea-status-button", proposal.approved ? "Должность добавлена" : "Добавить должность");
+  button.type = "button";
+  button.disabled = proposal.approved;
+  button.addEventListener("click", async () => {
+    const confirmed = await confirmDialog({
+      title: "Добавить должность?",
+      message: `«${proposal.name}» появится в списке отдела «${proposal.department}». Профили сотрудников не изменятся.`,
+      confirmText: "Добавить",
+    });
+    if (!confirmed) return;
+    button.disabled = true;
+    setError("");
+    try {
+      await ownerApproveDepartmentPosition(row.id);
+      let pushWarning = "";
+      try {
+        await sendPushNotifications({ type: "project_idea_reviewed", allUsers: true });
+      } catch {
+        pushWarning = "Должность добавлена, но push-уведомление не отправилось.";
+      }
+      await loadIdeas();
+      if (pushWarning) setError(pushWarning);
+    } catch (error) {
+      setError(error?.message || "Не удалось добавить должность.");
+      button.disabled = false;
+    }
+  });
+  return button;
+}
+
 function renderIdeas(rows) {
   ideasList.replaceChildren();
   ideasCount.textContent = `${rows.length}`;
@@ -109,6 +142,7 @@ function renderIdeas(rows) {
     const foot = element("div", "idea-card-foot");
     foot.append(element("time", "idea-date", formatDate(row.created_at)));
     const actions = element("div", "idea-actions");
+    if (row.position_proposal) actions.append(approvePositionButton(row));
     actions.append(
       statusButton(row, "new", "Новая"),
       statusButton(row, "reviewed", "Рассмотрено"),

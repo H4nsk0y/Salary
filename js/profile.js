@@ -7,7 +7,9 @@ import {
   updateMyProfile,
   listMyTimesheetsByYear,
   listMyTimesheetsBefore,
-  listReservedLeaderPositions,
+  getProfilePositionOptions,
+  submitDepartmentPositionProposal,
+  sendPushNotifications,
   getMyVacationBalance,
   saveMyVacationBalance,
   listDepartmentVacationOverlaps,
@@ -19,12 +21,9 @@ import {
   getProductionCalendarMonth,
   mergeProductionCalendarDefaults,
 } from "./productionCalendar.js";
-import {
-  CUSTOM_POSITION_VALUE,
-  isValidCustomPosition,
-  normalizeCustomPosition,
-  validateCustomPositionSelection,
-} from "./profilePosition.js";
+import { validateCustomPositionSelection } from "./profilePosition.js";
+import { POSITION_OPTIONS } from "./features/employeeProfileOptions.js";
+import { formatEmploymentDateInput, normalizeEmploymentDateInput, bindEmploymentDateCalendar } from "./features/employmentDateCalendar.js";
 import { setUiStatus } from "./uiStatus.js";
 import {
   parseNumber,
@@ -114,7 +113,8 @@ const customPositionInput = document.getElementById("customPositionInput");
 const customPositionError = document.getElementById("customPositionError");
 const missingDepartmentBtn = document.getElementById("missingDepartmentBtn");
 const customPositionSaveBtn = document.getElementById("customPositionSaveBtn");
-const customPositionGroup = document.getElementById("customPositionGroup");
+const suggestPositionBtn = document.getElementById("suggestPositionBtn");
+const positionCatalogHint = document.getElementById("positionCatalogHint");
 const okladPeekBtnInitial = document.getElementById("okladInputPeekBtn");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const refreshBtn = document.getElementById("refreshBtn");
@@ -195,49 +195,8 @@ const AVATAR_ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const monthNamesShort = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
 
-const POSITION_VALUES = new Set([
-  "",
-  "egais_head",
-  "egais_senior_operator",
-  "egais_operator",
-  "warehouse_head",
-  "storekeeper",
-  "loader",
-  "driver",
-  "bottling_plant_head",
-  "shift_senior_master",
-  "shift_master",
-  "filling_line_operator",
-  "accountant",
-  "laboratory_head",
-  "deputy_head_laboratory",
-  "entrance_control_engineer",
-  "quality_control_engineer",
-  "chemist",
-  "microbiologist",
-  "chief_accountant",
-  "deputy_chief_accountant",
-  "accountant_bookkeeping",
-  "system_administrator",
-  "assistant_system_administrator",
-  "hr_service_head",
-  "hr_specialist",
-  "director",
-  "assistant_director",
-  "procurement_specialist",
-  "technology_accounting_specialist",
-]);
-const CUSTOM_POSITION_DEPARTMENTS = new Set([
-  "administration",
-  "accounting",
-  "laboratory",
-  "egais",
-  "operations",
-  "warehouse",
-  "hr",
-  "technology",
-  "bottling",
-]);
+const positionLabels = new Map(POSITION_OPTIONS);
+let positionCatalog = null;
 
 const BRANCH_VALUES = new Set([
   "",
@@ -298,7 +257,7 @@ function getExpectedProfileFieldValues(profile) {
     gender: profile?.gender ?? "",
     branch: profile?.branch ?? "",
     weeklyHours: String(normalizeWeeklyHours(profile?.weekly_hours) ?? DEFAULT_WEEKLY_HOURS),
-    employmentDate: profile?.employment_date ?? "",
+    employmentDate: formatEmploymentDateInput(profile?.employment_date),
     oklad: profile?.oklad != null ? String(profile.oklad) : "",
     taxRate: String(Number((normalizeTaxRate(profile?.tax_rate) * 100).toFixed(4))),
   };
@@ -306,11 +265,7 @@ function getExpectedProfileFieldValues(profile) {
 
 function applyExpectedProfileFieldValues(values) {
   if (displayNameInput) displayNameInput.value = values.displayName;
-  if (positionSelect) {
-    const position = String(values.position || "").trim();
-    if (position && !POSITION_VALUES.has(position)) ensureCustomPositionOption(position);
-    positionSelect.value = position;
-  }
+  if (positionSelect) positionSelect.value = values.position;
   if (genderSelect) genderSelect.value = values.gender;
   if (branchSelect) branchSelect.value = values.branch;
   if (weeklyHoursSelect) weeklyHoursSelect.value = values.weeklyHours;
@@ -322,79 +277,96 @@ function applyExpectedProfileFieldValues(values) {
   if (taxRateInput) taxRateInput.value = values.taxRate;
 }
 
-function ensureCustomPositionOption(position) {
-  if (!positionSelect || !customPositionGroup) return;
-  const normalized = normalizeCustomPosition(position);
-  if (!normalized || POSITION_VALUES.has(normalized)) return;
-
-  const optionNodes = customPositionGroup?.querySelectorAll
-    ? customPositionGroup.querySelectorAll("option")
-    : [];
-  const customOptions = Array.from(optionNodes);
-  let option = customOptions.find((item) => item.value === normalized);
-  if (!option) {
-    option = document.createElement("option");
-    option.value = normalized;
-    option.textContent = normalized;
-    const sentinel = customOptions.find((item) => item.value === CUSTOM_POSITION_VALUE);
-    customPositionGroup.insertBefore(option, sentinel || null);
+function renderPositionCatalog(position) {
+  positionSelect.replaceChildren(new Option("Не выбрана", ""));
+  const departments = positionCatalog?.departments ?? [];
+  const positions = positionCatalog?.positions ?? [];
+  for (const department of departments) {
+    const group = positionCatalog.department_key ? positionSelect : document.createElement("optgroup");
+    if (group !== positionSelect) group.label = department.label;
+    for (const item of positions.filter((item) => item.department_key === department.key)) {
+      group.append(new Option(item.label, item.value));
+    }
+    if (group !== positionSelect && group.childElementCount) positionSelect.append(group);
+  }
+  if (position && !Array.from(positionSelect.options).some((option) => option.value === position)) {
+    const current = new Option(`Текущая: ${positionLabels.get(position) || position}`, position);
+    current.disabled = true;
+    positionSelect.append(current);
+  }
+  if (positionCatalog?.department_key && position) positionSelect.options[0].disabled = true;
+  positionSelect.value = position || "";
+  if (suggestPositionBtn) suggestPositionBtn.disabled = !departments.length;
+  if (positionCatalogHint) {
+    positionCatalogHint.textContent = positionCatalog ? "" : "Не удалось загрузить список должностей. Остальные поля можно сохранить.";
+    positionCatalogHint.classList.toggle("hidden", Boolean(positionCatalog));
   }
 }
 
 function setCustomPositionError(message = "") {
-  if (!customPositionError) return;
-  customPositionError.textContent = message;
+  if (customPositionError) customPositionError.textContent = message;
 }
 
-function closeCustomPositionModal({ restoreSelection = true } = {}) {
+function closeCustomPositionModal() {
   customPositionOverlay?.classList.add("hidden");
   document.body.classList.remove("modal-open");
   setCustomPositionError();
-  if (restoreSelection && positionSelect?.value === CUSTOM_POSITION_VALUE) {
-    const previousPosition = normalizeCustomPosition(currentProfile?.position);
-    if (previousPosition && !POSITION_VALUES.has(previousPosition)) ensureCustomPositionOption(previousPosition);
-    positionSelect.value = previousPosition || "";
-  }
+  suggestPositionBtn?.focus();
 }
 
 function openCustomPositionModal() {
-  if (!customPositionOverlay) return;
-  customPositionDepartmentSelect.value = "";
+  if (!customPositionOverlay || !positionCatalog?.departments?.length) return;
+  const departmentKey = positionCatalog.department_key || "";
+  customPositionDepartmentSelect.replaceChildren(new Option("Выберите отдел", ""));
+  for (const department of positionCatalog.departments) {
+    customPositionDepartmentSelect.add(new Option(department.label, department.key));
+  }
+  customPositionDepartmentSelect.value = departmentKey;
+  customPositionDepartmentSelect.disabled = Boolean(departmentKey);
+  if (missingDepartmentBtn) missingDepartmentBtn.hidden = Boolean(departmentKey);
   customPositionInput.value = "";
   setCustomPositionError();
   customPositionOverlay.classList.remove("hidden");
   document.body.classList.add("modal-open");
-  window.setTimeout(() => customPositionDepartmentSelect?.focus(), 0);
+  (departmentKey ? customPositionInput : customPositionDepartmentSelect).focus();
 }
 
-function saveCustomPosition() {
+async function saveCustomPosition() {
+  if (!positionCatalog || customPositionSaveBtn.disabled) return;
   const result = validateCustomPositionSelection({
-    department: customPositionDepartmentSelect?.value,
-    position: customPositionInput?.value,
-    allowedDepartments: CUSTOM_POSITION_DEPARTMENTS,
+    department: customPositionDepartmentSelect.value,
+    position: customPositionInput.value,
+    allowedDepartments: positionCatalog.departments.map((department) => department.key),
   });
-
-  if (!result.ok && result.field === "department") {
-    setCustomPositionError(result.message);
-    customPositionDepartmentSelect?.focus();
-    return;
-  }
   if (!result.ok) {
     setCustomPositionError(result.message);
-    customPositionInput?.focus();
+    (result.field === "department" ? customPositionDepartmentSelect : customPositionInput).focus();
     return;
   }
-
-  ensureCustomPositionOption(result.position);
-  positionSelect.value = result.position;
-  markProfileFieldsTouched();
-  closeCustomPositionModal({ restoreSelection: false });
+  customPositionSaveBtn.disabled = true;
+  try {
+    await submitDepartmentPositionProposal(result.department, result.position);
+    void sendPushNotifications({ type: "project_idea_submitted" }).catch(() => {});
+    closeCustomPositionModal();
+    setStatus("Предложение отправлено", "ok");
+  } catch (error) {
+    const messages = {
+      POSITION_NOT_ALLOWED: "Можно предложить должность только для своего отдела.",
+      POSITION_ALREADY_AVAILABLE: "Такая должность уже есть в списке.",
+      POSITION_PROPOSAL_PENDING: "Вы уже отправляли такое предложение. Оно ожидает рассмотрения.",
+      INVALID_POSITION_NAME: "Проверьте название должности.",
+      IDEA_RATE_LIMIT: "На сегодня достигнут лимит предложений.",
+    };
+    setCustomPositionError(messages[error?.message] || "Не удалось отправить предложение. Попробуйте ещё раз.");
+  } finally {
+    customPositionSaveBtn.disabled = false;
+  }
 }
 
 function updateEmploymentDateHint() {
   if (!employmentDateInput) return;
 
-  const startDate = parseProfileDate(employmentDateInput.value);
+  const startDate = parseProfileDate(normalizeEmploymentDateInput(employmentDateInput.value));
   if (!startDate) {
     employmentDateInput.title = "Выберите дату трудоустройства, чтобы увидеть стаж в АЛВИСА.";
     return;
@@ -1335,22 +1307,17 @@ function showYearEndForecastDialog(forecast, year) {
 
   const header = document.createElement("header");
   header.className = "year-end-forecast-head";
-  const headingWrap = document.createElement("div");
-  const kicker = document.createElement("div");
-  kicker.className = "profile-kicker";
-  kicker.textContent = "Beta-расчет";
   const title = document.createElement("h2");
   title.id = "yearEndForecastTitle";
   title.className = "year-end-forecast-title";
   title.textContent = `Прогноз выплаты за декабрь ${year}`;
-  headingWrap.append(kicker, title);
 
   const closeButton = document.createElement("button");
   closeButton.type = "button";
   closeButton.className = "year-end-forecast-close";
   closeButton.setAttribute("aria-label", "Закрыть");
   closeButton.textContent = "×";
-  header.append(headingWrap, closeButton);
+  header.append(title, closeButton);
 
   const body = document.createElement("div");
   body.className = "year-end-forecast-body";
@@ -1769,18 +1736,12 @@ async function refreshProfile() {
   setStatus("Загружаю профиль…", "busy");
   setError(null);
 
-  const profile = await getMyProfile();
+  const [profile, catalog] = await Promise.all([
+    getMyProfile(),
+    getProfilePositionOptions().catch(() => null),
+  ]);
   currentProfile = profile ?? null;
-  try {
-    const reserved = new Set(await listReservedLeaderPositions());
-    for (const option of positionSelect?.options ?? []) {
-      option.dataset.originalLabel ??= option.textContent;
-      option.disabled = reserved.has(option.value) && option.value !== profile?.position;
-      option.textContent = option.disabled ? `${option.dataset.originalLabel} (занято)` : option.dataset.originalLabel;
-    }
-  } catch {
-    // The older database schema has no reserved-position list.
-  }
+  positionCatalog = catalog;
   window.dispatchEvent(new CustomEvent("alvisa:profile-updated", {
     detail: { profile: currentProfile },
   }));
@@ -1817,10 +1778,11 @@ async function refreshProfile() {
   if (!requireDom(okladInput, "okladInput")) return;
   if (!requireDom(positionSelect, "positionSelect")) return;
 
-  const positionLocked = effectiveProfile.position_locked === true;
-  positionSelect.disabled = positionLocked;
-  positionSelect.setAttribute("aria-disabled", String(positionLocked));
+  const positionLocked = effectiveProfile.position_locked === true || positionCatalog?.locked === true;
+  positionSelect.disabled = positionLocked || !positionCatalog;
+  positionSelect.setAttribute("aria-disabled", String(positionSelect.disabled));
   positionLockHint?.classList.toggle("hidden", !positionLocked);
+  renderPositionCatalog(effectiveProfile.position);
 
   const hideMoney = isMoneyProtectionEnabled(effectiveProfile);
 
@@ -2334,7 +2296,7 @@ async function saveProfile() {
   const displayName = displayNameInput.value.trim();
   const branch = branchSelect ? String(branchSelect.value || "") : "";
   const weeklyHours = normalizeWeeklyHours(weeklyHoursSelect?.value);
-  const employmentDate = String(employmentDateInput?.value || "").trim();
+  const employmentDate = normalizeEmploymentDateInput(employmentDateInput.value);
   const oklad = parseNumber(okladInput.value);
   const taxPercentText = String(taxRateInput?.value ?? "13").trim();
   const taxPercent = taxPercentText ? parseNumber(taxPercentText) : 13;
@@ -2344,6 +2306,7 @@ async function saveProfile() {
     return;
   }
   const position = positionSelect ? String(positionSelect.value || "") : "";
+  const positionChanged = positionSelect && !positionSelect.disabled && position !== (currentProfile?.position ?? "");
   const gender = genderSelect ? String(genderSelect.value || "") : "";
 
   if (displayName && displayName.length < 2) {
@@ -2358,8 +2321,8 @@ async function saveProfile() {
     setError("Оклад должен быть числом от 0 до 1 000 000 000.");
     return;
   }
-  if (position === CUSTOM_POSITION_VALUE || (!POSITION_VALUES.has(position) && !isValidCustomPosition(position))) {
-    setError("Выберите должность из списка или укажите свой вариант.");
+  if (positionChanged && (position ? !positionCatalog?.positions?.some((item) => item.value === position) : positionCatalog?.department_key)) {
+    setError("Выберите должность из доступного списка.");
     return;
   }
   if (gender && gender !== "male" && gender !== "female") {
@@ -2374,22 +2337,12 @@ async function saveProfile() {
     setError("Некорректная норма недели.");
     return;
   }
-  if (employmentDate && !/^\d{4}-\d{2}-\d{2}$/.test(employmentDate)) {
-    setError("Некорректная дата трудоустройства.");
+  if (employmentDateInput.value.trim() && !employmentDate) {
+    setError("Введите дату трудоустройства в формате ДД.ММ.ГГГГ.");
     return;
   }
   if (employmentDate) {
-    const [dateYear, dateMonth, dateDay] = employmentDate.split("-").map(Number);
-    const parsedEmploymentDate = new Date(dateYear, dateMonth - 1, dateDay);
-    if (
-      parsedEmploymentDate.getFullYear() !== dateYear ||
-      parsedEmploymentDate.getMonth() !== dateMonth - 1 ||
-      parsedEmploymentDate.getDate() !== dateDay
-    ) {
-      setError("Некорректная дата трудоустройства.");
-      return;
-    }
-
+    const parsedEmploymentDate = parseProfileDate(employmentDate);
     const today = new Date();
     today.setHours(23, 59, 59, 999);
     if (parsedEmploymentDate < new Date(1950, 0, 1) || parsedEmploymentDate > today) {
@@ -2409,7 +2362,7 @@ async function saveProfile() {
       taxRate: taxPercent / 100,
       employmentDate: employmentDate || null,
       oklad: okladInput.value.trim() ? oklad : null,
-      position: position || null,
+      position: positionChanged ? position || null : undefined,
       gender: gender || null,
     });
 
@@ -2442,7 +2395,9 @@ async function saveProfile() {
       ? "Эта должность закреплена за подтвержденным руководителем отдела. Выберите другую должность."
       : message.includes("POSITION_CHANGE_LOCKED")
         ? "Овнер запретил изменение должности для этого профиля."
-        : message || "Не удалось сохранить профиль.");
+        : message.includes("POSITION_NOT_ALLOWED")
+          ? "Эта должность недоступна для вашего отдела. Обновите профиль и выберите должность из списка."
+          : message || "Не удалось сохранить профиль.");
   }
 }
 
@@ -2557,9 +2512,7 @@ avatarRemoveBtn?.addEventListener("click", async () => {
   }
 });
 
-positionSelect?.addEventListener("change", () => {
-  if (positionSelect.value === CUSTOM_POSITION_VALUE) openCustomPositionModal();
-});
+suggestPositionBtn?.addEventListener("click", openCustomPositionModal);
 
 customPositionCloseBtn?.addEventListener("click", () => closeCustomPositionModal());
 customPositionSaveBtn?.addEventListener("click", saveCustomPosition);
@@ -2590,6 +2543,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 hardenProfileAutofill();
+bindEmploymentDateCalendar(employmentDateInput, document.getElementById("employmentCalendarBtn"), document.getElementById("employmentCalendar"));
 for (const field of [displayNameInput, okladInput, taxRateInput].filter(Boolean)) {
   field.addEventListener("beforeinput", markProfileTextInputTouched);
   field.addEventListener("keydown", markProfileFieldsTouched);
@@ -2606,7 +2560,10 @@ for (const field of [positionSelect, genderSelect, branchSelect, weeklyHoursSele
 employmentDateInput?.addEventListener("mouseenter", updateEmploymentDateHint);
 employmentDateInput?.addEventListener("focus", updateEmploymentDateHint);
 employmentDateInput?.addEventListener("input", updateEmploymentDateHint);
-employmentDateInput?.addEventListener("change", updateEmploymentDateHint);
+employmentDateInput?.addEventListener("change", () => {
+  markProfileFieldsTouched();
+  updateEmploymentDateHint();
+});
 
 setupProfileMoneyControls();
 

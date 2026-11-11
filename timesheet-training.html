@@ -603,29 +603,20 @@
       border-bottom: 1px solid var(--line);
     }
 
-    .training-kicker {
-      color: var(--wine-light) !important;
-      background: transparent !important;
-      border: 0 !important;
-      border-radius: 0 !important;
-      padding: 0 !important;
-      box-shadow: none !important;
-      font-size: 0.67rem !important;
-      font-weight: 800 !important;
-      text-transform: uppercase;
-    }
-
-    .training-kicker.is-achieved {
+    .training-achievement:not([hidden]) {
+      display: inline-flex;
+      align-items: center;
       gap: 8px;
-      padding: 8px 11px !important;
-      border: 1px solid rgba(198,161,91,.48) !important;
-      border-radius: 6px !important;
-      background: rgba(198,161,91,.11) !important;
-      color: #ead3a5 !important;
-      box-shadow: 0 0 18px rgba(198,161,91,.14) !important;
-      text-transform: none;
+      margin-top: 12px;
+      padding: 8px 11px;
+      border: 1px solid rgba(198,161,91,.48);
+      border-radius: 6px;
+      background: rgba(198,161,91,.11);
+      color: #ead3a5;
+      font-size: .75rem;
+      font-weight: 700;
     }
-    .training-kicker.is-achieved::before { content: "✓"; font-size: 15px; line-height: 1; }
+    .training-achievement::before { content: "✓"; font-size: 15px; line-height: 1; }
 
     .training-title,
     #lessonTitle,
@@ -796,7 +787,6 @@
     }
 
     #lessonKind,
-    .manager-kicker { color: var(--gold) !important; }
 
     #lessonTitle,
     #managerMissionTitle {
@@ -981,13 +971,11 @@
   <main class="training-shell relative z-10 mx-auto pt-safe pb-12 md:pb-16">
     <header class="training-hero">
       <div class="max-w-3xl">
-        <div id="trainingAchievement" class="training-kicker inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/20">
-          Практика
-        </div>
         <h1 class="training-title mt-4 text-3xl font-bold text-slate-100 md:text-4xl">Тренажёр табеля</h1>
         <p id="trainingPageLead" class="mt-2 text-sm leading-6 text-slate-300/85">
           Заполняйте учебную неделю, проверяйте себя и переходите к следующему заданию. Эти данные никогда не попадут в настоящий табель.
         </p>
+        <div id="trainingAchievement" class="training-achievement" hidden>Обучение успешно пройдено</div>
       </div>
 
       <div class="training-controls min-w-0">
@@ -1143,7 +1131,6 @@
 
       <div id="managerMissionArea" class="manager-workspace mt-4">
         <div class="manager-heading border-y border-white/10 py-5">
-          <div class="manager-kicker text-xs font-semibold uppercase text-amber-200">Практическое задание</div>
           <h3 id="managerMissionTitle" class="mt-2 text-2xl font-bold text-slate-100"></h3>
           <p id="managerMissionDescription" class="mt-2 max-w-5xl text-sm leading-6 text-slate-300/90"></p>
         </div>
@@ -1206,7 +1193,7 @@
   </div>
 
 <script type="module" src="./js/nav.js?v=20260921-3"></script>
-  <script type="module" src="./js/timesheet-training.js"></script>
+  <script type="module" src="./js/timesheet-training.js?v=20261111-1"></script>
   <script type="module" src="./js/manager-training.js"></script>
 </body>
 </html>

@@ -84,7 +84,7 @@
     .home-hero {
       position: relative;
       display: flex;
-      min-height: min(720px, calc(100svh - 1.5rem));
+      min-height: min(720px, 73svh);
       align-items: center;
       overflow: hidden;
       isolation: isolate;
@@ -124,26 +124,9 @@
 
     .hero-copy {
       width: min(100%, 940px);
-      padding-top: max(8.5rem, calc(6.5rem + env(safe-area-inset-top)));
-      padding-bottom: 5.5rem;
+      padding-block: 3.5rem;
       text-shadow: 0 2px 28px rgba(0, 0, 0, .64);
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: .75rem;
-      color: rgba(241, 238, 232, .78);
-      font-size: .72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .eyebrow::before {
-      content: "";
-      width: 38px;
-      height: 1px;
-      background: var(--gold);
+      animation: homeEnter 900ms cubic-bezier(.2, .75, .2, 1) both;
     }
 
     .brand-title {
@@ -154,47 +137,7 @@
       letter-spacing: 0;
     }
 
-    .hero-subtitle {
-      max-width: 650px;
-      margin-top: 1.5rem;
-      color: rgba(241, 238, 232, .84);
-      font-size: 1.12rem;
-      line-height: 1.75;
-    }
-
-    .hero-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: .75rem;
-      margin-top: 2rem;
-    }
-
-    .hero-next-shift {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
-      align-items: center;
-      gap: .8rem;
-      width: min(100%, 430px);
-      margin-top: 1.15rem;
-      padding: .8rem .9rem;
-      border-left: 2px solid var(--steel);
-      background: rgba(7, 9, 10, .72);
-      backdrop-filter: blur(7px);
-      -webkit-backdrop-filter: blur(7px);
-      color: inherit;
-      text-decoration: none;
-      transition: border-color 180ms ease, background-color 180ms ease;
-    }
-
-    .hero-next-shift[hidden] { display: none; }
-    .hero-next-shift:hover { border-color: #a9cff5; background: rgba(7, 9, 10, .86); }
-    .hero-next-shift-label { color: #a9cff5; font-size: .65rem; font-weight: 800; text-transform: uppercase; }
-    .hero-next-shift-date { margin-top: .2rem; color: var(--porcelain); font-size: .92rem; font-weight: 700; }
-    .hero-next-shift-detail { color: #c6c9cc; font-size: .78rem; text-align: right; }
-    .hero-next-shift-arrow { color: var(--steel); font-size: 1rem; }
-
-    .button-primary,
-    .button-secondary {
+    .button-primary {
       display: inline-flex;
       min-height: 48px;
       align-items: center;
@@ -206,9 +149,6 @@
       font-weight: 700;
       text-decoration: none;
       transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease;
-    }
-
-    .button-primary {
       border: 1px solid rgba(255, 255, 255, .12);
       background: var(--wine);
       color: #fff;
@@ -220,20 +160,8 @@
       transform: translateY(-2px);
     }
 
-    .button-secondary {
-      border: 1px solid rgba(241, 238, 232, .28);
-      background: rgba(11, 13, 15, .58);
-      color: var(--porcelain);
-      backdrop-filter: blur(10px);
-    }
-
-    .button-secondary:hover {
-      border-color: rgba(110, 168, 232, .68);
-      background: rgba(21, 25, 29, .84);
-      transform: translateY(-2px);
-    }
-
     .year-review-button {
+      margin-top: 1.25rem;
       position: relative;
       overflow: hidden;
       border: 1px solid rgba(236,199,104,.72);
@@ -254,8 +182,7 @@
       transition: transform 180ms ease;
     }
 
-    .button-primary:hover .button-arrow,
-    .button-secondary:hover .button-arrow {
+    .button-primary:hover .button-arrow {
       transform: translateX(3px);
     }
 
@@ -274,7 +201,7 @@
       grid-template-columns: minmax(0, 1fr) minmax(280px, 430px);
       gap: 2rem;
       align-items: end;
-      padding: 5.5rem 0 2.25rem;
+      padding: 3.5rem 0 2.25rem;
     }
 
     .section-heading h2 {
@@ -382,59 +309,6 @@
       transform: translate(2px, -2px);
     }
 
-    .principles {
-      display: grid;
-      grid-template-columns: .9fr 1.1fr;
-      gap: 4rem;
-      padding: 5rem 0 6rem;
-    }
-
-    .principles-lead h2 {
-      margin: 0;
-      max-width: 480px;
-      font-size: 3.4rem;
-      line-height: 1.04;
-      letter-spacing: 0;
-    }
-
-    .principles-lead p {
-      max-width: 470px;
-      margin-top: 1.5rem;
-      color: var(--muted);
-      font-size: .94rem;
-      line-height: 1.8;
-    }
-
-    .principle-list {
-      border-top: 1px solid var(--line);
-    }
-
-    .principle-row {
-      display: grid;
-      grid-template-columns: 44px minmax(0, 1fr);
-      gap: 1rem;
-      padding: 1.45rem 0;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .principle-number {
-      color: var(--gold);
-      font-size: .72rem;
-      font-weight: 800;
-    }
-
-    .principle-row h3 {
-      margin: 0;
-      font-size: 1rem;
-    }
-
-    .principle-row p {
-      margin: .45rem 0 0;
-      color: var(--muted);
-      font-size: .84rem;
-      line-height: 1.7;
-    }
-
     .home-cta {
       position: relative;
       overflow: hidden;
@@ -479,47 +353,36 @@
 
     .home-footer a:hover { color: var(--steel); }
 
-    .reveal {
-      opacity: 0;
-      transform: translateY(10px);
-      transition: opacity 520ms ease, transform 520ms cubic-bezier(.2, .75, .2, 1);
+    @keyframes homeEnter {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    .reveal.is-visible {
-      opacity: 1;
-      transform: translateY(0);
+    .reveal.is-pending:not(:focus-within) { opacity: 0; }
+    .reveal.is-visible:not(:focus-within) {
+      animation: homeEnter 520ms cubic-bezier(.2, .75, .2, 1) var(--reveal-delay, 0ms) backwards;
+    }
+
+    .alvisa-loader-primed :is(.hero-copy, .hero-image-motion, .reveal) {
+      animation-play-state: paused;
     }
 
     @media (max-width: 900px) {
       .brand-title { font-size: 5.5rem; }
-      .section-heading,
-      .principles { grid-template-columns: 1fr; }
+      .section-heading { grid-template-columns: 1fr; }
       .section-heading { gap: 1.2rem; }
       .workspace-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .principles { gap: 2.5rem; }
       .home-cta-inner { align-items: flex-start; flex-direction: column; }
     }
 
-    @media (max-width: 520px) {
-      .hero-next-shift { grid-template-columns: minmax(0, 1fr) auto; }
-      .hero-next-shift-detail { grid-column: 1; text-align: left; }
-      .hero-next-shift-arrow { grid-column: 2; grid-row: 1 / span 2; }
-    }
-
     @media (max-width: 640px) {
-      .home-hero {
-        min-height: 690px;
-        align-items: flex-end;
-      }
-
       .hero-image-motion { background-position: 32% center; }
 
       .home-hero::before { background: rgba(5, 7, 8, .42); }
 
       .hero-copy {
         width: 100%;
-        padding-top: max(7.5rem, calc(5.5rem + env(safe-area-inset-top)));
-        padding-bottom: 3.5rem;
+        padding-block: 2.5rem;
       }
 
       .brand-title {
@@ -528,26 +391,16 @@
         line-height: .95;
       }
 
-      .hero-subtitle {
-        margin-top: 1.1rem;
-        font-size: .96rem;
-        line-height: 1.65;
-      }
-
-      .hero-actions { display: grid; grid-template-columns: 1fr; }
-      .button-primary, .button-secondary { width: 100%; }
+      .button-primary { width: 100%; }
       .section-wrap { width: min(100% - 1.25rem, 1240px); }
 
-      .section-heading { padding: 4rem 0 1.75rem; }
-      .section-heading h2,
-      .principles-lead h2 { font-size: 2.45rem; }
+      .section-heading { padding: 2.75rem 0 1.75rem; }
+      .section-heading h2 { font-size: 2.45rem; }
 
       .workspace-grid { grid-template-columns: 1fr; }
       .workspace-link { min-height: 190px; padding: 1.3rem; }
       .workspace-link::before { left: 1.3rem; }
       .workspace-title { margin-top: 2.8rem; }
-
-      .principles { padding: 4.25rem 0; }
 
       .home-cta-inner { min-height: 0; padding-block: 3.5rem; }
       .home-cta h2 { font-size: 2.35rem; }
@@ -561,7 +414,9 @@
         animation-iteration-count: 1 !important;
         transition-duration: .01ms !important;
       }
-      .reveal { opacity: 1; transform: none; }
+      .reveal.is-pending:not(:focus-within) { opacity: 1; }
+      .reveal.is-visible:not(:focus-within), .hero-copy { animation: none; }
+      .hero-image-motion { animation: none; transform: none; }
     }
   </style>
   <link rel="stylesheet" href="./styles/page-loader.css?v=20261002-1" />
@@ -578,34 +433,6 @@
       <div class="section-wrap">
         <div class="hero-copy">
           <h1 id="homeTitle" class="brand-title display-font">ALVISA SALARY</h1>
-          <div class="hero-actions">
-            <a href="table.html" class="button-primary">
-              Открыть табель <span class="button-arrow" aria-hidden="true">→</span>
-            </a>
-            <a href="calculator.html" class="button-secondary">
-              Рассчитать зарплату <span class="button-arrow" aria-hidden="true">→</span>
-            </a>
-            <a href="profile.html" class="button-secondary">
-              Личный кабинет
-            </a>
-            <a href="screen-saver.html?mode=building&amp;from=index.html" class="button-secondary">
-              Не отключать экран <span class="button-arrow" aria-hidden="true">→</span>
-            </a>
-            <a id="yearReviewLink" href="year-review.html" class="button-primary year-review-button" hidden>
-              <span class="year-review-star" aria-hidden="true">✦</span>
-              Мой рабочий год <span class="button-arrow" aria-hidden="true">→</span>
-            </a>
-          </div>
-
-          <a id="homeNextShift" class="hero-next-shift" href="table.html" hidden>
-            <div>
-              <div class="hero-next-shift-label">Ближайшая смена</div>
-              <div class="hero-next-shift-date" data-next-shift-date></div>
-            </div>
-            <div class="hero-next-shift-detail" data-next-shift-detail></div>
-            <span class="hero-next-shift-arrow" aria-hidden="true">→</span>
-          </a>
-
         </div>
       </div>
     </section>
@@ -618,84 +445,53 @@
           </div>
         </div>
 
-        <nav class="workspace-grid reveal" aria-label="Основные разделы">
-          <a href="table.html" class="workspace-link" style="--accent: var(--wine-light)">
+        <nav class="workspace-grid" aria-label="Основные разделы">
+          <a href="table.html" class="workspace-link reveal" style="--accent: var(--wine-light)">
             <span class="workspace-index">01</span>
             <span class="workspace-arrow" aria-hidden="true">↗</span>
             <div class="workspace-title">Табель</div>
             <p class="workspace-copy">Часы, норма месяца, выплаты и сохранённая история.</p>
           </a>
 
-          <a href="schedule.html" class="workspace-link" style="--accent: var(--steel)">
+          <a href="schedule.html" class="workspace-link reveal" style="--accent: var(--steel)">
             <span class="workspace-index">02</span>
             <span class="workspace-arrow" aria-hidden="true">↗</span>
             <div class="workspace-title">Смены</div>
             <p class="workspace-copy">Кто работает сегодня и кто заступает завтра.</p>
           </a>
 
-          <a href="calculator.html" class="workspace-link" style="--accent: var(--steel)">
+          <a href="calculator.html" class="workspace-link reveal" style="--accent: var(--steel)">
             <span class="workspace-index">03</span>
             <span class="workspace-arrow" aria-hidden="true">↗</span>
             <div class="workspace-title">Калькулятор</div>
             <p class="workspace-copy">Быстрый расчёт зарплаты без обязательной регистрации.</p>
           </a>
 
-          <a href="profile.html" class="workspace-link" style="--accent: var(--wine-light)">
+          <a href="profile.html" class="workspace-link reveal" style="--accent: var(--wine-light)">
             <span class="workspace-index">04</span>
             <span class="workspace-arrow" aria-hidden="true">↗</span>
             <div class="workspace-title">Профиль</div>
             <p class="workspace-copy">Личные данные, история, настройки и управление.</p>
           </a>
 
-          <a href="timesheet-training.html" class="workspace-link" style="--accent: var(--gold)">
+          <a href="checklist.html" class="workspace-link reveal" style="--accent: var(--gold)">
             <span class="workspace-index">05</span>
             <span class="workspace-arrow" aria-hidden="true">↗</span>
-            <div class="workspace-title">Обучение</div>
-            <p class="workspace-copy">Интерактивная практика работы с табелем.</p>
+            <div class="workspace-title">Чек-лист</div>
+            <p class="workspace-copy">Список дел на смену и отметки выполнения.</p>
           </a>
 
-          <a href="checklist.html" class="workspace-link" style="--accent: var(--steel)">
+          <a href="screen-saver.html?mode=building&amp;from=index.html" class="workspace-link reveal" style="--accent: var(--steel)">
             <span class="workspace-index">06</span>
             <span class="workspace-arrow" aria-hidden="true">↗</span>
-            <div class="workspace-title">Чек-лист</div>
-            <p class="workspace-copy">Список дел на смену, отметки выполнения и спокойная передача работы.</p>
+            <div class="workspace-title">Негаснущий экран</div>
+            <p class="workspace-copy">Антивыгорание с анимациями.</p>
           </a>
         </nav>
-      </div>
-    </section>
-
-    <section class="page-band">
-      <div class="section-wrap principles reveal">
-        <div class="principles-lead">
-          <h2 class="display-font">Порядок в каждой смене</h2>
-          <p>
-            Система помогает видеть реальную картину месяца и принимать решения на основе сохранённых данных.
-          </p>
-        </div>
-
-        <div class="principle-list">
-          <div class="principle-row">
-            <div class="principle-number">01</div>
-            <div>
-              <h3>Для сотрудника</h3>
-              <p>Свой график, часы и выплаты без постоянных уточнений.</p>
-            </div>
-          </div>
-          <div class="principle-row">
-            <div class="principle-number">02</div>
-            <div>
-              <h3>Для руководителя</h3>
-              <p>Общий табель отдела, сотрудники, приглашения и объявления.</p>
-            </div>
-          </div>
-          <div class="principle-row">
-            <div class="principle-number">03</div>
-            <div>
-              <h3>Для точности</h3>
-              <p>Сравнение расчётных и фактических данных с сохранением истории.</p>
-            </div>
-          </div>
-        </div>
+        <a id="yearReviewLink" href="year-review.html" class="button-primary year-review-button" hidden>
+          <span class="year-review-star" aria-hidden="true">✦</span>
+          Мой рабочий год <span class="button-arrow" aria-hidden="true">→</span>
+        </a>
       </div>
     </section>
 
@@ -711,9 +507,9 @@
     </section>
   </main>
 
-  <div data-app-footer></div>
+  <div data-app-footer hidden></div>
 
 <script type="module" src="./js/nav.js?v=20260921-3"></script>
-  <script type="module" src="./js/homeDashboard.js?v=20260924-1"></script>
+  <script type="module" src="./js/homeDashboard.js?v=20261111-2"></script>
 </body>
 </html>

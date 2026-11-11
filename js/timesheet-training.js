@@ -352,9 +352,7 @@ function rememberTrainingCompletion() {
 function renderTrainingAchievement() {
   if (!elements.achievement) return;
   const completedAt = currentUserId ? localStorage.getItem(`${ACHIEVEMENT_KEY_PREFIX}:${currentUserId}`) : null;
-  const achieved = Boolean(courseFinished || completedAt);
-  elements.achievement.textContent = achieved ? "Обучение успешно пройдено" : "Практика";
-  elements.achievement.classList.toggle("is-achieved", achieved);
+  elements.achievement.hidden = !(courseFinished || completedAt);
   const date = completedAt ? new Date(completedAt) : null;
   elements.achievement.title = date && !Number.isNaN(date.getTime())
     ? `Пройдено ${date.toLocaleDateString("ru-RU")}` : "";

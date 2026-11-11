@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles/pages/profile.css?v=20260927-1" />
+  <link rel="stylesheet" href="./styles/pages/profile.css?v=20261111-4" />
   <link rel="stylesheet" href="./styles/page-loader.css?v=20261002-1" />
 </head>
 
@@ -202,71 +202,13 @@
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="positionSelect">Должность</label>
             <span class="select-wrap w-full">
-              <select id="positionSelect" class="ui-select text-sm w-full" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other">
+              <select id="positionSelect" class="ui-select text-sm w-full" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other" disabled aria-describedby="positionLockHint positionCatalogHint">
                 <option value="">Не выбрана</option>
-
-                <optgroup label="Отдел ЕГАИС">
-                  <option value="egais_head">Руководитель отдела ЕГАИС</option>
-                  <option value="egais_senior_operator">Старший оператор ЕГАИС</option>
-                  <option value="egais_operator">Оператор ЕГАИС</option>
-                </optgroup>
-
-                <optgroup label="Склад ГП">
-                  <option value="warehouse_head">Руководитель склада</option>
-                  <option value="storekeeper">Кладовщик</option>
-                  <option value="loader">Грузчик</option>
-                  <option value="driver">Водитель</option>
-                </optgroup>
-
-                <optgroup label="Цех розлива">
-                  <option value="bottling_plant_head">Руководитель цеха розлива</option>
-                  <option value="shift_senior_master">Старший мастер смены</option>
-                  <option value="shift_master">Мастер смены</option>
-                  <option value="filling_line_operator">Оператор линии розлива</option>
-                  <option value="accountant">Учетчик</option>
-                </optgroup>
-
-                <optgroup label="Лаборатория">
-                  <option value="laboratory_head">Руководитель лаборатории</option>
-                  <option value="deputy_head_laboratory">Заместитель руководителя лаборатории</option>
-                  <option value="entrance_control_engineer">Инженер входного контроля</option>
-                  <option value="quality_control_engineer">Инженер контроля качества</option>
-                  <option value="chemist">Химик</option>
-                  <option value="microbiologist">Микробиолог</option>
-                </optgroup>
-
-                <optgroup label="Бухгалтерия">
-                  <option value="chief_accountant">Главный бухгалтер</option>
-                  <option value="deputy_chief_accountant">Заместитель главного бухгалтера</option>
-                  <option value="accountant_bookkeeping">Бухгалтер</option>
-                </optgroup>
-
-                <optgroup label="Отдел эксплуатации">
-                  <option value="system_administrator">Системный администратор</option>
-                  <option value="assistant_system_administrator">Помощник системного администратора</option>
-                </optgroup>
-
-                <optgroup label="Служба персонала">
-                  <option value="hr_service_head">Руководитель службы персонала</option>
-                  <option value="hr_specialist">Специалист по персоналу</option>
-                </optgroup>
-
-                <optgroup label="Администрация">
-                  <option value="director">Директор</option>
-                  <option value="assistant_director">Помощник директора</option>
-                  <option value="procurement_specialist">Специалист по закупкам</option>
-                </optgroup>
-
-                <optgroup label="Технологический отдел">
-                  <option value="technology_accounting_specialist">Специалист по учету</option>
-                </optgroup>
-
-                <optgroup id="customPositionGroup" label="Другое">
-                  <option value="__custom__">Свой вариант…</option>
-                </optgroup>
               </select>
             </span>
             <p id="positionLockHint" class="mt-2 hidden text-xs font-medium text-amber-200" role="status">Должность закреплена овнером. Изменить её можно только после снятия запрета.</p>
+            <p id="positionCatalogHint" class="mt-2 hidden text-xs text-slate-400" role="status"></p>
+            <button id="suggestPositionBtn" class="position-modal-missing mt-2" type="button" disabled>Предложить должность</button>
           </div>
 
           <div>
@@ -315,9 +257,13 @@
 
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-200" for="employmentDateInput">Дата трудоустройства</label>
+            <div class="employment-date-field">
             <input
               id="employmentDateInput"
-              type="date"
+              type="text"
+              inputmode="numeric"
+              placeholder="ДД.ММ.ГГГГ"
+              maxlength="10"
               class="input-glass w-full rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-500/80 focus:outline-none"
               autocomplete="off"
               autocorrect="off"
@@ -326,8 +272,11 @@
               data-lpignore="true"
               data-1p-ignore="true"
               data-form-type="other"
-              min="1950-01-01"
             />
+            <button id="employmentCalendarBtn" type="button" aria-label="Открыть календарь даты трудоустройства" aria-haspopup="dialog">
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18M8 15h2m4 0h2"/></svg>
+            </button>
+            </div>
           </div>
 
           <div>
@@ -362,9 +311,9 @@
           <div>
             <h2>Переработки</h2>
             <p class="mt-1 text-sm text-slate-300/80">
-              Лимит по закону: <span id="overtimeLimitLabel" class="font-semibold text-indigo-300">120 часов в год</span>.
+              Лимит по закону: <span id="overtimeLimitLabel" class="font-semibold">120 часов в год</span>.
               <span id="overtimeLimitNote" class="text-xs text-slate-400/90">Используется действующий для сотрудников предприятия предел 120 ч в год.</span>
-              <a href="help.html" class="text-indigo-300/80 hover:text-indigo-200 underline underline-offset-2 text-xs">Как считается?</a>
+              <a href="help.html" class="overtime-help-link underline underline-offset-2 text-xs">Как считается?</a>
             </p>
           </div>
           <div class="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10 backdrop-blur-sm">
@@ -422,7 +371,6 @@
           <aside id="vacationPlanner" class="vacation-planner glass-card" aria-labelledby="vacationPlannerTitle">
             <header class="vacation-planner-head">
               <div>
-                <div class="profile-kicker">Личный расчёт</div>
                 <h3 id="vacationPlannerTitle">Планировщик отпуска</h3>
               </div>
               <button id="vacationCalendarBtn" class="vacation-planner-mark" type="button" aria-label="Открыть карту отпусков отдела" data-tooltip="Карта отпусков отдела">
@@ -473,7 +421,6 @@
       <section class="vacation-calendar-dialog">
         <header class="vacation-calendar-head">
           <div>
-            <div class="profile-kicker">Ваш отдел</div>
             <h2 id="vacationCalendarTitle">Карта отпусков</h2>
           </div>
           <button id="vacationCalendarCloseBtn" class="vacation-calendar-close" type="button" aria-label="Закрыть">×</button>
@@ -494,17 +441,34 @@
       </section>
     </div>
 
+    <dialog id="employmentCalendar" class="employment-calendar" aria-labelledby="employmentCalendarTitle">
+      <header class="position-modal-head">
+        <h2 id="employmentCalendarTitle" class="position-modal-title">Дата трудоустройства</h2>
+        <button class="position-modal-close" type="button" data-calendar-close aria-label="Закрыть">×</button>
+      </header>
+      <div class="employment-calendar-body">
+        <div class="employment-calendar-period">
+          <button type="button" data-calendar-prev aria-label="Предыдущий месяц">‹</button>
+          <select data-calendar-month aria-label="Месяц"></select>
+          <select data-calendar-year aria-label="Год"></select>
+          <button type="button" data-calendar-next aria-label="Следующий месяц">›</button>
+        </div>
+        <div class="employment-calendar-week" aria-hidden="true"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
+        <div class="employment-calendar-days" data-calendar-days role="group" aria-label="Дни месяца"></div>
+      </div>
+    </dialog>
+
     <div id="customPositionOverlay" class="position-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="customPositionTitle">
       <section class="position-modal">
         <header class="position-modal-head">
-          <div><div class="profile-kicker">Профиль</div><h2 id="customPositionTitle" class="position-modal-title">Своя должность</h2></div>
+          <div><h2 id="customPositionTitle" class="position-modal-title">Предложить должность</h2></div>
           <button id="customPositionCloseBtn" class="position-modal-close" type="button" aria-label="Закрыть">×</button>
         </header>
         <div class="position-modal-body">
-          <p class="position-modal-copy">Выберите существующий отдел и напишите должность так, как она должна отображаться. Это не меняет ваш доступ и не добавляет вас в состав отдела.</p>
+          <p class="position-modal-copy">Предложение получит овнер. После одобрения должность появится в списке отдела; в профиле она автоматически не изменится.</p>
           <div class="position-modal-field">
             <label for="customPositionDepartmentSelect">Отдел</label>
-            <span class="select-wrap w-full"><select id="customPositionDepartmentSelect" class="ui-select text-sm w-full"><option value="">Выберите отдел</option><option value="administration">Администрация</option><option value="accounting">Бухгалтерия</option><option value="laboratory">Лаборатория</option><option value="egais">Отдел ЕГАИС</option><option value="operations">Отдел эксплуатации</option><option value="warehouse">Склад ГП</option><option value="hr">Служба персонала</option><option value="technology">Технологический отдел</option><option value="bottling">Цех розлива</option></select></span>
+            <span class="select-wrap w-full"><select id="customPositionDepartmentSelect" class="ui-select text-sm w-full"></select></span>
           </div>
           <div class="position-modal-field">
             <label for="customPositionInput">Название должности</label>
@@ -513,7 +477,7 @@
           <div id="customPositionError" class="position-modal-error" role="alert"></div>
           <div class="position-modal-actions">
             <button id="missingDepartmentBtn" class="position-modal-missing" type="button">Не нашли свой отдел?</button>
-            <button id="customPositionSaveBtn" class="position-modal-save" type="button">Использовать должность</button>
+            <button id="customPositionSaveBtn" class="position-modal-save" type="button">Предложить должность</button>
           </div>
         </div>
       </section>
@@ -523,7 +487,7 @@
   </div>
 
 <script type="module" src="./js/nav.js?v=20260921-3"></script>
-  <script type="module" src="./js/profile.js?v=20261026-1"></script>
+  <script type="module" src="./js/profile.js?v=20261111-5"></script>
 
   <script type="module" src="./js/features/tourBootstrap.js?v=20260920-1"></script>
   <script type="module" src="./js/features/profileOvertimeBar.js?v=20260920-1"></script>

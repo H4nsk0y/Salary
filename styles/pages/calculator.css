@@ -460,7 +460,6 @@ html, body {
     body.calculator-page::before, body.calculator-page::after { display: none; }
     .calculator-shell { max-width: 1180px; }
     .calculator-header { margin-bottom: 24px; padding-bottom: 22px; border-bottom: 1px solid var(--alvisa-line); }
-    .calculator-kicker { color: #d2aebe; font-size: 11px; font-weight: 800; text-transform: uppercase; }
     .calculator-title {
       margin-top: 9px;
       font-family: "Anticva", Georgia, serif;

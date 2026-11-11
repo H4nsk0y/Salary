@@ -1322,7 +1322,6 @@
     .shift-replacement-dialog { width: min(520px,100%); max-height: min(720px,calc(100dvh - 36px)); overflow: hidden; border: 1px solid rgba(241,238,232,.16); border-radius: 9px; background: #13171a; box-shadow: 0 28px 90px rgba(0,0,0,.58); color: #f1eee8; }
     .shift-replacement-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 20px 20px 16px; border-bottom: 1px solid rgba(241,238,232,.1); }
     .shift-replacement-head h2 { margin: 4px 0 0; font-family: "Anticva",Georgia,serif; font-size: 25px; font-weight: 400; }
-    .shift-replacement-kicker { color: #9bdcca; font-size: 10px; font-weight: 800; text-transform: uppercase; }
     .shift-replacement-close { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border: 1px solid rgba(241,238,232,.14); border-radius: 6px; background: transparent; color: #aeb5ba; font-size: 22px; cursor: pointer; }
     .shift-replacement-close:hover { border-color: rgba(241,238,232,.28); color: #fff; }
     .shift-replacement-intro { margin: 0; padding: 15px 20px; color: #aeb5ba; font-size: 12px; line-height: 1.55; }

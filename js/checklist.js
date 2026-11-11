@@ -12,14 +12,12 @@ import { setUiStatus } from "./uiStatus.js";
 import {
   checklistProgress,
   createChecklistItem,
-  DEPARTMENT_NAMES,
   getDepartmentChecklistTemplates,
   normalizeChecklistItems,
 } from "./shiftChecklist.js?v=20260913-2";
 
 const loadingNotice = document.getElementById("loadingNotice");
 const errorNotice = document.getElementById("errorNotice");
-const departmentChip = document.getElementById("departmentChip");
 const latestResult = document.getElementById("latestResult");
 const latestScore = document.getElementById("latestScore");
 const latestMeta = document.getElementById("latestMeta");
@@ -436,7 +434,6 @@ async function init() {
     departmentKey = await getMyDepartmentKey();
     templates = getDepartmentChecklistTemplates(departmentKey);
     setupItems = [];
-    if (departmentChip) departmentChip.textContent = DEPARTMENT_NAMES[departmentKey] || "Личный список";
 
     const state = await getMyShiftChecklistState();
     activeChecklist = state?.active ?? null;
