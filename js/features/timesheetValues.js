@@ -2,6 +2,7 @@ export const DEFAULT_DAY_HOURS = 8;
 export const FEMALE_DAY_HOURS = 7.2;
 export const DEFAULT_WEEKLY_HOURS = 40;
 export const REDUCED_WEEKLY_HOURS = 35;
+export const FEMALE_WEEKLY_HOURS = 36;
 export const CHATEAU_ALVISA_BRANCH = "chateau_alvisa";
 export const NOT_EMPLOYED_LEAVE_TYPE = "not_employed";
 export const DISMISSED_LEAVE_TYPE = "dismissed";
@@ -14,7 +15,10 @@ export function normalizeWeeklyHours(value) {
 }
 
 export function getWeeklyHoursByProfile(profile) {
-  return normalizeWeeklyHours(profile?.weekly_hours) ?? DEFAULT_WEEKLY_HOURS;
+  if (normalizeWeeklyHours(profile?.weekly_hours) === REDUCED_WEEKLY_HOURS) return REDUCED_WEEKLY_HOURS;
+  return profile?.gender === "female" && profile?.branch === CHATEAU_ALVISA_BRANCH
+    ? FEMALE_WEEKLY_HOURS
+    : DEFAULT_WEEKLY_HOURS;
 }
 
 export function getBaseDayHours(gender, branch, weeklyHours = null) {
@@ -35,7 +39,7 @@ export function normalizeNormSnapshot(raw) {
   const baseDayHours = Number(raw.baseDayHours);
   if (!(Number.isFinite(baseDayHours) && baseDayHours > 0)) return null;
   return {
-    weeklyHours: normalizeWeeklyHours(raw.weeklyHours),
+    weeklyHours: Number(raw.weeklyHours) === FEMALE_WEEKLY_HOURS ? FEMALE_WEEKLY_HOURS : normalizeWeeklyHours(raw.weeklyHours),
     baseDayHours,
     gender: raw.gender ?? null,
     branch: raw.branch ?? null,

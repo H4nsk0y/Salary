@@ -13,7 +13,7 @@ const PUBLIC_SEARCH_ENTRIES = [
   { title: "Обучение", href: "timesheet-training.html", description: "Тренажер заполнения табеля", keywords: "курс практика коды отсутствия руководитель научиться" },
   { title: "Помощь", href: "help.html", description: "Ответы по сменам, кодам и расчетам", keywords: "справка вопрос инструкция как пользоваться faq" },
   { title: "Коды отсутствия", href: "help.html#codes", description: "ОТ, Б, У, ОД и другие коды", keywords: "отпуск больничный учебный отсутствие нт ув" },
-  { title: "Нормы времени", href: "help.html#norms", description: "Рабочая норма и особенности графика", keywords: "35 часов 40 часов женщина шато инвалид" },
+  { title: "Нормы времени", href: "help.html#norms", description: "Рабочая норма и особенности графика", keywords: "35 часов 36 часов 40 часов женщина шато инвалид" },
   { title: "Выплаты и расчеты", href: "help.html#payments", description: "Как устроены расчеты в табеле", keywords: "аванс остаток налог отпускные зарплата" },
   { title: "Обновления", href: "updates.html", description: "Последние изменения ALVISA SALARY", keywords: "новости версии что нового журнал" },
   { title: "Поддержка", href: "support.html", description: "Связаться и поддержать проект", keywords: "помощь автор telegram телеграм идея" },

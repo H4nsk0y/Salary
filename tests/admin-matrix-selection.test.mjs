@@ -5,10 +5,19 @@ import test from "node:test";
 import {
   getMatrixSelectionBounds,
   isMatrixCellInBounds,
+  sumMatrixSelectionHours,
 } from "../js/features/matrixSelection.js";
 
 const read = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8");
 
+test("selected hours include day and night without leave codes or rounding noise", () => {
+  const state = { dayHours: [7.2, 2, 0], nightHours: [0, 5, 0] };
+  assert.equal(sumMatrixSelectionHours([
+    { state, rowType: "day", index: 0 }, { state, rowType: "day", index: 1 },
+    { state, rowType: "night", index: 1 }, { state, rowType: "day", index: 2 },
+  ]), 14.2);
+  assert.equal(sumMatrixSelectionHours([]), 0);
+});
 test("matrix selection creates a rectangle in either drag direction", () => {
   const bounds = getMatrixSelectionBounds(
     { rowIndex: 5, columnIndex: 8 },

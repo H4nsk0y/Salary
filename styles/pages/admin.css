@@ -133,6 +133,17 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.matrix-selection-summary {
+  padding: 6px 9px;
+  border: 1px solid rgba(198,161,91,.35);
+  border-radius: 5px;
+  color: #e2c88f;
+  background: #191816;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.matrix-selection-summary[hidden] { display: none; }
+
 .top-table-scroll {
   position: sticky;
   top: calc(148px + env(safe-area-inset-top, 0px));

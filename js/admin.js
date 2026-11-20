@@ -43,6 +43,7 @@ import {
 import {
   getMatrixSelectionBounds,
   isMatrixCellInBounds,
+  sumMatrixSelectionHours,
 } from "./features/matrixSelection.js";
 import { isTimesheetAutosaveDisabled, isManualSaveWarningEnabled } from "./features/autosavePreference.js";
 import { scheduleAdjacentMonthPrefetch } from "./features/monthPrefetch.js";
@@ -1539,6 +1540,7 @@ function clearMatrixSelection() {
   document.querySelectorAll("#matrixBody td.matrix-cell-selected, #matrixBodyOdyssey td.matrix-cell-selected")
     .forEach((cell) => cell.classList.remove("matrix-cell-selected"));
   matrixSelectionWasDragged = false;
+  updateMatrixSelectionSummary();
 }
 
 function renderMatrixSelection(anchor, current) {
@@ -1550,6 +1552,17 @@ function renderMatrixSelection(anchor, current) {
     const selected = candidate && !candidate.input.disabled && isMatrixCellInBounds(candidate, bounds);
     candidate?.cell?.classList.toggle("matrix-cell-selected", selected);
   }
+  updateMatrixSelectionSummary();
+}
+
+function updateMatrixSelectionSummary() {
+  const badge = document.getElementById("matrixSelectionSummary");
+  if (!badge) return;
+  const cells = selectedMatrixCells();
+  badge.hidden = cells.length === 0;
+  badge.textContent = cells.length
+    ? `Выделено: ${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(sumMatrixSelectionHours(cells))} ч`
+    : "";
 }
 
 function startMatrixSelection(event) {
@@ -2576,12 +2589,14 @@ function renderSharedSummary() {
 
 function recalcPerson(state) {
   updatePersonSummary(state);
+  updateMatrixSelectionSummary();
 }
 
 function recalcAllPeople() {
   for (const state of teamStates) {
     updatePersonSummary(state);
   }
+  updateMatrixSelectionSummary();
 }
 
 function recalcAll() {

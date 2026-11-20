@@ -130,11 +130,23 @@
     }
 
     .brand-title {
+      display: inline;
+      padding: .02em .07em;
+      background: #821a40;
+      border-radius: 8px;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
       margin: 1rem 0 0;
       color: var(--porcelain);
       font-size: 7rem;
       line-height: .92;
       letter-spacing: 0;
+    }
+
+    .brand-title-text {
+      position: relative;
+      top: .055em;
+      text-shadow: 0 2px 2px rgba(0, 0, 0, .42), 0 5px 12px rgba(0, 0, 0, .35);
     }
 
     .button-primary {
@@ -432,7 +444,7 @@
       <div class="hero-image-motion" aria-hidden="true"></div>
       <div class="section-wrap">
         <div class="hero-copy">
-          <h1 id="homeTitle" class="brand-title display-font">ALVISA SALARY</h1>
+          <h1 id="homeTitle" class="brand-title display-font"><span class="brand-title-text">ALVISA SALARY</span></h1>
         </div>
       </div>
     </section>

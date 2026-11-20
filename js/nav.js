@@ -512,7 +512,9 @@ function injectNavStyles() {
     }
 
     .app-top-header > div:first-child > a.group > span {
-      background: none !important;
+      background: #821a40 !important;
+      padding: 3px 6px;
+      border-radius: 5px;
       color: #f1eee8 !important;
       font-family: Anticva, Georgia, serif;
       font-size: 1.55rem !important;

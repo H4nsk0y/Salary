@@ -10,3 +10,10 @@ export function isMatrixCellInBounds(cell, bounds) {
     && cell.rowIndex >= bounds.minRow && cell.rowIndex <= bounds.maxRow
     && cell.columnIndex >= bounds.minColumn && cell.columnIndex <= bounds.maxColumn);
 }
+
+export function sumMatrixSelectionHours(cells) {
+  return Number(cells.reduce((sum, cell) => {
+    const value = Number(cell.state[cell.rowType === "night" ? "nightHours" : "dayHours"][cell.index]);
+    return sum + (Number.isFinite(value) && value > 0 ? value : 0);
+  }, 0).toFixed(2));
+}
