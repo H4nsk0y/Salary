@@ -513,13 +513,14 @@ function injectNavStyles() {
 
     .app-top-header > div:first-child > a.group > span {
       background: #821a40 !important;
-      padding: 3px 6px;
+      padding: 5px 6px 1px;
       border-radius: 5px;
       color: #f1eee8 !important;
       font-family: Anticva, Georgia, serif;
       font-size: 1.55rem !important;
       font-weight: 400 !important;
       line-height: 1;
+      text-shadow: 0 1px 1px rgba(0, 0, 0, .42), 0 3px 7px rgba(0, 0, 0, .35);
     }
 
     .app-top-header .app-header-actions {
