@@ -17,21 +17,22 @@ export function formatEmploymentDateInput(value) {
   return iso ? iso.split("-").reverse().join(".") : "";
 }
 
-export function bindEmploymentDateCalendar(input, opener, dialog) {
+export function bindEmploymentDateCalendar(input, opener, dialog, { minDate, maxDate } = {}) {
   if (!input || !opener || !dialog) return;
   const monthSelect = dialog.querySelector("[data-calendar-month]");
   const yearSelect = dialog.querySelector("[data-calendar-year]");
   const previous = dialog.querySelector("[data-calendar-prev]");
   const next = dialog.querySelector("[data-calendar-next]");
   const days = dialog.querySelector("[data-calendar-days]");
-  const minimum = new Date(MIN_YEAR, 0, 1);
+  const minimum = parseProfileDate(minDate) ?? new Date(MIN_YEAR, 0, 1);
   let today;
+  let maximum;
   let selected;
   let cursor;
 
   const startOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
   const addMonths = (date, amount) => new Date(date.getFullYear(), date.getMonth() + amount, 1);
-  const clamp = (date) => date < minimum ? minimum : date > today ? today : date;
+  const clamp = (date) => date < minimum ? minimum : date > maximum ? maximum : date;
 
   function render({ focus = false } = {}) {
     const year = cursor.getFullYear();
@@ -40,10 +41,11 @@ export function bindEmploymentDateCalendar(input, opener, dialog) {
     yearSelect.value = String(year);
     monthSelect.value = String(month);
     for (const option of monthSelect.options) {
-      option.disabled = year === today.getFullYear() && Number(option.value) > today.getMonth();
+      option.disabled = (year === maximum.getFullYear() && Number(option.value) > maximum.getMonth())
+        || (year === minimum.getFullYear() && Number(option.value) < minimum.getMonth());
     }
-    previous.disabled = first <= minimum;
-    next.disabled = addMonths(cursor, 1) > today;
+    previous.disabled = first <= startOfMonth(minimum);
+    next.disabled = addMonths(cursor, 1) > maximum;
     days.replaceChildren();
     const offset = (first.getDay() + 6) % 7;
     const length = new Date(year, month + 1, 0).getDate();
@@ -54,7 +56,7 @@ export function bindEmploymentDateCalendar(input, opener, dialog) {
       button.type = "button";
       button.textContent = String(day);
       button.dataset.day = String(day);
-      button.disabled = date > today;
+      button.disabled = date > maximum || date < minimum;
       button.setAttribute("aria-label", dayLabel.format(date));
       button.setAttribute("aria-pressed", String(selected?.getTime() === date.getTime()));
       if (date.getTime() === today.getTime()) button.setAttribute("aria-current", "date");
@@ -73,10 +75,11 @@ export function bindEmploymentDateCalendar(input, opener, dialog) {
   opener.addEventListener("click", () => {
     today = new Date();
     today.setHours(0, 0, 0, 0);
+    maximum = parseProfileDate(maxDate) ?? today;
     selected = parseProfileDate(normalizeEmploymentDateInput(input.value));
     cursor = clamp(selected ?? today);
     yearSelect.replaceChildren();
-    for (let year = today.getFullYear(); year >= MIN_YEAR; year -= 1) {
+    for (let year = maximum.getFullYear(); year >= minimum.getFullYear(); year -= 1) {
       yearSelect.add(new Option(String(year), String(year)));
     }
     render();

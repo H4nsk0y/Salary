@@ -26,6 +26,7 @@ const MAIN_LINKS = [
 ];
 
 const OWNER_LINKS = [
+  { key: "budget", href: "budget.html", label: "Мой бюджет" },
   { key: "owner", href: "owner.html", label: "Админка" },
 ];
 
@@ -1031,14 +1032,14 @@ function renderHeader(mount) {
   const profileLink = MAIN_LINKS.find((link) => link.key === "profile");
   const regularLinks = MAIN_LINKS.filter((link) => link.key !== "profile");
   const links = showOwnerNav
-    ? [...regularLinks, ...OWNER_LINKS, profileLink].filter(Boolean)
+    ? [...regularLinks, ...OWNER_LINKS, profileLink].filter((link) => link && link.key !== "budget")
     : MAIN_LINKS;
 
   const header = document.createElement("header");
   header.className =
     "app-top-header fixed top-0 inset-x-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl";
   header.dataset.ownerNavMode = ownerNavMode;
-  header.dataset.ownerNavEnhanced = showOwnerNav ? "true" : "false";
+  header.dataset.ownerNavEnhanced = "false";
   header.dataset.activeKey = activeKey;
 
   const inner = document.createElement("div");
@@ -1125,8 +1126,12 @@ async function enhanceNavForProfile(header) {
   const desktopProfile = desktopNav?.querySelector('[data-nav-key="profile"]');
   const mobileProfile = mobileNav?.querySelector('[data-nav-key="profile"]');
   OWNER_LINKS.forEach((link) => {
-    desktopNav?.insertBefore(renderLink(link, activeKey, "desktop"), desktopProfile ?? null);
-    mobileNav?.insertBefore(renderLink(link, activeKey, "mobile"), mobileProfile ?? null);
+    if (!desktopNav?.querySelector(`[data-nav-key="${link.key}"]`)) {
+      desktopNav?.insertBefore(renderLink(link, activeKey, "desktop"), desktopProfile ?? null);
+    }
+    if (!mobileNav?.querySelector(`[data-nav-key="${link.key}"]`)) {
+      mobileNav?.insertBefore(renderLink(link, activeKey, "mobile"), mobileProfile ?? null);
+    }
   });
   header.dataset.ownerNavEnhanced = "true";
 }

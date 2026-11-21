@@ -2,6 +2,39 @@ import { supabase } from "./supabaseClient.js";
 import { getSession } from "./auth.js";
 import { isProfileCompleteForTimesheet } from "./profileCompletion.js";
 
+export class BudgetConflict extends Error {}
+
+export async function loadMyBudget() {
+  const userId = await requireUserId();
+  const { data, error } = await supabase.from("finance_budgets")
+    .select("state, revision").eq("user_id", userId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function saveMyBudget(state, revision) {
+  const userId = await requireUserId();
+  const query = revision === null
+    ? supabase.from("finance_budgets").insert({ user_id: userId, state })
+    : supabase.from("finance_budgets").update({ state, revision: revision + 1 })
+      .eq("user_id", userId).eq("revision", revision);
+  const { data, error } = await query.select("revision").maybeSingle();
+  if (error?.code === "23505") throw new BudgetConflict("Бюджет уже изменён в другой вкладке.");
+  if (error) throw error;
+  if (!data) throw new BudgetConflict("Бюджет изменён в другой вкладке. Загружены свежие данные; повторите действие.");
+  return data;
+}
+
+export async function listMyBudgetTimesheets(months) {
+  const userId = await requireUserId();
+  const refs = months.map(({ year, month }) => assertValidYearMonth(year, month));
+  const { data, error } = await supabase.from("timesheets")
+    .select("year, month, payload").eq("user_id", userId)
+    .or(refs.map(({ year, month }) => `and(year.eq.${year},month.eq.${month})`).join(","));
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function leaderListDepartmentUsers() {
   const { data, error } = await supabase.rpc("leader_list_department_users");
   if (error) throw error;

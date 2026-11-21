@@ -1,6 +1,7 @@
 
 import { parseNumber, BONUS_RATE, TAX_RATE, NIGHT_EXTRA_RATE, computeSalary, computePaymentSplit, normalizeTaxRate } from "./calc.js";
 import { requireSession } from "./auth.js";
+import { resolvePaymentDate as resolveCalendarPaymentDate } from "./features/paymentCalendar.js";
 import { findMyShiftReplacementCandidates, getMyProfile, getMyDepartmentMembershipKey, getMyManagedDepartment, listMyTimesheetsBefore, loadTimesheet, reportMyShiftUnavailable, saveMyTimesheetActual, saveTimesheet, sendPushNotifications } from "./db.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { setUiStatus } from "./uiStatus.js";
@@ -1433,15 +1434,7 @@ async function isPaymentNonWorkingDate(date) {
 }
 
 async function resolvePaymentDate(rawDate) {
-  const resolved = startOfLocalDay(rawDate);
-  let guard = 20;
-
-  while (guard > 0 && await isPaymentNonWorkingDate(resolved)) {
-    resolved.setDate(resolved.getDate() - 1);
-    guard -= 1;
-  }
-
-  return resolved;
+  return resolveCalendarPaymentDate(rawDate, isPaymentNonWorkingDate);
 }
 
 function formatPaymentDate(date) {
