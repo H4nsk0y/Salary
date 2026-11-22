@@ -6,13 +6,16 @@ const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 
 test("contract Odyssey is available in profile and owner controls", async () => {
-  const [profilePage, profileScript, ownerControl, migration] = await Promise.all([
+  const [profilePage, profileScript, ownerControl, options, migration] = await Promise.all([
     read("profile.html"),
     read("js/profile.js"),
     read("js/ownerUserControl.js"),
+    read("js/features/employeeProfileOptions.js"),
     read("supabase-sql/055_contract_odyssey_branch.sql"),
   ]);
-  for (const source of [profilePage, profileScript, ownerControl, migration]) {
+  assert.match(ownerControl, /import \{ POSITION_OPTIONS, BRANCH_OPTIONS \} from "\.\/features\/employeeProfileOptions\.js"/);
+  assert.match(ownerControl, /fillSelect\(branchSelect, BRANCH_OPTIONS\)/);
+  for (const source of [profilePage, profileScript, options, migration]) {
     assert.match(source, /contract_odyssey/);
   }
 });

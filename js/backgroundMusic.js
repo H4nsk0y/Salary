@@ -94,6 +94,7 @@ export function isBackgroundMusicEnabled() {
 }
 
 export async function playBackgroundMusic() {
+  window.dispatchEvent(new CustomEvent("alvisa:audio-claim", { detail: { source: "background" } }));
   enabled = true;
   saveEnabled(true);
   const player = ensureAudio();
@@ -132,6 +133,9 @@ export async function toggleBackgroundMusic() {
 }
 
 window.addEventListener("beforeunload", () => savePosition(true));
+window.addEventListener("alvisa:audio-claim", (event) => {
+  if (event.detail?.source !== "background" && enabled) stopBackgroundMusic();
+});
 window.addEventListener("storage", (event) => {
   if (event.key !== MUSIC_ENABLED_KEY) return;
   enabled = event.newValue === "1";

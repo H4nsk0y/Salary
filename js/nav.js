@@ -1126,12 +1126,10 @@ async function enhanceNavForProfile(header) {
   const desktopProfile = desktopNav?.querySelector('[data-nav-key="profile"]');
   const mobileProfile = mobileNav?.querySelector('[data-nav-key="profile"]');
   OWNER_LINKS.forEach((link) => {
-    if (!desktopNav?.querySelector(`[data-nav-key="${link.key}"]`)) {
-      desktopNav?.insertBefore(renderLink(link, activeKey, "desktop"), desktopProfile ?? null);
-    }
-    if (!mobileNav?.querySelector(`[data-nav-key="${link.key}"]`)) {
-      mobileNav?.insertBefore(renderLink(link, activeKey, "mobile"), mobileProfile ?? null);
-    }
+    const desktopLink = desktopNav?.querySelector(`[data-nav-key="${link.key}"]`) ?? renderLink(link, activeKey, "desktop");
+    const mobileLink = mobileNav?.querySelector(`[data-nav-key="${link.key}"]`) ?? renderLink(link, activeKey, "mobile");
+    desktopNav?.insertBefore(desktopLink, desktopProfile ?? null);
+    mobileNav?.insertBefore(mobileLink, mobileProfile ?? null);
   });
   header.dataset.ownerNavEnhanced = "true";
 }

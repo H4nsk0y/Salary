@@ -1,4 +1,5 @@
 (() => {
+  void import("./features/festiveBootstrap.js").catch(() => {});
   const loader = document.getElementById("alvisaPageLoader");
   if (!loader) return;
 

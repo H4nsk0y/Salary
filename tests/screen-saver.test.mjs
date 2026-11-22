@@ -38,7 +38,7 @@ test("settings link opens screen saver modes", async () => {
 
 test("home page exposes the building screen saver to guests", async () => {
   const home = await read("index.html");
-  assert.match(home, /href="screen-saver\.html\?mode=building&amp;from=index\.html"[\s\S]*Не отключать экран/);
+  assert.match(home, /href="screen-saver\.html\?mode=building&amp;from=index\.html"[\s\S]*Негаснущий экран/);
 });
 
 test("shift reminder function is deployed through the source manifest", async () => {

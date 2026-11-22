@@ -19,7 +19,8 @@ test("desktop navigation renders profile as an accessible icon", async () => {
   assert.match(script, /a\.setAttribute\("aria-label", link\.label\)/);
   assert.match(script, /function createProfileIcon\(\)/);
   assert.match(script, /\[\.\.\.regularLinks, \.\.\.OWNER_LINKS, profileLink\]/);
-  assert.match(script, /insertBefore\(renderLink\(link, activeKey, "desktop"\), desktopProfile \?\? null\)/);
+  assert.match(script, /insertBefore\(desktopLink, desktopProfile \?\? null\)/);
+  assert.match(script, /insertBefore\(mobileLink, mobileProfile \?\? null\)/);
 });
 
 test("schedule controls share a desktop baseline and legacy badge is gone", async () => {

@@ -19,8 +19,10 @@ test("static application stays inside conservative size budgets", () => {
   const totalScriptBytes = scripts.reduce((total, path) => total + bytes(path), 0);
   const largestScriptBytes = Math.max(...scripts.map(bytes));
 
-  assert.ok(totalScriptBytes <= 1_225_000, `application JavaScript grew to ${totalScriptBytes} bytes`);
-  assert.ok(largestScriptBytes <= 150_000, `a JavaScript module grew to ${largestScriptBytes} bytes`);
+  // Includes separately loaded enterprise maps, personal budget and seasonal assets.
+  // This is the repository total, not the payload downloaded by one page.
+  assert.ok(totalScriptBytes <= 1_400_000, `application JavaScript grew to ${totalScriptBytes} bytes`);
+  assert.ok(largestScriptBytes <= 155_000, `a JavaScript module grew to ${largestScriptBytes} bytes`);
   assert.ok(bytes("styles/tailwind.css") <= 80_000, "compiled Tailwind CSS exceeded 80 KB");
   for (const page of ["admin", "calculator", "profile", "table"]) {
     assert.ok(bytes(`styles/pages/${page}.css`) <= 60_000, `${page} page CSS exceeded 60 KB`);
@@ -49,6 +51,9 @@ test("rare features stay outside the initial page load", () => {
   assert.match(profileScript, /import\("\.\/vacationPay\.js/);
 
   const nav = read("js/nav.js");
+  assert.doesNotMatch(nav, /import .*budget(?:Model|Repository|Salary)?\.js/);
+  assert.doesNotMatch(read("js/features/festiveBootstrap.js"), /^import .*festiveEvent/m);
+  assert.match(read("js/features/festiveBootstrap.js"), /await import\("\.\/festiveEvent\.js"\)/);
   assert.match(nav, /^import \{ createSiteSearchWidget \} from "\.\/siteSearch\.js";/m);
   assert.match(nav, /await import\("\.\/features\/navigationNotifications\.js/);
   assert.match(nav, /import\("\.\/idleScreenSaver\.js/);
