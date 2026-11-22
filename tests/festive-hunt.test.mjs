@@ -34,7 +34,7 @@ test("three factory-wide greetings and both supplied assets are available", () =
   assert.equal(FESTIVE_GREETINGS.length, 3);
   const text = JSON.stringify(FESTIVE_GREETINGS);
   for (const term of ["2027", "ЕГАИС", "КИП", "Бухгалтерии", "лаборатории", "производство", "технологов", "Сисадминам", "Складу", "розлива"]) assert.ok(text.includes(term), term);
-  for (const name of ["images/festive-ded-moroz.png", "media/festive-laugh.mp3"]) {
+  for (const name of ["images/festive-ded-moroz-72.webp", "images/festive-ded-moroz-144.webp", "images/festive-ded-moroz-216.webp", "media/ho-ho-ho-23.mp3"]) {
     assert.ok(statSync(new URL(`../${name}`, import.meta.url)).size > 1000);
   }
 });

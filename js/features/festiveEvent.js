@@ -5,7 +5,7 @@ const MUSIC_KEY = "alvisa.festive2026.music";
 const POSITION_KEY = "alvisa.festive2026.position";
 const SNOW_KEY = "alvisa.festive2026.snow";
 const CLAIM_EVENT = "alvisa:audio-claim";
-const TRACK_URL = new URL("../../media/festive-new-year.mp3", import.meta.url).href;
+const TRACK_URL = new URL("../../media/festive-new-year-160k.mp3", import.meta.url).href;
 
 function read(key) {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -56,7 +56,6 @@ export function mountFestiveEvent() {
   let flakes = [];
   let lastPositionSave = 0;
   let disposeHunt = null;
-  let laughPlaying = false;
   const context = canvas.getContext("2d");
 
   function updateButtons() {
@@ -94,7 +93,7 @@ export function mountFestiveEvent() {
       audio = new Audio(TRACK_URL);
       audio.loop = true;
       audio.preload = "none";
-      audio.volume = laughPlaying ? 0.07 : 0.25;
+      audio.volume = 0.25;
       audio.addEventListener("loadedmetadata", () => {
         const position = Number(read(POSITION_KEY));
         if (position > 0 && position < audio.duration) audio.currentTime = position;
@@ -188,10 +187,7 @@ export function mountFestiveEvent() {
   reducedMotion.addEventListener("change", syncSnow);
   resize();
   syncSnow();
-  void mountFestiveHunt({ onLaughChange: (playing) => {
-    laughPlaying = playing;
-    if (audio) audio.volume = playing ? 0.07 : 0.25;
-  } }).then(dispose => {
+  void mountFestiveHunt().then(dispose => {
     if (disposed) dispose();
     else disposeHunt = dispose;
   }).catch(error => console.warn("Праздничный привет недоступен:", error));

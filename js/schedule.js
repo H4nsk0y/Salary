@@ -352,7 +352,7 @@ function createDayCard(dateText, dateRows, offset) {
   card.appendChild(head);
 
   const workBlock = document.createElement("div");
-  workBlock.className = "mt-5 grid gap-3";
+  workBlock.className = "schedule-workers mt-5 grid gap-3";
 
   if (working.length) {
     working.forEach((row) => workBlock.appendChild(createPersonRow(row)));
@@ -374,7 +374,7 @@ function createDayCard(dateText, dateRows, offset) {
     summary.textContent = `Остальные сотрудники: ${other.length}`;
 
     const otherList = document.createElement("div");
-    otherList.className = "mt-3 grid gap-3";
+    otherList.className = "schedule-other-people mt-3 grid gap-3";
     other.forEach((row) => otherList.appendChild(createPersonRow(row)));
 
     details.append(summary, otherList);

@@ -24,6 +24,7 @@ import {
   setDepartmentMemberOrder,
 } from "./db.js";
 import { confirmDialog } from "./modal.js";
+import { shouldNavigateGrid } from "./features/gridKeyboard.js";
 import { startPresenceHeartbeat } from "./presence.js";
 import { createSerialTaskQueue } from "./asyncTasks.js";
 import { setUiStatus } from "./uiStatus.js";
@@ -1772,22 +1773,12 @@ function handleMatrixFocusOut(e) {
 function handleMatrixKeyDown(e) {
   const inputEl = getMatrixInput(e.target);
   if (!inputEl) return;
-  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  if (!shouldNavigateGrid(e, inputEl)) return;
 
   const key = e.key;
-  if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) return;
 
   const ctx = getInputContext(inputEl);
   if (!ctx) return;
-
-  if ((key === "ArrowLeft" || key === "ArrowRight") && typeof inputEl.selectionStart === "number") {
-    const start = inputEl.selectionStart ?? 0;
-    const end = inputEl.selectionEnd ?? 0;
-    const len = String(inputEl.value ?? "").length;
-
-    if (key === "ArrowLeft" && !(start === 0 && end === 0)) return;
-    if (key === "ArrowRight" && !(start === len && end === len)) return;
-  }
 
   e.preventDefault();
 

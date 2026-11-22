@@ -1,5 +1,6 @@
 import { getMyManagedDepartment, getMyProfile } from "./db.js";
 import { getSession } from "./auth.js";
+import { shouldNavigateGrid } from "./features/gridKeyboard.js";
 
 const RESULT_KEY_PREFIX = "alvisa.timesheetTraining.result.v2";
 const MANAGER_PROGRESS_KEY_PREFIX = "alvisa.managerTraining.progress.v1";
@@ -637,7 +638,7 @@ function applyInputLocks(state) {
 }
 
 function handleArrowNavigation(event, state, row, index) {
-  if (!event.key.startsWith("Arrow")) return;
+  if (!shouldNavigateGrid(event, event.currentTarget)) return;
   let target = null;
   if (event.key === "ArrowLeft" && index > 0) target = row === "day" ? state.dayInputs[index - 1] : state.nightInputs[index - 1];
   if (event.key === "ArrowRight" && index < MONTH_DAYS - 1) target = row === "day" ? state.dayInputs[index + 1] : state.nightInputs[index + 1];

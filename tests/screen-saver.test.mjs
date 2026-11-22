@@ -68,7 +68,7 @@ test("screen saver music loops and follows the user across application pages", a
     read("js/backgroundMusic.js"),
     read("js/nav.js"),
     read("service-worker.js"),
-    stat(new URL("../media/almost-here.mp3", import.meta.url)),
+    stat(new URL("../media/almost-here-160k.mp3", import.meta.url)),
   ]);
 
   assert.ok(track.size > 1_000_000);

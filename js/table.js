@@ -42,9 +42,10 @@ import {
   hardenTimesheetInput,
   rejectUnexpectedTimesheetAutofill,
   restoreUnfocusedNumericInput,
-} from "./timesheetInput.js?v=20260906-2";
+} from "./timesheetInput.js?v=20261122-1";
 import { confirmDialog } from "./modal.js";
 import { setupPaymentExplanations } from "./features/paymentExplanations.js";
+import { shouldNavigateGrid } from "./features/gridKeyboard.js";
 
 import {
   CHATEAU_ALVISA_BRANCH,
@@ -657,16 +658,8 @@ function attachArrowNavigation(inputEl, rowType, index) {
   inputEl.dataset.row = rowType;
   inputEl.dataset.idx = String(index);
   inputEl.addEventListener("keydown", (e) => {
-    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (!shouldNavigateGrid(e, inputEl)) return;
     const k = e.key;
-    if (!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(k)) return;
-    if ((k === "ArrowLeft" || k === "ArrowRight") && typeof inputEl.selectionStart === "number") {
-      const start = inputEl.selectionStart ?? 0;
-      const end = inputEl.selectionEnd ?? 0;
-      const len = String(inputEl.value ?? "").length;
-      if (k === "ArrowLeft" && !(start === 0 && end === 0)) return;
-      if (k === "ArrowRight" && !(start === len && end === len)) return;
-    }
     e.preventDefault();
     const idx = Number(inputEl.dataset.idx);
     const row = inputEl.dataset.row;
@@ -3338,7 +3331,7 @@ function buildTableForMonth() {
     dayInput.classList.add("input-hour","input-glass");
     dayInput.autocapitalize = "characters";
     dayInput.spellcheck = false;
-    hardenTimesheetInput(dayInput);
+    hardenTimesheetInput(dayInput, { requireEditingIntent: true });
 
     attachPrevValueTracking(dayInput);
     attachArrowNavigation(dayInput, "day", i);
@@ -3454,7 +3447,7 @@ function buildTableForMonth() {
     nightInput.placeholder = "";
     nightInput.classList.add("input-hour","input-glass");
     nightInput.spellcheck = false;
-    hardenTimesheetInput(nightInput);
+    hardenTimesheetInput(nightInput, { requireEditingIntent: true });
 
     attachPrevValueTracking(nightInput);
     attachArrowNavigation(nightInput, "night", i);

@@ -1,6 +1,7 @@
 import { getMyProfile } from "./db.js";
 import { getSession } from "./auth.js";
 import { confirmDialog } from "./modal.js";
+import { shouldNavigateGrid } from "./features/gridKeyboard.js";
 
 const PROGRESS_KEY = "alvisa.timesheetTraining.v1";
 const ACHIEVEMENT_KEY_PREFIX = "alvisa.timesheetTraining.completedOnce.v1";
@@ -695,7 +696,7 @@ function fillDismissalTail(startIndex) {
 }
 
 function handleInputNavigation(event) {
-  if (!event.key.startsWith("Arrow")) return;
+  if (!shouldNavigateGrid(event, event.currentTarget)) return;
 
   const input = event.currentTarget;
   const row = input.dataset.row;

@@ -9,7 +9,7 @@ test("seasonal controls and stable owner navigation", {
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe", headless: true });
   const base = process.env.BUDGET_BASE_URL;
   const contexts = [];
-  async function open({ date = "2026-12-20T12:00:00+03:00", role = "owner", mode = "auto", width = 1440, reducedMotion = "no-preference", path = "/__seasonal-fixture.html", huntFixture = false } = {}) {
+  async function open({ date = "2026-12-20T12:00:00+03:00", role = "owner", mode = "auto", width = 1440, reducedMotion = "no-preference", path = "/__seasonal-fixture.html", huntFixture = false, timed = false } = {}) {
     const context = await browser.newContext({ viewport: { width, height: 850 }, reducedMotion, serviceWorkers: "block" });
     contexts.push(context);
     const requests = [];
@@ -35,7 +35,10 @@ test("seasonal controls and stable owner navigation", {
       return route.continue();
     });
     const page = await context.newPage();
-    await page.clock.setFixedTime(new Date(date));
+    if (timed) {
+      await page.clock.install({ time: new Date(date) });
+      await page.clock.pauseAt(new Date(date));
+    } else await page.clock.setFixedTime(new Date(date));
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
     await page.goto(base + path);
@@ -43,6 +46,19 @@ test("seasonal controls and stable owner navigation", {
     return { page, requests, errors };
   }
   try {
+    await t.test("January 10 midnight removes snow, findings, open greeting and music", async () => {
+      const { page, errors } = await open({ date: "2027-01-09T23:59:55+03:00", timed: true, path: "/index.html", huntFixture: true });
+      await page.locator('.festive-controls').waitFor();
+      await page.getByRole('button', { name: 'Включить новогоднюю музыку', exact: true }).dispatchEvent('click');
+      await page.locator('.festive-father-frost').waitFor();
+      await page.locator('.festive-father-frost').dispatchEvent('click');
+      await page.getByRole('dialog').waitFor();
+      await page.clock.runFor(6000);
+      assert.equal(await page.locator('.festive-snow, .festive-controls, .festive-find, .festive-greeting').count(), 0);
+      assert.equal(await page.evaluate(() => window.__players.every(player => player.paused)), true);
+      assert.deepEqual(errors, []);
+      await page.close();
+    });
     await t.test("three greetings persist, play laughter and stay above the header on mobile", async () => {
       const { page, errors } = await open({ path: "/index.html", huntFixture: true });
       const plan = createHuntState(12345, HUNT_PAGES, "index.html");
@@ -56,6 +72,15 @@ test("seasonal controls and stable owner navigation", {
           await page.setViewportSize({ width, height: 700 });
           await page.waitForTimeout(160);
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+          if (index > 0) {
+            const peek = page.locator('.festive-find.is-peeking');
+            assert.equal(await peek.count(), 1);
+            const visible = await peek.boundingBox();
+            assert.equal(visible.width, 54);
+            assert.equal(visible.height, 88);
+            assert.ok(visible.x >= 0 && visible.x + visible.width <= width);
+            if (width === 390 && process.env.SEASONAL_SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SEASONAL_SCREENSHOT_DIR}/festive-peek-${index}.png` });
+          }
           if (index === 0 && process.env.SEASONAL_SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SEASONAL_SCREENSHOT_DIR}/festive-hunt-${width}.png` });
         }
         if (index === 0) await page.getByRole('button', { name: 'Включить новогоднюю музыку', exact: true }).click();
@@ -70,14 +95,17 @@ test("seasonal controls and stable owner navigation", {
           const rect = close.getBoundingClientRect();
           return document.elementFromPoint(rect.x + 10, rect.y + 10) === close;
         }), true);
-        assert.ok(await page.evaluate(() => window.__players.some(player => player.src.endsWith('/festive-laugh.mp3') && !player.paused)));
-        if (index === 0) assert.equal(await page.evaluate(() => window.__players.find(player => player.src.endsWith('/festive-new-year.mp3')).volume), 0.07);
+        assert.ok(await page.evaluate(() => window.__players.some(player => player.src.endsWith('/ho-ho-ho-23.mp3') && !player.paused)));
+        if (index === 0) {
+          assert.equal(await page.evaluate(() => window.__players.find(player => player.src.endsWith('/festive-new-year-160k.mp3')).volume), 0.25);
+          assert.equal(await page.evaluate(() => window.__players.find(player => player.src.endsWith('/festive-new-year-160k.mp3')).paused), false);
+        }
         if (index === 0 && process.env.SEASONAL_SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SEASONAL_SCREENSHOT_DIR}/festive-greeting-mobile.png` });
         if (index === 1) await page.keyboard.press('Escape');
         else await page.getByRole('button', { name: 'Закрыть поздравление', exact: true }).click();
         await dialog.waitFor({ state: 'detached' });
-        assert.ok(await page.evaluate(() => window.__players.filter(player => player.src.endsWith('/festive-laugh.mp3')).every(player => player.paused)));
-        if (index === 0) assert.equal(await page.evaluate(() => window.__players.find(player => player.src.endsWith('/festive-new-year.mp3')).volume), 0.25);
+        assert.ok(await page.evaluate(() => window.__players.filter(player => player.src.endsWith('/ho-ho-ho-23.mp3')).every(player => player.paused)));
+        if (index === 0) assert.equal(await page.evaluate(() => window.__players.find(player => player.src.endsWith('/festive-new-year-160k.mp3')).volume), 0.25);
         await page.reload();
         await page.locator('.festive-controls').waitFor();
         assert.equal(await santa.count(), 0);

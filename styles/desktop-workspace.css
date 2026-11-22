@@ -1,0 +1,114 @@
+/* Opt-in desktop experiment: narrow screens and reading pages keep their layout. */
+@media (min-width: 1440px) {
+  body[data-desktop-workspace] {
+    --workspace-gutter: 32px;
+    --workspace-width: 1760px;
+  }
+
+  body[data-desktop-workspace="table"],
+  body[data-desktop-workspace="admin"] {
+    --workspace-width: none;
+  }
+
+  body[data-desktop-workspace="settings"] {
+    --workspace-width: 1680px;
+  }
+
+  body[data-desktop-workspace] .app-top-header > div:first-child {
+    width: 100%;
+    max-width: var(--workspace-width) !important;
+    padding-inline: var(--workspace-gutter) !important;
+  }
+
+  body[data-desktop-workspace] :is(.timesheet-shell, .admin-shell, .schedule-shell, .profile-page, .settings-shell, .budget-shell, .updates-shell, .owner-shell, .page-shell, .owner-console-shell, .department-users-shell, .ideas-shell, .status-shell, .calculator-shell, .help-shell) {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: var(--workspace-width) !important;
+    padding-inline: var(--workspace-gutter);
+  }
+
+  body[data-desktop-workspace="table"] .timesheet-table :is(th, td) {
+    padding-inline: 2px;
+  }
+
+  body[data-desktop-workspace="table"] .timesheet-header-actions .timesheet-icon-action::after,
+  body[data-desktop-workspace="admin"] .admin-icon-action::after,
+  body[data-desktop-workspace="owner"] .owner-icon-link::after {
+    left: auto;
+    right: 0;
+    transform: translateY(-4px);
+  }
+
+  body[data-desktop-workspace="table"] .timesheet-header-actions .timesheet-icon-action:is(:hover, :focus-visible)::after,
+  body[data-desktop-workspace="admin"] .admin-icon-action:is(:hover, :focus-visible)::after,
+  body[data-desktop-workspace="owner"] .owner-icon-link:is(:hover, :focus-visible)::after {
+    transform: translateY(0);
+  }
+
+  body[data-desktop-workspace="profile"] .profile-layout {
+    grid-template-columns: 380px minmax(0, 1fr) !important;
+  }
+
+  body[data-desktop-workspace="profile"] .profile-layout > * {
+    min-width: 0;
+  }
+
+  body[data-desktop-workspace="settings"] .settings-panel {
+    grid-template-columns: 150px minmax(0, 1fr) 150px minmax(0, 1fr);
+    gap: 24px 28px;
+    align-items: start;
+  }
+
+  body[data-desktop-workspace="settings"] .settings-section-label {
+    margin: 0;
+  }
+
+  body[data-desktop-workspace="settings"] .settings-section-label:nth-of-type(-n+3) { grid-column: 1; }
+  body[data-desktop-workspace="settings"] .settings-section-label:nth-of-type(-n+3) + div { grid-column: 2; }
+  body[data-desktop-workspace="settings"] .settings-section-label:nth-of-type(n+4) { grid-column: 3; }
+  body[data-desktop-workspace="settings"] .settings-section-label:nth-of-type(n+4) + div { grid-column: 4; }
+  body[data-desktop-workspace="settings"] :is(.settings-section-label:nth-of-type(1), .settings-section-label:nth-of-type(1) + div, .settings-section-label:nth-of-type(4), .settings-section-label:nth-of-type(4) + div) { grid-row: 1; }
+  body[data-desktop-workspace="settings"] :is(.settings-section-label:nth-of-type(2), .settings-section-label:nth-of-type(2) + div, .settings-section-label:nth-of-type(5), .settings-section-label:nth-of-type(5) + div) { grid-row: 2; }
+  body[data-desktop-workspace="settings"] :is(.settings-section-label:nth-of-type(3), .settings-section-label:nth-of-type(3) + div, .settings-section-label:nth-of-type(6), .settings-section-label:nth-of-type(6) + div) { grid-row: 3; }
+  body[data-desktop-workspace="settings"] .settings-actions { grid-row: 4; }
+  body[data-desktop-workspace="settings"] #errorBox { grid-row: 5; }
+
+  body[data-desktop-workspace="budget"] .budget-columns {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, .9fr);
+    align-items: start;
+    gap: 28px;
+  }
+
+  body[data-desktop-workspace="budget"] .budget-expenses { grid-column: auto; }
+  body[data-desktop-workspace="budget"] .budget-section > .line { flex-wrap: wrap; }
+
+  body[data-desktop-workspace="budget-help"] .guide-layout {
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 56px;
+  }
+  body[data-desktop-workspace="budget-help"] .guide-content { max-width: 900px; }
+  body[data-desktop-workspace="budget-help"] .guide-warning p { max-width: 900px; }
+  body[data-desktop-workspace="updates"] .updates-list { max-width: 1120px; margin-inline: auto; }
+  body[data-desktop-workspace="updates"] .updates-list p { max-width: 900px; }
+  body[data-desktop-workspace="checklist"] :is(.setup-grid, .active-layout) {
+    grid-template-columns: minmax(0, 1fr) 380px;
+  }
+  body[data-desktop-workspace="checklist"] .template-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body[data-desktop-workspace="checklist"] .check-list { max-width: 1000px; }
+  body[data-desktop-workspace="checklist-history"] .archive { max-width: 1200px; }
+  body[data-desktop-workspace="owner-ideas"] .idea-text { max-width: 900px; }
+  body[data-desktop-workspace="owner-status"] .status-check { max-width: 1200px; }
+  body[data-desktop-workspace="calculator"] .calculator-layout { grid-template-columns: minmax(0, 1fr) minmax(420px, .85fr); }
+  body[data-desktop-workspace="help"] :is(p, .section-copy, .section-intro, .lead) { max-width: 900px; }
+}
+
+@media (min-width: 1680px) {
+  body[data-desktop-workspace="schedule"] :is(.schedule-workers, .schedule-other-people) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@media (min-width: 1800px) {
+  body[data-desktop-workspace] { --workspace-gutter: 40px; }
+}

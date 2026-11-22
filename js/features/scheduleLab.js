@@ -4,6 +4,8 @@ import { getProductionCalendarMonth } from "../productionCalendar.js";
 import { SHIFT_CYCLES, planCoveredShiftCycle } from "./shiftCycles.js";
 import { planEightHourTemplate, planTeamNormFills, planTeamOvertimeReductions } from "./scheduleTools.js?v=20261002-2";
 import { planBottlingSchedule } from "./bottlingSchedule.js";
+import { shouldNavigateGrid } from "./gridKeyboard.js";
+import { hardenTimesheetInput } from "../timesheetInput.js";
 
 const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
 const monthSelect = document.getElementById("labMonth");
@@ -161,6 +163,9 @@ function render() {
         input.inputMode = field === "nightHours" ? "decimal" : "text";
         input.value = field === "dayHours" ? shiftText(person.days[index]) : (person.days[index].nightHours || "");
         input.disabled = field === "nightHours" && Boolean(person.days[index].leaveType);
+        input.dataset.gridRow = String(people.indexOf(person) * 2 + (field === "nightHours" ? 1 : 0));
+        input.dataset.gridColumn = String(index);
+        hardenTimesheetInput(input);
         input.setAttribute("aria-label", `${person.name}, ${index + 1}, ${field === "dayHours" ? "день" : "ночь"}`);
         input.addEventListener("change", () => updateCell(person, index, field, input.value));
         td.appendChild(input);
@@ -184,6 +189,42 @@ function updateTotals() {
   }
 }
 
+function syncLabDay(person, index) {
+  const row = people.indexOf(person) * 2;
+  const day = person.days[index];
+  const dayInput = body.querySelector(`input[data-grid-row="${row}"][data-grid-column="${index}"]`);
+  const nightInput = body.querySelector(`input[data-grid-row="${row + 1}"][data-grid-column="${index}"]`);
+  if (dayInput) dayInput.value = shiftText(day);
+  if (nightInput) {
+    nightInput.value = day.nightHours || "";
+    nightInput.disabled = Boolean(day.leaveType);
+  }
+}
+
+body.addEventListener("keydown", (event) => {
+  const input = event.target.closest("input[data-grid-row]");
+  if (!input || !shouldNavigateGrid(event, input)) return;
+  const horizontal = event.key === "ArrowLeft" || event.key === "ArrowRight";
+  const step = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
+  let row = Number(input.dataset.gridRow);
+  let column = Number(input.dataset.gridColumn);
+  event.preventDefault();
+  const person = people[Math.floor(row / 2)];
+  const field = row % 2 ? "nightHours" : "dayHours";
+  const previousText = field === "dayHours" ? shiftText(person.days[column]) : String(person.days[column].nightHours || "");
+  if (input.value !== previousText) updateCell(person, column, field, input.value);
+  while (true) {
+    if (horizontal) column += step;
+    else row += step;
+    if (row < 0 || row >= people.length * 2 || column < 0 || column >= dayCount()) return;
+    const target = body.querySelector(`input[data-grid-row="${row}"][data-grid-column="${column}"]`);
+    if (!target || target.disabled) continue;
+    target.focus();
+    target.select();
+    return;
+  }
+});
+
 function updateCell(person, index, field, raw) {
   const next = { ...person.days[index] };
   const value = String(raw).trim().toUpperCase().replace(",", ".");
@@ -195,16 +236,22 @@ function updateCell(person, index, field, raw) {
     const number = value === "" ? 0 : Number(value);
     if (!Number.isFinite(number) || number < 0 || number > 24 || next[field === "dayHours" ? "nightHours" : "dayHours"] + number > 24) {
       setStatus("В сутках не может быть больше 24 часов. Введите число от 0 до 24 или код отсутствия в дневной ячейке.", true);
-      render();
+      syncLabDay(person, index);
       return;
     }
     next[field] = number;
     if (field === "dayHours") next.leaveType = null;
-    if (field === "nightHours" && next.leaveType) { render(); return; }
+    if (field === "nightHours" && next.leaveType) { syncLabDay(person, index); return; }
+  }
+  const previous = person.days[index];
+  if (previous.dayHours === next.dayHours && previous.nightHours === next.nightHours && previous.leaveType === next.leaveType) {
+    syncLabDay(person, index);
+    return;
   }
   person.days[index] = next;
   clearPreview();
-  render();
+  syncLabDay(person, index);
+  updateTotals();
   setStatus("Учебный табель изменен.");
 }
 

@@ -1,10 +1,10 @@
 import { getSession } from "../auth.js";
 import { createHuntState, isValidHuntState, hashFestiveIdentity, HUNT_PAGES, GUEST_HUNT_PAGES, FESTIVE_GREETINGS } from "./festiveHuntModel.js";
 
-const ART_URL = new URL("../../images/festive-ded-moroz.png", import.meta.url).href;
-const LAUGH_URL = new URL("../../media/festive-laugh.mp3", import.meta.url).href;
+const ART_URL = new URL("../../images/festive-ded-moroz-144.webp", import.meta.url).href;
+const LAUGH_URL = new URL("../../media/ho-ho-ho-23.mp3", import.meta.url).href;
 
-export async function mountFestiveHunt({ onLaughChange = () => {} } = {}) {
+export async function mountFestiveHunt() {
   const session = await getSession().catch(() => null);
   const identity = session?.user?.id || "guest";
   const pages = session ? HUNT_PAGES : GUEST_HUNT_PAGES;
@@ -25,6 +25,7 @@ export async function mountFestiveHunt({ onLaughChange = () => {} } = {}) {
 
   const host = document.createElement("aside");
   host.className = "festive-find";
+  const peeking = place.id > 0;
   const button = document.createElement("button");
   button.type = "button";
   button.className = "festive-father-frost";
@@ -32,6 +33,8 @@ export async function mountFestiveHunt({ onLaughChange = () => {} } = {}) {
   button.title = "Праздничный привет от Деда Мороза";
   const image = document.createElement("img");
   image.src = ART_URL;
+  image.srcset = [72, 144, 216].map(width => `${new URL(`../../images/festive-ded-moroz-${width}.webp`, import.meta.url).href} ${width}w`).join(", ");
+  image.sizes = "72px";
   image.alt = "";
   image.width = 72;
   image.height = 108;
@@ -46,19 +49,15 @@ export async function mountFestiveHunt({ onLaughChange = () => {} } = {}) {
 
   function stopLaugh() {
     laugh?.pause();
-    onLaughChange(false);
   }
   function playLaugh() {
     if (!laugh) {
       laugh = new Audio(LAUGH_URL);
       laugh.preload = "none";
       laugh.volume = 0.65;
-      laugh.addEventListener("ended", () => onLaughChange(false));
-      laugh.addEventListener("error", () => onLaughChange(false));
     }
     laugh.currentTime = 0;
-    onLaughChange(true);
-    void laugh.play().catch(() => onLaughChange(false));
+    void laugh.play().catch(() => {});
   }
   function showGreeting() {
     if (dialog?.open) return;
@@ -131,19 +130,34 @@ export async function mountFestiveHunt({ onLaughChange = () => {} } = {}) {
     }
     const top = Math.max(96, (document.querySelector(".app-top-header")?.getBoundingClientRect().bottom || 72) + 16);
     const lastTop = innerHeight - 192;
-    const sides = place.side === "left" ? [16, innerWidth - 88] : [innerWidth - 88, 16];
+    const visibleWidth = peeking ? 54 : 72;
+    const visibleHeight = peeking ? 88 : 108;
+    const inset = peeking ? 0 : 16;
+    const sides = place.side === "left" ? [inset, innerWidth - visibleWidth - inset] : [innerWidth - visibleWidth - inset, inset];
     for (let offset = 0; offset < 5; offset++) {
       const y = top + ((place.height + offset) % 5) / 4 * Math.max(0, lastTop - top);
       for (const x of sides) {
-        const clear = x >= 8 && y + 108 < innerHeight - 70 && !obstacles.some(rect => x < rect.right + 8 && x + 72 > rect.left - 8 && y < rect.bottom + 8 && y + 108 > rect.top - 8);
+        const clear = x >= 0 && y + visibleHeight < innerHeight - 70 && !obstacles.some(rect => x < rect.right + 8 && x + visibleWidth > rect.left - 8 && y < rect.bottom + 8 && y + visibleHeight > rect.top - 8);
         if (!clear) continue;
         host.classList.remove("is-inline");
-        button.style.left = `${x}px`;
-        button.style.top = `${y}px`;
+        host.classList.toggle("is-peeking", peeking);
+        host.classList.toggle("peek-left", x === 0);
+        if (peeking) {
+          host.style.left = `${x}px`;
+          host.style.top = `${y}px`;
+          button.style.removeProperty("left");
+          button.style.removeProperty("top");
+        } else {
+          button.style.left = `${x}px`;
+          button.style.top = `${y}px`;
+        }
         return;
       }
     }
     host.classList.add("is-inline");
+    host.classList.remove("is-peeking", "peek-left");
+    host.style.removeProperty("left");
+    host.style.removeProperty("top");
     const main = document.querySelector("main");
     if (main && host.parentElement !== main) main.append(host);
   }

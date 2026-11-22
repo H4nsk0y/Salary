@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "alvisa-pwa";
-const CACHE_VERSION = "v7";
+const CACHE_VERSION = "v8";
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = new URL("./offline.html", self.registration.scope).href;
@@ -60,6 +60,46 @@ async function handleNavigation(request) {
   }
 }
 
+function isVersionedMedia(request, url) {
+  return /\/images\/festive-ded-moroz-(72|144|216)\.webp$/.test(url.pathname) ||
+    /\/media\/(almost-here|festive-new-year)-160k\.mp3$/.test(url.pathname) ||
+    (["image", "font"].includes(request.destination) && /\/(images|fonts)\//.test(url.pathname) && url.searchParams.has("v"));
+}
+
+async function cachedMedia(request, event) {
+  const cache = await caches.open(RUNTIME_CACHE);
+  const headers = new Headers(request.headers);
+  headers.delete("range");
+  const fullRequest = new Request(request, { headers });
+  const cached = await cache.match(fullRequest);
+  if (cached) {
+    const range = request.headers.get("range");
+    if (!range) return cached;
+    const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+    if (!match || (!match[1] && !match[2])) return fetch(request);
+    const data = await cached.arrayBuffer();
+    const size = data.byteLength;
+    const start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]));
+    const end = match[1] && match[2] ? Math.min(Number(match[2]), size - 1) : size - 1;
+    const responseHeaders = new Headers(cached.headers);
+    responseHeaders.delete("Content-Encoding");
+    responseHeaders.set("Accept-Ranges", "bytes");
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start > end || start >= size) {
+      responseHeaders.set("Content-Range", `bytes */${size}`);
+      responseHeaders.set("Content-Length", "0");
+      return new Response(null, { status: 416, headers: responseHeaders });
+    }
+    responseHeaders.set("Content-Range", `bytes ${start}-${end}/${size}`);
+    responseHeaders.set("Content-Length", String(end - start + 1));
+    return new Response(data.slice(start, end + 1), { status: 206, headers: responseHeaders });
+  }
+  // Stream the first full response immediately; cache a clone in the background.
+  // Partial (206) responses must never replace a complete audio file in Cache Storage.
+  const response = await fetch(fullRequest);
+  if (response.status === 200) event.waitUntil(cache.put(fullRequest, response.clone()).catch(() => {}));
+  return response;
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
@@ -69,6 +109,11 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(handleNavigation(request));
+    return;
+  }
+
+  if (isVersionedMedia(request, url)) {
+    event.respondWith(cachedMedia(request, event).catch(() => fetch(request)));
     return;
   }
 

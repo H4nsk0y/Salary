@@ -1,7 +1,7 @@
 const MUSIC_ENABLED_KEY = "alvisa.backgroundMusic.enabled.v1";
 const MUSIC_POSITION_KEY = "alvisa.backgroundMusic.position.v1";
 const MUSIC_EVENT = "alvisa:background-music-change";
-const TRACK_URL = new URL("../media/almost-here.mp3", import.meta.url).href;
+const TRACK_URL = new URL("../media/almost-here-160k.mp3", import.meta.url).href;
 
 let audio = null;
 let enabled = readEnabled();

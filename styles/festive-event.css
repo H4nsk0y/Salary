@@ -68,6 +68,10 @@
 .festive-father-frost:hover, .festive-father-frost:focus-visible { border-color: #dfbd73; box-shadow: 0 0 0 3px #dfbd7326; outline: none; }
 .festive-find.is-inline { display: flex; justify-content: flex-end; min-height: 124px; padding: 8px 16px; }
 .festive-find.is-inline .festive-father-frost { position: static; flex: none; }
+.festive-find.is-peeking { position: fixed; z-index: 32; width: 54px; height: 88px; overflow: hidden; pointer-events: none; }
+.festive-find.is-peeking .festive-father-frost { position: absolute; top: 0; left: 0; border: 0; border-radius: 0; box-shadow: none; }
+.festive-find.is-peeking.peek-left .festive-father-frost { left: -18px; }
+.festive-find.is-peeking .festive-father-frost:focus-visible { outline: 2px solid #dfbd73; outline-offset: -3px; }
 .festive-greeting {
   position: fixed;
   inset: 0;

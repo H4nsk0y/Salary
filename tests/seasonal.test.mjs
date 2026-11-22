@@ -20,10 +20,14 @@ test("early preview is available only on loopback and persists within a tab", ()
 
 test("festive window is bounded by Moscow midnight, not browser timezone", () => {
   assert.equal(isFestiveSeason(Date.parse("2026-11-22T12:00:00+03:00")), false);
+  assert.equal(isFestiveSeason(Date.parse("2026-12-09T23:59:59+03:00")), false);
+  assert.equal(isFestiveSeason(Date.parse("2026-12-10T00:00:00+03:00")), true);
   assert.equal(isFestiveSeason(FESTIVE_START - 1), false);
   assert.equal(isFestiveSeason(FESTIVE_START), true);
   assert.equal(isFestiveSeason(FESTIVE_END - 1), true);
   assert.equal(isFestiveSeason(FESTIVE_END), false);
+  assert.equal(isFestiveSeason(Date.parse("2027-01-09T23:59:59+03:00")), true);
+  assert.equal(isFestiveSeason(Date.parse("2027-01-10T00:00:00+03:00")), false);
   assert.equal(isFestiveSeason(Date.parse("2027-12-20T00:00:00+03:00")), false);
 });
 
@@ -34,7 +38,7 @@ test("every application page reaches the seasonal bootstrap", () => {
   }
   assert.match(read("js/pageLoaderBoot.js"), /import\("\.\/features\/festiveBootstrap\.js"\)/);
   assert.match(read("js/offline.js"), /import "\.\/features\/festiveBootstrap\.js"/);
-  assert.ok(statSync(new URL("media/festive-new-year.mp3", root)).size > 1_000_000);
+  assert.ok(statSync(new URL("media/festive-new-year-160k.mp3", root)).size > 1_000_000);
 });
 
 test("technical retention never deletes application data or running jobs", () => {
