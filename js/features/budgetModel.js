@@ -18,6 +18,10 @@ export function normalizeBudget(raw) {
   if (raw.salaryAutoStart != null && !validDate(raw.salaryAutoStart)) throw new Error("Некорректная дата начала автозачисления.");
   if (raw.expenseHistoryFrom != null && !validDate(raw.expenseHistoryFrom)) throw new Error("Некорректная граница архива расходов.");
   if (!Number.isInteger(people) || people < 1 || people > 100) throw new Error("Количество людей должно быть от 1 до 100.");
+  const anchor = raw.dailySpendingAnchor;
+  if (anchor != null && (!validDate(anchor.date) ||
+      ![anchor.total, anchor.reservedTotal].every(value => Number.isSafeInteger(value) && value >= 0) ||
+      anchor.reservedTotal > anchor.total || (anchor.estimated != null && typeof anchor.estimated !== 'boolean'))) throw new Error("Некорректный дневной ориентир расходов. Данные не изменены.");
   for (const row of raw.records) {
     if (!row || !["income", "expense", "bill", "balance"].includes(row.type)
       || !validDate(row.date) || !Number.isSafeInteger(row.amount)
@@ -30,7 +34,8 @@ export function normalizeBudget(raw) {
     }
     if ([row.expenseCarry, row.billCarry].some(value => value != null && (!Number.isSafeInteger(value) || value < 0))) throw new Error("Некорректный итог удалённых списаний.");
   }
-  return { ...raw, people, reserveBills: raw.reserveBills ?? false, records: raw.records.map((row) => ({ ...row })) };
+  return { ...raw, people, reserveBills: raw.reserveBills ?? false,
+    ...(anchor ? { dailySpendingAnchor: { ...anchor } } : {}), records: raw.records.map((row) => ({ ...row })) };
 }
 
 export function expenseDays(records) {

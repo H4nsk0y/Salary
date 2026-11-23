@@ -12,7 +12,7 @@
   <title>Мой бюджет — ALVISA SALARY</title>
   <link rel="stylesheet" href="./styles/tailwind.css?v=20260920-1">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
-  <link rel="stylesheet" href="./styles/pages/budget.css?v=20261121-3">
+  <link rel="stylesheet" href="./styles/pages/budget.css?v=20261123-1">
   <link rel="stylesheet" href="./styles/page-loader.css?v=20261002-1">
   <link rel="stylesheet" href="./styles/desktop-workspace.css?v=20261122-1">
 </head>
@@ -37,7 +37,7 @@
           <small id="perPerson"></small>
           <button id="household" class="plain household-button" type="button" aria-label="Изменить количество людей">2 человека</button>
         </div>
-        <div><p>Ближайшая выплата</p><strong id="next">—</strong><small id="nextAmount"></small><small id="paymentSource"></small></div>
+        <div><p>Ближайшая выплата</p><div class="budget-next-date"><strong id="next">—</strong><span id="paymentCountdown" role="timer" aria-live="off" aria-label="До ориентировочного времени выплаты" hidden></span></div><small id="nextAmount"></small><small id="paymentSource"></small></div>
       </section>
       <div id="reminders" class="notice" aria-live="polite"></div>
       <section class="budget-forecast" aria-labelledby="forecastTitle">
@@ -53,6 +53,10 @@
         <section class="budget-section budget-expenses">
           <div class="line"><h2>Расходы</h2><div class="budget-section-actions"><a class="budget-link" href="budget-archive.html">Архив и категории</a><button id="expense" type="button">Записать расход</button></div></div>
           <ul id="expenses" class="compact-expenses"></ul>
+          <div id="expenseTodaySummary" class="budget-expense-summary" role="status" aria-live="polite" aria-atomic="true">
+            <div><span>Потрачено сегодня</span><strong id="expenseTodayTotal">—</strong></div>
+            <div><span id="expenseTodayRemainingLabel">Можно потратить ещё</span><strong id="expenseTodayRemaining">—</strong></div>
+          </div>
         </section>
         <section class="budget-section">
           <div class="line"><h2>Обязательные платежи</h2><div class="budget-section-actions"><a class="budget-link" href="budget-archive.html?view=bills">Архив платежей</a><button class="plain" id="bill" type="button">Добавить платёж</button></div></div>
@@ -92,6 +96,6 @@
   </template>
   <div data-app-footer></div>
   <script type="module" src="./js/nav.js?v=20261121-1"></script>
-  <script type="module" src="./js/budget.js?v=20261121-3"></script>
+  <script type="module" src="./js/budget.js?v=20261123-1"></script>
 </body>
 </html>

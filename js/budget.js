@@ -1,4 +1,6 @@
-import { categories, todayISO, day, gap, kopecks, budget, salaryMonths, validDate, billPeriodRange, receiveDueSalary, budgetIncomeCycle, cycleIncomes, nextBudgetIncome, expenseDays, archiveExpenseDay, newBudget, dailySpendingLimit, billUrgency, isArchivedBill, findPaidBillDuplicate } from "./features/budgetModel.js?v=20261121-3";
+import { categories, todayISO, day, gap, kopecks, budget, salaryMonths, validDate, billPeriodRange, receiveDueSalary, budgetIncomeCycle, cycleIncomes, nextBudgetIncome, expenseDays, archiveExpenseDay, newBudget, dailySpendingLimit, billUrgency, isArchivedBill, findPaidBillDuplicate } from "./features/budgetModel.js?v=20261123-1";
+import { dailyExpenseSummary, preserveDailySpendingAnchor } from "./features/budgetDaily.js";
+import { paymentCountdown } from "./features/budgetCountdown.js";
 import { buildBudgetSalary } from "./features/budgetSalary.js";
 import { requireSession } from "./auth.js";
 import { getMyProfile, listMyBudgetTimesheets, BudgetConflict } from "./db.js";
@@ -29,6 +31,7 @@ let actionReturnFocus = null;
 let loadRequest = null;
 let spendingContext = '';
 let previewDaily = 0;
+let countdownDate = null;
 const text = (id, value) => { $(id).textContent = value; };
 const button = (title, action) => {
   const node = document.createElement('button');
@@ -86,7 +89,7 @@ async function save(next) {
   if (busy || loadRequest || !ready) throw new Error('Подождите завершения синхронизации.');
   busy = true;
   try {
-    const row = await saveBudgetSnapshot(next, revision);
+    const row = await saveBudgetSnapshot(preserveDailySpendingAnchor(state, next, todayISO(), salary), revision);
     revision = row.revision;
     state = row.state;
     render();
@@ -468,6 +471,8 @@ function render() {
   text('checkpoint', result.checkpoint ? 'Последняя сверка · ' + dateLabel(result.checkpoint.date) : 'Укажите общую сумму денег в наличии');
   text("balance", "Указать баланс");
   text('next', result.next ? dateLabel(result.next.date) : '—');
+  countdownDate = result.next?.date ?? null;
+  renderPaymentCountdown();
   text('nextAmount', result.next ? result.next.title + ' · ' + (result.next.amount === undefined ? 'сумма не указана' : money(result.next.amount)) : '');
   text("paymentSource", result.next?.override ? "Исправлено вручную" : result.next?.confirmed ? "Подтверждено в Salary" : result.next?.source === "salary" ? "Прогноз Salary" : "");
   text('days', result.days ? 'Дней до выплаты: ' + result.days : 'Выплата сегодня');
@@ -500,6 +505,15 @@ function render() {
   renderBills(bills);
   renderRows('balances', state.records.filter(r => r.type === 'balance').sort((a, b) => sortDate(b, a) || b.stamp - a.stamp), 'balance', 'Пока нет сверок');
   renderExpenses(today);
+  const daily = dailyExpenseSummary(state, today, salary);
+  text('expenseTodayTotal', money(daily.spent));
+  text('expenseTodayRemainingLabel', daily.exceeded ? 'Лимит превышен на' : 'Можно потратить ещё');
+  text('expenseTodayRemaining', money(daily.exceeded || daily.available));
+  $('expenseTodayRemaining').classList.toggle('negative', daily.exceeded > 0);
+  $('expenseTodaySummary').title = (daily.cashLimited
+    ? 'Остаток ограничен фактически доступными деньгами с учётом выбранного режима платежей.'
+    : 'Дневной ориентир фиксируется перед первой покупкой. Обязательные платежи не входят в сумму покупок.')
+    + (daily.estimated ? ' Для ранее внесённых покупок ориентир восстановлен по доступному остатку и расходам.' : '');
   text('calendar', salaryStatus);
   const shown = cycleIncomes(result.incomes, today);
   const received = shown.filter(row => row.settled);
@@ -521,8 +535,18 @@ $('daily').oninput = () => {
 };
 $('reserveBills').onchange = report(() => save({ ...state, reserveBills: $('reserveBills').checked }));
 
+function renderPaymentCountdown() {
+  const countdown = ready && accessGranted ? paymentCountdown(countdownDate) : null;
+  $('paymentCountdown').hidden = !countdown;
+  if (!countdown) return;
+  text('paymentCountdown', countdown.text);
+  $('paymentCountdown').title = 'Ориентир — 13:00 по Москве. Таймер не подтверждает фактическое получение денег.';
+}
+setInterval(() => { if (!document.hidden) renderPaymentCountdown(); }, 1000);
+
 let renderedDay = todayISO();
 document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) renderPaymentCountdown();
   if (!document.hidden && ready && !dialog.open && !busy) void refreshAll();
 });
 setInterval(() => {

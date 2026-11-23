@@ -37,6 +37,8 @@
 .budget-overview strong { display: block; margin: 6px 0; font-size: 30px; line-height: 1.2; font-weight: 600; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .budget-overview #free { color: var(--budget-gold); }
 .budget-overview #next { font-size: 25px; }
+.budget-next-date { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+#paymentCountdown { color: var(--budget-muted); font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .budget-overview button { margin-top: 12px; }
 .budget-page .household-button { min-height: 34px; padding: 5px 9px; font-size: 12px; }
 .budget-page .notice:not(:empty) { display: grid; gap: 6px; margin-top: 14px; font-size: 12px; }
@@ -106,6 +108,11 @@
 .budget-list-total { padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--budget-line); }
 .budget-list-total > strong { color: var(--budget-gold); font-size: 13px; overflow-wrap: anywhere; }
 .budget-list-total > small { margin-top: 4px; }
+.budget-expense-summary { display: grid; gap: 7px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--budget-line); font-size: 12px; }
+.budget-expense-summary > div { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; }
+.budget-expense-summary span { color: var(--budget-muted); }
+.budget-expense-summary strong { color: var(--budget-gold); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.budget-expense-summary strong.negative { color: #f1a4b5; }
 .budget-page .next-income-label { margin-top: 18px; color: #c6a15b; font-size: 12px; }
 .budget-page #cashGap { color: #f1a4b5; margin-top: 6px; }
 .budget-page .detail, .budget-page .section-status { margin-top: 4px; font-size: 12px; }

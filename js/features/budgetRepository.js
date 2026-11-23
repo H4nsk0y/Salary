@@ -1,5 +1,5 @@
 import { loadMyBudget, saveMyBudget, BudgetConflict } from '../db.js';
-import { normalizeBudget, newBudget, maintainBudget, todayISO } from './budgetModel.js?v=20261121-3';
+import { normalizeBudget, newBudget, maintainBudget, todayISO } from './budgetModel.js?v=20261123-1';
 
 export async function saveBudgetSnapshot(state, revision) {
   const next = normalizeBudget(maintainBudget(normalizeBudget(state), todayISO()));

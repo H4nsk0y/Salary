@@ -54,7 +54,7 @@ test("budget desktop/mobile, cloud compatibility, mutations, conflict and access
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe", headless: true });
   const base = process.env.BUDGET_BASE_URL;
   const contexts = [];
-  async function open(data = fixture(), width = 1440, path = '/budget.html') {
+  async function open(data = fixture(), width = 1440, path = '/budget.html', date = '2026-11-21T12:00:00Z') {
     const context = await browser.newContext({ viewport: { width, height: width < 500 ? 850 : 1000 }, serviceWorkers: "block" });
     contexts.push(context);
     await context.addInitScript((data) => {
@@ -71,7 +71,7 @@ test("budget desktop/mobile, cloud compatibility, mutations, conflict and access
       await route.continue();
     });
     const page = await context.newPage();
-    await page.clock.setFixedTime(new Date("2026-11-21T12:00:00Z"));
+    await page.clock.setFixedTime(new Date(date));
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
     await page.goto(base + path);
@@ -84,6 +84,50 @@ test("budget desktop/mobile, cloud compatibility, mutations, conflict and access
   };
   const number = text => text.replace(/[^\d,-]/g, "");
   try {
+    await t.test("two-line daily summary freezes the first-purchase limit and survives refresh", async () => {
+      const data = fixture();
+      data.state.records = [{ id: 'balance', type: 'balance', date: '2026-11-21', amount: 300000, stamp: 1 }];
+      const { page, errors } = await open(data, 1440, '/budget.html', '2026-11-22T12:00:00Z');
+      await loaded(page);
+      assert.equal(number(await page.locator('#expenseTodayTotal').innerText()), '0');
+      assert.equal(number(await page.locator('#expenseTodayRemaining').innerText()), '1000');
+      assert.equal(await page.locator('#expenseTodaySummary > div').count(), 2);
+      assert.equal(await page.locator('#paymentCountdown').innerText(), '(2 д 22:00:00)');
+      await page.clock.setFixedTime(new Date('2026-11-22T12:00:01Z'));
+      await page.waitForFunction(() => document.querySelector('#paymentCountdown').textContent === '(2 д 21:59:59)');
+      assert.equal(await page.evaluate(() => window.__budgetFixture.writes), 0);
+      for (const amount of ['150','300','136','30','146']) {
+        await page.locator('#expense').click();
+        await page.locator('[name="amount"]').fill(amount);
+        await page.locator('#submit').click();
+        await page.locator('#dialog').waitFor({ state: 'hidden' });
+      }
+      assert.equal(number(await page.locator('#expenseTodayTotal').innerText()), '762');
+      assert.equal(await page.locator('#expenseTodayRemainingLabel').innerText(), 'Можно потратить ещё');
+      assert.equal(number(await page.locator('#expenseTodayRemaining').innerText()), '238');
+      const anchor = await page.evaluate(() => window.__budgetFixture.state.dailySpendingAnchor);
+      assert.equal(anchor.total, 100000);
+      assert.equal(anchor.estimated, false);
+      await page.locator('#refresh').click();
+      await loaded(page);
+      assert.equal(number(await page.locator('#expenseTodayRemaining').innerText()), '238');
+      await page.locator('#alvisaPageLoader').waitFor({ state: 'hidden' });
+      for (const width of [1920, 390, 320]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.locator('#expenseTodaySummary').scrollIntoViewIfNeeded();
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        if (process.env.BUDGET_SCREENSHOT_DIR) await page.screenshot({ path: process.env.BUDGET_SCREENSHOT_DIR + '/budget-daily-' + width + '.png' });
+      }
+      await page.locator('#expense').click();
+      await page.locator('[name="amount"]').fill('300');
+      await page.locator('#submit').click();
+      await page.locator('#dialog').waitFor({ state: 'hidden' });
+      assert.equal(number(await page.locator('#expenseTodayTotal').innerText()), '1062');
+      assert.equal(await page.locator('#expenseTodayRemainingLabel').innerText(), 'Лимит превышен на');
+      assert.equal(number(await page.locator('#expenseTodayRemaining').innerText()), '62');
+      assert.deepEqual(errors, []);
+      await page.close();
+    });
     await t.test("owner sees old cloud data and mobile action without horizontal overflow", async () => {
       const { page, errors } = await open();
       await loaded(page);
