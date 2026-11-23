@@ -233,7 +233,7 @@ export function receiveDueSalary(state, salary, now = new Date()) {
   for (const payment of scheduled(today, records, salary)) {
     if (!payment.nominal || payment.settled || payment.autoSkipped || payment.date < start || payment.date > today
       || !Number.isSafeInteger(payment.amount)) continue;
-    const eventTime = Date.parse(payment.date + "T10:00:00+03:00");
+    const eventTime = Date.parse(payment.date + "T13:00:00+03:00");
     if (+now < eventTime) continue;
     const received = { ...payment, id: payment.id ?? "salary-" + payment.nominal, type: "income",
       settled: payment.date, settledStamp: eventTime, stamp: payment.stamp ?? eventTime, automatic: true };

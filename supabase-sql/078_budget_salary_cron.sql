@@ -19,8 +19,8 @@ set state = jsonb_set(b.state, '{salaryAutoStart}', to_jsonb(to_char(timezone('E
 where not (b.state ? 'salaryAutoStart')
   and exists (select 1 from public.profiles p where p.user_id = b.user_id and p.role = 'owner');
 
--- 07:00 UTC = 10:00 Moscow. Hourly retries recover network/CAS failures.
-select cron.schedule('alvisa-budget-salary', '0 7-20 * * *', $cron$
+-- 10:00 UTC = 13:00 Moscow. Hourly retries recover network/CAS failures.
+select cron.schedule('alvisa-budget-salary', '0 10-20 * * *', $cron$
   select net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = 'alvisa_egais_reminder_project_url') || '/functions/v1/credit-budget-salary',
     headers := jsonb_build_object(

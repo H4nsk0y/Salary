@@ -255,32 +255,33 @@ test("next advance appears only for an unpaid bill on or after the following 25t
   assert.equal(nextBudgetIncome([next], [{ type: 'bill', date: '2026-12-25', settled: '2026-11-21' }], '2026-11-21'), null);
 });
 
-test("auto salary credits once at Moscow 10:00 and honors overrides, cancellations and unknown amounts", () => {
+test("auto salary credits once at Moscow 13:00 and honors overrides, cancellations and unknown amounts", () => {
   const data = state([{ type: "balance", date: "2026-11-24", amount: 10000, stamp: 1 }], { salaryAutoStart: "2026-11-21" });
   const salary = [{ nominal: "2026-11-25", date: "2026-11-25", amount: 30000 }];
-  assert.equal(receiveDueSalary(data, salary, new Date("2026-11-25T06:59:59Z")), data);
-  const next = receiveDueSalary(data, salary, new Date("2026-11-25T07:00:00Z"));
+  assert.equal(receiveDueSalary(data, salary, new Date("2026-11-25T09:59:59Z")), data);
+  assert.equal(receiveDueSalary(data, salary, new Date("2026-11-25T07:00:00Z")), data);
+  const next = receiveDueSalary(data, salary, new Date("2026-11-25T10:00:00Z"));
   assert.equal(budget(next, "2026-11-25").current, 40000);
-  assert.equal(next.records.at(-1).settledStamp, Date.parse("2026-11-25T07:00:00Z"));
-  assert.equal(receiveDueSalary(next, salary, new Date("2026-11-26T07:00:00Z")), next);
+  assert.equal(next.records.at(-1).settledStamp, Date.parse("2026-11-25T10:00:00Z"));
+  assert.equal(receiveDueSalary(next, salary, new Date("2026-11-26T10:00:00Z")), next);
   const manual = { type: "income", nominal: "2026-11-25", date: "2026-11-26", amount: 50000, override: true };
   const changed = state([...data.records, manual], { salaryAutoStart: "2026-11-21" });
-  assert.equal(receiveDueSalary(changed, salary, new Date("2026-11-25T08:00:00Z")), changed);
-  assert.equal(receiveDueSalary(changed, salary, new Date("2026-11-26T07:00:00Z")).records.at(-1).amount, 50000);
+  assert.equal(receiveDueSalary(changed, salary, new Date("2026-11-25T11:00:00Z")), changed);
+  assert.equal(receiveDueSalary(changed, salary, new Date("2026-11-26T10:00:00Z")).records.at(-1).amount, 50000);
   const cancelled = state([...data.records, { ...manual, date: "2026-11-25", autoSkipped: true }], { salaryAutoStart: "2026-11-21" });
-  assert.equal(receiveDueSalary(cancelled, salary, new Date("2026-11-25T08:00:00Z")), cancelled);
-  assert.equal(receiveDueSalary(data, [], new Date("2026-11-25T08:00:00Z")), data);
+  assert.equal(receiveDueSalary(cancelled, salary, new Date("2026-11-25T11:00:00Z")), cancelled);
+  assert.equal(receiveDueSalary(data, [], new Date("2026-11-25T11:00:00Z")), data);
 });
 
 test("late auto-credit does not double count money already included in a balance checkpoint", () => {
   const payment = [{ nominal: "2026-11-25", date: "2026-11-25", amount: 30000 }];
-  const snapshot = { type: "balance", date: "2026-11-25", amount: 10000, stamp: Date.parse("2026-11-25T08:00:00Z") };
+  const snapshot = { type: "balance", date: "2026-11-25", amount: 10000, stamp: Date.parse("2026-11-25T11:00:00Z") };
   const data = state([snapshot], { salaryAutoStart: "2026-11-21" });
-  const credited = receiveDueSalary(data, payment, new Date("2026-11-25T09:00:00Z"));
+  const credited = receiveDueSalary(data, payment, new Date("2026-11-25T12:00:00Z"));
   assert.equal(budget(credited, "2026-11-25").current, 10000);
   snapshot.stamp = Date.parse("2026-11-25T06:00:00Z");
-  assert.equal(budget(receiveDueSalary(data, payment, new Date("2026-11-25T09:00:00Z")), "2026-11-25").current, 40000);
-  const enabledToday = receiveDueSalary(state([]), payment, new Date("2026-11-26T09:00:00Z"));
+  assert.equal(budget(receiveDueSalary(data, payment, new Date("2026-11-25T12:00:00Z")), "2026-11-25").current, 40000);
+  const enabledToday = receiveDueSalary(state([]), payment, new Date("2026-11-26T12:00:00Z"));
   assert.equal(enabledToday.records.length, 0);
 });
 

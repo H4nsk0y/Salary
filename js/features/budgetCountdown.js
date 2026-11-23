@@ -1,4 +1,4 @@
-import { validDate } from './budgetModel.js?v=20261123-1';
+import { validDate } from './budgetModel.js?v=20261123-2';
 
 export function paymentCountdown(date, now = Date.now()) {
   if (!validDate(date) || !Number.isFinite(now)) return null;

@@ -1,4 +1,4 @@
-import { categories, todayISO, day, gap, kopecks, budget, salaryMonths, validDate, billPeriodRange, receiveDueSalary, budgetIncomeCycle, cycleIncomes, nextBudgetIncome, expenseDays, archiveExpenseDay, newBudget, dailySpendingLimit, billUrgency, isArchivedBill, findPaidBillDuplicate } from "./features/budgetModel.js?v=20261123-1";
+import { categories, todayISO, day, gap, kopecks, budget, salaryMonths, validDate, billPeriodRange, receiveDueSalary, budgetIncomeCycle, cycleIncomes, nextBudgetIncome, expenseDays, archiveExpenseDay, newBudget, dailySpendingLimit, billUrgency, isArchivedBill, findPaidBillDuplicate } from "./features/budgetModel.js?v=20261123-2";
 import { dailyExpenseSummary, preserveDailySpendingAnchor } from "./features/budgetDaily.js";
 import { paymentCountdown } from "./features/budgetCountdown.js";
 import { buildBudgetSalary } from "./features/budgetSalary.js";

@@ -390,14 +390,14 @@ test("budget desktop/mobile, cloud compatibility, mutations, conflict and access
       await page.locator('#extraIncome').waitFor({ state: 'visible' });
       await page.close();
     });
-    await t.test("Moscow 10:00 auto receipt can be corrected and never duplicates on refresh", async () => {
+    await t.test("Moscow 13:00 auto receipt can be corrected and never duplicates on refresh", async () => {
       const { page } = await open();
       await loaded(page);
-      await page.clock.setFixedTime(new Date('2026-11-25T06:59:00Z'));
+      await page.clock.setFixedTime(new Date('2026-11-25T09:59:00Z'));
       await page.locator('#refresh').click();
       await loaded(page);
       assert.equal(number(await page.locator('#current').innerText()), '99500');
-      await page.clock.setFixedTime(new Date('2026-11-25T07:00:00Z'));
+      await page.clock.setFixedTime(new Date('2026-11-25T10:00:00Z'));
       await page.locator('#refresh').click();
       await loaded(page);
       assert.equal(number(await page.locator('#current').innerText()), '111845');

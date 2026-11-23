@@ -1,4 +1,4 @@
-import { budget, dailySpendingLimit } from "./budgetModel.js?v=20261123-1";
+import { budget, dailySpendingLimit } from "./budgetModel.js?v=20261123-2";
 
 export function spentOnDay(state, date) {
   return state.records.filter(row => row.type === "expense" && row.date === date)
