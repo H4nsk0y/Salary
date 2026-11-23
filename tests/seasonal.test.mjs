@@ -39,6 +39,7 @@ test("every application page reaches the seasonal bootstrap", () => {
   assert.match(read("js/pageLoaderBoot.js"), /import\("\.\/features\/festiveBootstrap\.js"\)/);
   assert.match(read("js/offline.js"), /import "\.\/features\/festiveBootstrap\.js"/);
   assert.ok(statSync(new URL("media/festive-new-year-160k.mp3", root)).size > 1_000_000);
+  assert.ok(statSync(new URL("images/festive-loader-v1.webp", root)).size < 60_000);
 });
 
 test("technical retention never deletes application data or running jobs", () => {

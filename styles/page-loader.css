@@ -46,6 +46,13 @@
   font-weight: 400;
 }
 
+.alvisa-page-loader-icon.is-festive {
+  width: min(224px, 64vw);
+  height: 150px;
+  object-fit: contain;
+  border-radius: 0;
+}
+
 .alvisa-page-loader-status {
   min-height: 1.4em;
   margin-top: 8px;

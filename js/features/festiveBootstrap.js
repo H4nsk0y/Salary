@@ -16,6 +16,28 @@ export function isLocalFestivePreview(href, remembered = false) {
   } catch { return false; }
 }
 
+export function updateFestiveLoader() {
+  if (typeof document === "undefined") return;
+  let remembered = false;
+  try { remembered = sessionStorage.getItem("alvisa.festive.preview") === "1"; } catch { /* Optional local preview. */ }
+  const active = isFestiveSeason() || isLocalFestivePreview(location.href, remembered);
+  const normal = new URL("../../images/app-icon-512.png", import.meta.url).href;
+  const festive = new URL("../../images/festive-loader-v1.webp", import.meta.url).href;
+  document.querySelectorAll(".alvisa-page-loader-icon").forEach(image => {
+    image.classList.toggle("is-festive", active);
+    const source = active ? festive : normal;
+    if (image.src !== source) image.src = source;
+    if (!image.dataset.themeFallbackBound) {
+      image.dataset.themeFallbackBound = "1";
+      image.addEventListener("error", () => {
+        if (image.src === normal) return;
+        image.classList.remove("is-festive");
+        image.src = normal;
+      });
+    }
+  });
+}
+
 if (typeof document !== "undefined") {
   let remembered = false;
   try { remembered = sessionStorage.getItem("alvisa.festive.preview") === "1"; } catch { /* Optional local preview. */ }
@@ -26,6 +48,7 @@ if (typeof document !== "undefined") {
   let loading = false;
   let boundaryTimer = 0;
   async function refresh() {
+    updateFestiveLoader();
     if (!isActive()) {
       dispose?.();
       dispose = null;
@@ -42,6 +65,7 @@ if (typeof document !== "undefined") {
       loading = false;
     }
   }
+  updateFestiveLoader();
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", refresh, { once: true });
   } else void refresh();

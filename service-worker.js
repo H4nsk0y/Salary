@@ -62,6 +62,7 @@ async function handleNavigation(request) {
 
 function isVersionedMedia(request, url) {
   return /\/images\/festive-ded-moroz-(72|144|216)\.webp$/.test(url.pathname) ||
+    /\/images\/festive-loader-v1\.webp$/.test(url.pathname) ||
     /\/media\/(almost-here|festive-new-year)-160k\.mp3$/.test(url.pathname) ||
     (["image", "font"].includes(request.destination) && /\/(images|fonts)\//.test(url.pathname) && url.searchParams.has("v"));
 }

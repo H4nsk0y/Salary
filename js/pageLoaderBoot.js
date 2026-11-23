@@ -1,11 +1,12 @@
 (() => {
-  void import("./features/festiveBootstrap.js").catch(() => {});
+  const festiveBoot = import("./features/festiveBootstrap.js");
+  void festiveBoot.catch(() => {});
   const loader = document.getElementById("alvisaPageLoader");
   if (!loader) return;
 
   loader.innerHTML = `
     <div class="alvisa-page-loader-inner">
-      <img class="alvisa-page-loader-icon" src="./images/app-icon-512.png" alt="" />
+      <img class="alvisa-page-loader-icon" alt="" />
       <div class="alvisa-page-loader-title">ALVISA SALARY</div>
       <div class="alvisa-page-loader-status" data-loader-status>Загружаем данные…</div>
       <div class="alvisa-page-loader-progress">
@@ -16,6 +17,11 @@
       </div>
       <button class="alvisa-page-loader-retry" type="button">Обновить страницу</button>
     </div>`;
+
+  void festiveBoot.then(({ updateFestiveLoader }) => updateFestiveLoader()).catch(() => {
+    const image = loader.querySelector(".alvisa-page-loader-icon");
+    if (image) image.src = "./images/app-icon-512.png";
+  });
 
   loader.querySelector(".alvisa-page-loader-retry")?.addEventListener("click", () => location.reload());
 
