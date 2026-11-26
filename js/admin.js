@@ -48,6 +48,8 @@ import {
 } from "./features/matrixSelection.js";
 import { isTimesheetAutosaveDisabled, isManualSaveWarningEnabled } from "./features/autosavePreference.js";
 import { scheduleAdjacentMonthPrefetch } from "./features/monthPrefetch.js";
+import { initAdminTimesheetSnapshots } from "./features/adminTimesheetSnapshots.js?v=20261125-1";
+import { planSnapshotRestore } from "./features/timesheetSnapshots.js";
 import { filterAuditEntries } from "./features/auditSearch.js";
 import {
   CHATEAU_ALVISA_BRANCH,
@@ -2944,7 +2946,7 @@ function initializeScheduleTools() {
 
   scheduleToolsInitializationPromise = (async () => {
     const [{ initAdminScheduleTools }, loadedLeaderId, restrictions] = await Promise.all([
-      import("./features/adminScheduleTools.js?v=20261002-2"),
+      import("./features/adminScheduleTools.js?v=20261125-1"),
       listDepartmentLeader(managedDepartment.key),
       listManagedDepartmentNightShiftRestrictions(managedDepartment.key).catch((error) => {
         if (/night_shift_restriction|PGRST202|schema cache/i.test(String(error?.message || ""))) return null;
@@ -2962,7 +2964,7 @@ function initializeScheduleTools() {
       isOwner: currentProfile?.role === "owner",
       leaderId: loadedLeaderId,
       getContext: (scope = "chateau") => ({
-        year, month, teamStates: teamStates.filter((state) => state.plantScope === scope),
+        year, month, teamStates: teamStates.filter((state) => scope === 'all' || state.plantScope === scope),
         holiday: sharedHoliday,
         transferredOff: sharedTransferredOff,
         shortDay: sharedShortDay,
@@ -2978,6 +2980,11 @@ function initializeScheduleTools() {
           previous.getFullYear(),
           previous.getMonth()
         );
+        return new Map(rows.map((row) => [String(row.user_id), row.payload ?? null]));
+      },
+      loadNextMany: async (userIds, currentYear, currentMonth) => {
+        const next = new Date(currentYear, currentMonth + 1, 1);
+        const rows = await managedLoadTimesheets(userIds, next.getFullYear(), next.getMonth());
         return new Map(rows.map((row) => [String(row.user_id), row.payload ?? null]));
       },
       applyChanges: (plans, tool) => {
@@ -3015,6 +3022,39 @@ function initializeScheduleTools() {
 
 function setupScheduleTools() {
   if (departmentViewOnly) return;
+
+  initAdminTimesheetSnapshots({
+    getContext: (scope) => monthDataLoaded ? ({ year, month, departmentKey: managedDepartment.key,
+      teamStates: teamStates.filter((state) => state.plantScope === scope) }) : null,
+    signature: currentSignature,
+    restore: async (snapshot, context, baseline) => {
+      const restrictions = await listManagedDepartmentNightShiftRestrictions(context.departmentKey);
+      return runTimesheetTask(async () => {
+        if (departmentViewOnly || !monthDataLoaded || year !== context.year || month !== context.month || currentSignature() !== baseline) {
+          throw new Error("Табель изменился. Откройте список и выберите снимок заново.");
+        }
+        const states = teamStates.filter((state) => state.plantScope === context.scope);
+        const noNightIds = new Set((restrictions ?? []).filter((row) => row.no_night_shifts !== false).map((row) => String(row.user_id)));
+        const result = planSnapshotRestore(snapshot, states, year, month, noNightIds);
+        for (const { state, changes } of result.plans) {
+          for (const { index, to } of changes) {
+            state.dayHours[index] = to.dayHours;
+            state.nightHours[index] = to.nightHours;
+            state.leaveType[index] = to.leaveType;
+            state.shiftComments[index] = to.comment;
+          }
+          markDirty({ state });
+        }
+        applyStateToDom();
+        clearMatrixSelection();
+        if (result.count) {
+          if (isTimesheetAutosaveDisabled()) setSaveStatus("Снимок загружен — нажмите кнопку сохранения", "busy");
+          else await saveAllNow({ notify: false });
+        }
+        return result;
+      });
+    },
+  });
 
   const buttonGroups = [...document.querySelectorAll("[data-schedule-scope]")];
   buttonGroups.forEach((group) => group.classList.remove("hidden"));

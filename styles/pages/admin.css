@@ -1434,6 +1434,35 @@ td.shift-comment-cell.has-shift-comment::after {
       .admin-schedule-actions .admin-icon-action[data-schedule-tool="reduceOvertime"] { border-color: rgba(174, 123, 139, .4); background: rgba(122, 22, 56, .18); color: #e6b8c5; }
       .admin-schedule-actions .admin-icon-action.hidden { display: none; }
 
+      .schedule-plant-cycle { margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 13px; }
+      .schedule-plant-cycle.hidden { display: none; }
+      .schedule-plant-cycle input, .timesheet-snapshot-dialog input { min-height: 40px; min-width: 0; max-width: 100%; padding: 8px 12px; border: 1px solid #41464b; border-radius: 6px; color: #f1eee8; background: #0b0d0f; color-scheme: dark; }
+      .schedule-plant-cycle input:focus-visible, .timesheet-snapshot-dialog input:focus-visible { outline: 2px solid #c6a15b; outline-offset: 2px; }
+      .timesheet-snapshot-dialog { width: min(620px, calc(100% - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 1px solid #41464b; border-radius: 8px; background: #15191d; color: #f1eee8; }
+      .timesheet-snapshot-dialog[open] { display: flex; flex-direction: column; }
+      .timesheet-snapshot-dialog::backdrop { background: #040607d9; backdrop-filter: blur(5px); }
+      .timesheet-snapshot-dialog h2 { margin: 0; font-size: 20px; }
+      .timesheet-snapshot-dialog .schedule-tools-body { min-height: 0; font-size: 13px; }
+      .timesheet-snapshot-dialog [data-period], .timesheet-snapshot-dialog small { color: #aab0b6; }
+      .timesheet-snapshot-dialog form:not([hidden]) { display: grid; gap: 12px; }
+      .timesheet-snapshot-dialog form > button { justify-self: start; }
+      .snapshot-list-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 12px 0; border-bottom: 1px solid #34383d; }
+      .snapshot-list-item strong { overflow-wrap: anywhere; }
+      .snapshot-list-item small { display: block; margin-top: 4px; }
+      .snapshot-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+      .plant-cycle-calendar { width: min(366px, calc(100% - 24px)); max-height: calc(100dvh - 24px); padding: 0; margin: auto; border: 1px solid #41464b; border-radius: 8px; background: #15191d; color: #f1eee8; color-scheme: dark; }
+      .plant-cycle-calendar::backdrop { background: #050607cc; }
+      .plant-calendar-body { padding: 14px; }
+      .plant-calendar-period { display: grid; grid-template-columns: 32px minmax(0, 1fr) 75px 32px; gap: 5px; }
+      .plant-calendar-period > * { min-width: 0; min-height: 38px; padding: 3px; border: 1px solid #41464b; border-radius: 5px; background: #111417; }
+      .plant-calendar-week, .plant-calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; text-align: center; }
+      .plant-calendar-week { margin: 12px 0 6px; color: #aab0b6; font-size: 12px; }
+      .plant-calendar-days button { min-height: 38px; border-radius: 5px; font-size: 13px; }
+      .plant-calendar-days button:hover { background: #34383d; }
+      .plant-calendar-days button[aria-pressed="true"] { background: #7a1638; color: #fff; }
+      .plant-calendar-days button[aria-current="date"] { box-shadow: inset 0 0 0 1px #c6a15b; }
+      .plant-cycle-calendar :is(button,select):focus-visible { outline: 2px solid #c6a15b; outline-offset: 1px; }
+      @media (max-width: 480px) { .snapshot-list-item { grid-template-columns: 1fr 1fr; } .snapshot-list-item > div { grid-column: 1 / -1; } }
       .schedule-tools-overlay { position: fixed; inset: 0; z-index: 1300; display: flex; overflow: auto; padding: 16px; background: rgba(4, 6, 7, .82); backdrop-filter: blur(7px); }
       .schedule-tools-overlay.hidden { display: none; }
       .schedule-tools-dialog { width: min(760px, 100%); height: min(680px, calc(100dvh - 32px)); min-height: 0; flex: none; margin: auto; display: flex; flex-direction: column; border: 1px solid rgba(241, 238, 232, .18); border-radius: 8px; background: #15191d; box-shadow: 0 24px 80px rgba(0, 0, 0, .5); color: #f1eee8; }

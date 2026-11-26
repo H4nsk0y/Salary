@@ -2,6 +2,8 @@ import { SHIFT_CYCLES, planCoveredShiftCycle } from "./shiftCycles.js";
 import { planEightHourTemplate, planTeamNormFills, planTeamOvertimeReductions } from "./scheduleTools.js?v=20261002-2";
 import { planBottlingSchedule } from "./bottlingSchedule.js";
 import { enforceDayCoverage } from "./dayCoverage.js";
+import { planCombinedPlantSchedule } from "./combinedPlantSchedule.js";
+import { bindEmploymentDateCalendar, normalizeEmploymentDateInput, formatEmploymentDateInput } from './employmentDateCalendar.js';
 
 const TITLES = {
   dayNight48: "День / ночь / 48",
@@ -11,7 +13,10 @@ const TITLES = {
   fillNorm: "Добить до нормы",
   reduceOvertime: "Сократить переработку",
   bottling: "Составить график от розлива",
+  odysseyChateau3: "Одиссей + Шато 3 суток",
+  odysseyChateau4: "Одиссей + Шато 4 суток",
 };
+const combinedTool = (tool) => tool === 'odysseyChateau3' || tool === 'odysseyChateau4';
 
 function daysForState(state) {
   return state.dayHours.map((dayHours, index) => ({
@@ -73,7 +78,7 @@ export function formatScheduleChangeReport(state, changes, norm) {
   return `${state.name} — изменено смен: ${changes.length}${dates.length ? `; ${dates.join("; ")}` : ""}; после: ${hourText(after)}; норма: ${hourText(norm)}`;
 }
 
-export function initAdminScheduleTools({ getContext, loadPreviousMany, signature, applyChanges, isOwner, leaderId }) {
+export function initAdminScheduleTools({ getContext, loadPreviousMany, loadNextMany, signature, applyChanges, isOwner, leaderId }) {
   const buttonGroups = [...document.querySelectorAll("[data-schedule-scope]")];
   const modal = document.getElementById("scheduleToolsModal");
   const people = document.getElementById("scheduleToolsPeople");
@@ -85,9 +90,21 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
   const twoLinesToggle = document.getElementById("scheduleToolsTwoLines");
   const twoLinesDates = document.getElementById("scheduleToolsTwoLinesDates");
   const dateGrid = document.getElementById("scheduleToolsDateGrid");
+  const cycleOptions = document.getElementById('scheduleToolsPlantCycle');
+  const cycleStart = document.getElementById('scheduleToolsCycleStart');
   if (!buttonGroups.length || !modal || !people || !summary || !previewButton || !applyButton) return;
 
   document.body.appendChild(modal);
+  if (cycleStart) {
+    const calendar = document.createElement('dialog');
+    calendar.className = 'plant-cycle-calendar';
+    calendar.setAttribute('aria-label', 'Первый день суток Одиссея');
+    calendar.innerHTML = `<div class="schedule-tools-head"><strong>Начало цикла Одиссея</strong><button type="button" data-calendar-close class="schedule-tools-button" aria-label="Закрыть">×</button></div>
+      <div class="plant-calendar-body"><div class="plant-calendar-period"><button type="button" data-calendar-prev aria-label="Предыдущий месяц">‹</button><select data-calendar-month aria-label="Месяц"></select><select data-calendar-year aria-label="Год"></select><button type="button" data-calendar-next aria-label="Следующий месяц">›</button></div>
+      <div class="plant-calendar-week" aria-hidden="true"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div><div class="plant-calendar-days" data-calendar-days></div></div>`;
+    document.body.append(calendar);
+    bindEmploymentDateCalendar(cycleStart, document.getElementById('scheduleToolsCyclePick'), calendar, { minDate: '2000-01-01', maxDate: '2100-12-31' });
+  }
 
   buttonGroups.forEach((group) => group.classList.remove("hidden"));
   const labLink = document.getElementById("scheduleLabLink");
@@ -143,8 +160,11 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
 
   function open(tool, trigger) {
     activeScope = trigger.closest("[data-schedule-scope]")?.dataset.scheduleScope || "chateau";
+    if (combinedTool(tool)) activeScope = 'all';
     const context = getContext(activeScope);
     activeTool = tool;
+    cycleOptions?.classList.toggle('hidden', !combinedTool(tool));
+    if (combinedTool(tool) && cycleStart) cycleStart.value = formatEmploymentDateInput(`${context.year}-${String(context.month + 1).padStart(2, '0')}-01`);
     pending = null;
     operation++;
     returnFocus = trigger;
@@ -160,6 +180,8 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
     document.getElementById("scheduleToolsNote").textContent = tool === "bottling"
       ? "Выберите не меньше двух сотрудников. Будние день и ночь будут закрыты доступными людьми; праздники пропускаются. Заполненные дни и коды отсутствия не заменяются."
       : "Выберите операторов. При четырёх доступных работает выбранный цикл; при трёх — день/ночь/отсыпной, при двух — постоянные день и ночь. Коды отсутствия и заполненные дни не заменяются.";
+    if (combinedTool(tool)) document.getElementById('scheduleToolsNote').textContent =
+      `Общий состав на два завода: Шато — день и ночь с понедельника по пятницу; Одиссей — ${tool === 'odysseyChateau3' ? '3 суток, день, 2 выходных' : '4 суток, день, 1 выходной'}. Дата задаёт фазу шестидневного цикла, в том числе до начала месяца. Заполненные смены и отсутствия сохраняются; переработка не ограничивается.`;
     summary.textContent = "";
     applyButton.disabled = true;
     people.replaceChildren();
@@ -222,7 +244,8 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
 
     try {
       const previous = new Map();
-      if (SHIFT_CYCLES[activeTool] || activeTool === "fillNorm" || activeTool === "bottling") {
+      const following = new Map();
+      if (SHIFT_CYCLES[activeTool] || activeTool === "fillNorm" || activeTool === "bottling" || combinedTool(activeTool)) {
         const payloads = await loadPreviousMany(
           chosen.map(({ id }) => id),
           context.year,
@@ -231,6 +254,10 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
         for (const { id } of chosen) {
           previous.set(id, daysForPayload(payloads.get(id) ?? null));
         }
+      }
+      if (combinedTool(activeTool)) {
+        const payloads = await loadNextMany(chosen.map(({ id }) => id), context.year, context.month);
+        for (const { id } of chosen) following.set(id, daysForPayload(payloads.get(id) ?? null)?.[0]);
       }
       if (request !== operation || modal.classList.contains("hidden")) return;
       if (periodKey(getContext(activeScope), signature) !== baseline) {
@@ -268,7 +295,13 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
         : undefined;
       let cyclePlans = new Map();
       let cycleStartIndex = null;
-      if (SHIFT_CYCLES[activeTool]) {
+      if (combinedTool(activeTool)) {
+        const coverage = planCombinedPlantSchedule({ year: context.year, month: context.month,
+          cycleStart: normalizeEmploymentDateInput(cycleStart?.value), roundDays: activeTool === 'odysseyChateau3' ? 3 : 4,
+          members: selectedScheduleMembers.map((member) => ({ ...member, nextDay: following.get(member.id) })) });
+        if (coverage.error) errors.push(coverage.error);
+        cyclePlans = new Map(coverage.plans.map(({ id, plan }) => [id, plan]));
+      } else if (SHIFT_CYCLES[activeTool]) {
         let coverage = planCoveredShiftCycle({ cycleId: activeTool, year: context.year, month: context.month,
           members: selectedScheduleMembers.map((member) => ({
             ...member, previousDays: previous.get(member.id),
@@ -310,7 +343,7 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
         if (!state) continue;
         const existingDays = daysForState(state);
         let plan;
-        if (SHIFT_CYCLES[activeTool] || activeTool === "bottling") {
+        if (SHIFT_CYCLES[activeTool] || activeTool === "bottling" || combinedTool(activeTool)) {
           plan = cyclePlans.get(id);
           if (!plan) continue;
         } else if (activeTool === "fiveTwo" || activeTool === "alternating") {
@@ -347,6 +380,7 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
       const intro = document.createElement("div");
       const count = result.reduce((sum, item) => sum + item.changes.length, 0);
       intro.textContent = `Изменений: ${count}.`;
+      if (combinedTool(activeTool)) intro.textContent += ' Покрытие рассчитано суммарно на оба завода. Ночные смены в конце месяца нужно завершить в следующем месяце. Проверьте распределение перед применением.';
       if (SHIFT_CYCLES[activeTool] && cycleStartIndex !== null) {
         intro.textContent += ` Переход на 2/2 с ${cycleStartIndex + 1}-го числа. Проверьте покрытие смен перед применением.`;
       } else if (activeTool === "bottling" && cycleStartIndex !== null) {
@@ -409,6 +443,7 @@ export function initAdminScheduleTools({ getContext, loadPreviousMany, signature
     twoLinesDates?.classList.toggle("hidden", !twoLinesToggle.checked);
     invalidatePreview();
   });
+  cycleStart?.addEventListener('change', invalidatePreview);
   previewButton.addEventListener("click", preview);
   applyButton.addEventListener("click", apply);
   closeButton.addEventListener("click", close);

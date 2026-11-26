@@ -36,11 +36,17 @@ test("tool changes highlight only affected day or night cells until table reload
   assert.match(styles, /td\.schedule-tool-changed \.input-hour/);
 });
 
-test("bottling tool is offered in both the admin table and isolated owner lab", () => {
+test("snapshot buttons replace bottling and five-two while old tools remain available in code and lab", () => {
   const admin = read("../admin.html");
   const lab = read("../schedule-lab.html");
   const tools = read("../js/features/adminScheduleTools.js");
-  assert.match(admin, /data-schedule-tool="bottling"/);
+  assert.doesNotMatch(admin, /data-schedule-tool="bottling"/);
+  assert.doesNotMatch(admin, /data-schedule-tool="fiveTwo"/);
+  assert.equal([...admin.matchAll(/data-snapshot-action="save"/g)].length, 2);
+  assert.equal([...admin.matchAll(/data-snapshot-action="load"/g)].length, 2);
+  assert.match(admin, /data-schedule-tool="odysseyChateau3"/);
+  assert.match(admin, /data-schedule-tool="odysseyChateau4"/);
+  assert.match(tools, /activeTool === "fiveTwo"/);
   assert.match(lab, /data-tool="bottling"/);
   assert.match(tools, /planBottlingSchedule\(/);
   assert.match(tools, /holiday: context\.holiday/);

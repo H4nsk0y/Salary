@@ -1,4 +1,31 @@
 import { supabase } from "./supabaseClient.js";
+
+export async function saveDepartmentTimesheetSnapshot({ departmentKey, scope, year, month, name, payload }) {
+  const { error } = await supabase.from('department_timesheet_snapshots').insert({
+    department_key: departmentKey, scope, year, month, name, payload,
+  });
+  if (error) throw error;
+}
+
+export async function listDepartmentTimesheetSnapshots({ departmentKey, scope, year, month }) {
+  const { data, error } = await supabase.from('department_timesheet_snapshots')
+    .select('id,name,created_at,expires_at').eq('department_key', departmentKey).eq('scope', scope)
+    .eq('year', year).eq('month', month).order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function loadDepartmentTimesheetSnapshot(id) {
+  const { data, error } = await supabase.from('department_timesheet_snapshots')
+    .select('id,department_key,scope,year,month,name,payload').eq('id', id).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteDepartmentTimesheetSnapshot(id) {
+  const { error } = await supabase.from('department_timesheet_snapshots').delete().eq('id', id);
+  if (error) throw error;
+}
 import { getSession } from "./auth.js";
 import { isProfileCompleteForTimesheet } from "./profileCompletion.js";
 
