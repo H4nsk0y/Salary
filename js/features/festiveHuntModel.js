@@ -1,5 +1,8 @@
 export const HUNT_PAGES = ["index.html", "calculator.html", "profile.html", "table.html", "schedule.html", "checklist.html", "settings.html", "help.html"];
 export const GUEST_HUNT_PAGES = ["index.html", "calculator.html", "help.html"];
+export const FESTIVE_HUNT_START = Date.parse('2026-12-25T00:00:00+03:00');
+export const FESTIVE_HUNT_END = Date.parse('2027-01-04T00:00:00+03:00');
+export const isFestiveHuntSeason = (now = Date.now()) => now >= FESTIVE_HUNT_START && now < FESTIVE_HUNT_END;
 
 export function hashFestiveIdentity(value) {
   let hash = 2166136261;

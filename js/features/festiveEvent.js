@@ -1,5 +1,6 @@
 import { stopBackgroundMusic } from "../backgroundMusic.js";
 import { mountFestiveHunt } from "./festiveHunt.js";
+import { isFestiveHuntSeason, FESTIVE_HUNT_START, FESTIVE_HUNT_END } from './festiveHuntModel.js';
 
 const MUSIC_KEY = "alvisa.festive2026.music";
 const POSITION_KEY = "alvisa.festive2026.position";
@@ -56,6 +57,29 @@ export function mountFestiveEvent() {
   let flakes = [];
   let lastPositionSave = 0;
   let disposeHunt = null;
+  let huntLoading = false;
+  let huntBoundary = 0;
+  async function refreshHunt() {
+    if (disposed || !isFestiveHuntSeason()) {
+      disposeHunt?.();
+      disposeHunt = null;
+      return;
+    }
+    if (disposeHunt || huntLoading) return;
+    huntLoading = true;
+    try {
+      const dispose = await mountFestiveHunt();
+      if (disposed || !isFestiveHuntSeason()) dispose();
+      else disposeHunt = dispose;
+    } catch (error) { console.warn('Праздничный привет недоступен:', error); }
+    finally { huntLoading = false; }
+  }
+  function scheduleHuntBoundary() {
+    clearTimeout(huntBoundary);
+    const now = Date.now();
+    const next = now < FESTIVE_HUNT_START ? FESTIVE_HUNT_START : now < FESTIVE_HUNT_END ? FESTIVE_HUNT_END : 0;
+    if (next) huntBoundary = setTimeout(() => { void refreshHunt(); scheduleHuntBoundary(); }, Math.min(next - now, 2_147_000_000));
+  }
   const context = canvas.getContext("2d");
 
   function updateButtons() {
@@ -187,13 +211,16 @@ export function mountFestiveEvent() {
   reducedMotion.addEventListener("change", syncSnow);
   resize();
   syncSnow();
-  void mountFestiveHunt().then(dispose => {
-    if (disposed) dispose();
-    else disposeHunt = dispose;
-  }).catch(error => console.warn("Праздничный привет недоступен:", error));
+  void refreshHunt();
+  const huntTimer = setInterval(refreshHunt, 60000);
+  scheduleHuntBoundary();
+  document.addEventListener('visibilitychange', refreshHunt);
   if (musicEnabled) void playMusic();
   return () => {
     disposed = true;
+    clearInterval(huntTimer);
+    clearTimeout(huntBoundary);
+    document.removeEventListener('visibilitychange', refreshHunt);
     disposeHunt?.();
     stopMusic(false);
     cancelAnimationFrame(frame);

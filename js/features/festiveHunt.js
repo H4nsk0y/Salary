@@ -1,11 +1,13 @@
 import { getSession } from "../auth.js";
-import { createHuntState, isValidHuntState, hashFestiveIdentity, HUNT_PAGES, GUEST_HUNT_PAGES, FESTIVE_GREETINGS } from "./festiveHuntModel.js";
+import { createHuntState, isValidHuntState, hashFestiveIdentity, HUNT_PAGES, GUEST_HUNT_PAGES, FESTIVE_GREETINGS, isFestiveHuntSeason } from "./festiveHuntModel.js";
 
 const ART_URL = new URL("../../images/festive-ded-moroz-144.webp", import.meta.url).href;
 const LAUGH_URL = new URL("../../media/ho-ho-ho-23.mp3", import.meta.url).href;
 
 export async function mountFestiveHunt() {
+  if (!isFestiveHuntSeason()) return () => {};
   const session = await getSession().catch(() => null);
+  if (!isFestiveHuntSeason()) return () => {};
   const identity = session?.user?.id || "guest";
   const pages = session ? HUNT_PAGES : GUEST_HUNT_PAGES;
   const page = location.pathname.split("/").pop() || "index.html";
