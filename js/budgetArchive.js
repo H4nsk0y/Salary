@@ -165,7 +165,7 @@ $('confirmDelete').onclick = async () => {
 async function refresh() {
   if (!granted || busy || loading || dialog.open) return;
   const profile = await getMyProfile({ fresh: true });
-  if (profile?.role !== 'owner') { location.replace('profile.html'); return; }
+  if (!profile?.user_id) { location.replace('profile.html'); return; }
   await load();
 }
 $('refresh').onclick = action(refresh);
@@ -178,7 +178,7 @@ async function start() {
   try {
     try { await requireSession(); } catch { location.replace('login.html?next=budget-archive.html'); return; }
     const profile = await getMyProfile();
-    if (profile?.role !== 'owner') { location.replace('profile.html'); return; }
+    if (!profile?.user_id) { location.replace('profile.html'); return; }
     startPresenceHeartbeat('Архив бюджета');
     const ensure = createMoneyAccessGuard(profile);
     const unlock = async () => {

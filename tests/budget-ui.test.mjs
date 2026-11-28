@@ -306,13 +306,27 @@ test("budget desktop/mobile, cloud compatibility, mutations, conflict and access
       assert.equal(await page.evaluate(() => window.__budgetFixture.writes), 0);
       await page.close();
     });
-    await t.test("ordinary users and guests cannot load budget or see its navigation", async () => {
+    await t.test("ordinary users can load and edit their budget, while guests have no access or navigation", async () => {
       for (const anonymous of [false, true]) {
         const data = fixture(); data.anonymous = anonymous; data.profile.role = "user";
         const { page } = await open(data);
-        await page.waitForURL(anonymous ? "**/login.html?next=budget.html" : "**/profile.html");
-        assert.equal(await page.evaluate(() => window.__budgetFixture.reads), 0);
-        assert.equal(await page.locator('a[href="budget.html"]').count(), 0);
+        if (anonymous) {
+          await page.waitForURL('**/login.html?next=budget.html');
+          assert.equal(await page.evaluate(() => window.__budgetFixture.reads), 0);
+          assert.equal(await page.locator('a[data-nav-key="budget"]').count(), 0);
+        } else {
+          await loaded(page);
+          assert.ok(await page.evaluate(() => window.__budgetFixture.reads) > 0);
+          assert.equal(await page.locator('a[data-nav-key="budget"]').count(), 2);
+          assert.equal(await page.locator('a[data-nav-key="owner"]').count(), 0);
+          await page.locator('#expense').click();
+          await page.locator('[name="amount"]').fill('100');
+          await page.locator('#submit').click();
+          await page.locator('#dialog').waitFor({ state: 'hidden' });
+          assert.equal(number(await page.locator('#current').innerText()), '99400');
+          await page.locator('#refresh').click();
+          await loaded(page);
+        }
         await page.close();
       }
     });
@@ -457,7 +471,7 @@ test("budget desktop/mobile, cloud compatibility, mutations, conflict and access
       assert.equal(await page.evaluate(() => window.__budgetFixture.state.records.filter(row => row.type === 'expense').every(row => row.archived)), true);
       await page.close();
     });
-    await t.test("archive contains categories, can restore and edit expenses, and remains owner-only", async () => {
+    await t.test("archive contains categories and is accessible to registered users only", async () => {
       const data = fixture();
       data.state.records[1] = { ...data.state.records[1], date: '2026-11-20', category: 'Продукты', archived: true };
       const { page, errors } = await open(data, 440, '/budget-archive.html');
@@ -482,8 +496,13 @@ test("budget desktop/mobile, cloud compatibility, mutations, conflict and access
       assert.deepEqual(errors, []);
       await page.close();
       const ordinary = fixture(); ordinary.profile.role = 'user';
+      const allowed = await open(ordinary, 440, '/budget-archive.html');
+      await loaded(allowed.page);
+      assert.ok(await allowed.page.evaluate(() => window.__budgetFixture.reads) > 0);
+      await allowed.page.close();
+      ordinary.anonymous = true;
       const denied = await open(ordinary, 440, '/budget-archive.html');
-      await denied.page.waitForURL('**/profile.html');
+      await denied.page.waitForURL('**/login.html?next=budget-archive.html');
       assert.equal(await denied.page.evaluate(() => window.__budgetFixture.reads), 0);
       await denied.page.close();
     });
@@ -601,7 +620,7 @@ test("budget desktop/mobile, cloud compatibility, mutations, conflict and access
       assert.ok((await page.locator('#reserve').boundingBox()).y >= 65);
       await page.goto(base + '/updates.html');
       const release = page.locator('.updates-release-latest');
-      assert.match(await release.innerText(), /Обновление 40\.0/);
+      assert.match(await release.innerText(), /Обновление 41\.0/);
       assert.match(await release.innerText(), /активной разработки/);
       assert.equal(await release.locator('a[href="budget-help.html"]').count(), 1);
       assert.deepEqual(errors, []);

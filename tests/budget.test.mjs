@@ -383,13 +383,14 @@ test("shared payday resolver and regional calendar agree with personal timesheet
   assert.match(await read("js/table.js"), /return resolveCalendarPaymentDate\(rawDate, isPaymentNonWorkingDate\)/);
 });
 
-test("budget page uses Salary session and owner navigation, never Finance browser storage", async () => {
+test("budget page uses Salary session for any registered profile, never Finance browser storage", async () => {
   const source = await read("js/budget.js");
   assert.match(source, /await requireSession\(\)/);
-  assert.match(source, /profile\?\.role !== "owner"/);
+  assert.match(source, /!profile\?\.user_id/);
+  assert.doesNotMatch(source, /profile\?\.role !== "owner"/);
   assert.match(source, /createMoneyAccessGuard/);
   assert.doesNotMatch(source, /localStorage|sessionStorage|readCloud|cloudBudget|importSalary/);
-  assert.match(await read("js/nav.js"), /const OWNER_LINKS = \[\s*\{ key: "budget"/);
+  assert.match(await read("js/nav.js"), /const BUDGET_LINK = \{ key: 'budget'/);
 });
 
 test("budget RLS preserves existing rows, isolates owners, rejects others and supports revision compare-and-swap", { skip: !process.env.PGLITE_MODULE }, async () => {
@@ -449,12 +450,13 @@ test("salary cron is idempotent, initializes owners only and keeps existing budg
     assert.deepEqual(rows[1].state, { daily: 100, records: [] });
     const jobs = (await db.query('select * from cron.job')).rows;
     assert.equal(jobs.length, 1);
-    assert.equal(jobs[0].schedule, '0 7-20 * * *');
+    assert.equal(jobs[0].schedule, '0 10-20 * * *');
     assert.match(jobs[0].command, /x-cron-secret/);
     assert.match(jobs[0].command, /credit-budget-salary/);
     const edge = await read('supabase/functions/credit-budget-salary/index.ts');
     assert.match(edge, /matchesSecret\(request.headers.get\("x-cron-secret"\)/);
-    assert.match(edge, /eq\("role", "owner"\)/);
+    assert.doesNotMatch(edge, /eq\("role", "owner"\)/);
+    assert.match(edge, /from\('finance_budgets'\)/);
     assert.match(edge, /eq\("revision", row.revision\)/);
   } finally { await db.close(); }
 });

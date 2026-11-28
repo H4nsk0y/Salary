@@ -1,4 +1,4 @@
-export const FESTIVE_START = Date.parse("2026-12-10T00:00:00+03:00");
+export const FESTIVE_START = Date.parse("2026-11-28T00:00:00+03:00");
 export const FESTIVE_END = Date.parse("2027-01-10T00:00:00+03:00");
 
 export function isFestiveSeason(now = Date.now()) {

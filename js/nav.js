@@ -26,9 +26,9 @@ const MAIN_LINKS = [
 ];
 
 const OWNER_LINKS = [
-  { key: "budget", href: "budget.html", label: "Мой бюджет" },
   { key: "owner", href: "owner.html", label: "Админка" },
 ];
+const BUDGET_LINK = { key: 'budget', href: 'budget.html', label: 'Мой бюджет' };
 
 function injectNavStyles() {
   if (document.getElementById(NAV_STYLE_ID)) return;
@@ -1119,6 +1119,13 @@ async function enhanceNavForProfile(header) {
   }
   const desktopNav = header.querySelector('[data-nav-slot="desktop"]');
   const mobileNav = header.querySelector('[data-nav-slot="mobile"]');
+  if (profile?.user_id) {
+    for (const [nav, mode] of [[desktopNav, 'desktop'], [mobileNav, 'mobile']]) {
+      if (nav && !nav.querySelector('[data-nav-key="budget"]')) {
+        nav.insertBefore(renderLink(BUDGET_LINK, activeKey, mode), nav.querySelector('[data-nav-key="owner"], [data-nav-key="profile"]'));
+      }
+    }
+  }
   if (header.dataset.ownerNavMode === "false") return;
   if (header.dataset.ownerNavEnhanced === "true") return;
   if (profile?.role !== "owner") return;

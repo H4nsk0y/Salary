@@ -8,7 +8,7 @@ test("loading screen uses the decorated building only during the event or local 
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe", headless: true });
   const base = process.env.BUDGET_BASE_URL;
   const contexts = [];
-  async function open({ date = "2026-12-10T12:00:00+03:00", preview = false, failImage = false, width = 1440, reducedMotion = "no-preference" } = {}) {
+  async function open({ date = "2026-11-28T12:00:00+03:00", preview = false, failImage = false, width = 1440, reducedMotion = "no-preference" } = {}) {
     const context = await browser.newContext({ viewport: { width, height: 850 }, reducedMotion, serviceWorkers: "block" });
     contexts.push(context);
     const requests = [];

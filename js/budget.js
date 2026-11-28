@@ -560,7 +560,7 @@ async function refreshAll() {
   $("refresh").disabled = true;
   try {
     const latest = await getMyProfile({ fresh: true });
-    if (latest?.role !== "owner") { location.replace("profile.html"); return; }
+    if (!latest?.user_id) { location.replace("profile.html"); return; }
     profile = latest;
     await load();
     await refreshSalary();
@@ -576,7 +576,7 @@ async function start() {
   try {
     try { await requireSession(); } catch { location.replace("login.html?next=budget.html"); return; }
     profile = await getMyProfile();
-    if (profile?.role !== "owner") { location.replace("profile.html"); return; }
+    if (!profile?.user_id) { location.replace("profile.html"); return; }
     startPresenceHeartbeat("Мой бюджет");
     const ensureAccess = createMoneyAccessGuard(profile, { title: "Показать бюджет", description: "Введите PIN-код для доступа к денежным данным." });
     const unlock = async () => {
